@@ -10,9 +10,49 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2023_05_05_101747) do
+ActiveRecord::Schema[7.0].define(version: 2023_05_05_103147) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "entries", force: :cascade do |t|
+    t.string "name"
+    t.string "pic"
+    t.text "plot"
+    t.string "genre"
+    t.integer "rating"
+    t.string "source"
+    t.string "year"
+    t.string "director"
+    t.string "writer"
+    t.string "actors"
+    t.string "media"
+    t.string "length"
+    t.bigint "list_id", null: false
+    t.string "note"
+    t.string "review"
+    t.boolean "completed"
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["list_id"], name: "index_entries_on_list_id"
+  end
+
+  create_table "follows", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "list_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["list_id"], name: "index_follows_on_list_id"
+    t.index ["user_id"], name: "index_follows_on_user_id"
+  end
+
+  create_table "lists", force: :cascade do |t|
+    t.string "name"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_lists_on_user_id"
+  end
 
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -22,8 +62,13 @@ ActiveRecord::Schema[7.0].define(version: 2023_05_05_101747) do
     t.datetime "remember_created_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "username"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_foreign_key "entries", "lists"
+  add_foreign_key "follows", "lists"
+  add_foreign_key "follows", "users"
+  add_foreign_key "lists", "users"
 end
