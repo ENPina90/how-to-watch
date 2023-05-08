@@ -1,3 +1,5 @@
+require 'open-uri'
+
 class EntriesController < ApplicationController
   skip_before_action :verify_authenticity_token
 
@@ -7,19 +9,25 @@ class EntriesController < ApplicationController
   end
 
   def create
-    @entry = omdb_create
-    raise
+    @entry = Entry.omdb_create(params[:imdb])
+    redirect_to edit_entry_path(@entry)
+  end
+
+  def edit
+    @entry = Entry.find(params[:id])
+  end
+
+  def update
+    @entry = Entry.find(params[:id])
+    @entry.update(entry_params)
     redirect_to list_path(@entry.list)
   end
 
-  private
-
-  def omdb_create
-    url = "http://www.omdbapi.com/?i=#{params["imdb"]}&apikey=a881ace5"
+  def self.omdb_create(imdb_id)
+    url = "http://www.omdbapi.com/?i=#{imdb_id}&apikey=a881ace5"
     serialized_title = URI.parse(url).open.read
     result = JSON.parse(serialized_title)
-    # p result_title
-    entry = Entry.create(
+    Entry.create(
       media: 'Movie',
       name: result["Title"],
       year: result["Year"].to_i,
@@ -31,8 +39,15 @@ class EntriesController < ApplicationController
       plot: result["Plot"],
       rating: result["imdbRating"].to_f,
       length: result["Runtime"].split(" ")[0].to_i,
-      list: params['list_id']
+      list: List.find(params['list_id']),
+      language: entry["Language"],
+      imdb: result["imdbID"]
     )
-    return entry
+  end
+
+  private
+
+  def entry_params
+    params.require(:entry).permit(:note, :category, :name, :year, :pic, :genre, :director, :writer, :actors, :plot, :rating, :length, :list_id)
   end
 end
