@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2023_05_05_103147) do
+ActiveRecord::Schema[7.0].define(version: 2023_05_08_173922) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -19,14 +19,12 @@ ActiveRecord::Schema[7.0].define(version: 2023_05_05_103147) do
     t.string "pic"
     t.text "plot"
     t.string "genre"
-    t.integer "rating"
     t.string "source"
     t.string "year"
     t.string "director"
     t.string "writer"
     t.string "actors"
     t.string "media"
-    t.string "length"
     t.bigint "list_id", null: false
     t.string "note"
     t.string "review"
@@ -34,6 +32,10 @@ ActiveRecord::Schema[7.0].define(version: 2023_05_05_103147) do
     t.string "category"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "imdb"
+    t.string "language"
+    t.integer "length"
+    t.float "rating"
     t.index ["list_id"], name: "index_entries_on_list_id"
   end
 

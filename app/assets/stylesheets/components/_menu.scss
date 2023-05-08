@@ -1,0 +1,22 @@
+.menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.menu li {
+  margin: 0 0.5rem;
+}
+
+.layout {
+  position: sticky;
+  top: 0;
+  height: fit-content;
+}
+
+.input-bar {
+  width: 100%;
+}
