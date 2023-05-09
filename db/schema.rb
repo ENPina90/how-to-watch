@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2023_05_08_173922) do
+ActiveRecord::Schema[7.0].define(version: 2023_05_09_133806) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -20,7 +20,6 @@ ActiveRecord::Schema[7.0].define(version: 2023_05_08_173922) do
     t.text "plot"
     t.string "genre"
     t.string "source"
-    t.string "year"
     t.string "director"
     t.string "writer"
     t.string "actors"
@@ -36,6 +35,7 @@ ActiveRecord::Schema[7.0].define(version: 2023_05_08_173922) do
     t.string "language"
     t.integer "length"
     t.float "rating"
+    t.integer "year"
     t.index ["list_id"], name: "index_entries_on_list_id"
   end
 
