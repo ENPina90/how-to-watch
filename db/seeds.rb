@@ -18,6 +18,7 @@ require "csv"
 # # Movie seeds
 URL = "http://www.omdbapi.com/?"
 API = "&apikey=a881ace5"
+SKIPPED = []
 # API = "&apikey=eb34d99"
 
 # puts "Destroying all entries, lists, and users..."
@@ -75,7 +76,10 @@ CSV.foreach('db/seed_data/movie_list.csv', headers: :first_row, header_converter
   if entry.nil?
     movie[:title] = movie[:alt] if movie[:alt]
     entry = csv_to_entry(movie)
-    next if entry.nil?
+    if entry.nil?
+      SKIPPED << movie
+      next
+    end
   else
     entry.list = list
     entry.note = Faker::Lorem.paragraph
@@ -84,7 +88,7 @@ CSV.foreach('db/seed_data/movie_list.csv', headers: :first_row, header_converter
   end
   p entry.save
 end
-
+p SKIPPED
 # def create_movie(entry)
 #   Entry.create(
 #     media: 'Movie',
