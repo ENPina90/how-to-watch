@@ -15,6 +15,21 @@
   position: sticky;
   top: 0;
   height: fit-content;
+  z-index: 1;
+  top: 28vh;
+  background: white;
+  // border: 1px solid black;
+}
+
+.layout-title {
+  position: sticky;
+  top: 10vh;
+  height: fit-content;
+  z-index: 1;
+  background: white;
+  padding-left: 10vw;
+  padding-right: 10vw;
+  margin-bottom: 2rem;
 }
 
 .input-bar {

@@ -9,7 +9,7 @@ class EntriesController < ApplicationController
   end
 
   def create
-    @entry = Entry.omdb_create(params[:imdb])
+    @entry = omdb_create(params[:imdb])
     redirect_to edit_entry_path(@entry)
   end
 
@@ -23,7 +23,7 @@ class EntriesController < ApplicationController
     redirect_to list_path(@entry.list)
   end
 
-  def self.omdb_create(imdb_id)
+  def omdb_create(imdb_id)
     url = "http://www.omdbapi.com/?i=#{imdb_id}&apikey=a881ace5"
     serialized_title = URI.parse(url).open.read
     result = JSON.parse(serialized_title)
@@ -40,7 +40,7 @@ class EntriesController < ApplicationController
       rating: result["imdbRating"].to_f,
       length: result["Runtime"].split(" ")[0].to_i,
       list: List.find(params['list_id']),
-      language: entry["Language"],
+      language: result["Language"],
       imdb: result["imdbID"]
     )
   end
