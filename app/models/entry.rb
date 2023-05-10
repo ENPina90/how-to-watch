@@ -4,6 +4,13 @@ class Entry < ApplicationRecord
   URL = "http://www.omdbapi.com/?"
   API = "&apikey=a881ace5"
 
+  include PgSearch::Model
+  pg_search_scope :search_by_input,
+    against: [ :name, :writer, :actors, :genre, :director ],
+    using: {
+      tsearch: { prefix: true }
+    }
+
   # def self.genres
   #   Entry.all.group_by(&:genre).keys.map(&:split).flatten.map { |genre| genre.tr(',', '') }.uniq.sort
   # end

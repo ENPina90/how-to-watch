@@ -1,0 +1,51 @@
+<div data-search-target="results">
+  <div class="row justify-content-center">
+    <div class="col-2 layout">
+      <a href="#search">Top</a>
+      <% sections.each do |section|%>
+        <a style="display:inline-block;" href="#<%= section %>"><%= section %></a>
+      <% end %>
+    </div>
+    <div class="col-6">
+      <% entries.keys.sort.each do |key| %>
+        <h3 id="<%= key %>"><%= key %></h3>
+        <% entries[key].each do |entry| %>
+          <div id="<%= entry.imdb %>" class="card mb-4 pb-2" style="height:fit-content;">
+            <div class="row g-0">
+              <p class="overflow-hidden"><%= entry.note %></p>
+              <div class="col-6 pt-2 px-2">
+                <img src="<%= entry.pic %>" class="card-img-top entry-card" alt="...">
+              </div>
+              <div class="col-6">
+                <div class="card-body">
+                  <h5 class="card-title"><%= entry.name %></h5>
+                  <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
+                    data-controller="completed"
+                    data-completed-id-value="<%= entry.id %>"
+                    data-action="click->completed#toggle"></i>
+                  <%= link_to edit_entry_path(entry) do %>
+                    <i class="fa-solid fa-pen"></i>
+                  <% end %>
+                  <p><%= entry.year %></p>
+                  <p><%= entry.length %> min</p>
+                  <p>rating: <%= entry.rating %></p>
+                  <p class="card__text"><%= entry.plot %></p>
+                  <%= link_to watch_entry_path(entry) do %>
+                    <i class="fa-solid fa-circle-play play-button"></i>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+            <p class="overflow-hidden"><%= entry.review %></p>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+    <div class="col-2 layout">
+      <h2>Up Next</h2>
+      <% random_selection.each do |entry|%>
+        <h4><a href="#<%= entry.imdb %>"><%= entry.name %></a></h4>
+      <% end %>
+    </div>
+  </div>
+</div>
