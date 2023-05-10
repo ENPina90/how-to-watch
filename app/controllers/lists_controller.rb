@@ -5,11 +5,19 @@ class ListsController < ApplicationController
 
   def show
     @list = List.find(params[:id])
-    @list_entries = @list.entries
+    if params[:query]
+      @list_entries = Entry.search_by_input(params[:query])
+    else
+      @list_entries = @list.entries
+    end
     @entries = {}
     filter
     @sections = @entries.keys.sort
     @random_selection = @list_entries.sample(3)
+    respond_to do |format|
+      format.html # Follow regular flow of Rails
+      format.text { render partial: "entries", locals: { entries: @entries, sections: @sections, random_selection: @random_selection, list_entries: @list_entries }, formats: [:html] }
+    end
   end
 
   private

@@ -10,15 +10,29 @@ export default class extends Controller {
   connect() {
     this.api = 'http://www.omdbapi.com/?'
     this.apiKey = 'apikey=adf1f2d7'
-    console.log('howdy from stimulus');
-    console.log(this.resultsTarget);
-    this.template = document.querySelector("#movieCardTemplate").innerHTML
-    console.log(this.idValue);
+    this.params = new URLSearchParams(window.location.search)
+  }
+
+  entries(event) {
+    event.preventDefault()
+    if (event.type == 'click') {
+      this.params.set('criteria', event.currentTarget.text)
+    }
+    if (this.inputTarget.value) {
+      this.params.set('query', this.inputTarget.value)
+    }
+    console.log(this.params.toString());
+    const url = `${window.location.origin}/lists/${this.idValue}?${this.params.toString()}`
+    fetch(url, {headers: {"Accept": "text/plain"}})
+    .then(response => response.text())
+    .then((data) => {
+      this.resultsTarget.outerHTML = data
+    })
+    this.location = url
   }
 
   omdb() {
     let keyword = this.inputTarget.value
-    console.log(keyword);
     console.log('$this is making an api call...');
     fetch(`${this.api}s=${keyword}&${this.apiKey}`)
       .then(response => response.json())

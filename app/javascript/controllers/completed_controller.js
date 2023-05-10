@@ -5,7 +5,7 @@ export default class extends Controller {
   static values = { id: Number }
 
   connect() {
-    console.log(this.idValue)
+    // console.log(this.idValue)
   }
 
   toggle() {

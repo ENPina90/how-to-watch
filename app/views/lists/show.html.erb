@@ -1,71 +1,31 @@
-<div class="row justify-content-center layout-title">
-  <h1 class="text-center"><%= @list.name %></h1>
-  <div class="col-2">
-    <%= link_to 'Edit', edit_list_path(@list), class: 'btn btn-primary' %>
-  </div>
-  <div class="col-8" id="search">
-    <%= text_field_tag :entry, nil, class: "input-bar", data: { controller: 'search', action: 'keyup->search#omdb' } %>
-  </div>
-  <div class="col-2">
-    <%= link_to '+ Entry', new_list_entry_path(@list), class: 'btn btn-primary' %>
-  </div>
-  <ul class="menu">
-    <li><%= link_to 'Year', list_path(@list, criteria: 'Year') %></li>
-    <li><%= link_to 'Rating', list_path(@list, criteria: 'Rating') %></li>
-    <li><%= link_to 'Genre', list_path(@list, criteria: 'Genre') %></li>
-    <li><%= link_to 'Watched', list_path(@list, criteria: 'Watched') %></li>
-    <li><%= link_to 'Media', list_path(@list, criteria: 'Media') %></li>
-    <li><%= link_to 'Length', list_path(@list, criteria: 'Length') %></li>
-  </ul>
-</div>
-<div class="container">
-  <div class="row justify-content-center">
-    <div class="col-2 layout">
-      <a href="#search">Top</a>
-      <% @sections.each do |section|%>
-        <a style="display:inline-block;" href="#<%= section %>"><%= section %></a>
+<div class="container" data-controller="search" data-search-id-value="<%= @list.id %>">
+  <div class="row justify-content-center layout-title">
+    <h1 class="text-center"><%= @list.name %></h1>
+    <div class="col-2">
+      <%= link_to 'Edit', edit_list_path(@list), class: 'btn btn-primary' %>
+    </div>
+    <div class="col-8" id="search">
+      <%= form_with url: list_path(@list), method: :get, class: "d-flex" do %>
+        <%= text_field_tag :query,
+          params[:query],
+          class: "form-control",
+          data: { action: "keyup->search#entries", search_target: "input"},
+          placeholder: "Find a movie"
+        %>
+        <%# <%= submit_tag "Search", class: "btn btn-primary" %>
       <% end %>
     </div>
-    <div class="col-6">
-      <% @entries.keys.sort.each do |key| %>
-        <h3 id="<%= key %>"><%= key %></h3>
-        <% @entries[key].each do |entry| %>
-          <div id="<%= entry.imdb %>" class="card mb-4 pb-2" style="height:fit-content;">
-            <div class="row g-0">
-              <p class="overflow-hidden"><%= entry.note %></p>
-              <div class="col-6 pt-2 px-2">
-                <img src="<%= entry.pic %>" class="card-img-top entry-card" alt="...">
-              </div>
-              <div class="col-6">
-                <div class="card-body">
-                  <h5 class="card-title"><%= entry.name %></h5>
-                  <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
-                     data-controller="completed"
-                     data-completed-id-value="<%= entry.id %>"
-                     data-action="click->completed#toggle"></i>
-                  <%= link_to edit_entry_path(entry) do %>
-                    <i class="fa-solid fa-pen"></i>
-                  <% end %>
-                  <p><%= entry.year %></p>
-                  <p><%= entry.length %> min</p>
-                  <p>rating: <%= entry.rating %></p>
-                  <p class="card__text"><%= entry.plot %></p>
-                  <%= link_to watch_entry_path(entry) do %>
-                    <i class="fa-solid fa-circle-play play-button"></i>
-                  <% end %>
-                </div>
-              </div>
-            </div>
-            <p class="overflow-hidden"><%= entry.review %></p>
-          </div>
-        <% end %>
-      <% end %>
+    <div class="col-2">
+      <%= link_to '+ Entry', new_list_entry_path(@list), class: 'btn btn-primary' %>
     </div>
-    <div class="col-2 layout">
-      <h2>Up Next</h2>
-      <% @random_selection.each do |entry|%>
-        <h4><a href="#<%= entry.imdb %>"><%= entry.name %></a></h4>
-      <% end %>
-    </div>
+    <ul class="menu">
+      <li><%= link_to 'Year', list_path(@list, criteria: 'Year'), data: { action: "click->search#entries"} %></li>
+      <li><%= link_to 'Rating', list_path(@list, criteria: 'Rating'), data: { action: "click->search#entries"} %></li>
+      <li><%= link_to 'Genre', list_path(@list, criteria: 'Genre'), data: { action: "click->search#entries"} %></li>
+      <li><%= link_to 'Watched', list_path(@list, criteria: 'Watched'), data: { action: "click->search#entries"} %></li>
+      <li><%= link_to 'Media', list_path(@list, criteria: 'Media'), data: { action: "click->search#entries"} %></li>
+      <li><%= link_to 'Length', list_path(@list, criteria: 'Length'), data: { action: "click->search#entries"} %></li>
+    </ul>
   </div>
+  <%= render "entries", entries: @entries, sections: @sections, random_selection: @random_selection, list_entries: @list_entries%>
 </div>
