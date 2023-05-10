@@ -8,5 +8,10 @@ Rails.application.routes.draw do
   resources :lists do
     resources :entries, only: [:new, :create]
   end
-  resources :entries, only: [:edit, :update, :destroy]
+  resources :entries, only: [:show, :edit, :update, :destroy] do
+    member do
+      get 'complete'
+      get :watch
+    end
+  end
 end

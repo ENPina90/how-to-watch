@@ -39,11 +39,20 @@
               <div class="col-6">
                 <div class="card-body">
                   <h5 class="card-title"><%= entry.name %></h5>
+                  <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
+                     data-controller="completed"
+                     data-completed-id-value="<%= entry.id %>"
+                     data-action="click->completed#toggle"></i>
+                  <%= link_to edit_entry_path(entry) do %>
+                    <i class="fa-solid fa-pen"></i>
+                  <% end %>
                   <p><%= entry.year %></p>
                   <p><%= entry.length %> min</p>
                   <p>rating: <%= entry.rating %></p>
                   <p class="card__text"><%= entry.plot %></p>
-                  <a href="https://v2.vidsrc.me/embed/<%= entry.imdb %>" class="btn btn-primary">Watch</a>
+                  <%= link_to watch_entry_path(entry) do %>
+                    <i class="fa-solid fa-circle-play play-button"></i>
+                  <% end %>
                 </div>
               </div>
             </div>

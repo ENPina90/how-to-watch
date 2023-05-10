@@ -1,6 +1,9 @@
 class Entry < ApplicationRecord
   belongs_to :list
 
+  URL = "http://www.omdbapi.com/?"
+  API = "&apikey=a881ace5"
+
   # def self.genres
   #   Entry.all.group_by(&:genre).keys.map(&:split).flatten.map { |genre| genre.tr(',', '') }.uniq.sort
   # end
@@ -38,7 +41,10 @@ class Entry < ApplicationRecord
       rating: result["imdbRating"].to_f,
       length: result["Runtime"].split(" ")[0].to_i,
       language: result["Language"],
-      imdb: result["imdbID"]
+      imdb: result["imdbID"],
+      completed: false,
+      note: "",
+      review: ""
     )
   end
 end

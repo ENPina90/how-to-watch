@@ -1,0 +1,24 @@
+.cinema__mode {
+  background-color: black;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+#cinema {
+  height: 100%;
+  width: 100%;
+}
+
+.cinema__screen {
+  background-color: black;
+  height: 100vh;
+}
+
+.cinema__control {
+  color: white;
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  font-size: 10px;
+}
