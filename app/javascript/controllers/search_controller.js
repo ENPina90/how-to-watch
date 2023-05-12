@@ -10,25 +10,26 @@ export default class extends Controller {
   connect() {
     this.api = 'http://www.omdbapi.com/?'
     this.apiKey = 'apikey=adf1f2d7'
+    this.template = document.querySelector('#movieCardTemplate').innerHTML
+    // URLSearchParams creates an object from the query string in the URL
     this.params = new URLSearchParams(window.location.search)
   }
 
   entries(event) {
     event.preventDefault()
+    // creates or updates the query string
     if (event.type == 'click') {
       this.params.set('criteria', event.currentTarget.text)
     }
     if (this.inputTarget.value) {
       this.params.set('query', this.inputTarget.value)
     }
-    console.log(this.params.toString());
     const url = `${window.location.origin}/lists/${this.idValue}?${this.params.toString()}`
     fetch(url, {headers: {"Accept": "text/plain"}})
     .then(response => response.text())
     .then((data) => {
       this.resultsTarget.outerHTML = data
     })
-    this.location = url
   }
 
   omdb() {
@@ -37,15 +38,9 @@ export default class extends Controller {
     fetch(`${this.api}s=${keyword}&${this.apiKey}`)
       .then(response => response.json())
       .then((data) => {
-        // data.Search.forEach((movie) => {
-          // movie.url = `${window.location.origin}/lists/${this.idValue}/entries/imdb=${movie.imdbID}`
-        //   movie.url = `/entries`
-        //   console.log(movie);
-        // })
-        // console.log(data);
         const movieData = { "movies": data.Search }
+        console.log(this.template)
         const output = Mustache.render(this.template, movieData);
-        // console.log(output);
         this.resultsTarget.innerHTML = output;
     })
   }
@@ -60,12 +55,6 @@ export default class extends Controller {
         window.location.href = response.url
 
       })
-      //   response.text())
-      // .then((data) => {
-      //   console.log(data);
-        // Replace entire document with response
-        // document.innerHTML = data
-      // })
   }
 
   add(event) {

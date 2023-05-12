@@ -25,7 +25,7 @@
                     <p class="card-text">{{Year}}</p>
                     <form action="/lists/<%= @list.id %>/entries" method='post'>
                        <input class='d-none' name='imdb' value='{{imdbID}}'>
-                       <button type='submit' name='create' value='create'>+ Movie Form</button>
+                       <button type='submit' name='create' value='create' class="btn btn-primary">+ Movie</button>
                     </form>
                     <%# <button class="btn btn-primary" data-action="click->search#add" data-imdb="{{imdbID}}">+ movie</button> %>
                     <%# <a href="{{url}}" >+ movie</a> %>
