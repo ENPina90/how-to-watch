@@ -20,6 +20,7 @@ class EntriesController < ApplicationController
 
   def edit
     @entry = Entry.find(params[:id])
+    @entry.streamable
   end
 
   def update
