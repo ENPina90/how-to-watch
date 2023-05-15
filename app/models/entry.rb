@@ -1,3 +1,5 @@
+require "open-uri"
+
 class Entry < ApplicationRecord
   belongs_to :list
 
@@ -60,5 +62,15 @@ class Entry < ApplicationRecord
       note: "",
       review: ""
     )
+  end
+
+  def check_source
+    url = source
+    begin
+      URI.open(url).read
+    rescue OpenURI::HTTPError
+      return false
+    end
+    return true
   end
 end

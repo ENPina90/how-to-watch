@@ -11,7 +11,9 @@ Rails.application.routes.draw do
   resources :entries, only: [:show, :edit, :update, :destroy] do
     member do
       get 'complete'
+      get 'reportlink'
       get :watch
+      get :duplicate
     end
   end
 end

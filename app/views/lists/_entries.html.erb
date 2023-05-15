@@ -19,12 +19,28 @@
               <div class="col-6">
                 <div class="card-body">
                   <h5 class="card-title"><%= entry.name %></h5>
-                  <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
+                  <% if @list.user == current_user %>
+                    <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
+                    title="Mark as watched"
                     data-controller="completed"
                     data-completed-id-value="<%= entry.id %>"
                     data-action="click->completed#toggle"></i>
-                  <%= link_to edit_entry_path(entry) do %>
-                    <i class="fa-solid fa-pen"></i>
+                    <%= link_to edit_entry_path(entry) do %>
+                      <i class="fa-solid fa-pen"></i>
+                    <% end %>
+                    <%= link_to entry_path(entry),
+                    data: {turbo_method: :delete, turbo_confirm: "Are you sure?"} do %>
+                      <i class="fa-solid fa-trash"></i>
+                    <% end %>
+                  <% end %>
+                  <i class="fa-solid fa-link-slash"
+                  style="color:<%= entry.stream ? "grey" : "red"%>"
+                  title="Report broken link"
+                  data-controller="link"
+                  data-link-id-value="<%= entry.id %>"
+                  data-action="click->link#toggle"></i>
+                  <%= link_to duplicate_entry_path(entry) do %>
+                    <i class="fa-sharp fa-regular fa-plus" title="Add to another list"></i>
                   <% end %>
                   <p><%= entry.year %></p>
                   <p><%= entry.length %> min</p>
@@ -48,4 +64,3 @@
       <% end %>
     </div>
   </div>
-</div>

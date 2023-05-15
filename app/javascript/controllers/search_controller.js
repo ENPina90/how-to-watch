@@ -23,6 +23,9 @@ export default class extends Controller {
     if (this.inputTarget.value) {
       this.params.set("query", this.inputTarget.value);
     }
+    if (this.inputTarget.value.length === 0) {
+      this.params.delete("query");
+    }
     const baseUrl = window.location.origin;
     const url = `${baseUrl}/lists/${this.idValue}?${this.params.toString()}`;
     fetch(url, { headers: { Accept: "text/plain" } })
@@ -30,6 +33,11 @@ export default class extends Controller {
       .then((data) => {
         this.resultsTarget.outerHTML = data;
       });
+    window.history.replaceState(
+      { additionalInformation: "updated with Stimulus" },
+      "new page",
+      url
+    );
   }
 
   omdb() {

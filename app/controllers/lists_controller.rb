@@ -3,11 +3,22 @@ class ListsController < ApplicationController
     @lists = List.all
   end
 
+  def new
+    @list = List.new
+  end
+
+  def create
+    @list = List.new(list_params)
+    @list.user = current_user
+    @list.save
+    redirect_to lists_path
+  end
+
   def show
     @list = List.find(params[:id])
     if params[:query]
-      @list_entries = Entry.search_by_input(params[:query])
-    else
+      @list_entries = @list.entries.search_by_input(params[:query])
+    elsif params[:query].nil? || params[:query].length <= 1
       @list_entries = @list.entries
     end
     @entries = {}
@@ -46,5 +57,9 @@ class ListsController < ApplicationController
       crit = params[:criteria].downcase.to_sym
       @entries = @list_entries.group_by(&crit)
     end
+  end
+
+  def list_params
+    params.require(:list).permit(:name)
   end
 end
