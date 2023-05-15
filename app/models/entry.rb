@@ -2,6 +2,7 @@ require "open-uri"
 
 class Entry < ApplicationRecord
   belongs_to :list
+  # validate :streamable
 
   URL = "http://www.omdbapi.com/?"
   API = "&apikey=a881ace5"
@@ -72,5 +73,12 @@ class Entry < ApplicationRecord
       return false
     end
     return true
+  end
+
+  def streamable
+    unless stream
+      update(source: '')
+      errors.add(:source, "isn't available, do you have an alternative?")
+    end
   end
 end
