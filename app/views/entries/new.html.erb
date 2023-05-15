@@ -14,27 +14,27 @@
       <div class="col-8" data-search-target="results">
         <template id="movieCardTemplate">
           {{#movies}}
-            <div class="card mb-4 pb-2" style="height: 25vh;">
-              <div class="row g-0">
-                <div class="col-6 pt-2 px-2">
-                  <img src="{{Poster}}" class="card-img-top" alt="{{Title}} poster">
-                </div>
-                <div class="col-6" style="100%">
-                  <div class="card-body">
-                    <h6 class="card-title">{{Title}}</h6>
-                    <p class="card-text">{{Year}}</p>
-                    <form action="/lists/<%= @list.id %>/entries" method='post'>
-                       <input class='d-none' name='imdb' value='{{imdbID}}'>
-                       <button type='submit' name='create' value='create' class="btn btn-primary">+ Movie</button>
-                    </form>
-                    <%# <button class="btn btn-primary" data-action="click->search#add" data-imdb="{{imdbID}}">+ movie</button> %>
-                    <%# <a href="{{url}}" >+ movie</a> %>
-                  </div>
+          <div class="card mb-4 pb-2" style="height: 25vh;">
+            <div class="row g-0">
+              <div class="col-6 pt-2 px-2">
+                <img src="{{Poster}}" class="card-img-top" alt="{{Title}} poster">
+              </div>
+              <div class="col-6" style="100%">
+                <div class="card-body">
+                  <h6 class="card-title">{{Title}}</h6>
+                  <p class="card-text">{{Year}}</p>
+                  <form action="/lists/<%= @list.id %>/entries" method='post'>
+                    <input class='d-none' name='imdb' value='{{imdbID}}'>
+                    <button type='submit' name='create' value='create' class="btn btn-primary">+ Movie</button>
+                  </form>
+                  <%# <button class="btn btn-primary" data-action="click->search#add" data-imdb="{{imdbID}}">+ movie</button> %>
+                  <%# <a href="{{url}}" >+ movie</a> %>
                 </div>
               </div>
             </div>
+          </div>
           {{/movies}}
         </template>
       </div>
     </div>
-</div>
+  </div>

@@ -4,8 +4,8 @@ class EntriesController < ApplicationController
   skip_before_action :verify_authenticity_token
 
   def new
-    @list = List.find(params[:list_id])
     @entry = Entry.new
+    @list = List.find(params[:list_id])
   end
 
   def create
@@ -14,6 +14,7 @@ class EntriesController < ApplicationController
     @entry = Entry.create_movie(omdb_result)
     @entry.list = @list
     @entry.save
+    @entry.update(stream: @entry.check_source)
     redirect_to edit_entry_path(@entry)
   end
 
@@ -23,8 +24,27 @@ class EntriesController < ApplicationController
 
   def update
     @entry = Entry.find(params[:id])
-    @entry.update(entry_params)
-    redirect_to list_path(@entry.list)
+    params = entry_params
+    @list = List.find(params['list'].to_i)
+    params['list'] = @list
+    @entry.update(params)
+    redirect_to list_path(@list)
+  end
+
+  def duplicate
+    @entry = Entry.find(params[:id])
+    new_entry = @entry.dup
+    new_entry.list = current_user.lists.first
+    new_entry.save
+    @entry = new_entry
+    redirect_to edit_entry_path(@entry)
+  end
+
+  def destroy
+    @entry = Entry.find(params[:id])
+    @list = @entry.list
+    @entry.destroy
+    redirect_to list_path(@list), status: :see_other
   end
 
   def watch
@@ -34,13 +54,17 @@ class EntriesController < ApplicationController
 
   def complete
     @entry = Entry.find(params[:id])
-    @entry.update(completed: true)
-    raise
+    @entry.update(completed: !@entry.completed)
+  end
+
+  def reportlink
+    @entry = Entry.find(params[:id])
+    @entry.update(stream: !@entry.stream)
   end
 
   private
 
   def entry_params
-    params.require(:entry).permit(:note, :category, :name, :year, :pic, :genre, :director, :writer, :actors, :plot, :rating, :length, :list_id, :media, :source, :imdb, :language, :review)
+    params.require(:entry).permit(:list, :note, :category, :name, :year, :pic, :genre, :director, :writer, :actors, :plot, :rating, :length, :media, :source, :imdb, :language, :review)
   end
 end
