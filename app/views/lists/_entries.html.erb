@@ -18,6 +18,9 @@
               </div>
               <div class="col-6">
                 <div class="card-body">
+                  <% if entry.franchise %>
+                    <p><%= entry.franchise %></p>
+                  <% end %>
                   <h5 class="card-title"><%= entry.name %></h5>
                   <% if @list.user == current_user %>
                     <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"

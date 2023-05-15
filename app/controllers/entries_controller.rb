@@ -12,9 +12,11 @@ class EntriesController < ApplicationController
     @list = List.find(params[:list_id])
     omdb_result = Entry.get_movie(params[:imdb])
     @entry = Entry.create_movie(omdb_result)
+    @entry.franchise = Entry.get_movie(omdb_result['seriesID'])['Title']
+    @entry.category = @entry.franchise
     @entry.list = @list
+    @entry.stream = @entry.check_source
     @entry.save
-    @entry.update(stream: @entry.check_source)
     redirect_to edit_entry_path(@entry)
   end
 

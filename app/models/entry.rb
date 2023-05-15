@@ -5,11 +5,11 @@ class Entry < ApplicationRecord
   # validate :streamable
 
   URL = "http://www.omdbapi.com/?"
-  API = "&apikey=a881ace5"
+  API = "&apikey=eb34d99"
 
   include PgSearch::Model
   pg_search_scope :search_by_input,
-                  against: %i[name writer actors genre director],
+                  against: %i[name franchise category writer actors genre director],
                   using: {
                     tsearch: {
                       prefix: true
@@ -38,14 +38,13 @@ class Entry < ApplicationRecord
     omdb_url = "#{URL}i=#{imdb_id}#{API}"
     serialized_title = URI.parse(omdb_url).open.read
     result = JSON.parse(serialized_title)
-    return nil if result["Type"] != "movie" || result["Poster"] == "N/A"
-
+    # return nil if result["Type"] != "movie" || result["Poster"] == "N/A"
     return result
   end
 
   def self.create_movie(result)
-    Entry.create(
-      media: "Movie",
+    Entry.new(
+      media: result["Type"],
       source: "https://v2.vidsrc.me/embed/#{result["imdbID"]}",
       name: result["Title"],
       year: result["Year"].to_i,
@@ -78,7 +77,7 @@ class Entry < ApplicationRecord
   def streamable
     unless stream
       update(source: '')
-      errors.add(:source, "isn't available, do you have an alternative?")
+      errors.add(:source, "is unavailable, do you have an alternative?")
     end
   end
 end
