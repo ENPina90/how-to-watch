@@ -6,10 +6,12 @@ class Entry < ApplicationRecord
 
   include PgSearch::Model
   pg_search_scope :search_by_input,
-    against: [ :name, :writer, :actors, :genre, :director ],
-    using: {
-      tsearch: { prefix: true }
-    }
+                  against: %i[name writer actors genre director],
+                  using: {
+                    tsearch: {
+                      prefix: true
+                    }
+                  }
 
   # def self.genres
   #   Entry.all.group_by(&:genre).keys.map(&:split).flatten.map { |genre| genre.tr(',', '') }.uniq.sort
@@ -21,7 +23,11 @@ class Entry < ApplicationRecord
     response = JSON.parse(serialized_search)
     return nil if response["Error"]
 
-    selection = year.nil? ? response["Search"].first(number) : response["Search"].select { |hash| hash["Year"] == year }
+    if year.nil?
+      selection = response["Search"].first(number)
+    else
+      selection = response["Search"].select { |hash| hash["Year"] == year }
+    end
     selection.map { |movie| movie["imdbID"] }
   end
 
@@ -36,7 +42,8 @@ class Entry < ApplicationRecord
 
   def self.create_movie(result)
     Entry.create(
-      media: 'Movie',
+      media: "Movie",
+      source: "https://v2.vidsrc.me/embed/#{result["imdbID"]}",
       name: result["Title"],
       year: result["Year"].to_i,
       pic: result["Poster"],

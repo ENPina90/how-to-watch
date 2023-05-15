@@ -2,5 +2,8 @@
   "dependencies": {
     "@popperjs/core": "^2.11.7",
     "bootstrap": "^5.2.3"
+  },
+  "devDependencies": {
+    "prettier": "^2.8.8"
   }
 }
