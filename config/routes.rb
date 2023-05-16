@@ -6,6 +6,7 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   # root "articles#index"
   resources :lists do
+    get :randomize
     resources :entries, only: [:new, :create]
   end
   resources :entries, only: [:show, :edit, :update, :destroy] do

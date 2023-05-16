@@ -60,10 +60,7 @@
         <% end %>
       <% end %>
     </div>
-    <div class="col-2 layout">
-      <h2>Up Next</h2>
-      <% random_selection.each do |entry|%>
-        <h4><a href="#<%= entry.imdb %>"><%= entry.name %></a></h4>
-      <% end %>
+    <div class="col-2 layout" data-controller="randomize" data-randomize-list-value="<%= @list.id %>">
+      <%= render 'upnext', random_selection: @random_selection %>
     </div>
   </div>

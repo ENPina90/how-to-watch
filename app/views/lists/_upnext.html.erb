@@ -1,0 +1,6 @@
+<div data-randomize-target='upnext'>
+  <h4>Up Next <i class="fa-solid fa-rotate-right" data-action="click->randomize#upnext"></i></h4>
+  <% random_selection.each do |entry|%>
+    <h4><a href="#<%= entry.imdb %>"><%= entry.name %></a></h4>
+  <% end %>
+</div>

@@ -16,6 +16,24 @@ class ListsController < ApplicationController
 
   def show
     @list = List.find(params[:id])
+    entries_hash
+    @random_selection = @list_entries.sample(3)
+    respond_to do |format|
+      format.html # Follow regular flow of Rails
+      format.text { render partial: "entries", locals: { entries: @entries, sections: @sections, random_selection: @random_selection, list_entries: @list_entries }, formats: [:html] }
+    end
+  end
+
+  def randomize
+    @list = List.find(params[:list_id])
+    entries_hash
+    @random_selection = @list_entries.sample(3)
+    render partial: "upnext", locals: { random_selection: @random_selection}
+  end
+
+  private
+
+  def entries_hash
     if params[:query]
       @list_entries = @list.entries.search_by_input(params[:query])
     elsif params[:query].nil? || params[:query].length <= 1
@@ -24,14 +42,7 @@ class ListsController < ApplicationController
     @entries = {}
     filter
     @sections = @entries.keys.sort
-    @random_selection = @list_entries.sample(3)
-    respond_to do |format|
-      format.html # Follow regular flow of Rails
-      format.text { render partial: "entries", locals: { entries: @entries, sections: @sections, random_selection: @random_selection, list_entries: @list_entries }, formats: [:html] }
-    end
   end
-
-  private
 
   def filter
     case params[:criteria]

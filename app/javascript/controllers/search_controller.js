@@ -35,6 +35,7 @@ export default class extends Controller {
       .then((data) => {
         this.resultsTarget.outerHTML = data;
       });
+    // updates the url bar in real time and adds to history, to maintain search through page load
     window.history.replaceState(
       { additionalInformation: "updated with Stimulus" },
       "new page",
