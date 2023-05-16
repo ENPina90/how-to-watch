@@ -27,7 +27,7 @@ class ListsController < ApplicationController
   def randomize
     @list = List.find(params[:list_id])
     entries_hash
-    @random_selection = @list_entries.sample(3)
+    @random_selection = @list_entries.where(stream: true).sample(3)
     render partial: "upnext", locals: { random_selection: @random_selection}
   end
 
