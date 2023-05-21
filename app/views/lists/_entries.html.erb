@@ -1,64 +1,20 @@
 <div data-search-target="results">
-  <div class="row justify-content-center">
+  <div class="row justify-content-center list-layout">
     <div class="col-2 layout">
       <a href="#search">Top</a>
       <% sections.each do |section|%>
         <a style="display:inline-block;" href="#<%= section %>"><%= section %></a>
       <% end %>
     </div>
-    <div class="col-6">
-      <% entries.keys.sort.each do |key| %>
-        <h3 id="<%= key %>"><%= key %></h3>
-        <% entries[key].each do |entry| %>
-          <div id="<%= entry.imdb %>" class="card mb-4 pb-2" style="height:fit-content;">
-            <div class="row g-0">
-              <p class="overflow-hidden"><%= entry.note %></p>
-              <div class="col-6 pt-2 px-2">
-                <img src="<%= entry.pic %>" class="card-img-top entry-card" alt="...">
-              </div>
-              <div class="col-6">
-                <div class="card-body">
-                  <% if entry.franchise %>
-                    <p><%= entry.franchise %></p>
-                  <% end %>
-                  <h5 class="card-title"><%= entry.name %></h5>
-                  <% if @list.user == current_user %>
-                    <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
-                    title="Mark as watched"
-                    data-controller="completed"
-                    data-completed-id-value="<%= entry.id %>"
-                    data-action="click->completed#toggle"></i>
-                    <%= link_to edit_entry_path(entry) do %>
-                      <i class="fa-solid fa-pen"></i>
-                    <% end %>
-                    <%= link_to entry_path(entry),
-                    data: {turbo_method: :delete, turbo_confirm: "Are you sure?"} do %>
-                      <i class="fa-solid fa-trash"></i>
-                    <% end %>
-                  <% end %>
-                  <i class="fa-solid fa-link-slash"
-                  style="color:<%= entry.stream ? "grey" : "red"%>"
-                  title="Report broken link"
-                  data-controller="link"
-                  data-link-id-value="<%= entry.id %>"
-                  data-action="click->link#toggle"></i>
-                  <%= link_to duplicate_entry_path(entry) do %>
-                    <i class="fa-sharp fa-regular fa-plus" title="Add to another list"></i>
-                  <% end %>
-                  <p><%= entry.year %></p>
-                  <p><%= entry.length %> min</p>
-                  <p>rating: <%= entry.rating %></p>
-                  <p class="card__text"><%= entry.plot %></p>
-                  <%= link_to watch_entry_path(entry) do %>
-                    <i class="fa-solid fa-circle-play play-button"></i>
-                  <% end %>
-                </div>
-              </div>
-            </div>
-            <p class="overflow-hidden"><%= entry.review %></p>
-          </div>
+    <div class="col-8 d-flex justify-content-center">
+      <div class="card-continer">
+        <% entries.keys.sort.each do |key| %>
+          <h3 class="mt-4" id="<%= key %>"><%= key %></h3>
+          <% entries[key].each do |entry| %>
+            <%= render 'entry', entry: entry %>
+          <% end %>
         <% end %>
-      <% end %>
+      </div>
     </div>
     <div class="col-2 layout" data-controller="randomize" data-randomize-list-value="<%= @list.id %>">
       <%= render 'upnext', random_selection: @random_selection %>

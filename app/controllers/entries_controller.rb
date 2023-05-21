@@ -8,6 +8,10 @@ class EntriesController < ApplicationController
     @list = List.find(params[:list_id])
   end
 
+  def show
+    @entry = Entry.find(params[:id])
+  end
+
   def create
     @list = List.find(params[:list_id])
     omdb_result = Entry.get_movie(params[:imdb])
@@ -31,7 +35,7 @@ class EntriesController < ApplicationController
     @list = List.find(params['list'].to_i)
     params['list'] = @list
     @entry.update(params)
-    redirect_to list_path(@list)
+    redirect_to list_path(@list, anchor: @entry.imdb)
   end
 
   def duplicate
