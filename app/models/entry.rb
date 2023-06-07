@@ -5,7 +5,7 @@ class Entry < ApplicationRecord
   # validate :streamable
 
   URL = "http://www.omdbapi.com/?"
-  API = "&apikey=eb34d99"
+  API = ["&apikey=b64b5a87", "&apikey=eb34d99", "&apikey=a881ace5"]
 
   include PgSearch::Model
   pg_search_scope :search_by_input,
@@ -21,7 +21,7 @@ class Entry < ApplicationRecord
   # end
 
   def self.get_imdb(title, number = 1, year = nil)
-    omdb_search = "#{URL}s=#{title.strip}#{API}"
+    omdb_search = "#{URL}s=#{title.strip}#{API[0]}"
     serialized_search = URI.parse(URI::Parser.new.escape(omdb_search)).open.read
     response = JSON.parse(serialized_search)
     return nil if response["Error"]
@@ -29,15 +29,17 @@ class Entry < ApplicationRecord
     if year.nil?
       selection = response["Search"].first(number)
     else
-      selection = response["Search"].select { |hash| hash["Year"] == year }
+      selection = response["Search"].select { |hash| ((year.to_i - 1)..(year.to_i + 1)).include?(hash["Year"].to_i) }
     end
     selection.map { |movie| movie["imdbID"] }
   end
 
   def self.get_movie(imdb_id)
-    omdb_url = "#{URL}i=#{imdb_id}#{API}"
+    omdb_url = "#{URL}i=#{imdb_id}#{API[0]}"
     serialized_title = URI.parse(omdb_url).open.read
     result = JSON.parse(serialized_title)
+    return nil if result["Error"] || result["Poster"] == "N/A"
+
     # return nil if result["Type"] != "movie" || result["Poster"] == "N/A"
     return result
   end
@@ -58,9 +60,7 @@ class Entry < ApplicationRecord
       length: result["Runtime"].split(" ")[0].to_i,
       language: result["Language"],
       imdb: result["imdbID"],
-      completed: false,
-      note: "",
-      review: ""
+      completed: false
     )
   end
 

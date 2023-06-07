@@ -16,6 +16,7 @@ class ListsController < ApplicationController
 
   def show
     @list = List.find(params[:id])
+    @user_lists = List.where(user: current_user)
     entries_hash
     @random_selection = @list_entries.sample(3)
     respond_to do |format|
@@ -24,12 +25,12 @@ class ListsController < ApplicationController
     end
   end
 
-  def randomize
-    @list = List.find(params[:list_id])
-    entries_hash
-    @random_selection = @list_entries.where(stream: true).sample(3)
-    render partial: "upnext", locals: { random_selection: @random_selection}
-  end
+  # def randomize
+  #   @list = List.find(params[:list_id])
+  #   entries_hash
+  #   @random_selection = @list_entries.where(stream: true).sample(3)
+  #   render partial: "upnext", locals: { random_selection: @random_selection }
+  # end
 
   private
 
