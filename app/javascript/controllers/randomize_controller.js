@@ -6,17 +6,25 @@ export default class extends Controller {
   static values = { list: Number };
 
   connect() {
-    console.log(this.upnextTarget);
+    // console.log(this.upnextTarget);
+    this.entries = Array.from(document.querySelectorAll(".grid-card"));
+  }
+
+  shuffle(arr, num) {
+    return arr.sort(() => 0.5 - Math.random()).slice(0, num);
   }
 
   upnext() {
-    const baseUrl = window.location.origin;
-    const params = window.location.search;
-    const fullUrl = `${baseUrl}/lists/${this.listValue}/randomize/${params}`;
-    fetch(fullUrl)
-      .then((response) => response.text())
-      .then((data) => {
-        this.upnextTarget.outerHTML = data;
-      });
+    const randomEntries = this.shuffle(this.entries, 3);
+    this.upnextTarget.querySelectorAll("a").forEach((link, index) => {
+      let entry;
+      if (index < 3) {
+        entry = randomEntries[index];
+        link.innerText = entry.querySelector(".card-header").innerText;
+      } else {
+        entry = this.shuffle(randomEntries, 1)[0];
+      }
+      link.href = entry.querySelector("a").href;
+    });
   }
 }

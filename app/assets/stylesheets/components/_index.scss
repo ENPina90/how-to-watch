@@ -6,7 +6,21 @@
 @import "menu";
 @import "card";
 @import "cinema";
+@import "layout";
 
 a {
   text-decoration: none;
 }
+
+body {
+  background-color: #f5f2e8;
+}
+
+// html {
+//   /* root font size must be set in html{} */
+//   /* This defines what 1rem is. Do this early in the project and work with rem EVERYWHERE  */
+//   font-size: 62.5%;
+//   /* if we set the font size to 10px then it overides users ability to change font size */
+//   /* instead we set it to a percentage, default(100%) is 16px. Hard to work with! */
+//   /* We 100 / 16 = 62.5 (~10px) */
+// }

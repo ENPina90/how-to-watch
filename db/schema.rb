@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2023_05_15_174251) do
+ActiveRecord::Schema[7.0].define(version: 2023_06_06_181022) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -37,9 +37,16 @@ ActiveRecord::Schema[7.0].define(version: 2023_05_15_174251) do
     t.float "rating"
     t.integer "year"
     t.boolean "stream"
-    t.string "type"
     t.string "franchise"
     t.index ["list_id"], name: "index_entries_on_list_id"
+  end
+
+  create_table "failed_entries", force: :cascade do |t|
+    t.string "name"
+    t.string "alt"
+    t.string "year"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "follows", force: :cascade do |t|

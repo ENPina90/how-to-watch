@@ -1,0 +1,54 @@
+.menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.menu li {
+  margin: 0 0.5rem;
+}
+
+.layout {
+  position: sticky;
+  height: fit-content;
+  z-index: 1;
+  top: 28vh;
+  background-color: #f5f2e8;
+  padding: 16px 16px 16px 16px;
+  border: 2px solid black;
+  a {
+    text-decoration: none;
+    font-weight: bold;
+    color: black;
+  }
+}
+
+.layout-title {
+  position: sticky;
+  top: 6vh;
+  height: fit-content;
+  z-index: 1;
+  background-color: #f5f2e8;
+  margin: auto;
+  padding: 16px 0 16px 0;
+  border-bottom: 2px solid black;
+  a {
+    text-decoration: none;
+    font-weight: bold;
+    color: black;
+  }
+}
+
+.input-bar {
+  width: 100%;
+  padding-bottom: 16px;
+}
+
+.list-layout {
+  .grid-card:first-child {
+    border-top: 1px solid black;
+  }
+}
