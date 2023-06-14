@@ -1,10 +1,17 @@
+.navbar-container {
+  position: sticky;
+}
+
 .navbar-lewagon {
   justify-content: space-between;
-  background: white;
+  background: #321325;
   position: sticky;
   top: 0;
-  height: 6vh;
+  height: 80px;
   z-index: 1;
+  .nav-link {
+    color: #f5f2e8;
+  }
 }
 
 .navbar-lewagon .navbar-collapse {

@@ -1,24 +1,26 @@
 <div class="container" data-controller='search' data-search-id-value="<%= @list.id %>">
-  <div class="row justify-content-center">
-    <h1 class="text-center"><%= @list.name %></h1>
-    <div class="col-2">
-      <%= link_to 'Edit', edit_list_path(@list), class: 'btn btn-primary' %>
-    </div>
-    <div class="col-8">
-      <% if params['type'].nil? || params['type'] == 'movie' %>
-        <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#omdb' } } %>
-      <% elsif params['type'] == 'show' %>
-        <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#omdbShow' } } %>
-      <% elsif params['type'] == 'episode' %>
-        <%= text_field_tag :entry, nil, data: { search_target: 'input', action: 'input->search#omdbEpisode' } %>
-        <%= text_field_tag :entry, nil, data: { search_target: 'season', action: 'input->search#omdbEpisode' } %>
-        <%= text_field_tag :entry, nil, data: { search_target: 'episode', action: 'input->search#omdbEpisode' } %>
-      <% else %>
-        <h5>Coming soon</h5>
-      <% end %>
-    </div>
-    <div class="col-2">
-      <%= link_to '+ Entry', new_list_entry_path(@list), class: 'btn btn-primary' %>
+  <div class="row justify-content-center layout-title">
+    <h1 class="text-center">
+      <span class="header-count"><%= @list.entries.count %></span> <%= @list.name %>
+    </h1>
+    <div class="list-input">
+      <div class="list-options">
+      </div>
+      <div class="col-8" id="search">
+        <% if params['type'].nil? || params['type'] == 'movie' %>
+          <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#omdb' } } %>
+        <% elsif params['type'] == 'show' %>
+          <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#omdbShow' } } %>
+        <% elsif params['type'] == 'episode' %>
+          <%= text_field_tag :entry, nil, data: { search_target: 'input', action: 'input->search#omdbEpisode' } %>
+          <%= text_field_tag :entry, nil, data: { search_target: 'season', action: 'input->search#omdbEpisode' } %>
+          <%= text_field_tag :entry, nil, data: { search_target: 'episode', action: 'input->search#omdbEpisode' } %>
+        <% else %>
+          <h5>Coming soon</h5>
+        <% end %>
+      </div>
+      <div class="list-options">
+      </div>
     </div>
     <ul class="menu">
       <li><%= link_to 'Movie', new_list_entry_path(@list, type: 'movie')%></li>
@@ -27,78 +29,93 @@
       <li><%= link_to 'Book', new_list_entry_path(@list, type: 'Book')%></li>
       <li><%= link_to 'Game', new_list_entry_path(@list, type: 'game')%></li>
     </ul>
-    <div class="row justify-content-center">
-      <div class="col-8" data-search-target="results">
+  </div>
+  <div class="row justify-content-center list-layout">
+    <div class="col-8 d-flex justify-content-center">
+      <div data-search-target="results">
       </div>
     </div>
   </div>
-  <template id="movieCardTemplate">
-    {{#movies}}
-    <div class="card mb-4 pb-2" style="height: 25vh;">
-      <div class="row g-0">
-        <div class="col-6 pt-2 px-2">
-          <img src="{{Poster}}" class="card-img-top" alt="{{Title}} poster">
+</div>
+</div>
+<template id="movieCardTemplate">
+  {{#movies}}
+  <div class="grid-card" id="{{imdbID}}">
+    <div class="card-picture">
+      <a href="https://v2.vidsrc.me/embed/{{imdbID}}"><img src="{{Poster}}" class="card-img-top" alt="Watch {{Title}} now"></a>
+      <span class="fa-stack fa-4x play-button">
+        <i class="fa fa-circle fa-stack-2x icon-background"></i>
+        <i class="fa fa-play fa-stack-1x"></i>
+      </span>
+    </div>
+    <div class="card-stuff w-100 p-auto">
+      <div class="card-spacer"></div>
+      <div class="card-title">
+        <h5 class="card-header"><bold>{{Title}}</bold></h5>
+      </div>
+      <div class="card-details">
+        <div class="d-flex justify-content-between">
+          <p>{{Year}}</p>
+          <p>{{Rating}}</p>
         </div>
-        <div class="col-6" style="100%">
-          <div class="card-body">
-            <h6 class="card-title">{{Title}}</h6>
-            <p class="card-text">{{Year}}</p>
-            <form action="/lists/<%= @list.id %>/entries" method='post'>
-              <input class='d-none' name='imdb' value='{{imdbID}}'>
-              <button type='submit' name='create' value='create' class="btn btn-primary">+ Movie</button>
-            </form>
-            <%# <button class="btn btn-primary" data-action="click->search#add" data-imdb="{{imdbID}}">+ movie</button> %>
-            <%# <a href="{{url}}" >+ movie</a> %>
-          </div>
+        <p class="mb-4"><small>{{Genre}}</small></p>
+        <p class="card-plot">{{Plot}}</p>
+      </div>
+      <div class="card-menu">
+        <i class="fa-solid fa-play"></i>
+        <form action="/lists/<%= @list.id %>/entries" method='post'>
+          <input class='d-none' name='imdb' value='{{imdbID}}'>
+          <button type='submit' name='create' value='create'><i class="fa-solid fa-plus"></i></button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {{/movies}}
+</template>
+<template id="showCardTemplate">
+  {{#movies}}
+  <div class="card mb-4 pb-2" style="height: 25vh;">
+    <div class="row g-0">
+      <div class="col-6 pt-2 px-2">
+        <img src="{{Poster}}" class="card-img-top" alt="{{Title}} poster">
+      </div>
+      <div class="col-6" style="100%">
+        <div class="card-body">
+          <h6 class="card-title">{{Title}}</h6>
+          <p class="card-text">{{Year}}</p>
+          <p class="card-text">{{totalSeasons}}</p>
+          <form action="/lists/<%= @list.id %>/entries" method='post'>
+            <input class='d-none' name='imdb' value='{{imdbID}}'>
+            <button type='submit' name='create' value='create' class="btn btn-primary">+ Show</button>
+          </form>
+          <%# <button class="btn btn-primary" data-action="click->search#add" data-imdb="{{imdbID}}">+ movie</button> %>
+          <%# <a href="{{url}}" >+ movie</a> %>
         </div>
       </div>
     </div>
-    {{/movies}}
-  </template>
-  <template id="showCardTemplate">
-    {{#movies}}
-    <div class="card mb-4 pb-2" style="height: 25vh;">
-      <div class="row g-0">
-        <div class="col-6 pt-2 px-2">
-          <img src="{{Poster}}" class="card-img-top" alt="{{Title}} poster">
-        </div>
-        <div class="col-6" style="100%">
-          <div class="card-body">
-            <h6 class="card-title">{{Title}}</h6>
-            <p class="card-text">{{Year}}</p>
-            <p class="card-text">{{totalSeasons}}</p>
-            <form action="/lists/<%= @list.id %>/entries" method='post'>
-              <input class='d-none' name='imdb' value='{{imdbID}}'>
-              <button type='submit' name='create' value='create' class="btn btn-primary">+ Show</button>
-            </form>
-            <%# <button class="btn btn-primary" data-action="click->search#add" data-imdb="{{imdbID}}">+ movie</button> %>
-            <%# <a href="{{url}}" >+ movie</a> %>
-          </div>
+  </div>
+  {{/movies}}
+</template>
+<template id="episodeCardTemplate">
+  {{#movies}}
+  <div class="card mb-4 pb-2" style="height: 25vh;">
+    <div class="row g-0">
+      <div class="col-6 pt-2 px-2">
+        <img src="{{Poster}}" class="card-img-top" alt="{{Title}} poster">
+      </div>
+      <div class="col-6" style="100%">
+        <div class="card-body">
+          <h6 class="card-title">{{Title}}</h6>
+          <p class="card-text">S {{Season}}, Ep {{Episode}}</p>
+          <form action="/lists/<%= @list.id %>/entries" method='post'>
+            <input class='d-none' name='imdb' value='{{imdbID}}'>
+            <button type='submit' name='create' value='create' class="btn btn-primary">+ Episode</button>
+          </form>
+          <%# <button class="btn btn-primary" data-action="click->search#add" data-imdb="{{imdbID}}">+ movie</button> %>
+          <%# <a href="{{url}}" >+ movie</a> %>
         </div>
       </div>
     </div>
-    {{/movies}}
-  </template>
-  <template id="episodeCardTemplate">
-    {{#movies}}
-    <div class="card mb-4 pb-2" style="height: 25vh;">
-      <div class="row g-0">
-        <div class="col-6 pt-2 px-2">
-          <img src="{{Poster}}" class="card-img-top" alt="{{Title}} poster">
-        </div>
-        <div class="col-6" style="100%">
-          <div class="card-body">
-            <h6 class="card-title">{{Title}}</h6>
-            <p class="card-text">S {{Season}}, Ep {{Episode}}</p>
-            <form action="/lists/<%= @list.id %>/entries" method='post'>
-              <input class='d-none' name='imdb' value='{{imdbID}}'>
-              <button type='submit' name='create' value='create' class="btn btn-primary">+ Episode</button>
-            </form>
-            <%# <button class="btn btn-primary" data-action="click->search#add" data-imdb="{{imdbID}}">+ movie</button> %>
-            <%# <a href="{{url}}" >+ movie</a> %>
-          </div>
-        </div>
-      </div>
-    </div>
-    {{/movies}}
-  </template>
+  </div>
+  {{/movies}}
+</template>

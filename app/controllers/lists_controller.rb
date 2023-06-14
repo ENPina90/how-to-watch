@@ -16,7 +16,6 @@ class ListsController < ApplicationController
 
   def show
     @list = List.find(params[:id])
-    @user_lists = List.where(user: current_user)
     entries_hash
     @random_selection = @list_entries.sample(3)
     respond_to do |format|
@@ -41,23 +40,29 @@ class ListsController < ApplicationController
       @list_entries = @list.entries
     end
     @entries = {}
-    filter
-    @sections = @entries.keys.sort
+    filter(params[:criteria]) if params[:criteria]
+    # params[:criteria] ? filter(params[:criteria]) : filter(@list.settings)
+    @sections = params[:sort] ? @entries.keys.sort.reverse : @entries.keys.sort
+    if @list.user == current_user
+      @list.settings = params[:criteria] || nil
+      @list.sort = params[:sort] || nil
+      @list.save
+    end
   end
 
-  def filter
-    case params[:criteria]
+  def filter(criteria)
+    case criteria
     when "Genre"
       genres = @list_entries.group_by(&:genre).keys.map(&:split).flatten.map { |genre| genre.tr(',', '') }.uniq.sort
       genres.each do |genre|
         @entries[genre] = @list_entries.select { |entry| entry.genre.include?(genre) }
       end
     when "Year"
-      # crit = params[:criteria].downcase.to_sym
+      # crit = criteria.downcase.to_sym
       year = 1900
       until year >= Date.today.year
         decade_entries = @list_entries.select { |entry| entry.year >= year && entry.year < year + 10 }
-        @entries[year] = decade_entries unless decade_entries.empty?
+        @entries["#{year}s"] = decade_entries unless decade_entries.empty?
         year += 10
       end
     when "Watched"
@@ -66,7 +71,7 @@ class ListsController < ApplicationController
     when nil
       @entries = @list_entries.sort_by(&:created_at).group_by(&:media)
     else
-      crit = params[:criteria].downcase.to_sym
+      crit = criteria.downcase.to_sym
       @entries = @list_entries.group_by(&crit)
     end
   end

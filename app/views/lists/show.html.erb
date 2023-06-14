@@ -1,22 +1,34 @@
-<div class="container" data-controller="search" data-search-id-value="<%= @list.id %>">
+<div class="container" data-controller="edit" data-controller="search" data-search-id-value="<%= @list.id %>">
   <div class="row justify-content-center layout-title">
-    <h1 class="text-center"><%= @list.name %></h1>
-    <div class="col-2">
-      <%= link_to 'Edit', edit_list_path(@list), class: 'btn btn-primary' %>
-    </div>
-    <div class="col-8" id="search">
-      <%= form_with url: list_path(@list), method: :get, class: "d-flex" do %>
-        <%= text_field_tag :query,
-          params[:query],
-          class: "form-control",
-          data: { action: "keyup->search#entries", search_target: "input"},
-          placeholder: "Find a movie"
-        %>
-        <%# <%= submit_tag "Search", class: "btn btn-primary" %>
-      <% end %>
-    </div>
-    <div class="col-2">
-      <%= link_to '+ Entry', new_list_entry_path(@list), class: 'btn btn-primary' %>
+    <h1 class="text-center">
+      <span class="header-count"><%= @list_entries.count %></span> <%= @list.name %>
+    </h1>
+    <div class="list-input">
+      <div class="list-options">
+        <i class="fa-solid fa-down-left-and-up-right-to-center"></i>
+        <%# <i class="fa-solid fa-up-right-and-down-left-from-center"></i> %>
+        <i class="fa-solid fa-copy"></i>
+        <% if @list.user == current_user %>
+          <%= link_to edit_list_path(@list) do %>
+            <i class="fa-solid fa-pen"></i>
+          <% end %>
+          <i class="fa-solid fa-trash"></i>
+        <% end %>
+      </div>
+      <div class="col-8 border-top">
+        <%= form_with url: list_path(@list), method: :get, class: "d-flex" do %>
+          <%= text_field_tag :query,
+            params[:query],
+            class: "form-control",
+            data: { action: "keyup->search#entries", search_target: "input"},
+            placeholder: "Find a movie"
+          %>
+          <%# <%= submit_tag "Search", class: "btn btn-primary" %>
+        <% end %>
+      </div>
+      <div class="list-options">
+        <span class="btn-action"><%= link_to '+ Entry', new_list_entry_path(@list)%></span>
+      </div>
     </div>
     <ul class="menu">
       <li><%= link_to 'Year', list_path(@list, criteria: 'Year'), data: { action: "click->search#entries"} %></li>
@@ -28,4 +40,8 @@
     </ul>
   </div>
   <%= render "entries", list: @list, entries: @entries, sections: @sections, random_selection: @random_selection, list_entries: @list_entries%>
+  <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog" data-edit-target="modal">
+    </div>
+  </div>
 </div>

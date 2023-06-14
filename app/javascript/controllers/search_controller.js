@@ -3,7 +3,7 @@ import Mustache from "mustachejs";
 
 // Connects to data-controller="search"
 export default class extends Controller {
-  static targets = ["input", "season", "episode", "results"];
+  static targets = ["input", "season", "episode", "results", "count"];
   static values = { id: Number };
 
   connect() {
@@ -20,7 +20,20 @@ export default class extends Controller {
     event.preventDefault();
     // creates or updates the query string
     if (event.type == "click") {
+      document.querySelectorAll("a").forEach((link) => {
+        link.style.color = "black";
+      });
+      // checks if first or second click
+      if (
+        this.params.get("criteria") == event.currentTarget.text &&
+        !this.params.get("sort")
+      ) {
+        this.params.set("sort", "reverse");
+      } else {
+        this.params.delete("sort");
+      }
       this.params.set("criteria", event.currentTarget.text);
+      event.currentTarget.style.color = "#1A936F";
     }
     if (this.inputTarget.value) {
       this.params.set("query", this.inputTarget.value);
@@ -49,12 +62,17 @@ export default class extends Controller {
       .then((response) => response.json())
       .then((data) => {
         if (!data.Error) {
+          console.log(data.Search[0]);
           const movieData = { movies: data.Search };
           const output = Mustache.render(
             this.movieTemplate.innerHTML,
             movieData
           );
           this.resultsTarget.innerHTML = output;
+          let countElement = `<div>
+              <h3 class="align-self-start">Results <small data-search-target="count">${data.Search.length}</small></h3>
+            </div>`;
+          this.resultsTarget.insertAdjacentHTML("afterbegin", countElement);
         }
       });
   }

@@ -1,9 +1,14 @@
 <div data-randomize-target='upnext'>
-  <h4>Up Next <i class="fa-solid fa-rotate-right" data-action="click->randomize#upnext"></i></h4>
-  <% random_selection.each do |entry|%>
-    <h6><a href="#<%= entry.imdb %>"><%= entry.name %></a></h6>
-  <% end %>
-  <% unless random_selection.empty? %>
-    <h6><%= link_to 'Pick for me', watch_entry_path(random_selection.sample)%></h6>
-  <% end %>
+  <a>Up Next <i class="fa-solid fa-rotate-right" data-action="click->randomize#upnext"></i></a>
+  <div class="layout-box my-3">
+    <% random_selection.each do |entry|%>
+      <a href="#<%= entry.imdb %>"><%= entry.name %></a>
+      <br>
+    <% end %>
+  </div>
+  <div class="layout-box-bottom">
+    <% unless random_selection.empty? %>
+      <%= link_to 'Pick for me', watch_entry_path(random_selection.sample)%>
+    <% end %>
+  </div>
 </div>

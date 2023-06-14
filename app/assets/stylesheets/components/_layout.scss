@@ -1,9 +1,17 @@
+.page-container {
+  display: grid;
+  min-height: 100vh;
+  grid-template-rows: 1fr auto;
+}
+
 .menu {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 16px 0px;
+  width: 40vw;
+  max-width: 800px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   text-decoration: none;
 }
 
@@ -15,26 +23,41 @@
   position: sticky;
   height: fit-content;
   z-index: 1;
-  top: 28vh;
+  top: 300px;
+  width: 10vw;
+  max-width: 200px;
+  margin: 12px;
+  padding: 16px 0px;
   background-color: #f5f2e8;
-  padding: 16px 16px 16px 16px;
-  border: 2px solid black;
+  // padding: 16px 16px 16px 16px;
   a {
     text-decoration: none;
     font-weight: bold;
     color: black;
   }
+}
+
+.layout-box {
+  padding: 16px 0px;
+  // margin: 16px 0px;
+  border-top: 2px solid black;
+  border-bottom: 2px solid black;
 }
 
 .layout-title {
   position: sticky;
-  top: 6vh;
+  top: 80px;
   height: fit-content;
   z-index: 1;
   background-color: #f5f2e8;
   margin: auto;
-  padding: 16px 0 16px 0;
+  padding-top: 16px;
   border-bottom: 2px solid black;
+  &:hover {
+    .icon-hover {
+      opacity: 1;
+    }
+  }
   a {
     text-decoration: none;
     font-weight: bold;
@@ -42,13 +65,55 @@
   }
 }
 
-.input-bar {
-  width: 100%;
-  padding-bottom: 16px;
+#search {
+  width: 40vw;
+  max-width: 800px;
+  // padding-bottom: 16px;
 }
 
 .list-layout {
+  h3 {
+    margin: 0px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
   .grid-card:first-child {
     border-top: 1px solid black;
   }
+}
+
+.header-count {
+  font-weight: 100;
+  color: #1a936f;
+}
+
+.icon-hover {
+  opacity: 0;
+  font-size: 16px;
+  vertical-align: top;
+}
+
+.list-input {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border-top: 2px solid black;
+  border-bottom: 2px solid black;
+  padding: 16px 0px;
+  .list-options {
+    width: 10vw;
+    max-width: 200px;
+    vertical-align: middle;
+    text-align: center;
+    display: flex;
+    justify-content: space-around;
+  }
+}
+
+.border-top-bottom {
+  border-top: 2px solid black;
+  border-bottom: 2px solid black;
+  padding: 16px;
+  display: flex;
+  justify-content: center;
 }

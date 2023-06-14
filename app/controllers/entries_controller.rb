@@ -27,6 +27,11 @@ class EntriesController < ApplicationController
   def edit
     @entry = Entry.find(params[:id])
     @entry.streamable
+    @user_lists = List.where(user: current_user)
+    respond_to do |format|
+      format.html # Follow regular flow of Rails
+      format.text { render partial: 'entry_form', locals: { entry: @entry, user_lists: @user_lists }, formats: [:html] }
+    end
   end
 
   def update
