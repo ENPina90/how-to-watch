@@ -1,4 +1,10 @@
-<%= link_to '+ list', new_list_path %>
-<% @lists.each do |list| %>
-  <%= link_to list.name, list_path(list) %>
-<% end %>
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-8">
+      <%= link_to '+ list', new_list_path %> <br>
+      <% @lists.each do |list| %>
+        <%= link_to list.name, list_path(list, criteria: list.settings, sort: list.sort) %> <br>
+      <% end %>
+    </div>
+  </div>
+</div>

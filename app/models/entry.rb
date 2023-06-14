@@ -3,6 +3,7 @@ require "open-uri"
 class Entry < ApplicationRecord
   belongs_to :list
   # validate :streamable
+  validates :name, uniqueness: { scope: :list }
 
   URL = "http://www.omdbapi.com/?"
   API = ["&apikey=b64b5a87", "&apikey=eb34d99", "&apikey=a881ace5"]

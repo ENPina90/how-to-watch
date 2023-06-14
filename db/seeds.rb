@@ -6,7 +6,6 @@ URL = "http://www.omdbapi.com/?"
 # API = "&apikey=a881ace5"
 # API = "&apikey=eb34d99"
 API = "&apikey=b64b5a87"
-SKIPPED = []
 
 # puts "Destroying all entries, lists, and users..."
 # Entry.destroy_all
@@ -51,17 +50,21 @@ SKIPPED = []
 # list = List.create name: "1000+ Movies to Watch Before You Die", user: User.first
 
 def csv_to_entry(movie)
-  puts "searching: #{movie[:title]} #{movie[:year]}"
   p imdb_id = Entry.get_imdb(movie[:title], 1, movie[:year])
   p omdb_result = Entry.get_movie(imdb_id.first) unless imdb_id.nil?
-  Entry.create_movie(omdb_result) unless omdb_result.nil?
+  p Entry.create_movie(omdb_result) unless omdb_result.nil?
 end
 
 
 CSV.foreach('db/seed_data/movie_list.csv', headers: :first_row, header_converters: :symbol) do |movie|
+  puts "searching: #{movie[:title]} #{movie[:year]}"
+  next if Entry.find_by(name: movie[:title].strip, year: movie[:year], list: List.last)
+
   entry = csv_to_entry(movie)
   if entry.nil?
     movie[:title] = movie[:alt] if movie[:alt]
+    next if Entry.find_by(name: movie[:title].strip, year: movie[:year], list: List.last)
+
     entry = csv_to_entry(movie)
     if entry.nil?
       puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
@@ -77,4 +80,3 @@ CSV.foreach('db/seed_data/movie_list.csv', headers: :first_row, header_converter
   end
   p entry.save
 end
-p SKIPPED

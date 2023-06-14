@@ -1,76 +1,53 @@
-<% if entry.note %>
-  <div class="card-note" style="grid-column: span 2;"><%= entry.note %></div>
-<% end %>
-<div class="grid-card" id="<%= entry.imdb %>">
-  <div class="card-picture">
-    <%= link_to image_tag(entry.pic), watch_entry_path(entry) %>
-    <span class="fa-stack fa-4x play-button">
-      <i class="fa fa-circle fa-stack-2x icon-background"></i>
-      <i class="fa fa-play fa-stack-1x"></i>
-    </span>
-  </div>
-  <div class="card-stuff">
-    <div class="card-title">
-      <h5 class="card-header"><bold><%= entry.name %></bold></h5>
+<div class="card-container">
+  <% if entry.note %>
+    <div class="card-note" style="grid-column: span 2;"><%= entry.note %></div>
+  <% end %>
+  <div class="grid-card" id="<%= entry.imdb %>">
+    <div class="card-picture">
+      <%= link_to image_tag(entry.pic), watch_entry_path(entry) %>
+      <span class="fa-stack fa-4x play-button">
+        <i class="fa fa-circle fa-stack-2x icon-background"></i>
+        <i class="fa fa-play fa-stack-1x"></i>
+      </span>
     </div>
-    <div class="card-details">
-      <div class="d-flex justify-content-between">
-        <p><%= entry.year %></p>
-        <p><%= '*' * entry.rating %></p>
+    <div class="card-stuff">
+      <div class="card-title">
+        <h5 class="card-header"><bold><%= entry.name %></bold></h5>
       </div>
-      <p class="mb-4"><small><%= entry.genre %></small></p>
-      <p class="card-plot"><%= entry.plot %><%= entry.plot %></p>
-    </div>
-    <div class="card-menu">
-      <% if entry.list.user == current_user %>
-        <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
+      <div class="card-details">
+        <div class="d-flex justify-content-between">
+          <p><%= entry.year %></p>
+          <p><%= '*' * entry.rating %></p>
+        </div>
+        <p class="mb-4"><small><%= entry.genre %></small></p>
+        <p class="card-plot"><%= entry.plot %><%= entry.plot %></p>
+      </div>
+      <div class="card-menu">
+        <% if entry.list.user == current_user %>
+          <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
         title="Mark as watched"
         data-controller="completed"
         data-completed-id-value="<%= entry.id %>"
         data-action="click->completed#toggle"></i>
-        <i class="fa-solid fa-pen" data-bs-toggle="modal" data-bs-target="#editModal<%= entry.id %>"></i>
-        <%# <%= link_to edit_entry_path(entry) do %>
-          <%# <i class="fa-solid fa-pen"></i> %>
-          <%# <% end %>
-          <%= link_to entry_path(entry),
-        data: {turbo_method: :delete, turbo_confirm: "Are you sure?"} do %>
-            <i class="fa-solid fa-trash"></i>
+          <i class="fa-solid fa-pen" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= entry.id %>" data-action="click->edit#toggle"></i>
+          <%# <%= link_to edit_entry_path(entry) do %>
+            <%# <i class="fa-solid fa-pen"></i> %>
+            <%# <% end %>
+            <%= link_to entry_path(entry),
+                data: {turbo_method: :delete, turbo_confirm: "Are you sure?"} do %>
+              <i class="fa-solid fa-trash"></i>
+            <% end %>
           <% end %>
-        <% end %>
-        <i class="fa-solid fa-link-slash"
+          <i class="fa-solid fa-link-slash"
       style="color:<%= entry.stream ? "grey" : "red"%>"
       title="Report broken link"
       data-controller="link"
       data-link-id-value="<%= entry.id %>"
       data-action="click->link#toggle"></i>
-        <%= link_to duplicate_entry_path(entry) do %>
-          <i class="fa-sharp fa-regular fa-plus" title="Add to another list"></i>
-        <% end %>
-      </div>
-    </div>
-  </div>
-  <div class="modal fade" id="editModal<%= entry.id %>" tabindex="-1" aria-labelledby="editModal<%= entry.id %>Label" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="editModal<%= entry.id %>Label">Modal title</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <%= simple_form_for(entry) do |f|%>
-            <%= f.input :list, collection: @user_lists, selected: entry.list.id %>
-            <%= f.input :name %>
-            <%= f.input :source %>
-            <%= f.input :pic %>
-            <%= f.input :category %>
-            <%= f.input :note %>
-            <%= f.submit %>
+          <%= link_to duplicate_entry_path(entry) do %>
+            <i class="fa-sharp fa-regular fa-plus" title="Add to another list"></i>
           <% end %>
         </div>
-        <%# <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary">Save changes</button>
-        </div> %>
       </div>
     </div>
   </div>

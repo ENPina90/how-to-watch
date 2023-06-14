@@ -1,17 +1,30 @@
+<div id="top"></div>
 <div data-search-target="results">
-  <div class="row justify-content-center list-layout">
-    <div class="col-2 layout">
-      <a href="#search">Top</a>
-      <% sections.each do |section|%>
-        <a style="display:inline-block;" href="#<%= section %>"><%= section %></a>
-      <% end %>
+  <div class="row justify-content-between list-layout">
+    <div class="col-2 layout text-center">
+      <a href="#top"><i class="fa-solid fa-sort-up fa-lg"></i></a>
+      <div class="layout-box">
+        <% sections.each do |section|%>
+          <a href="#<%= section %>"><%= section %></a><br>
+        <% end %>
+      </div>
+      <a href="#footer"><i class="fa-solid fa-sort-down fa-lg"></i></a>
     </div>
     <div class="col-8 d-flex justify-content-center">
-      <div class="card-continer">
-        <% entries.keys.sort.each do |key| %>
-          <h3 class="mt-4" id="<%= key %>"><%= key %></h3>
-          <% entries[key].each do |entry| %>
-            <%= render 'entry', entry: entry %>
+      <div>
+        <% if @list.sort || params[:sort] %>
+          <% entries.keys.sort.reverse.each do |key| %>
+            <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
+            <% entries[key].each do |entry| %>
+              <%= render 'entry', entry: entry %>
+            <% end %>
+          <% end %>
+        <% else %>
+          <% entries.keys.sort.each do |key| %>
+            <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
+            <% entries[key].each do |entry| %>
+              <%= render 'entry', entry: entry %>
+            <% end %>
           <% end %>
         <% end %>
       </div>
@@ -20,3 +33,4 @@
       <%= render 'upnext', random_selection: @random_selection %>
     </div>
   </div>
+</div>
