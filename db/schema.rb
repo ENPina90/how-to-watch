@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2023_06_09_115414) do
+ActiveRecord::Schema[7.0].define(version: 2024_05_15_074050) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -38,6 +38,7 @@ ActiveRecord::Schema[7.0].define(version: 2023_06_09_115414) do
     t.integer "year"
     t.boolean "stream"
     t.string "franchise"
+    t.string "alt"
     t.index ["list_id"], name: "index_entries_on_list_id"
   end
 
