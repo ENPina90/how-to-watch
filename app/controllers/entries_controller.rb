@@ -14,12 +14,10 @@ class EntriesController < ApplicationController
 
   def create
     @list = List.find(params[:list_id])
-    omdb_result = Entry.get_movie(params[:imdb])
-    @entry = Entry.create_movie(omdb_result)
-    @entry.franchise = Entry.get_movie(omdb_result['seriesID'])['Title']
-    @entry.category = @entry.franchise
+    omdb_result = OmdbApi.get_movie(params[:imdb])
+    @entry = Entry.create_from_OMDB(omdb_result, @list, false)
+    @entry.category = @entry.franchise = OmdbApi.get_movie(omdb_result['seriesID'])['Title'] if @entry.media
     @entry.list = @list
-    @entry.stream = @entry.check_source
     @entry.save
     redirect_to edit_entry_path(@entry)
   end
