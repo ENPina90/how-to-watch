@@ -1,28 +1,31 @@
 require "faker"
 require "csv"
 
-# # Movie seeds
-URL = "http://www.omdbapi.com/?"
-
-
 # puts "Destroying all entries, lists, and users..."
 # FailedEntry.destroy_all
 # Entry.destroy_all
 # List.destroy_all
 # User.destroy_all
 
-# # User seeds
-User.create(email: "nic@gmail.com", password: "123456", username: "nic")
-User.create(email: "idk@gmail.com", password: "123456", username: "idk")
+# puts "Creating users..."
+# User.create(email: "nic@gmail.com", password: "123456", username: "nic")
+# User.create(email: "idk@gmail.com", password: "123456", username: "idk")
 
-CSV.foreach('db/seed_data/movie_list.csv', headers: :first_row, header_converters: :symbol) do |movie|
-  puts "searching: #{movie[:title]} (#{movie[:year]})"
-  entry = Entry.csv_to_movie(movie, User.first)
-  if !entry && movie[:alt].present?
+puts "Importing movies from CSV..."
+CSV.foreach('db/seed_data/seeds2.csv', headers: true, header_converters: :symbol) do |movie|
+  user = User.first  # Assuming you want the first user for all entries, adjust as needed
+  puts "Processing: #{movie[:title]} (#{movie[:year]})"
+
+  entry_result = CsvImporterService.import_from_csv(movie, user)
+  if entry_result.nil? && movie[:alt].present?
     movie[:title] = movie[:alt]
-    entry = Entry.csv_to_movie(movie, User.first)
+    entry_result = CsvImporterService.import_from_csv(movie, user)
   end
-  puts entry.class
+  if entry_result.instance_of?(Entry)
+    puts "✅ Success: #{entry_result.name} (#{entry_result.year}) added to #{entry_result.list.name}"
+  else
+    puts entry_result
+  end
   puts "-------------------------------------------------------------------------------------------"
 end
 

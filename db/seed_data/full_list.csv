@@ -1,4 +1,4 @@
-Seen,Title,Alt,Year
+seen,name,alt,year
 FALSE,A Trip to the Moon ,Le Voyage Dans La Lune,1902
 FALSE,The Great Train Robbery ,,1903
 FALSE,The Birth of a Nation ,,1915
@@ -476,7 +476,7 @@ FALSE,Seconds ,,1966
 FALSE,Persona ,,1966
 FALSE,Two or Three Things I Know About Her , ou 3 Choses Que je Sais D'elle,1967
 FALSE,The Red and the White ,"Csillagosok, Katonák",1967
-FALSE,"The Fireman's Ball" ,"Horí, Má Panenko",1967
+FALSE,The Fireman's Ball ,"Horzhí, má panenko",1967
 FALSE,The Young Girls of Rochefort ,Les Demoiselles de Rochefort,1967
 FALSE,Closely Watched Trains ,Ostre Sledované Vlaky,1967
 FALSE,Earth Entranced ,Terra em Transe,1967
