@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2024_05_15_074050) do
+ActiveRecord::Schema[7.0].define(version: 2024_05_19_235759) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -39,6 +39,10 @@ ActiveRecord::Schema[7.0].define(version: 2024_05_15_074050) do
     t.boolean "stream"
     t.string "franchise"
     t.string "alt"
+    t.integer "position"
+    t.integer "season"
+    t.integer "episode"
+    t.string "faneditor"
     t.index ["list_id"], name: "index_entries_on_list_id"
   end
 
