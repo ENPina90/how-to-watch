@@ -19,7 +19,7 @@
       <div class="card-details">
         <div class="d-flex justify-content-between">
           <p><%= entry.year %></p>
-          <p><%= '*' * entry.rating %></p>
+          <p><%= '*' * entry.rating if entry.rating %></p>
         </div>
         <p class="mb-4"><small><%= entry.genre %></small></p>
         <p class="card-plot"><%= entry.plot %><%= entry.plot %></p>

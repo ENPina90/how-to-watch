@@ -31,7 +31,10 @@ class Entry < ApplicationRecord
       rating: result["imdbRating"].to_f,
       length: result["Runtime"].split(" ")[0].to_i,
       language: result["Language"],
-      imdb: result["imdbID"],
+      position: result["position"],
+      episode: result["episode"],
+      season: result["season"],
+      category: result['category'],
       completed: seen == "TRUE",
       list: list
     )
