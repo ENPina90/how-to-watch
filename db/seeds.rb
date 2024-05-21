@@ -2,7 +2,7 @@ require "faker"
 require "csv"
 
 # puts "Destroying all entries, lists, and users..."
-# FailedEntry.destroy_all
+FailedEntry.destroy_all
 # Entry.destroy_all
 # List.destroy_all
 # User.destroy_all
@@ -12,7 +12,7 @@ require "csv"
 # User.create(email: "idk@gmail.com", password: "123456", username: "idk")
 
 puts "Importing movies from CSV..."
-CSV.foreach('db/seed_data/seeds2.csv', headers: true, header_converters: :symbol) do |movie|
+CSV.foreach('db/seed_data/seeded_data.csv', headers: true, header_converters: :symbol) do |movie|
   user = User.first  # Assuming you want the first user for all entries, adjust as needed
   puts "Processing: #{movie[:title]} (#{movie[:year]})"
 
