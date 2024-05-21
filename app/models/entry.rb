@@ -13,33 +13,34 @@ class Entry < ApplicationRecord
                     }
                   }
 
-  after_create :check_source
+  # after_create :check_source
 
-  def self.create_from_OMDB(result, list, seen)
+  def self.create_from_source(entry, list, seen)
     Entry.create!(
-      media: result["Type"],
-      source: "https://v2.vidsrc.me/embed/#{result["imdbID"]}",
-      name: result["Title"],
-      alt: result["alt"],
-      year: result["Year"].to_i,
-      pic: result["Poster"],
-      genre: result["Genre"],
-      director: result["Director"],
-      writer: result["Writer"],
-      actors: result["Actors"],
-      plot: result["Plot"],
-      rating: result["imdbRating"].to_f,
-      length: result["Runtime"].split(" ")[0].to_i,
-      language: result["Language"],
-      position: result["position"],
-      episode: result["episode"],
-      season: result["season"],
-      category: result['category'],
-      completed: seen == "TRUE",
-      list: list
+      position: entry[:position] || (list.entries.empty? ? 1 : list.entries.last.position + 1),
+      franchise: entry[:franchise],
+      media: entry[:media],
+      season: entry[:season],
+      episode: entry[:episode],
+      completed: seen,
+      name: entry[:name],
+      category: entry[:category],
+      length: entry[:length],
+      year: entry[:year],
+      plot: entry[:plot],
+      pic: entry[:pic],
+      source: entry[:source] || "https://v2.vidsrc.me/embed/#{entry[:imdb]}",
+      genre: entry[:genre],
+      director: entry[:director],
+      writer: entry[:writer],
+      actors: entry[:actors],
+      rating: entry[:rating],
+      language: entry[:language],
+      note: entry[:note],
+      list:
     )
   rescue StandardError => e
-    FailedEntry.create(name: result["Title"], year: result["Year"])
+    FailedEntry.create(name: entry["Title"], year: entry["Year"])
     message = "Failed to create movie entry: #{e}"
     Rails.logger.error(message)
     return message

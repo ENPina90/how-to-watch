@@ -15,7 +15,7 @@ class EntriesController < ApplicationController
   def create
     @list = List.find(params[:list_id])
     omdb_result = OmdbApi.get_movie(params[:imdb])
-    @entry = Entry.create_from_OMDB(omdb_result, @list, false)
+    @entry = Entry.create_from_source(omdb_result, @list, false)
     @entry.category = @entry.franchise = OmdbApi.get_movie(omdb_result['seriesID'])['Title'] if @entry.media
     @entry.list = @list
     @entry.save
