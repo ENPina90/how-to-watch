@@ -30,4 +30,24 @@ class OmdbApi
     end
     movies.map { |movie| movie["imdbID"] }
   end
+
+  def self.normalize_omdb_data(result)
+    {
+      media: result["Type"],
+      name: result["Title"],
+      imdb: result["imdbID"],
+      year: result["Year"].to_i,
+      pic: result["Poster"],
+      genre: result["Genre"],
+      director: result["Director"],
+      writer: result["Writer"],
+      actors: result["Actors"],
+      plot: result["Plot"],
+      length: result["Runtime"].split(" ")[0].to_i,
+      rating: result["imdbRating"].to_f,
+      language: result["Language"],
+      episode: result["episode"],
+      season: result["season"]
+    }
+  end
 end
