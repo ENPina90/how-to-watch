@@ -4,8 +4,10 @@
     <div class="col-2 layout text-center">
       <a href="#top"><i class="fa-solid fa-sort-up fa-lg"></i></a>
       <div class="layout-box">
-        <% sections.each do |section|%>
-          <a href="#<%= section %>"><%= section %></a><br>
+        <% unless @criteria == 'Position' %>
+          <% sections.each do |section|%>
+            <a href="#<%= section %>"><%= section %></a><br>
+          <% end %>
         <% end %>
       </div>
       <a href="#footer"><i class="fa-solid fa-sort-down fa-lg"></i></a>
@@ -21,7 +23,9 @@
           <% end %>
         <% else %>
           <% entries.keys.sort.each do |key| %>
-            <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
+            <% unless @criteria == 'Position' %>
+              <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
+            <% end %>
             <% entries[key].each do |entry| %>
               <%= render 'entry', entry: entry %>
             <% end %>
