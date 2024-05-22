@@ -1,4 +1,8 @@
+# frozen_string_literal: true
+
 class ListsController < ApplicationController
+  before_action :set_list, only: [:show]
+
   def index
     @lists = List.all
   end
@@ -8,75 +12,75 @@ class ListsController < ApplicationController
   end
 
   def create
-    @list = List.new(list_params)
-    @list.user = current_user
-    @list.save
-    redirect_to lists_path
+    @list = current_user.lists.build(list_params)
+    if @list.save
+      redirect_to lists_path, notice: 'List was successfully created.'
+    else
+      render :new
+    end
   end
 
   def show
-    @list = List.find(params[:id])
-    entries_hash
+    load_entries
     @random_selection = @list_entries.sample(3)
     respond_to do |format|
-      format.html # Follow regular flow of Rails
-      format.text { render partial: "entries", locals: { entries: @entries, sections: @sections, random_selection: @random_selection, list_entries: @list_entries }, formats: [:html] }
+      format.html
+      format.text do
+        render partial: 'entries',
+               locals: {
+                 entries: @entries,
+                 sections: @sections,
+                 random_selection: @random_selection,
+                 list_entries: @list_entries
+               },
+               formats: [:html]
+      end
     end
   end
-
-  # def randomize
-  #   @list = List.find(params[:list_id])
-  #   entries_hash
-  #   @random_selection = @list_entries.where(stream: true).sample(3)
-  #   render partial: "upnext", locals: { random_selection: @random_selection }
-  # end
 
   private
 
-  def entries_hash
-    if params[:query]
-      @list_entries = @list.entries.search_by_input(params[:query])
-    elsif params[:query].nil? || params[:query].length <= 1
-      @list_entries = @list.entries
-    end
-    @entries = {}
-    filter(params[:criteria]) if params[:criteria]
-    # params[:criteria] ? filter(params[:criteria]) : filter(@list.settings)
-    @sections = params[:sort] ? @entries.keys.sort.reverse : @entries.keys.sort
-    if @list.user == current_user
-      @list.settings = params[:criteria] || nil
-      @list.sort = params[:sort] || nil
-      @list.save
-    end
-  end
-
-  def filter(criteria)
-    case criteria
-    when "Genre"
-      genres = @list_entries.group_by(&:genre).keys.map(&:split).flatten.map { |genre| genre.tr(',', '') }.uniq.sort
-      genres.each do |genre|
-        @entries[genre] = @list_entries.select { |entry| entry.genre.include?(genre) }
-      end
-    when "Year"
-      # crit = criteria.downcase.to_sym
-      year = 1900
-      until year >= Date.today.year
-        decade_entries = @list_entries.select { |entry| entry.year >= year && entry.year < year + 10 }
-        @entries["#{year}s"] = decade_entries unless decade_entries.empty?
-        year += 10
-      end
-    when "Watched"
-      @entries['Unwatched'] = @list_entries.reject(&:completed)
-      @entries['Watched'] = @list_entries.select(&:completed)
-    when nil
-      @entries = @list_entries.sort_by(&:created_at).group_by(&:media)
-    else
-      crit = criteria.downcase.to_sym
-      @entries = @list_entries.group_by(&crit)
-    end
+  def set_list
+    @list = List.find(params[:id])
   end
 
   def list_params
     params.require(:list).permit(:name)
+  end
+
+  def load_entries
+    @list_entries = if params[:query].present?
+                      @list.entries.search_by_input(params[:query])
+                    else
+                      @list.entries
+                    end
+    @entries = {}
+    @criteria = params[:criteria].present? ? params[:criteria] : 'Position'
+    filter_entries(@criteria)
+    @sections = params[:sort].present? ? @entries.keys.sort.reverse : @entries.keys.sort
+
+    return unless @list.user == current_user
+
+    @list.update(settings: params[:criteria], sort: params[:sort])
+  end
+
+  def filter_entries(criteria)
+    case criteria
+    when 'Genre'
+      genres = @list_entries.flat_map { |entry| entry.genre.split(',').map(&:strip) }.uniq.sort
+      genres.each do |genre|
+        @entries[genre] = @list_entries.select { |entry| entry.genre.include?(genre) }
+      end
+    when 'Year'
+      (1900..Date.today.year).step(10) do |year|
+        decade_entries = @list_entries.select { |entry| entry.year >= year && entry.year < year + 10 }
+        @entries["#{year}s"] = decade_entries unless decade_entries.empty?
+      end
+    when 'Watched'
+      @entries['Unwatched'] = @list_entries.reject(&:completed)
+      @entries['Watched'] = @list_entries.select(&:completed)
+    else
+      @entries = @list_entries.group_by { |entry| entry.send(criteria.downcase) }
+    end
   end
 end
