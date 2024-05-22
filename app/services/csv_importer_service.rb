@@ -26,7 +26,6 @@ class CsvImporterService
       FailedEntry.create(name: entry["name"], year: entry["year"])
       return "Failed to fetch imdb_id for #{entry[:name]} (#{entry[:year]})"
     end
-    omdb_result = OmdbApi.get_movie(imdb_id)
-    OmdbApi.normalize_omdb_data(omdb_result)
+    OmdbApi.get_movie(imdb_id)
   end
 end

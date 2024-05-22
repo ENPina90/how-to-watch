@@ -1,80 +1,119 @@
+# frozen_string_literal: true
+
 require 'open-uri'
 
 class EntriesController < ApplicationController
+
   skip_before_action :verify_authenticity_token
+  before_action :set_list, only: %i[new create]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink]
 
   def new
     @entry = Entry.new
-    @list = List.find(params[:list_id])
   end
 
-  def show
-    @entry = Entry.find(params[:id])
-  end
+  def show; end
 
   def create
-    @list = List.find(params[:list_id])
     omdb_result = OmdbApi.get_movie(params[:imdb])
     @entry = Entry.create_from_source(omdb_result, @list, false)
-    @entry.category = @entry.franchise = OmdbApi.get_movie(omdb_result['seriesID'])['Title'] if @entry.media
-    @entry.list = @list
-    @entry.save
-    redirect_to edit_entry_path(@entry)
+
+    if @entry.is_a?(Entry)
+      redirect_to edit_entry_path(@entry)
+    else
+      flash[:error] = @entry
+      render :new
+    end
   end
 
   def edit
-    @entry = Entry.find(params[:id])
     @entry.streamable
     @user_lists = List.where(user: current_user)
     respond_to do |format|
-      format.html # Follow regular flow of Rails
-      format.text { render partial: 'entry_form', locals: { entry: @entry, user_lists: @user_lists }, formats: [:html] }
+      format.html
+      format.text do
+        render partial: 'entry_form',
+               locals:  { entry: @entry, user_lists: @user_lists },
+               formats: [:html]
+      end
     end
   end
 
   def update
-    @entry = Entry.find(params[:id])
-    params = entry_params
-    @list = List.find(params['list'].to_i)
-    params['list'] = @list
-    @entry.update(params)
-    redirect_to list_path(@list, anchor: @entry.imdb)
+    list = List.find(entry_params[:list].to_i)
+    if @entry.update(entry_params.merge(list: list))
+      redirect_to list_path(@entry.list, anchor: @entry.imdb)
+    else
+      render :edit
+    end
   end
 
   def duplicate
-    @entry = Entry.find(params[:id])
     new_entry = @entry.dup
     new_entry.list = current_user.lists.first
-    new_entry.save
-    @entry = new_entry
-    redirect_to edit_entry_path(@entry)
+    if new_entry.save
+      redirect_to edit_entry_path(new_entry)
+    else
+      flash[:error] = 'Failed to duplicate entry.'
+      redirect_back(fallback_location: root_path)
+    end
   end
 
   def destroy
-    @entry = Entry.find(params[:id])
-    @list = @entry.list
+    list = @entry.list
     @entry.destroy
-    redirect_to list_path(@list), status: :see_other
+    redirect_to list_path(list), status: :see_other
   end
 
   def watch
-    @entry = Entry.find(params[:id])
-    render layout: "special_layout"
+    render layout: 'special_layout'
   end
 
   def complete
-    @entry = Entry.find(params[:id])
     @entry.update(completed: !@entry.completed)
   end
 
   def reportlink
-    @entry = Entry.find(params[:id])
     @entry.update(stream: !@entry.stream)
   end
 
   private
 
-  def entry_params
-    params.require(:entry).permit(:list, :note, :category, :name, :year, :pic, :genre, :director, :writer, :actors, :plot, :rating, :length, :media, :source, :imdb, :language, :review)
-  end
+    def set_list
+      @list = List.find(params[:list_id])
+    rescue ActiveRecord::RecordNotFound
+      flash[:error] = 'List not found.'
+      redirect_back(fallback_location: root_path)
+    end
+
+    def set_entry
+      @entry = Entry.find(params[:id])
+    rescue ActiveRecord::RecordNotFound
+      flash[:error] = 'Entry not found.'
+      redirect_back(fallback_location: root_path)
+    end
+
+    def entry_params
+      params.require(:entry).permit(
+        :list,
+        :note,
+        :category,
+        :name,
+        :year,
+        :pic,
+        :genre,
+        :director,
+        :writer,
+        :actors,
+        :plot,
+        :rating,
+        :length,
+        :media,
+        :source,
+        :imdb,
+        :language,
+        :review,
+      )
+    end
+
 end
