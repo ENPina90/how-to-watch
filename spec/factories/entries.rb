@@ -5,12 +5,12 @@ FactoryBot.define do
     media { "movie" }
     season { nil }
     episode { nil }
-    name { "Avengers" }
-    category { "Action" }
-    length { 120 }
+    name { "The Avengers" }
+    category { "Action, Adventure, Sci-Fi" }
+    length { 143 }
     year { 2012 }
-    plot { "Earth's mightiest heroes must come together..." }
-    pic { "some_url" }
+    plot { "Earth's mightiest heroes must come together and learn to fight as a team..." }
+    pic { "https://example.com/poster.jpg" }
     source { "https://v2.vidsrc.me/embed/tt0848228" }
     genre { "Action, Adventure, Sci-Fi" }
     director { "Joss Whedon" }

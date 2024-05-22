@@ -1,7 +1,6 @@
 FactoryBot.define do
   factory :user do
-    email { Faker::Internet.email }
+    email { "test@example.com" }
     password { "password" }
-    # Add other necessary attributes and associations
   end
 end

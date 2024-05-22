@@ -25,13 +25,17 @@ RSpec.describe Entry, type: :model do
       note: 'Some note'
     }
   end
+  let(:omdb_response) do
+    file_path = Rails.root.join('spec/fixtures/omdb_response.json')
+    JSON.parse(File.read(file_path))
+  end
 
   describe '.create_from_source' do
     context 'with valid attributes' do
       it 'creates an entry successfully' do
-        entry = Entry.create_from_source(valid_entry_attributes, list, true)
+        entry = Entry.create_from_source(omdb_response, list, true)
         expect(entry).to be_persisted
-        expect(entry.name).to eq('Avengers')
+        expect(entry.name).to eq('The Avengers')
         expect(entry.completed).to be_truthy
       end
     end
@@ -40,9 +44,9 @@ RSpec.describe Entry, type: :model do
       it 'logs an error and creates a FailedEntry' do
         allow(Entry).to receive(:create!).and_raise(StandardError.new('Some error'))
         expect(Rails.logger).to receive(:error).with(/Failed to create movie entry/)
-        message = Entry.create_from_source(valid_entry_attributes, list, true)
+        message = Entry.create_from_source(omdb_response, list, true)
         expect(message).to eq("Failed to create movie entry: Some error")
-        expect(FailedEntry.where(name: 'Avengers', year: 2012)).to exist
+        expect(FailedEntry.where(name: 'The Avengers', year: 2012)).to exist
       end
     end
   end
