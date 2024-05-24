@@ -1,0 +1,55 @@
+<div class="card-container">
+  <% if entry.note %>
+    <div class="card-note" style="grid-column: span 2;"><%= entry.note %></div>
+  <% end %>
+  <div class="grid-card" id="<%= entry.imdb %>">
+    <div class="card-picture">
+      <%= link_to watch_entry_path(entry) do %>
+        <%= image_tag(entry.pic) %>
+        <span class="fa-stack fa-4x play-button">
+          <i class="fa fa-circle fa-stack-2x icon-background"></i>
+          <i class="fa fa-play fa-stack-1x"></i>
+        </span>
+      <% end %>
+    </div>
+    <div class="card-stuff">
+      <div class="card-title">
+        <h5 class="card-header"><bold><%= entry.name %></bold></h5>
+      </div>
+      <div class="card-details">
+        <div class="d-flex justify-content-between">
+          <p><%= entry.year %></p>
+          <p><%= '*' * entry.rating if entry.rating %></p>
+        </div>
+        <p class="mb-4"><small><%= entry.genre %></small></p>
+        <p class="card-plot"><%= entry.plot %><%= entry.plot %></p>
+      </div>
+      <div class="card-menu">
+        <% if entry.list.user == current_user %>
+          <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
+        title="Mark as watched"
+        data-controller="completed"
+        data-completed-id-value="<%= entry.id %>"
+        data-action="click->completed#toggle"></i>
+          <i class="fa-solid fa-pen" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= entry.id %>" data-action="click->edit#toggle"></i>
+          <%# <%= link_to edit_entry_path(entry) do %>
+            <%# <i class="fa-solid fa-pen"></i> %>
+            <%# <% end %>
+            <%= link_to entry_path(entry),
+                data: {turbo_method: :delete, turbo_confirm: "Are you sure?"} do %>
+              <i class="fa-solid fa-trash"></i>
+            <% end %>
+          <% end %>
+          <i class="fa-solid fa-link-slash"
+      style="color:<%= entry.stream ? "grey" : "red"%>"
+      title="Report broken link"
+      data-controller="link"
+      data-link-id-value="<%= entry.id %>"
+      data-action="click->link#toggle"></i>
+          <%= link_to duplicate_entry_path(entry) do %>
+            <i class="fa-sharp fa-regular fa-plus" title="Add to another list"></i>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
