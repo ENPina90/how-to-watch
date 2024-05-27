@@ -22,7 +22,16 @@
           <p><%= '*' * entry.rating if entry.rating %></p>
         </div>
         <p class="mb-4"><small><%= entry.genre %></small></p>
-        <p class="card-plot"><%= entry.plot %><%= entry.plot %></p>
+        <p class="card-plot"><%= entry.plot %></p>
+        <div class="align-self-center d-flex align-items-center">
+          <%= link_to decrement_current_episode_entry_path(entry), class: 'text-decoration-none' do %>
+            <i class="fa-solid fa-backward me-2"></i>
+          <% end %>
+          <p class="mb-0">S<%= entry.current.season %>E<%= entry.current.episode %> - <%= entry.current.name %></p>
+          <%= link_to increment_current_episode_entry_path(entry), class: 'text-decoration-none' do %>
+            <i class="fa-solid fa-forward ms-2"></i>
+          <% end %>
+        </div>
       </div>
       <div class="card-menu">
         <% if entry.list.user == current_user %>

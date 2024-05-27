@@ -20,11 +20,12 @@ class OmdbApi
   def self.get_movie(imdb_id)
     query = "#{URL}i=#{imdb_id}&apikey=#{API_KEYS.sample}"
     response = api_call(query)
-    return unless response
+    return unless ['movie', 'series', 'episode'].include?(response['Type']) && response['Poster'] != 'N/A'
 
-    if ['movie', 'series', 'episode'].include?(response['Type']) && response['Poster'] != 'N/A'
-      response
-    end
+    # if response['Type'] == 'series'
+    #   get_series_episodes(response)
+    # end
+    response
   end
 
   def self.api_call(query)
@@ -46,6 +47,19 @@ class OmdbApi
     movies.map { |movie| movie['imdbID'] }
   end
 
+  def self.get_series_episodes(main_entry)
+    main_entry.season.times do |season|
+      query = "#{URL}i=#{main_entry.imdb}&Season=#{season + 1}&apikey=#{API_KEYS.sample}"
+      response = api_call(query)
+      next unless response
+
+      response['Episodes'].each_with_index do |episode, i|
+        subentry = Subentry.create_from_source(main_entry, episode, season)
+        main_entry.update(current: subentry) if i == 0
+      end
+    end
+  end
+
   def self.normalize_omdb_data(result)
     normalized_data = {
       media:    result['Type'],
@@ -62,7 +76,7 @@ class OmdbApi
       rating:   result['imdbRating'].to_f,
       language: result['Language'],
       episode:  result['Episode']&.to_i,
-      season:   result['Season']&.to_i,
+      season:   result['Season']&.to_i || result['totalSeasons']&.to_i,
     }
 
     if result['seriesID']

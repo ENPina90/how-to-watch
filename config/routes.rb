@@ -16,6 +16,8 @@ Rails.application.routes.draw do
       get 'reportlink'
       get :watch
       get :duplicate
+      get :increment_current_episode
+      get :decrement_current_episode
     end
   end
 end

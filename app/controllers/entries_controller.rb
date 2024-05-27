@@ -6,7 +6,7 @@ class EntriesController < ApplicationController
 
   skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink decrement_current_episode increment_current_episode]
 
   def new
     @entry = Entry.new
@@ -17,7 +17,9 @@ class EntriesController < ApplicationController
   def create
     omdb_result = OmdbApi.get_movie(params[:imdb])
     @entry = Entry.create_from_source(omdb_result, @list, false)
-
+    if @entry.media == 'series'
+      OmdbApi.get_series_episodes(@entry)
+    end
     if @entry.is_a?(Entry)
       redirect_to edit_entry_path(@entry)
     else
@@ -67,6 +69,16 @@ class EntriesController < ApplicationController
 
   def watch
     render layout: 'special_layout'
+  end
+
+  def decrement_current_episode
+    @entry.set_current(-1)
+    redirect_to list_path(@entry.list, anchor: @entry.imdb)
+  end
+
+  def increment_current_episode
+    @entry.set_current(1)
+    redirect_to list_path(@entry.list, anchor: @entry.imdb)
   end
 
   def complete

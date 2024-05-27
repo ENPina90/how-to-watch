@@ -27,7 +27,7 @@
               <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
             <% end %>
             <% entries[key].each do |entry| %>
-              <%= render 'entry', entry: entry %>
+              <%= render "entries/entry_#{entry.media}", entry: entry %>
             <% end %>
           <% end %>
         <% end %>

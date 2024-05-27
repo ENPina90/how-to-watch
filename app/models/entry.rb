@@ -5,6 +5,8 @@ require 'csv'
 class Entry < ApplicationRecord
 
   belongs_to :list
+  has_many :subentries, dependent: :destroy
+  belongs_to :current, class_name: 'Subentry', optional: true
   validates :name, presence: true, uniqueness: { scope: :list }
 
   include PgSearch::Model
@@ -28,6 +30,7 @@ class Entry < ApplicationRecord
       episode:   entry[:episode],
       completed: seen,
       name:      entry[:name],
+      imdb:      entry[:imdb],
       category:  entry[:category],
       length:    entry[:length],
       year:      entry[:year],
@@ -72,6 +75,12 @@ class Entry < ApplicationRecord
 
   def check_source
     update(stream: UrlCheckerService.new(source).valid_source?)
+  end
+
+  def set_current(change)
+    subentries = self.subentries.order(:season, :episode)
+    index = subentries.index(self.current)
+    self.update(current: subentries[index + change])
   end
 
   def streamable
