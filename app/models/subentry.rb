@@ -10,7 +10,7 @@ class Subentry < ApplicationRecord
       completed: seen,
       source:    generate_source(subentry[:imdb], subentry[:season], subentry[:episode]),
       name:      subentry['Title'],
-      imdb:      subentry['tt1288767'],
+      imdb:      subentry['imdbID'],
       rating:    subentry['imdbRating'].to_f,
     )
   rescue StandardError => e

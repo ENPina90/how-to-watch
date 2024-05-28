@@ -79,7 +79,7 @@ class Entry < ApplicationRecord
 
   def set_current(change)
     subentries = self.subentries.order(:season, :episode)
-    index = subentries.index(self.current)
+    index = subentries.index(self.current) || -1
     self.update(current: subentries[index + change])
   end
 

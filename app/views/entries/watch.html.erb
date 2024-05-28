@@ -7,4 +7,16 @@
       src="<%= @entry.source %><%= "/#{@entry.current.season}-#{@entry.current.episode}" if @entry.media == 'series' %>">
   </iframe>
   <%# <i class="fa-solid fa-expand cinema__control" data-action="click->cinema#fullscreen"></i> %>
+  <%= link_to list_path(@entry.list), class: 'text-decoration-none' do %>
+    <i class="fa-solid fa-house pe-5 cinema__control"></i>
+  <% end %>
+  <div class="align-self-center d-flex align-items-center">
+
+  </div>
+  <%= link_to decrement_current_episode_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
+    <i class="fa-solid fa-backward me-3 cinema__control"></i>
+  <% end %>
+  <%= link_to increment_current_episode_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
+    <i class="fa-solid fa-forward cinema__control"></i>
+  <% end %>
 </div>

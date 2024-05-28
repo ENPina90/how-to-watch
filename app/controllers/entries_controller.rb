@@ -73,12 +73,20 @@ class EntriesController < ApplicationController
 
   def decrement_current_episode
     @entry.set_current(-1)
-    redirect_to list_path(@entry.list, anchor: @entry.imdb)
+    if params[:mode] == 'watch'
+      redirect_to watch_entry_path(@entry)
+    else
+      redirect_to list_path(@entry.list, anchor: @entry.imdb)
+    end
   end
 
   def increment_current_episode
     @entry.set_current(1)
-    redirect_to list_path(@entry.list, anchor: @entry.imdb)
+    if params[:mode] == 'watch'
+      redirect_to watch_entry_path(@entry)
+    else
+      redirect_to list_path(@entry.list, anchor: @entry.imdb)
+    end
   end
 
   def complete

@@ -53,10 +53,11 @@ class OmdbApi
       response = api_call(query)
       next unless response
 
-      response['Episodes'].each_with_index do |episode, i|
-        subentry = Subentry.create_from_source(main_entry, episode, season)
-        main_entry.update(current: subentry) if i == 0
+      response['Episodes'].each do |episode|
+        Subentry.create_from_source(main_entry, episode, season + 1)
       end
+      first_episode = Subentry.find_by(entry: main_entry, season: 1, episode: 1)
+      main_entry.update(current: first_episode)
     end
   end
 
