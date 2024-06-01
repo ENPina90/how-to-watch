@@ -1,8 +1,9 @@
 require "faker"
 require "csv"
 
-# puts "Destroying all entries, lists, and users..."
-FailedEntry.destroy_all
+# puts "Destroying all entries, lists, and users. In 3..2..1"
+# sleep(3)
+# FailedEntry.destroy_all
 # Entry.destroy_all
 # List.destroy_all
 # User.destroy_all

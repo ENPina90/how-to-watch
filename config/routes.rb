@@ -8,16 +8,17 @@ Rails.application.routes.draw do
   # root "articles#index"
   resources :lists do
     get :randomize
+    get :watch_current
     resources :entries, only: [:new, :create]
   end
   resources :entries, only: [:show, :edit, :update, :destroy] do
     member do
-      get 'complete'
-      get 'reportlink'
+      get :complete
+      get :reportlink
       get :watch
       get :duplicate
-      get :increment_current_episode
-      get :decrement_current_episode
+      get :increment_current
+      get :decrement_current
     end
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2024_05_22_161718) do
+ActiveRecord::Schema[7.0].define(version: 2024_05_31_011717) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -43,6 +43,11 @@ ActiveRecord::Schema[7.0].define(version: 2024_05_22_161718) do
     t.integer "season"
     t.integer "episode"
     t.string "faneditor"
+    t.string "series"
+    t.integer "current_season"
+    t.integer "current_episode"
+    t.bigint "current_id"
+    t.index ["current_id"], name: "index_entries_on_current_id"
     t.index ["list_id"], name: "index_entries_on_list_id"
   end
 
@@ -71,7 +76,28 @@ ActiveRecord::Schema[7.0].define(version: 2024_05_22_161718) do
     t.datetime "updated_at", null: false
     t.string "settings"
     t.string "sort"
+    t.integer "current"
+    t.boolean "ordered"
+    t.boolean "private"
     t.index ["user_id"], name: "index_lists_on_user_id"
+  end
+
+  create_table "subentries", force: :cascade do |t|
+    t.bigint "entry_id", null: false
+    t.string "name"
+    t.string "pic"
+    t.string "plot"
+    t.string "imdb"
+    t.string "season"
+    t.string "episode"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "rating"
+    t.integer "length"
+    t.boolean "completed"
+    t.string "source"
+    t.integer "year"
+    t.index ["entry_id"], name: "index_subentries_on_entry_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -88,7 +114,9 @@ ActiveRecord::Schema[7.0].define(version: 2024_05_22_161718) do
   end
 
   add_foreign_key "entries", "lists"
+  add_foreign_key "entries", "subentries", column: "current_id"
   add_foreign_key "follows", "lists"
   add_foreign_key "follows", "users"
   add_foreign_key "lists", "users"
+  add_foreign_key "subentries", "entries"
 end

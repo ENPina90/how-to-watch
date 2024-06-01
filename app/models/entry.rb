@@ -6,7 +6,7 @@ class Entry < ApplicationRecord
 
   belongs_to :list
   has_many :subentries, dependent: :destroy
-  belongs_to :current, class_name: 'Subentry', optional: true
+  belongs_to :current, class_name: 'Subentry', optional: true, dependent: :destroy
   validates :name, presence: true, uniqueness: { scope: :list }
 
   include PgSearch::Model
@@ -21,7 +21,7 @@ class Entry < ApplicationRecord
   after_create :check_source
 
   def self.create_from_source(entry, list, seen)
-    entry = OmdbApi.normalize_omdb_data(entry)
+    entry = OmdbApi.normalize_omdb_data(entry) unless entry[:seed]
     Entry.create!(
       position:  entry[:position] || next_position(list),
       franchise: entry[:franchise],
@@ -81,6 +81,11 @@ class Entry < ApplicationRecord
     subentries = self.subentries.order(:season, :episode)
     index = subentries.index(self.current) || -1
     self.update(current: subentries[index + change])
+  end
+
+  def toggle_complete
+    self.update(completed: !self.completed)
+    completed
   end
 
   def streamable

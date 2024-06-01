@@ -1,22 +1,40 @@
 <div class="cinema__screen">
   <iframe id="cinema"
-      title="Inline Frame Example"
+      title="<%= @entry.name %>"
+      referrerpolicy="origin"
       width="100%"
       height="100%"
       allowfullscreen
-      src="<%= @entry.source %><%= "/#{@entry.current.season}-#{@entry.current.episode}" if @entry.media == 'series' %>">
+      allow="autoplay"
+      src="<%= @entry.source %><%= "/#{@entry.current&.season}-#{@entry.current&.episode}" if @entry.media == 'series' %>">
   </iframe>
   <%# <i class="fa-solid fa-expand cinema__control" data-action="click->cinema#fullscreen"></i> %>
-  <%= link_to list_path(@entry.list), class: 'text-decoration-none' do %>
-    <i class="fa-solid fa-house pe-5 cinema__control"></i>
-  <% end %>
-  <div class="align-self-center d-flex align-items-center">
 
+  <div class="cinema__title">
+    <h3><%= @entry.list.name %></h3>
+    <h1><%= @entry.name %></h1>
+    <% if @entry.media == "series" %>
+      <h3>S<%= @entry.current.season %>E<%= @entry.current.episode %> - <%= @entry.current.name %></h3>
+    <% end %>
   </div>
-  <%= link_to decrement_current_episode_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
-    <i class="fa-solid fa-backward me-3 cinema__control"></i>
-  <% end %>
-  <%= link_to increment_current_episode_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
-    <i class="fa-solid fa-forward cinema__control"></i>
-  <% end %>
+  <div class="d-flex justify-content-center cinema__control mt-5 me-5">
+    <div class="position-relative" style="width: 80px; height: 80px;">
+      <%= link_to list_watch_current_path(@entry.list.find_sibling(:previous)) do %>
+        <i class="fa-solid fa-3x fa-caret-up position-absolute top-0 start-50 translate-middle-x"></i>
+      <% end %>
+      <%= link_to increment_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
+        <i class="fa-solid fa-3x fa-caret-right position-absolute top-50 end-0 translate-middle-y"></i>
+      <% end %>
+      <%= link_to list_watch_current_path(@entry.list.find_sibling(:next)) do %>
+        <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
+      <% end %>
+      <%= link_to decrement_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
+        <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
+      <% end %>
+      <%= link_to list_path(@entry.list), class: 'text-decoration-none' do %>
+        <i class="fa-solid fa-house fa-2x position-absolute top-50 start-50 translate-middle"></i>
+      <% end %>
+    </div>
 </div>
+</div>
+

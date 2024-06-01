@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
-  before_action :set_list, only: [:show]
+  before_action :set_list, only: [:show, :watch_current, :watch_random]
 
   def index
     @lists = List.all
@@ -13,6 +13,7 @@ class ListsController < ApplicationController
 
   def create
     @list = current_user.lists.build(list_params)
+    @list.current = 0
     if @list.save
       redirect_to lists_path, notice: 'List was successfully created.'
     else
@@ -22,6 +23,7 @@ class ListsController < ApplicationController
 
   def show
     load_entries
+    @current = @list.find_entry_by_position(:current) unless @list.entries.empty?
     @random_selection = @list_entries.sample(3)
     respond_to do |format|
       format.html
@@ -38,10 +40,19 @@ class ListsController < ApplicationController
     end
   end
 
+  def watch_current
+    @list.update(current: @list.entries.first.position) if @list.current.nil?
+    redirect_to watch_entry_path(@list.find_entry_by_position(:current))
+  end
+
+  # def watch_random
+  #   watch_path(@list.find_entry_by_position(:random))
+  # end
+
   private
 
   def set_list
-    @list = List.find(params[:id])
+    @list = List.find(params[:id] || params[:list_id])
   end
 
   def list_params

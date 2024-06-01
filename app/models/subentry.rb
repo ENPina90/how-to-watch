@@ -2,6 +2,9 @@ class Subentry < ApplicationRecord
   belongs_to :entry
   validates :episode, uniqueness: { scope: [:season, :entry_id], message: "season and episode combination must be unique within the same entry" }
 
+  before_destroy :nullify_current_entries
+
+
   def self.create_from_source(main_entry, subentry, season, seen: false)
     Subentry.create!(
       entry:     main_entry,
@@ -26,5 +29,15 @@ class Subentry < ApplicationRecord
     message = "Failed to create movie entry: #{error.message}"
     Rails.logger.error(message)
     message
+  end
+
+  private
+
+  def nullify_current_entries
+    entry = self.entry
+    siblings = entry.subentries.order(:season, :episode)
+    index = siblings.index(self)
+    next_entry = index == 0 ? nil : siblings[index - 1].id
+    entry.update(current_id: next_entry)
   end
 end

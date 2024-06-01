@@ -6,7 +6,7 @@ class EntriesController < ApplicationController
 
   skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink decrement_current_episode increment_current_episode]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink decrement_current increment_current]
 
   def new
     @entry = Entry.new
@@ -68,29 +68,49 @@ class EntriesController < ApplicationController
   end
 
   def watch
+    @entry.list.assign_current(@entry.position)
     render layout: 'special_layout'
   end
 
-  def decrement_current_episode
-    @entry.set_current(-1)
-    if params[:mode] == 'watch'
-      redirect_to watch_entry_path(@entry)
+  def decrement_current
+    if @entry.media == 'series'
+      @entry.set_current(-1)
+      if params[:mode] == 'watch'
+        redirect_to watch_entry_path(@entry)
+      else
+        redirect_to list_path(@entry.list, anchor: @entry.imdb)
+      end
     else
-      redirect_to list_path(@entry.list, anchor: @entry.imdb)
+      current = @entry.list.assign_current(:previous)
+      redirect_to watch_entry_path(current)
     end
+
   end
 
-  def increment_current_episode
-    @entry.set_current(1)
-    if params[:mode] == 'watch'
-      redirect_to watch_entry_path(@entry)
+  def increment_current
+    if @entry.media == 'series'
+      @entry.set_current(-1)
+      if params[:mode] == 'watch'
+        redirect_to watch_entry_path(@entry)
+      else
+        redirect_to list_path(@entry.list, anchor: @entry.imdb)
+      end
     else
-      redirect_to list_path(@entry.list, anchor: @entry.imdb)
+      if @entry.list.ordered
+        @entry.toggle_complete
+        current = @entry.list.assign_current(:next)
+        redirect_to watch_entry_path(current)
+      else
+        random_entry_position = @entry.list.entries.sample.position
+        current = @entry.list.assign_current(random_entry_position)
+        redirect_to watch_entry_path(current)
+      end
     end
   end
 
   def complete
-    @entry.update(completed: !@entry.completed)
+    completed = @entry.toggle_complete
+    @entry.list.assign_current(completed ? :next : :current)
   end
 
   def reportlink

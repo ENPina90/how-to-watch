@@ -2,7 +2,7 @@
   <% if entry.note %>
     <div class="card-note" style="grid-column: span 2;"><%= entry.note %></div>
   <% end %>
-  <div class="grid-card" id="<%= entry.imdb %>">
+  <div class="grid-card" id="<%= entry.id %>">
     <div class="card-picture">
       <%= link_to watch_entry_path(entry) do %>
         <%= image_tag(entry.pic) %>
