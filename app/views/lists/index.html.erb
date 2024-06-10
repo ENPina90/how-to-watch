@@ -1,10 +1,22 @@
-<div class="container">
-  <div class="row justify-content-center">
-    <div class="col-8">
-      <%= link_to '+ list', new_list_path %> <br>
-      <% @lists.each do |list| %>
-        <%= link_to list.name, list_path(list, criteria: list.settings, sort: list.sort) %> <br>
-      <% end %>
-    </div>
+<div class="lists-container my-4">
+  <div class="list">
+    <%= link_to watch_entry_path(Entry.all.sample) do %>
+      <%= image_tag(asset_path('nowplaying.jpg'), class: 'list-picture') %>
+    <% end %>
+    <p class="list-name">Now Playing</p>
+  </div>
+  <% @lists.each do |list| %>
+    <%= link_to list_path(list) do %>
+      <div class="list">
+        <%= image_tag(list.entries.sample&.pic || asset_path('please_stand_by.png'), alt: list.name, class: 'list-picture') %>
+        <p class="list-name"><%= list.name %></p>
+      </div>
+    <% end %>
+  <% end %>
+  <div class="list">
+    <%= link_to new_list_path do %>
+      <%= image_tag(asset_path('upcoming.jpg'), class: 'list-picture') %>
+    <% end %>
+    <p class="list-name">New Channel</p>
   </div>
 </div>

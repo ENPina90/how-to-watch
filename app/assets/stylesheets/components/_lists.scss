@@ -1,0 +1,39 @@
+.lists-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  gap: 20px;
+}
+
+.list {
+  flex: 0 0 200px; // Fixed width for each list card
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background-color: #141414;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease;
+  height: 360px; // Adjusted height for each list card to include space for the list name
+}
+
+.list:hover {
+  transform: scale(1.05);
+}
+
+.list-picture {
+  width: 180px; // Fixed width for each picture
+  height: 250px; // Fixed height for each picture
+  border-radius: 5px;
+  object-fit: cover; // Ensure the picture covers the entire area
+}
+
+.list-name {
+  margin-top: 10px;
+  color: #ffffff;
+  font-size: 1.2em;
+  word-wrap: break-word; // Handle text wrapping
+  width: 100%; // Ensure the list name takes up the full width of the container
+}
