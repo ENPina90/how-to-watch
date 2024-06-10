@@ -10,6 +10,9 @@
   </head>
   <body>
     <%= render "shared/navbar" %>
+    <turbo-frame id="flash">
+      <%= render 'shared/flashes' %>
+    </turbo-frame>
     <div class="page-container">
       <div class="content-container"><%= yield %></div>
       <div class="footer-container"><%= render "shared/footer" %></div>

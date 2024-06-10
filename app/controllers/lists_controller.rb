@@ -12,7 +12,9 @@ class ListsController < ApplicationController
   end
 
   def create
-    @list = current_user.lists.build(list_params)
+    # @list = current_user.lists.build(list_params)
+    @list = List.new(list_params)
+    @list.user = current_user
     @list.current = 0
     if @list.save
       redirect_to lists_path, notice: 'List was successfully created.'
@@ -55,10 +57,6 @@ class ListsController < ApplicationController
     @list = List.find(params[:id] || params[:list_id])
   end
 
-  def list_params
-    params.require(:list).permit(:name)
-  end
-
   def load_entries
     @list_entries = if params[:query].present?
                       @list.entries.search_by_input(params[:query])
@@ -88,10 +86,14 @@ class ListsController < ApplicationController
         @entries["#{year}s"] = decade_entries unless decade_entries.empty?
       end
     when 'Watched'
-      @entries['Unwatched'] = @list_entries.reject(&:completed)
-      @entries['Watched'] = @list_entries.select(&:completed)
+      @entries['Unwatched'] = @list_entries.reject(&:completed).sort_by(&:position)
+      @entries['Watched'] = @list_entries.select(&:completed).sort_by(&:position)
     else
       @entries = @list_entries.group_by { |entry| entry.send(criteria.downcase) }
     end
+  end
+
+  def list_params
+    params.require(:list).permit(:name, :ordered, :private, :sort)
   end
 end

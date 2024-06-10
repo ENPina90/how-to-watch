@@ -11,7 +11,7 @@ Rails.application.routes.draw do
     get :watch_current
     resources :entries, only: [:new, :create]
   end
-  resources :entries, only: [:show, :edit, :update, :destroy] do
+  resources :entries, only: [:show, :create, :edit, :update, :destroy] do
     member do
       get :complete
       get :reportlink

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2024_05_31_011717) do
+ActiveRecord::Schema[7.0].define(version: 2024_06_02_181949) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -69,6 +69,18 @@ ActiveRecord::Schema[7.0].define(version: 2024_05_31_011717) do
     t.index ["user_id"], name: "index_follows_on_user_id"
   end
 
+  create_table "list_user_entries", force: :cascade do |t|
+    t.bigint "list_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "current_entry_id"
+    t.integer "history", default: [], array: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["current_entry_id"], name: "index_list_user_entries_on_current_entry_id"
+    t.index ["list_id"], name: "index_list_user_entries_on_list_id"
+    t.index ["user_id"], name: "index_list_user_entries_on_user_id"
+  end
+
   create_table "lists", force: :cascade do |t|
     t.string "name"
     t.bigint "user_id", null: false
@@ -117,6 +129,9 @@ ActiveRecord::Schema[7.0].define(version: 2024_05_31_011717) do
   add_foreign_key "entries", "subentries", column: "current_id"
   add_foreign_key "follows", "lists"
   add_foreign_key "follows", "users"
+  add_foreign_key "list_user_entries", "entries", column: "current_entry_id"
+  add_foreign_key "list_user_entries", "lists"
+  add_foreign_key "list_user_entries", "users"
   add_foreign_key "lists", "users"
   add_foreign_key "subentries", "entries"
 end

@@ -6,14 +6,22 @@
       height="100%"
       allowfullscreen
       allow="autoplay"
-      src="<%= @entry.source %><%= "/#{@entry.current&.season}-#{@entry.current&.episode}" if @entry.media == 'series' %>">
+      src="<% if @entry.media == 'series' %>
+             <%= source = "#{@entry.source}/#{@entry.current&.season}-#{@entry.current&.episode}" %>
+           <% elsif @entry.media == 'episode' %>
+             <%= source = "#{@entry.source}/#{@entry.season}-#{@entry.episode}" %>
+           <% else %>
+            <%= source = @entry.source %>
+           <% end %>
+          ">
+
   </iframe>
   <%# <i class="fa-solid fa-expand cinema__control" data-action="click->cinema#fullscreen"></i> %>
 
   <div class="cinema__title">
     <h3><%= @entry.list.name %></h3>
     <h1><%= @entry.name %></h1>
-    <% if @entry.media == "series" %>
+    <% if @entry.media == "series" && @entry.current %>
       <h3>S<%= @entry.current.season %>E<%= @entry.current.episode %> - <%= @entry.current.name %></h3>
     <% end %>
   </div>

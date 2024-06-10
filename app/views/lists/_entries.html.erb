@@ -4,7 +4,7 @@
     <div class="col-2 layout text-center">
       <a href="#top"><i class="fa-solid fa-sort-up fa-lg"></i></a>
       <div class="layout-box">
-        <% unless @criteria == 'Position' %>
+        <% unless @criteria == 'Position' || @current.nil? %>
           <% sections.each do |section|%>
             <a href="#<%= section %>"><%= section %></a><br>
           <% end %>
@@ -34,7 +34,7 @@
       </div>
     </div>
     <div class="col-2 layout" data-controller="randomize" data-randomize-list-value="<%= @list.id %>">
-      <%= render 'upnext', random_selection: @random_selection %>
+      <%= render 'upnext', random_selection: @random_selection unless @current.nil?%>
     </div>
   </div>
 </div>

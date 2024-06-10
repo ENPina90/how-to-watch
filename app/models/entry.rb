@@ -7,7 +7,10 @@ class Entry < ApplicationRecord
   belongs_to :list
   has_many :subentries, dependent: :destroy
   belongs_to :current, class_name: 'Subentry', optional: true, dependent: :destroy
+  # has_many :current_list_users, class_name: 'ListUserEntries', foreign_key: 'current_entry_id'
   validates :name, presence: true, uniqueness: { scope: :list }
+
+  accepts_nested_attributes_for :subentries, allow_destroy: true
 
   include PgSearch::Model
   pg_search_scope :search_by_input,

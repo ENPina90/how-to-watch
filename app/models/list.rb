@@ -4,6 +4,9 @@ class List < ApplicationRecord
 
   belongs_to :user
   has_many :entries, dependent: :destroy
+  has_many :list_user_entries
+  has_many :users, through: :list_user_entries
+
   OFFSET = {
       previous: -1,
       current:   0,

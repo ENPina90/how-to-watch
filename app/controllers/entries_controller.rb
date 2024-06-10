@@ -17,20 +17,29 @@ class EntriesController < ApplicationController
   def create
     omdb_result = OmdbApi.get_movie(params[:imdb])
     @entry = Entry.create_from_source(omdb_result, @list, false)
-    if @entry.media == 'series'
-      OmdbApi.get_series_episodes(@entry)
-    end
     if @entry.is_a?(Entry)
-      redirect_to edit_entry_path(@entry)
+      # redirect_to edit_entry_path(@entry)
+      # TODO make this render an edit form partial
+      flash[:notice] = "#{@entry.name} added to #{@list.name}"
+      render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
     else
-      flash[:error] = @entry
-      render :new
+      flash.now[:alert] = 'theres a problem'
+      render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
+    end
+    begin
+      if @entry.media == 'series'
+        OmdbApi.get_series_episodes(@entry)
+      end
+    rescue
+      flash[:error] = "This already exists in your list"
+      # render :new
     end
   end
 
   def edit
     @entry.streamable
     @user_lists = List.where(user: current_user)
+    @entry.subentries.build if @entry.media == 'series'
     respond_to do |format|
       format.html
       format.text do
@@ -81,15 +90,27 @@ class EntriesController < ApplicationController
         redirect_to list_path(@entry.list, anchor: @entry.imdb)
       end
     else
-      current = @entry.list.assign_current(:previous)
-      redirect_to watch_entry_path(current)
+      if @entry.list.ordered
+        current = @entry.list.assign_current(:previous)
+        redirect_to watch_entry_path(current)
+      else
+        # session[:previous_entry_positions] ||= []
+        # previous_position = @entry.list.current || @entry.list.entries.map(&:position).sample
+        # session[:previous_entry_positions] << previous_position
+        # @entry.list.find_entry_by_position(session[:previous_entry_positions][-2])
+        # redirect_to watch_entry_path(session[:previous_entry_id][-1])
+        list_positions = @entry.list.entries.map(&:position) - [@entry.list.current]
+        random_entry_position = list_positions.sample
+        current = @entry.list.assign_current(random_entry_position)
+        redirect_to watch_entry_path(current)
+      end
     end
 
   end
 
   def increment_current
     if @entry.media == 'series'
-      @entry.set_current(-1)
+      @entry.set_current(1)
       if params[:mode] == 'watch'
         redirect_to watch_entry_path(@entry)
       else
@@ -101,7 +122,8 @@ class EntriesController < ApplicationController
         current = @entry.list.assign_current(:next)
         redirect_to watch_entry_path(current)
       else
-        random_entry_position = @entry.list.entries.sample.position
+        list_positions = @entry.list.entries.map(&:position) - [@entry.list.current]
+        random_entry_position = list_positions.sample
         current = @entry.list.assign_current(random_entry_position)
         redirect_to watch_entry_path(current)
       end
@@ -153,6 +175,7 @@ class EntriesController < ApplicationController
         :imdb,
         :language,
         :review,
+        subentries_attributes: [:id, :name, :pic, :plot, :imdb, :season, :episode, :rating, :length, :completed, :source, :year, :_destroy]
       )
     end
 

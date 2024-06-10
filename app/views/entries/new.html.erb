@@ -1,7 +1,7 @@
-<div class="container" data-controller='search' data-search-id-value="<%= @list.id %>">
+<div class="container" data-controller='search' data-search-id-value="<%= @list.id %>" data-search-key="<%= "#{ENV['API_KEY_1']}-#{ENV['API_KEY_2']}-#{ENV['API_KEY_3']}"%>">
   <div class="row justify-content-center layout-title">
     <h1 class="text-center">
-      <span class="header-count"><%= @list.entries.count %></span> <%= @list.name %>
+      <span class="header-count"><%= @list.entries.count %></span> <%= link_to @list.name, list_path(@list) %>
     </h1>
     <div class="list-input">
       <div class="list-options">
@@ -11,6 +11,8 @@
           <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#omdb' } } %>
         <% elsif params['type'] == 'show' %>
           <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#omdbShow' } } %>
+        <% elsif params['type'] == 'custom' %>
+          <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#custom' } } %>
         <% elsif params['type'] == 'episode' %>
           <%= text_field_tag :entry, nil, data: { search_target: 'input', action: 'input->search#omdbEpisode' } %>
           <%= text_field_tag :entry, nil, data: { search_target: 'season', action: 'input->search#omdbEpisode' } %>
@@ -33,6 +35,16 @@
   <div class="row justify-content-center list-layout">
     <div class="col-8 d-flex justify-content-center">
       <div data-search-target="results">
+        <%= simple_form_for(@entry) do |f|%>
+          <%= f.input :list, collection: List.where(user: current_user), selected: @list.id %>
+          <%= f.input :name %>
+          <%= f.input :source %>
+          <%= f.input :pic %>
+          <%= f.input :category %>
+          <%= f.input :note %>
+          <%= f.input :review %>
+          <%= f.submit %>
+        <% end %>
       </div>
     </div>
   </div>
@@ -45,7 +57,7 @@
       <a href="https://v2.vidsrc.me/embed/{{imdbID}}"><img src="{{Poster}}" class="card-img-top" alt="Watch {{Title}} now"></a>
       <span class="fa-stack fa-4x play-button">
         <i class="fa fa-circle fa-stack-2x icon-background"></i>
-        <i class="fa fa-play fa-stack-1x"></i>
+        <a href="https://v2.vidsrc.me/embed/{{imdbID}}"><i class="fa fa-play fa-stack-1x"></i></a>
       </span>
     </div>
     <div class="card-stuff w-100 p-auto">
@@ -107,7 +119,7 @@
         <div class="card-body">
           <h6 class="card-title">{{Title}}</h6>
           <p class="card-text">S {{Season}}, Ep {{Episode}}</p>
-          <form action="/lists/<%= @list.id %>/entries" method='post'>
+          <form action="/lists/<%= @list.id %>/entries" method='post' data-turbo-frame="new_entry_form">
             <input class='d-none' name='imdb' value='{{imdbID}}'>
             <button type='submit' name='create' value='create' class="btn btn-primary">+ Episode</button>
           </form>

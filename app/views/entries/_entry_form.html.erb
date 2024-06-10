@@ -11,6 +11,16 @@
       <%= f.input :pic %>
       <%= f.input :category %>
       <%= f.input :note %>
+      <% if entry.media == 'series' %>
+        <h3>Episodes</h3>
+        <%= f.simple_fields_for :subentries do |subentry_form| %>
+          <%= subentry_form.input :name %>
+          <%= subentry_form.input :season %>
+          <%= subentry_form.input :episode %>
+          <%= subentry_form.input :source %>
+          <%= subentry_form.input :_destroy, as: :boolean, label: 'Remove Subentry' %>
+        <% end %>
+      <% end %>
       <%= f.button :submit, class: 'btn-action' %>
     <% end %>
   </div>

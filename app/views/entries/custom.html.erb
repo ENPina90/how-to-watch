@@ -1,0 +1,10 @@
+<%= simple_form_for(@entry) do |f|%>
+  <%= f.input :list, collection: List.where(user: current_user), selected: @entry.list.id %>
+  <%= f.input :name %>
+  <%= f.input :source %>
+  <%= f.input :pic %>
+  <%= f.input :category %>
+  <%= f.input :note %>
+  <%= f.input :review %>
+  <%= f.submit %>
+<% end %>
