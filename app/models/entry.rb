@@ -86,6 +86,14 @@ class Entry < ApplicationRecord
     self.update(current: subentries[index + change])
   end
 
+  def next
+    list.entries.where('position > ?', position).order(:position).first
+  end
+
+  def previous
+    list.entries.where('position < ?', position).order(:position).last
+  end
+
   def toggle_complete
     self.update(completed: !self.completed)
     completed
