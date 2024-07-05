@@ -21,7 +21,11 @@
           <p><%= entry.year %></p>
           <p><%= '*' * entry.rating if entry.rating %></p>
         </div>
-        <p class="mb-4"><small><%= entry.genre %></small></p>
+        <% if entry.media == "episode" %>
+          <p class="mb-4"><small><%= entry.series %></small></p>
+        <% else %>
+          <p class="mb-4"><small><%= entry.genre %></small></p>
+        <% end %>
         <p class="card-plot"><%= entry.plot %></p>
       </div>
       <div class="card-menu">

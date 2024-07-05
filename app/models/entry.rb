@@ -34,7 +34,7 @@ class Entry < ApplicationRecord
       completed: seen,
       name:      entry[:name],
       imdb:      entry[:imdb],
-      category:  entry[:category],
+      series:    entry[:series],
       length:    entry[:length],
       year:      entry[:year],
       plot:      entry[:plot],
@@ -81,7 +81,7 @@ class Entry < ApplicationRecord
   end
 
   def set_current(change)
-    subentries = self.subentries.order(:season, :episode)
+    subentries = self.subentries.order(:season)
     index = subentries.index(self.current) || -1
     self.update(current: subentries[index + change])
   end
@@ -94,8 +94,8 @@ class Entry < ApplicationRecord
     list.entries.where('position < ?', position).order(:position).last
   end
 
-  def toggle_complete
-    self.update(completed: !self.completed)
+  def complete(boolean)
+    self.update(completed: boolean)
     completed
   end
 

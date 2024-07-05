@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
-  before_action :set_list, only: [:show, :watch_current, :watch_random]
+  before_action :set_list, only: [:show, :edit, :destroy, :watch_current, :watch_random]
 
   def index
     @lists = List.all
+    List.where(ordered: false).each{|unordered_list| unordered_list.assign_current(:next) }
   end
 
   def new
@@ -42,9 +43,20 @@ class ListsController < ApplicationController
     end
   end
 
+  def edit; end
+
+  def destroy
+    @list.destroy
+    redirect_to root_path, notice: "#{@list.name} was successfully destroyed."
+  end
+
   def watch_current
-    @list.update(current: @list.entries.first.position) if @list.current.nil?
-    redirect_to watch_entry_path(@list.find_entry_by_position(:current))
+    if @list.entries.empty?
+      redirect_to list_path(@list) if @list.entries.empty?
+    else
+      @list.update(current: @list.entries.first.position) if @list.current.nil?
+      redirect_to watch_entry_path(@list.find_entry_by_position(:current))
+    end
   end
 
   # def watch_random

@@ -44,10 +44,12 @@
           <%# <%= link_to edit_entry_path(entry) do %>
             <%# <i class="fa-solid fa-pen"></i> %>
             <%# <% end %>
-            <%= link_to entry_path(entry),
-                data: {turbo_method: :delete, turbo_confirm: "Are you sure?"} do %>
-              <i class="fa-solid fa-trash"></i>
-            <% end %>
+           <%= link_to entry_path(entry),
+              data: { turbo_method: :delete, turbo_confirm: "Are you sure?", turbo_frame: "_top" },
+              params: { source: 'index' } do %>
+             <i class="fa-solid fa-trash"></i>
+           <% end %>
+
           <% end %>
           <i class="fa-solid fa-link-slash"
       style="color:<%= entry.stream ? "grey" : "red"%>"

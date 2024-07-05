@@ -6,7 +6,7 @@ class EntriesController < ApplicationController
 
   skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink decrement_current increment_current]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink shuffle_current decrement_current increment_current]
 
   def new
     @entry = Entry.new
@@ -18,23 +18,28 @@ class EntriesController < ApplicationController
     omdb_result = OmdbApi.get_movie(params[:imdb])
     @entry = Entry.create_from_source(omdb_result, @list, false)
     if @entry.is_a?(Entry)
-      # redirect_to edit_entry_path(@entry)
-      # TODO make this render an edit form partial
-      flash[:notice] = "#{@entry.name} added to #{@list.name}"
-      render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
-    else
-      flash.now[:alert] = 'theres a problem'
-      render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
-    end
-    begin
       if @entry.media == 'series'
-        OmdbApi.get_series_episodes(@entry)
+        begin
+          OmdbApi.get_series_episodes(@entry)
+        rescue
+          flash.now[:error] = "This already exists in your list"
+          render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
+          return
+        end
       end
-    rescue
-      flash[:error] = "This already exists in your list"
-      # render :new
+      flash.now[:notice] = "#{@entry.name} added to #{@list.name}"
+      partial = @entry.media == 'episode' ? "S#{@entry.season}E#{@entry.season}" : @entry.imdb
+      render turbo_stream: [
+        turbo_stream.replace('header-count', partial: 'lists/header_count', locals: { count: @list.entries.count, list: @list }),
+        turbo_stream.replace('flash', partial: 'shared/flashes'),
+        turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: @entry, partial: partial })
+      ]
+    else
+      flash.now[:alert] = 'There was a problem'
+      render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
     end
   end
+
 
   def edit
     @entry.streamable
@@ -71,9 +76,23 @@ class EntriesController < ApplicationController
   end
 
   def destroy
-    list = @entry.list
+    @entry = Entry.find(params[:id])
+    @list = @entry.list
+    imdb = @entry.imdb
+    source = params[:source]
+    flash.now[:notice] = "#{@entry.name} removed to #{@list.name}"
+    partial = @entry.media == 'episode' ? "S#{@entry.season}E#{@entry.season}" : @entry.imdb
     @entry.destroy
-    redirect_to list_path(list), status: :see_other
+
+    if source == 'show'
+      render turbo_stream: [
+        turbo_stream.replace('flash', partial: 'shared/flashes'),
+        turbo_stream.replace('header-count', partial: 'lists/header_count', locals: { count: @list.entries.count, list: @list }),
+        turbo_stream.replace("entry-#{partial}-partial", partial: 'entries/add_button', locals: { list: @list, imdb_id: imdb, partial: partial })
+      ]
+    else
+      redirect_to list_path(@list), status: :see_other, notice: 'Entry was successfully destroyed.'
+    end
   end
 
   def watch
@@ -91,6 +110,7 @@ class EntriesController < ApplicationController
       end
     else
       if @entry.list.ordered
+        @entry.complete(false)
         current = @entry.list.assign_current(:previous)
         redirect_to watch_entry_path(current)
       else
@@ -118,10 +138,11 @@ class EntriesController < ApplicationController
       end
     else
       if @entry.list.ordered
-        @entry.toggle_complete
+        @entry.complete(true)
         current = @entry.list.assign_current(:next)
         redirect_to watch_entry_path(current)
       else
+        @entry.complete(true)
         list_positions = @entry.list.entries.map(&:position) - [@entry.list.current]
         random_entry_position = list_positions.sample
         current = @entry.list.assign_current(random_entry_position)
@@ -130,8 +151,15 @@ class EntriesController < ApplicationController
     end
   end
 
+  def shuffle_current
+    list_positions = @entry.list.entries.map(&:position) - [@entry.list.current]
+    random_entry_position = list_positions.sample
+    current = @entry.list.assign_current(random_entry_position)
+    redirect_to watch_entry_path(current)
+  end
+
   def complete
-    completed = @entry.toggle_complete
+    completed = @entry.complete(!@entry.completed)
     @entry.list.assign_current(completed ? :next : :current)
   end
 

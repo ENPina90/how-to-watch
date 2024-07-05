@@ -6,6 +6,7 @@ class List < ApplicationRecord
   has_many :entries, dependent: :destroy
   has_many :list_user_entries
   has_many :users, through: :list_user_entries
+  scope :with_entries, -> { joins(:entries).distinct }
 
   OFFSET = {
       previous: -1,
@@ -21,7 +22,7 @@ class List < ApplicationRecord
   def find_entry_by_position(change)
     new_position = OFFSET[change] ? self.current + OFFSET[change] : change
     entry = Entry.find_by(list: self, position: new_position)
-    find_entry_by_position(new_position + 1) if entry.nil?
+    entry = self.entries.sample if entry.nil?
     entry
   end
 
@@ -32,7 +33,7 @@ class List < ApplicationRecord
   end
 
   def find_sibling(change)
-    lists = List.where.not(current: nil).order(:created_at)
+    lists = List.with_entries.order(:created_at)
     current_list_index = lists.index(self)
     return list.first unless current_list_index
     new_index = current_list_index + OFFSET[change]

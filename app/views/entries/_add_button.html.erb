@@ -1,0 +1,6 @@
+<turbo-frame id="entry-<%= partial %>-partial">
+  <%= form_with url: list_entries_path(list), method: :post, local: true do %>
+    <input type="hidden" name="imdb" value="<%= imdb_id %>">
+    <button type='submit' name='create' value='create' class="btn btn-primary">+ Entry</button>
+  <% end %>
+</turbo-frame>

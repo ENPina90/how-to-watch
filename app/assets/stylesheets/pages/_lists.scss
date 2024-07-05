@@ -1,0 +1,28 @@
+.list {
+  position: relative;
+}
+
+.icon-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  /* Optional: to give a background overlay */
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.list:hover .icon-overlay {
+  display: flex !important;
+  /* Show the icons on hover */
+}
+
+.list-picture {
+  display: block;
+  width: 100%;
+}
+
+.list-name {
+  text-align: center;
+  margin-top: 10px;
+}

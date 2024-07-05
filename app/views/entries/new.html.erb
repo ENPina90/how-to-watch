@@ -1,8 +1,6 @@
 <div class="container" data-controller='search' data-search-id-value="<%= @list.id %>" data-search-key="<%= "#{ENV['API_KEY_1']}-#{ENV['API_KEY_2']}-#{ENV['API_KEY_3']}"%>">
   <div class="row justify-content-center layout-title">
-    <h1 class="text-center">
-      <span class="header-count"><%= @list.entries.count %></span> <%= link_to @list.name, list_path(@list) %>
-    </h1>
+    <%= render 'lists/header_count', count: @list.entries.count, list: @list %>
     <div class="list-input">
       <div class="list-options">
       </div>
@@ -14,9 +12,9 @@
         <% elsif params['type'] == 'custom' %>
           <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#custom' } } %>
         <% elsif params['type'] == 'episode' %>
-          <%= text_field_tag :entry, nil, data: { search_target: 'input', action: 'input->search#omdbEpisode' } %>
-          <%= text_field_tag :entry, nil, data: { search_target: 'season', action: 'input->search#omdbEpisode' } %>
-          <%= text_field_tag :entry, nil, data: { search_target: 'episode', action: 'input->search#omdbEpisode' } %>
+          <%= text_field_tag :entry, nil, data: { search_target: 'input', action: 'input->search#omdbShow', placeholder: 'Enter show title or IMDb ID' } %>
+          <%= text_field_tag :entry, nil, data: { search_target: 'season', action: 'input->search#omdbEpisode', placeholder: 'Season number' } %>
+          <%= text_field_tag :entry, nil, data: { search_target: 'episode', action: 'input->search#omdbEpisode', placeholder: 'Episode number' } %>
         <% else %>
           <h5>Coming soon</h5>
         <% end %>
@@ -75,10 +73,12 @@
       </div>
       <div class="card-menu">
         <i class="fa-solid fa-play"></i>
-        <form action="/lists/<%= @list.id %>/entries" method='post'>
-          <input class='d-none' name='imdb' value='{{imdbID}}'>
-          <button type='submit' name='create' value='create'><i class="fa-solid fa-plus"></i></button>
-        </form>
+        <turbo-frame id="entry_{{imdbID}}_partial">
+          <form action="/lists/<%= @list.id %>/entries" method='post'>
+            <input class='d-none' name='imdb' value='{{imdbID}}'>
+            <button type='submit' name='create' value='create' class="btn btn-primary">+ Entry</button>
+          </form>
+        </turbo-frame>
       </div>
     </div>
   </div>
@@ -96,10 +96,12 @@
           <h6 class="card-title">{{Title}}</h6>
           <p class="card-text">{{Year}}</p>
           <p class="card-text">{{totalSeasons}}</p>
-          <form action="/lists/<%= @list.id %>/entries" method='post'>
-            <input class='d-none' name='imdb' value='{{imdbID}}'>
-            <button type='submit' name='create' value='create' class="btn btn-primary">+ Show</button>
-          </form>
+          <turbo-frame id="entry_{{imdbID}}_partial">
+            <form action="/lists/<%= @list.id %>/entries" method='post'>
+              <input class='d-none' name='imdb' value='{{imdbID}}'>
+              <button type='submit' name='create' value='create' class="btn btn-primary">+ Entry</button>
+            </form>
+          </turbo-frame>
           <%# <button class="btn btn-primary" data-action="click->search#add" data-imdb="{{imdbID}}">+ movie</button> %>
           <%# <a href="{{url}}" >+ movie</a> %>
         </div>
@@ -118,11 +120,13 @@
       <div class="col-6" style="100%">
         <div class="card-body">
           <h6 class="card-title">{{Title}}</h6>
-          <p class="card-text">S {{Season}}, Ep {{Episode}}</p>
-          <form action="/lists/<%= @list.id %>/entries" method='post' data-turbo-frame="new_entry_form">
-            <input class='d-none' name='imdb' value='{{imdbID}}'>
-            <button type='submit' name='create' value='create' class="btn btn-primary">+ Episode</button>
-          </form>
+          <p class="card-text">S{{Season}}E{{Episode}}</p>
+          <turbo-frame id="entry_S{{Season}}E{{Episode}}_partial">
+            <form action="/lists/<%= @list.id %>/entries" method='post'>
+              <input class='d-none' name='imdb' value='{{imdbID}}'>
+              <button type='submit' name='create' value='create' class="btn btn-primary">+ Entry</button>
+            </form>
+          </turbo-frame>
           <%# <button class="btn btn-primary" data-action="click->search#add" data-imdb="{{imdbID}}">+ movie</button> %>
           <%# <a href="{{url}}" >+ movie</a> %>
         </div>

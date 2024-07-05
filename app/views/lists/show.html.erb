@@ -12,7 +12,9 @@
           <%= link_to edit_list_path(@list) do %>
             <i class="fa-solid fa-pen"></i>
           <% end %>
-          <i class="fa-solid fa-trash"></i>
+          <%= link_to list_path(@list), method: :delete, data: {turbo_method: :delete, turbo_confirm: 'Are you sure?'} do %>
+            <i class="fa-solid fa-trash"></i>
+          <% end %>
         <% end %>
       </div>
       <div class="col-8 border-top">

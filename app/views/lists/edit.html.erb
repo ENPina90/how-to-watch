@@ -1,0 +1,7 @@
+<%= simple_form_for @list do |f| %>
+  <%= f.input :name %>
+  <%= f.input :ordered, as: :boolean %>
+  <%= f.input :private, as: :boolean %>
+  <%= f.input :sort, collection: ['Year', 'Genre', 'Watched', 'Type', 'Length'], include_blank: true %>
+  <%= f.button :submit %>
+<% end %>

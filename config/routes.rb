@@ -17,6 +17,7 @@ Rails.application.routes.draw do
       get :reportlink
       get :watch
       get :duplicate
+      get :shuffle_current
       get :increment_current
       get :decrement_current
     end

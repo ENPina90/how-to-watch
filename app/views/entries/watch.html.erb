@@ -19,10 +19,13 @@
   <%# <i class="fa-solid fa-expand cinema__control" data-action="click->cinema#fullscreen"></i> %>
 
   <div class="cinema__title">
-    <h3><%= @entry.list.name %></h3>
+    <h3><%= link_to @entry.list.name, list_path(@entry.list), class: 'text-white'  %></h3>
     <h1><%= @entry.name %></h1>
     <% if @entry.media == "series" && @entry.current %>
+      <h3><%= @entry.series %></h3>
       <h3>S<%= @entry.current.season %>E<%= @entry.current.episode %> - <%= @entry.current.name %></h3>
+    <% elsif @entry.media == "episode" %>
+      <h3><%= @entry.series %></h3>
     <% end %>
   </div>
   <div class="d-flex justify-content-center cinema__control mt-5 me-5">
@@ -33,13 +36,21 @@
       <%= link_to increment_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
         <i class="fa-solid fa-3x fa-caret-right position-absolute top-50 end-0 translate-middle-y"></i>
       <% end %>
+      <%= link_to shuffle_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
+        <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y"></i>
+      <% end %>
+      <i class="fa-<%= @entry.completed ? "solid" : "regular"%> fa-eye fa-2x text-decoration-none position-absolute top-0 start-0 translate-middle-y"
+        title="Mark as watched"
+        data-controller="completed"
+        data-completed-id-value="<%= @entry.id %>"
+        data-action="click->completed#toggle"></i>
       <%= link_to list_watch_current_path(@entry.list.find_sibling(:next)) do %>
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
       <%= link_to decrement_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
         <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
       <% end %>
-      <%= link_to list_path(@entry.list), class: 'text-decoration-none' do %>
+      <%= link_to root_path, class: 'text-decoration-none' do %>
         <i class="fa-solid fa-house fa-2x position-absolute top-50 start-50 translate-middle"></i>
       <% end %>
     </div>

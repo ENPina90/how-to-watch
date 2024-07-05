@@ -56,9 +56,9 @@ class OmdbApi
       response['Episodes'].each do |episode|
         Subentry.create_from_source(main_entry, episode, season + 1)
       end
-      first_episode = Subentry.find_by(entry: main_entry, season: 1, episode: 1)
-      main_entry.update(current: first_episode)
     end
+    first_episode = Subentry.find_by(entry: main_entry, season: 1, episode: 1)
+    main_entry.update(current: first_episode)
   end
 
   def self.normalize_omdb_data(result)
@@ -83,7 +83,7 @@ class OmdbApi
     if result['seriesID']
       normalized_data[:imdb] = result['seriesID']
       series_data = get_movie(result['seriesID'])
-      normalized_data[:category] = series_data['Title'] if series_data
+      normalized_data[:series] = series_data['Title'] if series_data
     end
 
     normalized_data

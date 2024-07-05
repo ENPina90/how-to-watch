@@ -14,6 +14,7 @@ export default class extends Controller {
     this.episodeTemplate = document.querySelector("#episodeCardTemplate");
     // URLSearchParams creates an object from the query string in the URL
     this.params = new URLSearchParams(window.location.search);
+    this.previousCount = 0
     this.previousEpisodes = [];
   }
 
@@ -58,30 +59,48 @@ export default class extends Controller {
   }
 
   omdb() {
-    let keyword = this.inputTarget.value;
-    fetch(`${this.api}s=${keyword}&apikey=${this.apiKeys[this.randomNumber(2)]}`)
+    const apiKey = this.randomAPIKey();
+    const keyword = this.inputTarget.value;
+    const pattern = /^tt\d{4,}$/;
+    const isId = pattern.test(keyword);
+    const fetchUrl = isId
+      ? `http://www.omdbapi.com/?i=${keyword}&apikey=${apiKey}`
+      : `${this.api}s=${keyword}&apikey=${apiKey}`;
+
+    fetch(fetchUrl)
       .then((response) => response.json())
       .then((data) => {
         if (!data.Error) {
-          // console.log(data.Search[0]);
-          const movieData = { movies: data.Search };
-          const output = Mustache.render(
-            this.movieTemplate.innerHTML,
-            movieData
-          );
+          let movieData;
+          if (isId) {
+            movieData = { movies: [data] }; // Wrap in an array to maintain consistency
+          } else {
+            movieData = { movies: data.Search };
+          }
+
+          const output = Mustache.render(this.movieTemplate.innerHTML, movieData);
           this.resultsTarget.innerHTML = output;
-          let countElement = `<div>
-              <h3 class="align-self-start">Results <small data-search-target="count">${data.Search.length}</small></h3>
-            </div>`;
+
+          const countElement = `
+          <div>
+            <h3 class="align-self-start">Results <small data-search-target="count">${movieData.movies.length}</small></h3>
+          </div>`;
           this.resultsTarget.insertAdjacentHTML("afterbegin", countElement);
         }
-      });
+      })
+      .catch((error) => console.error('Error fetching data:', error));
   }
 
   omdbShow() {
-    let keyword = this.inputTarget.value;
-    // console.log(`${this.api}t=${keyword}&${this.apiKey}&type=series`);
-    fetch(`${this.api}t=${keyword}&apikey=${this.apiKeys[this.randomNumber(2)]}&type=series`)
+    const apiKey = this.randomAPIKey();
+    const keyword = this.inputTarget.value;
+    const pattern = /^tt\d{4,}$/;
+    const isId = pattern.test(keyword);
+    const fetchUrl = isId
+      ? `http://www.omdbapi.com/?i=${keyword}&apikey=${apiKey}`
+      : `${this.api}t=${keyword}&apikey=${apiKey}`;
+    console.log(fetchUrl);
+    fetch(fetchUrl)
       .then((response) => response.json())
       .then((data) => {
         if (!data.Error) {
@@ -115,13 +134,15 @@ export default class extends Controller {
     season = `&season=${season ? season : 1}`;
     let episode = this.episodeTarget.value;
     episode = `${episode ? "&episode=" + episode : ""}`;
-    let url = `${this.api}t=${keyword}${season}${episode}&apikey=${this.apiKeys[this.randomNumber(2)]}&type=series`;
+    let url = `${this.api}t=${keyword}${season}${episode}&apikey=${this.randomAPIKey()}&type=series`;
 
     fetch(url)
       .then((response) => response.json())
       .then((data) => {
         if (!data.Error) {
-          if (data.Episodes && data.Episodes.length > 0) {
+          console.log(this.previousCount);
+          if (data.Episodes) {
+            console.log(data.Episodes.length);
             const firstEpisode = data.Episodes[0];
             if (JSON.stringify(firstEpisode) === JSON.stringify(this.previousFirstEpisode)) {
               console.log("First episode data has not changed");
@@ -131,10 +152,10 @@ export default class extends Controller {
           }
           this.resultsTarget.innerHTML = "";
           if (data.Episodes) {
+            this.previousCount = data.Episodes.length
             // Create an array of promises for fetching each episode
             const episodePromises = data.Episodes.map((episode) => {
-              const episodeUrl = `${this.api}i=${episode.imdbID}&apikey=${this.apiKeys[this.randomNumber(2)]}`;
-              console.log(episodeUrl);
+              const episodeUrl = `${this.api}i=${episode.imdbID}&apikey=${this.randomAPIKey()}`;
               return fetch(episodeUrl).then((response) => response.json());
             });
 
@@ -147,9 +168,10 @@ export default class extends Controller {
               });
             });
           } else {
-            this.episodeInsert(`${this.api}i=${data.imdbID}&${this.apiKeys[this.randomNumber(2)]}`);
+            this.episodeInsert(`${this.api}i=${data.imdbID}&apikey=${this.randomAPIKey()}`);
           }
         }
+        this.previousCount = JSON.stringify(data).length
       });
   }
 
@@ -166,14 +188,16 @@ export default class extends Controller {
   add(event) {
     const imdbID = event.currentTarget.dataset.imdb;
     // console.log(imdbID);
-    fetch(`${this.api}i=${imdbID}&apikey=${this.apiKeys[this.randomNumber(3)]}`)
+    fetch(`${this.api}i=${imdbID}&apikey=${this.randomAPIKey()}`)
       .then((response) => response.json())
       .then((data) => {
         this.createEntry(data);
       });
   }
 
-  randomNumber(x) {
-    return Math.floor(Math.random() * x);
+  randomAPIKey() {
+    let randomNum =  Math.floor(Math.random() * 3);
+    return this.apiKeys[randomNum]
+    // return this.apiKeys[2]
   }
 }
