@@ -4,9 +4,9 @@ class OmdbApi
 
   URL = 'http://www.omdbapi.com/?'
   API_KEYS = [
-    ENV['API_KEY_1'],
-    ENV['API_KEY_2'],
-    ENV['API_KEY_3']
+    ENV['OMDB_API_KEY_1'],
+    ENV['OMDB_API_KEY_2'],
+    ENV['OMDB_API_KEY_3']
   ].freeze
 
   def self.search_by_title(title, number: 1, year: nil)
@@ -20,6 +20,7 @@ class OmdbApi
   def self.get_movie(imdb_id)
     query = "#{URL}i=#{imdb_id}&apikey=#{API_KEYS.sample}"
     response = api_call(query)
+    return if response.nil?
     return unless ['movie', 'series', 'episode'].include?(response['Type']) && response['Poster'] != 'N/A'
 
     # if response['Type'] == 'series'
@@ -81,7 +82,7 @@ class OmdbApi
     }
 
     if result['seriesID']
-      normalized_data[:imdb] = result['seriesID']
+      normalized_data[:series_imdb] = result['seriesID']
       series_data = get_movie(result['seriesID'])
       normalized_data[:series] = series_data['Title'] if series_data
     end

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
+import { Modal } from "bootstrap";
 
 // Connects to data-controller="edit"
 export default class extends Controller {
@@ -6,6 +7,7 @@ export default class extends Controller {
 
   connect() {
     // console.log("hello");
+    this.modal = new Modal(this.modalTarget);
   }
 
   toggle(event) {
@@ -17,5 +19,10 @@ export default class extends Controller {
         this.modalTarget.innerHTML = data;
         // console.log(data);
       });
+  }
+
+  close() {
+    console.log('clicked');
+    this.modalTarget.hide();
   }
 }

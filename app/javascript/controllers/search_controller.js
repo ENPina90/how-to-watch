@@ -1,203 +1,198 @@
 import { Controller } from "@hotwired/stimulus";
 import Mustache from "mustachejs";
+import TmdbService from "../services/tmdb_service";
+import TmdbMapper from "../services/tmdb_mapper";
 
-// Connects to data-controller="search"
 export default class extends Controller {
   static targets = ["input", "season", "episode", "results", "count"];
   static values = { id: Number };
 
   connect() {
-    this.api = "http://www.omdbapi.com/?";
-    this.apiKeys = this.data.get("key").split('-');
+    this.api = 'https://api.themoviedb.org/3/'
+    this.apiKey = '7e1c210d0c877abff8a40398735ce605'
+    this.tmdbService = new TmdbService(this.apiKey);
     this.movieTemplate = document.querySelector("#movieCardTemplate");
     this.showTemplate = document.querySelector("#showCardTemplate");
     this.episodeTemplate = document.querySelector("#episodeCardTemplate");
-    // URLSearchParams creates an object from the query string in the URL
-    this.params = new URLSearchParams(window.location.search);
-    this.previousCount = 0
-    this.previousEpisodes = [];
-  }
 
-  entries(event) {
-    event.preventDefault();
-    // creates or updates the query string
-    if (event.type == "click") {
-      document.querySelectorAll("a").forEach((link) => {
-        link.style.color = "black";
-      });
-      // checks if first or second click
-      if (
-        this.params.get("criteria") == event.currentTarget.text &&
-        !this.params.get("sort")
-      ) {
-        this.params.set("sort", "reverse");
-      } else {
-        this.params.delete("sort");
-      }
-      this.params.set("criteria", event.currentTarget.text);
-      event.currentTarget.style.color = "#1A936F";
-    }
-    if (this.inputTarget.value) {
-      this.params.set("query", this.inputTarget.value);
-    }
-    if (this.inputTarget.value.length === 0) {
-      this.params.delete("query");
-    }
-    const baseUrl = window.location.origin;
-    const url = `${baseUrl}/lists/${this.idValue}?${this.params.toString()}`;
-    fetch(url, { headers: { Accept: "text/plain" } })
-      .then((response) => response.text())
-      .then((data) => {
-        this.resultsTarget.outerHTML = data;
-      });
-    // updates the url bar in real time and adds to history, to maintain search through page load
-    window.history.replaceState(
-      { additionalInformation: "updated with Stimulus" },
-      "new page",
-      url
-    );
-  }
-
-  omdb() {
-    const apiKey = this.randomAPIKey();
-    const keyword = this.inputTarget.value;
-    const pattern = /^tt\d{4,}$/;
-    const isId = pattern.test(keyword);
-    const fetchUrl = isId
-      ? `http://www.omdbapi.com/?i=${keyword}&apikey=${apiKey}`
-      : `${this.api}s=${keyword}&apikey=${apiKey}`;
-
-    fetch(fetchUrl)
-      .then((response) => response.json())
-      .then((data) => {
-        if (!data.Error) {
-          let movieData;
-          if (isId) {
-            movieData = { movies: [data] }; // Wrap in an array to maintain consistency
-          } else {
-            movieData = { movies: data.Search };
-          }
-
-          const output = Mustache.render(this.movieTemplate.innerHTML, movieData);
-          this.resultsTarget.innerHTML = output;
-
-          const countElement = `
-          <div>
-            <h3 class="align-self-start">Results <small data-search-target="count">${movieData.movies.length}</small></h3>
-          </div>`;
-          this.resultsTarget.insertAdjacentHTML("afterbegin", countElement);
-        }
-      })
-      .catch((error) => console.error('Error fetching data:', error));
-  }
-
-  omdbShow() {
-    const apiKey = this.randomAPIKey();
-    const keyword = this.inputTarget.value;
-    const pattern = /^tt\d{4,}$/;
-    const isId = pattern.test(keyword);
-    const fetchUrl = isId
-      ? `http://www.omdbapi.com/?i=${keyword}&apikey=${apiKey}`
-      : `${this.api}t=${keyword}&apikey=${apiKey}`;
-    console.log(fetchUrl);
-    fetch(fetchUrl)
-      .then((response) => response.json())
-      .then((data) => {
-        if (!data.Error) {
-          console.log(data);
-          const movieData = { movies: data };
-          const output = Mustache.render(
-            this.showTemplate.innerHTML,
-            movieData
-          );
-          this.resultsTarget.innerHTML = output;
-        }
-      });
-  }
-
-  episodeInsert(url) {
-    fetch(url)
-      .then((response) => response.json())
-      .then((data) => {
-        const movieData = { movies: data };
-        const output = Mustache.render(
-          this.episodeTemplate.innerHTML,
-          movieData
-        );
-        this.resultsTarget.insertAdjacentHTML("beforeend", output);
-      });
-  }
-
-  omdbEpisode() {
-    let keyword = this.inputTarget.value;
-    let season = this.seasonTarget.value;
-    season = `&season=${season ? season : 1}`;
-    let episode = this.episodeTarget.value;
-    episode = `${episode ? "&episode=" + episode : ""}`;
-    let url = `${this.api}t=${keyword}${season}${episode}&apikey=${this.randomAPIKey()}&type=series`;
-
-    fetch(url)
-      .then((response) => response.json())
-      .then((data) => {
-        if (!data.Error) {
-          console.log(this.previousCount);
-          if (data.Episodes) {
-            console.log(data.Episodes.length);
-            const firstEpisode = data.Episodes[0];
-            if (JSON.stringify(firstEpisode) === JSON.stringify(this.previousFirstEpisode)) {
-              console.log("First episode data has not changed");
-              return;
-            }
-            this.previousFirstEpisode = firstEpisode;
-          }
-          this.resultsTarget.innerHTML = "";
-          if (data.Episodes) {
-            this.previousCount = data.Episodes.length
-            // Create an array of promises for fetching each episode
-            const episodePromises = data.Episodes.map((episode) => {
-              const episodeUrl = `${this.api}i=${episode.imdbID}&apikey=${this.randomAPIKey()}`;
-              return fetch(episodeUrl).then((response) => response.json());
-            });
-
-            // Wait for all fetch requests to complete
-            Promise.all(episodePromises).then((episodes) => {
-              episodes.forEach((episodeData) => {
-                const movieData = { movies: episodeData };
-                const output = Mustache.render(this.episodeTemplate.innerHTML, movieData);
-                this.resultsTarget.insertAdjacentHTML("beforeend", output);
-              });
-            });
-          } else {
-            this.episodeInsert(`${this.api}i=${data.imdbID}&apikey=${this.randomAPIKey()}`);
-          }
-        }
-        this.previousCount = JSON.stringify(data).length
-      });
-  }
-
-  createEntry(jsonMovie) {
-    const url = `${window.location.origin}/lists/${this.idValue}/entries`;
-    fetch(url, {
-      method: "POST",
-      body: JSON.stringify(jsonMovie),
-    }).then((response) => {
-      window.location.href = response.url;
+    this.entriesInList = (this.element.dataset.searchEntries || "").split('/').map(entry => {
+      const [id, imdb] = entry.split('-');
+      return { id, imdb };
     });
   }
 
-  add(event) {
-    const imdbID = event.currentTarget.dataset.imdb;
-    // console.log(imdbID);
-    fetch(`${this.api}i=${imdbID}&apikey=${this.randomAPIKey()}`)
-      .then((response) => response.json())
-      .then((data) => {
-        this.createEntry(data);
-      });
+  // -----------------------------
+  // SEARCH METHODS
+  // -----------------------------
+
+  tmdbSearch() {
+    const keyword = this.inputTarget.value.trim();
+    const isImdbId = /^tt\d{4,}$/.test(keyword);
+
+    this.tmdbService.fetchMovies(keyword, isImdbId)
+      .then(data => {
+        const movies = isImdbId ? data.movie_results : data.results;
+        const filteredMovies = movies.filter(movie => movie.vote_count >= 10 && movie.poster_path)
+          .sort((a, b) => b.popularity - a.popularity);
+
+        const moviePromises = filteredMovies.map(movie =>
+          this.tmdbService.fetchMovieDetails(movie.id)
+            .then(details => TmdbMapper.mapMovieOrShowToTemplate(details))
+        );
+        return Promise.all(moviePromises);
+      })
+      .then(moviesWithImdb => {
+        const validMovies = moviesWithImdb.filter(movie => movie !== null);
+
+        // Add 'isInList' flag to each movie
+
+        const moviesWithInListFlag = validMovies.map(movie => {
+          const entry = this.entriesInList.find(entry => entry.imdb === movie.imdbID);
+          movie.isInList = !!entry;
+          movie.entryId = entry ? entry.id : null;
+          return movie;
+        });
+
+        this.renderMovies(moviesWithInListFlag);
+      })
+      .catch(error => console.error('Error fetching movies:', error));
   }
 
-  randomAPIKey() {
-    let randomNum =  Math.floor(Math.random() * 3);
-    return this.apiKeys[randomNum]
-    // return this.apiKeys[2]
+  tmdbShow() {
+    const keyword = this.inputTarget.value.trim();
+    const isImdbId = /^tt\d{4,}$/.test(keyword);
+
+    this.tmdbService.fetchShows(keyword, isImdbId)
+      .then(data => {
+        const shows = isImdbId ? data.tv_results : data.results;
+        const filteredShows = shows.filter(show => show.vote_count >= 10 && show.poster_path)
+          .sort((a, b) => b.popularity - a.popularity);
+
+        const showPromises = filteredShows.map(show => this.tmdbService.fetchShowDetails(show.id).then(TmdbMapper.mapMovieOrShowToTemplate));
+        return Promise.all(showPromises);
+      })
+      .then(showsWithImdb => {
+        const validShows = showsWithImdb.filter(show => show !== null);
+        this.renderShows(validShows);
+      })
+      .catch(error => console.error('Error fetching shows:', error));
+  }
+
+  // -----------------------------
+  // RENDERING METHODS
+  // -----------------------------
+
+  renderMovies(movies) {
+    const movieData = { movies };
+    const output = Mustache.render(this.movieTemplate.innerHTML, movieData);
+    this.resultsTarget.innerHTML = output;
+  }
+
+  renderShows(shows) {
+    const showData = { movies: shows };
+    const output = Mustache.render(this.showTemplate.innerHTML, showData);
+    this.resultsTarget.innerHTML = output;
+  }
+
+  renderEpisodesForSeason(tmdbId, imdbId, season, dropdownHtml = '') {
+    this.tmdbService.fetchEpisodes(tmdbId, season)
+      .then(data => {
+        console.log(data.episodes);
+        console.log(imdbId);
+
+        // Fetch IMDb ID for each episode
+        const episodePromises = data.episodes.map(episode => {
+          return this.tmdbService.fetchEpisodeImdbId(tmdbId, season, episode.episode_number)
+            .then(imdbData => {
+              episode.imdb_id = imdbData.imdb_id;  // Attach the IMDb ID to the episode
+              return episode;
+            });
+        });
+
+        // Once all episodes have their IMDb ID, map them to the template
+        Promise.all(episodePromises).then(episodesWithImdb => {
+          const episodeData = {
+            movies: episodesWithImdb.map(episode => TmdbMapper.mapTmdbEpisodeToTemplate(episode, imdbId))
+          };
+          console.log(episodeData);
+          const episodesHtml = Mustache.render(this.episodeTemplate.innerHTML, episodeData);
+          this.resultsTarget.innerHTML = dropdownHtml + episodesHtml;
+        });
+      })
+      .catch(error => console.error('Error fetching episodes:', error));
+  }
+
+
+  // -----------------------------
+  // SEASON DROPDOWN METHODS
+  // -----------------------------
+
+  seeEpisodes(event) {
+    const tmdbId = event.currentTarget.dataset.tmdbId;
+    const season = 1;
+
+    this.tmdbService.fetchShowDetails(tmdbId)
+      .then(showData => {
+        const numberOfSeasons = showData.number_of_seasons;
+        const seriesName = showData.name;
+        const dropdownHtml = this.renderSeasonDropdown(seriesName, numberOfSeasons, tmdbId, season);
+        this.renderEpisodesForSeason(tmdbId, showData.imdb_id, season, dropdownHtml);
+      })
+      .catch(error => console.error('Error fetching show details:', error));
+  }
+
+  changeSeason(event) {
+    const tmdbId = event.target.dataset.tmdbId;
+    const selectedSeason = event.target.value;
+
+    // Log the tmdbId and season to ensure they are correct
+    console.log('Selected TMDb ID:', tmdbId);
+    console.log('Selected Season:', selectedSeason);
+
+    const fetchUrl = `${this.api}tv/${tmdbId}?api_key=${this.apiKey}`;
+
+    console.log('Fetching show details from:', fetchUrl);
+
+    fetch(fetchUrl)
+      .then(response => response.json())
+      .then(showData => {
+        if (!showData.errors) {
+          const numberOfSeasons = showData.number_of_seasons;
+          const seriesName = showData.name;
+
+          // Inject the season dropdown with the selected season
+          const dropdownHtml = this.renderSeasonDropdown(seriesName, numberOfSeasons, tmdbId, selectedSeason);
+
+          // Fetch the episodes for the selected season
+          this.renderEpisodesForSeason(tmdbId, showData.imdb_id, selectedSeason, dropdownHtml);
+        } else {
+          console.error('Error fetching show details:', showData.errors);
+        }
+      })
+      .catch(error => console.error('Error fetching show details:', error));
+  }
+
+
+  renderSeasonDropdown(seriesName, numberOfSeasons, tmdbId, selectedSeason = 1) {
+    let dropdownHtml = `
+      <div class="d-flex align-items-center mb-3">
+        <h4 class="mr-3">${seriesName}</h4>
+        <div class="form-group">
+          <label for="seasonSelect" class="mr-2">Select Season:</label>
+          <select id="seasonSelect" class="form-control" data-tmdb-id="${tmdbId}" data-action="change->search#changeSeason">
+    `;
+
+    for (let i = 1; i <= numberOfSeasons; i++) {
+      const selected = i == selectedSeason ? 'selected' : '';
+      dropdownHtml += `<option value="${i}" ${selected}>Season ${i}</option>`;
+    }
+
+    dropdownHtml += `
+          </select>
+        </div>
+      </div>
+    `;
+
+    return dropdownHtml;
   }
 }

@@ -9,6 +9,7 @@ Rails.application.routes.draw do
   resources :lists do
     get :randomize
     get :watch_current
+    get :top_entries
     resources :entries, only: [:new, :create]
   end
   resources :entries, only: [:show, :create, :edit, :update, :destroy] do
@@ -20,6 +21,7 @@ Rails.application.routes.draw do
       get :shuffle_current
       get :increment_current
       get :decrement_current
+      patch :update_position
     end
   end
 end

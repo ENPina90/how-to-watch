@@ -5,7 +5,7 @@
     <% end %>
     <p class="list-name">Now Playing</p>
   </div>
-  <% @lists.order(:created_at).each do |list| %>
+  <% @lists.each do |list| %>
     <%= link_to list_watch_current_path(list) do %>
       <div class="list">
         <%= image_tag(list.find_entry_by_position(:current)&.pic || asset_path('please_stand_by.png'), alt: list.name, class: 'list-picture') %>

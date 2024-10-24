@@ -1,0 +1,9 @@
+.entry-minimal-icons {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+
+}
+
+.entry-minimal:hover .entry-minimal-icons {
+  opacity: 1;
+}

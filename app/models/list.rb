@@ -6,7 +6,6 @@ class List < ApplicationRecord
   has_many :entries, dependent: :destroy
   has_many :list_user_entries
   has_many :users, through: :list_user_entries
-  scope :with_entries, -> { joins(:entries).distinct }
 
   OFFSET = {
       previous: -1,
@@ -19,12 +18,26 @@ class List < ApplicationRecord
     where('name ILIKE ?', "%#{name}%").first
   end
 
-  def find_entry_by_position(change)
-    new_position = OFFSET[change] ? self.current + OFFSET[change] : change
-    entry = Entry.find_by(list: self, position: new_position)
-    entry = self.entries.sample if entry.nil?
-    entry
+  def watched!
+    entry = find_entry_by_position(:next)
+    self.update(current: entry.position)
+    redirect_to watch_entry_path(entry)
   end
+
+  def find_entry_by_position(change)
+    return nil if entries.empty?
+
+    new_position = OFFSET[change] ? self.current + OFFSET[change] : change
+    new_position = entries.minimum(:position) if new_position < 0 || new_position > entries.maximum(:position)
+
+    # Find the entry by list and position
+    entry = Entry.find_by(list: self, position: new_position)
+    # Base case to prevent infinite recursion: stop when position exceeds bounds
+
+    # Recursively find the next valid entry
+    entry || find_entry_by_position(new_position + 1)
+  end
+
 
   def assign_current(change)
     new_position = OFFSET[change] ? self.current + OFFSET[change] : change
@@ -33,7 +46,7 @@ class List < ApplicationRecord
   end
 
   def find_sibling(change)
-    lists = List.with_entries.order(:created_at)
+    lists = List.where.not(current: nil).order(:created_at)
     current_list_index = lists.index(self)
     return list.first unless current_list_index
     new_index = current_list_index + OFFSET[change]

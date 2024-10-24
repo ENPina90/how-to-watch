@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
-  before_action :set_list, only: [:show, :edit, :destroy, :watch_current, :watch_random]
+  before_action :set_list, only: [:show, :edit, :destroy, :watch_current, :watch_random, :top_entries]
 
   def index
-    @lists = List.all
+    @lists = List.order(:last_watched_at).reverse
     List.where(ordered: false).each{|unordered_list| unordered_list.assign_current(:next) }
   end
 
@@ -26,6 +26,7 @@ class ListsController < ApplicationController
 
   def show
     load_entries
+    @minimal = params[:view] == "minimal"
     @current = @list.find_entry_by_position(:current) unless @list.entries.empty?
     @random_selection = @list_entries.sample(3)
     respond_to do |format|
@@ -33,6 +34,7 @@ class ListsController < ApplicationController
       format.text do
         render partial: 'entries',
                locals: {
+                 minimal: @minimal,
                  entries: @entries,
                  sections: @sections,
                  random_selection: @random_selection,
@@ -59,6 +61,27 @@ class ListsController < ApplicationController
     end
   end
 
+  def top_entries
+    tmdb_service = TmdbService.new
+    series_imdb_id = tmdb_service.fetch_imdb_id(params[:tmdb], 'show')
+    scraper = ImdbScraper.new(@list, series_imdb_id)
+    episodes = scraper.fetch_episode_imdb_ids_with_ratings
+    counter = 0
+    episodes.each do |episode|
+      break if counter == params[:top_number].to_i || counter == 20
+      omdb_result = OmdbApi.get_movie(episode[:imdb_id])
+      next if omdb_result.nil?
+      next if !!(omdb_result["Title"] =~ /\s[Pp]art\s/)
+      omdb_result["seriesID"] = series_imdb_id
+      omdb_result["imdbRating"] = episode[:rating]
+      @entry = Entry.create_from_source(omdb_result, @list, false)
+      @entry.update(series: scraper_results[:title]) if @entry.series.nil?
+      counter += 1
+    end
+    flash[:notice] = "#{ActionController::Base.helpers.pluralize(counter, 'episode')} of #{@list.entries.last&.series} added"
+    redirect_to list_path(@list)
+  end
+
   # def watch_random
   #   watch_path(@list.find_entry_by_position(:random))
   # end
@@ -78,6 +101,7 @@ class ListsController < ApplicationController
     @entries = {}
     @criteria = params[:criteria].present? ? params[:criteria] : 'Position'
     filter_entries(@criteria)
+     @entries = @entries.transform_keys { |key| key.nil? ? 'Other' : key }
     @sections = params[:sort].present? ? @entries.keys.sort.reverse : @entries.keys.sort
 
     return unless @list.user == current_user

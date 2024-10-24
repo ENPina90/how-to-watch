@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2024_06_02_181949) do
+ActiveRecord::Schema[7.0].define(version: 2024_10_16_111157) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -47,7 +47,12 @@ ActiveRecord::Schema[7.0].define(version: 2024_06_02_181949) do
     t.integer "current_season"
     t.integer "current_episode"
     t.bigint "current_id"
+    t.string "tmdb"
+    t.string "trailer"
+    t.datetime "deleted_at"
+    t.string "series_imdb"
     t.index ["current_id"], name: "index_entries_on_current_id"
+    t.index ["deleted_at"], name: "index_entries_on_deleted_at"
     t.index ["list_id"], name: "index_entries_on_list_id"
   end
 
@@ -91,6 +96,7 @@ ActiveRecord::Schema[7.0].define(version: 2024_06_02_181949) do
     t.integer "current"
     t.boolean "ordered"
     t.boolean "private"
+    t.datetime "last_watched_at"
     t.index ["user_id"], name: "index_lists_on_user_id"
   end
 

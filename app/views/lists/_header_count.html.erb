@@ -1,5 +1,3 @@
-<%= turbo_frame_tag "header-count" do %>
-  <h1 class="text-center">
-    <span class="header-count"><%= count %></span><%= link_to list.name, list_path(list) %>
-  </h1>
+<%= turbo_frame_tag "header-count-#{list.id}" do %>
+  <span class="header-count"><%= count %></span>
 <% end %>

@@ -25,7 +25,7 @@
       <h3><%= @entry.series %></h3>
       <h3>S<%= @entry.current.season %>E<%= @entry.current.episode %> - <%= @entry.current.name %></h3>
     <% elsif @entry.media == "episode" %>
-      <h3><%= @entry.series %></h3>
+      <h3><%= @entry.series %> - S<%= @entry.season %>E<%= @entry.episode %></h3>
     <% end %>
   </div>
   <div class="d-flex justify-content-center cinema__control mt-5 me-5">

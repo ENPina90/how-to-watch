@@ -6,11 +6,19 @@
   <div class="modal-body">
     <%= simple_form_for(entry) do |f|%>
       <%= f.input :list, collection: @user_lists, selected: entry.list.id %>
+      <%= f.input :position %>
       <%= f.input :name %>
+      <%= f.input :media %>
       <%= f.input :source %>
       <%= f.input :pic %>
+      <%= f.input :series %>
+      <%= f.input :plot %>
       <%= f.input :category %>
       <%= f.input :note %>
+      <% if entry.media == 'episode' %>
+        <%= f.input :season %>
+        <%= f.input :episode %>
+      <% end %>
       <% if entry.media == 'series' %>
         <h3>Episodes</h3>
         <%= f.simple_fields_for :subentries do |subentry_form| %>
@@ -21,7 +29,7 @@
           <%= subentry_form.input :_destroy, as: :boolean, label: 'Remove Subentry' %>
         <% end %>
       <% end %>
-      <%= f.button :submit, class: 'btn-action' %>
+      <%= f.button :submit, class: 'btn-action', data: { bs_dismiss: "modal" }, aria_label: "Close" %>
     <% end %>
   </div>
 </div>

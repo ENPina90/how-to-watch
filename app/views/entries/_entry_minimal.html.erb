@@ -1,0 +1,39 @@
+<div class="row entry-minimal border border-dark border-top-0 border-start-0 border-end-0" data-id="<%= entry.id %>">
+  <div class="col-1 align-self-center">
+    <i class="fa-solid fa-grip-vertical entry-minimal-icons"></i>
+  </div>
+  <div class="col-8 mt-2">
+    <%= entry.position %>. <%= link_to entry.name, watch_entry_path(entry), data: { turbo: false } %>
+    <% if entry.media == "episode" %>
+      <div class="d-flex justify-content-between">
+        <p><small><%= entry.series %> - S<%= entry.season %>E<%= entry.episode %></small></p>
+      </div>
+    <% else %>
+      <p><small><%= entry.year %></small></p>
+    <% end %>
+  </div>
+
+  <div class="col-3 d-flex justify-content-between align-items-center entry-minimal-icons">
+    <% if entry.list.user == current_user %>
+      <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
+          title="Mark as watched"
+          data-controller="completed"
+          data-completed-id-value="<%= entry.id %>"
+          data-action="click->completed#toggle"></i>
+      <i class="fa-solid fa-pen" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= entry.id %>" data-action="click->edit#toggle"></i>
+      <%= link_to entry_path(entry),
+          data: { turbo_method: :delete, turbo_confirm: "Are you sure?" } do %>
+        <i class="fa-solid fa-trash text-black"></i>
+      <% end %>
+    <% end %>
+    <i class="fa-solid fa-link-slash"
+        style="color:<%= entry.stream ? "grey" : "red"%>"
+        title="Report broken link"
+        data-controller="link"
+        data-link-id-value="<%= entry.id %>"
+        data-action="click->link#toggle"></i>
+    <%= link_to duplicate_entry_path(entry) do %>
+      <i class="fa-sharp fa-regular fa-plus text-black" title="Add to another list"></i>
+    <% end %>
+  </div>
+</div>

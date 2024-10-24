@@ -1,7 +1,6 @@
 <div class="card-container">
-  <% if entry.note %>
-    <div class="card-note" style="grid-column: span 2;"><%= entry.note %></div>
-  <% end %>
+  <%# if entry.note %>
+  <%# end %>
   <div class="grid-card" id="<%= entry.imdb %>">
     <div class="card-picture">
       <%= link_to watch_entry_path(entry) do %>
@@ -14,7 +13,7 @@
     </div>
     <div class="card-stuff">
       <div class="card-title">
-        <h5 class="card-header"><bold><%= entry.name %></bold></h5>
+        <h5 class="card-header"><bold>Hekko<%= entry.name %></bold></h5>
       </div>
       <div class="card-details">
         <div class="d-flex justify-content-between">
