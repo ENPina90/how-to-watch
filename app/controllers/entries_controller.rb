@@ -30,6 +30,7 @@ class EntriesController < ApplicationController
       end
     else
       omdb_result = OmdbApi.get_movie(params[:imdb])
+      omdb_result["tmdb"] = params[:tmdb]
       @entry = Entry.create_from_source(omdb_result, @list, false)
       if @entry.is_a?(Entry)
         if @entry.media == 'series'
@@ -40,6 +41,10 @@ class EntriesController < ApplicationController
             render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
             return
           end
+        elsif @entry.media == 'movie' || @entry.media == 'fanedit'
+          tmdb_service = TmdbService.new
+          trailer_url = tmdb_service.fetch_trailer_url(@entry)
+          @entry.update(trailer: trailer_url)
         end
         flash.now[:notice] = "#{@entry.name} added to #{@list.name}"
         partial = @entry.media == 'episode' ? "S#{@entry.season}E#{@entry.episode}" : @entry.imdb
@@ -72,7 +77,8 @@ class EntriesController < ApplicationController
   def update
     old_position = @entry.position
     new_position = entry_params[:position].to_i
-    if @entry.update(entry_params.merge(list: @entry.list, source: fix_external_sources(entry_params["source"])))
+    entry_params.merge(list: @entry.list, source: fix_external_sources(entry_params["source"]))
+    if @entry.update(entry_params)
       if old_position != new_position
         shift_positions(@entry, new_position)
       end
@@ -289,7 +295,7 @@ class EntriesController < ApplicationController
         :season,
         :episode,
         :custom,
-        subentries_attributes: [:id, :name, :pic, :plot, :imdb, :season, :episode, :rating, :length, :completed, :source, :year, :_destroy]
+        subentries_attributes: [:id, :name, :plot, :imdb, :season, :episode, :rating, :length, :completed, :source, :year, :_destroy]
       )
     end
 

@@ -1,5 +1,5 @@
 <%= turbo_frame_tag dom_id(entry) do %>
-  <div class="card-container">
+  <div class="card-container" data-controller="trailer">
     <%# if entry.note %>
     <%# end %>
     <div class="grid-card" id="<%= entry.id %>">
@@ -32,6 +32,11 @@
           <p class="card-plot mb-2"><%= entry.plot %></p>
         </div>
         <div class="card-menu">
+          <% if entry.trailer.present? %>
+            <a href="#" data-action="trailer#show" data-trailer-url="<%= convert_to_embed_url(entry.trailer) %>">
+              <i class="fa-solid fa-trailer"></i>
+            </a>
+          <% end %>
           <% if entry.list.user == current_user %>
             <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
                 title="Mark as watched"
@@ -59,5 +64,34 @@
           </div>
         </div>
       </div>
+      <% if entry.trailer.present? %>
+        <div
+          class="modal fade"
+          id="trailerModal-<%= entry.id %>"
+          tabindex="-1"
+          aria-labelledby="trailerModalLabel-<%= entry.id %>"
+          aria-hidden="true"
+          data-trailer-target="modal"
+          >
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="trailerModalLabel-<%= entry.id %>"><%= entry.name %> Trailer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="ratio ratio-16x9">
+                  <iframe
+                    data-trailer-target="iframe"
+                    src=""
+                    frameborder="0"
+                    allowfullscreen
+                  ></iframe>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
 <% end %>

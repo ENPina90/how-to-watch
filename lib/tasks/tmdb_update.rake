@@ -4,7 +4,9 @@ namespace :tmdb do
   task update_tmdb_ids: :environment do
     require 'themoviedb-api'
 
-    Entry.where.not(imdb: nil).find_each do |entry|
+    entries = Entry.where(tmdb: nil).where.not(imdb: nil)
+    puts "Finding tmdb_ids for #{entries.count}"
+    entries.find_each do |entry|
       imdb_id = entry.imdb
 
       # Search TMDb by IMDb ID

@@ -67,6 +67,7 @@ class OmdbApi
       media:    result['Type'],
       name:     result['Title'],
       imdb:     result['imdbID'],
+      tmdb:     result['tmdb'],
       year:     result['Year'].to_i,
       pic:      result['Poster'],
       genre:    result['Genre'],

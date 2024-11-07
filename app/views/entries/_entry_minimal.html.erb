@@ -3,7 +3,7 @@
     <i class="fa-solid fa-grip-vertical entry-minimal-icons"></i>
   </div>
   <div class="col-8 mt-2">
-    <%= entry.position %>. <%= link_to entry.name, watch_entry_path(entry), data: { turbo: false } %>
+    <%= index %>. <%= link_to entry.name, watch_entry_path(entry), data: { turbo: false } %>
     <% if entry.media == "episode" %>
       <div class="d-flex justify-content-between">
         <p><small><%= entry.series %> - S<%= entry.season %>E<%= entry.episode %></small></p>

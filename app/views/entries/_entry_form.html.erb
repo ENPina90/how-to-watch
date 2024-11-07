@@ -5,7 +5,7 @@
   </div>
   <div class="modal-body">
     <%= simple_form_for(entry) do |f|%>
-      <%= f.input :list, collection: @user_lists, selected: entry.list.id %>
+      <%= f.input :list_id, collection: @user_lists, selected: entry.list.id %>
       <%= f.input :position %>
       <%= f.input :name %>
       <%= f.input :media %>
