@@ -69,12 +69,14 @@ class ListsController < ApplicationController
     counter = 0
     episodes.each do |episode|
       break if counter == params[:top_number].to_i || counter == 20
+      puts "Fetcing movie ##{counter + 1} data"
       omdb_result = OmdbApi.get_movie(episode[:imdb_id])
       next if omdb_result.nil?
       next if !!(omdb_result["Title"] =~ /\s[Pp]art\s/)
       omdb_result["seriesID"] = series_imdb_id
       omdb_result["imdbRating"] = episode[:rating]
       @entry = Entry.create_from_source(omdb_result, @list, false)
+      next unless @entry.is_a?(Entry)
       @entry.update(series: scraper_results[:title]) if @entry.series.nil?
       counter += 1
     end

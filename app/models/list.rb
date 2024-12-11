@@ -21,7 +21,6 @@ class List < ApplicationRecord
   def watched!
     entry = find_entry_by_position(:next)
     self.update(current: entry.position)
-    redirect_to watch_entry_path(entry)
   end
 
   def find_entry_by_position(change)

@@ -29,7 +29,9 @@ class Entry < ApplicationRecord
   after_create :check_source
 
   def self.create_from_source(entry, list, seen)
+    puts "Normalizing data"
     entry = OmdbApi.normalize_omdb_data(entry) unless entry[:seed]
+    puts "Createing Entry"
     Entry.create!(
       position:     entry[:position] || next_position(list),
       franchise:    entry[:franchise],
