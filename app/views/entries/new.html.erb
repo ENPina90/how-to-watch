@@ -37,7 +37,7 @@
     <div class="col-8 d-flex justify-content-center">
       <div data-search-target="results">
         <%= simple_form_for([@list, @entry], custom: true) do |f|%>
-          <%= f.input :list, collection: List.where(user: current_user), selected: @list.id %>
+          <%= f.input :list_id, collection: List.where(user: current_user), selected: @list.id %>
           <%= f.input :name %>
           <%= f.input :pic %>
           <%= f.input :source %>

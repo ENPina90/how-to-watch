@@ -20,7 +20,7 @@ class EntriesController < ApplicationController
       @entry = Entry.new(entry_params)
       @entry.list = @list
       @entry.position = @list.entries.count + 1
-      @entry.media = 'fanedit' if nil
+      @entry.media = 'fanedit' if @entry.media.empty?
       if @entry.save
         redirect_to list_path(@list)
         flash.now[:notice] = "#{@entry.name} successfully created"
@@ -271,6 +271,7 @@ class EntriesController < ApplicationController
 
     def entry_params
       params.require(:entry).permit(
+        :custom,
         :list_id,
         :position,
         :series,
