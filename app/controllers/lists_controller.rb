@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
-  before_action :set_list, only: [:show, :edit, :destroy, :watch_current, :watch_random, :top_entries]
+  before_action :set_list, only: [:show, :edit, :destroy, :watch_current, :top_entries]
 
   def index
     @lists = List.order(:last_watched_at).reverse

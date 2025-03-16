@@ -26,15 +26,23 @@ class List < ApplicationRecord
   def find_entry_by_position(change)
     return nil if entries.empty?
 
-    new_position = OFFSET[change] ? self.current + OFFSET[change] : change
-    new_position = entries.minimum(:position) if new_position < 0 || new_position > entries.maximum(:position)
+    # Determine the starting position.
+    new_position = OFFSET.key?(change) ? current.to_i + OFFSET[change] : change.to_i
 
-    # Find the entry by list and position
-    entry = Entry.find_by(list: self, position: new_position)
-    # Base case to prevent infinite recursion: stop when position exceeds bounds
+    # Ensure new_position falls within the min/max bounds of entry positions.
+    min_position = entries.minimum(:position)
+    max_position = entries.maximum(:position)
+    new_position = min_position if new_position < min_position || new_position > max_position
 
-    # Recursively find the next valid entry
-    entry || find_entry_by_position(new_position + 1)
+    # Loop until we find a valid, not completed entry or exceed the maximum bound.
+    while new_position <= max_position
+      entry = entries.find_by(position: new_position)
+      return entry if entry && !entry.completed
+      new_position += 1
+    end
+
+    # Return nil if no valid entry is found.
+    nil
   end
 
 

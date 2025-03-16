@@ -5,8 +5,8 @@ require 'open-uri'
 class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   skip_before_action :verify_authenticity_token
-  before_action :set_list, only: %i[new create top_entries]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink shuffle_current decrement_current increment_current update_positions]
+  before_action :set_list, only: %i[new create]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink shuffle_current decrement_current increment_current]
 
   def new
     @entry = Entry.new
