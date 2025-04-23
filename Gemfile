@@ -53,7 +53,6 @@ gem "sassc-rails"
 
 gem 'paranoia'
 gem "devise"
-gem "autoprefixer-rails"
 gem "font-awesome-sass", "~> 6.1"
 gem "simple_form", github: "heartcombo/simple_form"
 gem 'themoviedb-api'
@@ -89,3 +88,5 @@ group :test do
   gem 'rails-controller-testing'
   gem 'webmock'
 end
+
+gem "autoprefixer-rails", "~> 10.4"

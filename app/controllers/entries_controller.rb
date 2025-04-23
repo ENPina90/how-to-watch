@@ -18,6 +18,7 @@ class EntriesController < ApplicationController
   def create
     if params[:custom]
       @entry = Entry.new(entry_params)
+      @entry.source = fix_external_sources(entry_params["source"])
       @entry.list = @list
       @entry.position = @list.entries.count + 1
       @entry.media = 'fanedit' if @entry.media.empty?
@@ -263,7 +264,7 @@ class EntriesController < ApplicationController
       if url.include?("mega")
         url.gsub("file", "embed")
       elsif url.include?("google")
-        url.gsub("file", "embed")
+        url.gsub("/view", "/preview")
       else
         return url
       end

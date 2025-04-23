@@ -53,7 +53,8 @@ class List < ApplicationRecord
   end
 
   def find_sibling(change)
-    lists = List.where.not(current: nil).order(:created_at)
+    lists = List.joins(:entries).where(entries: { completed: false }).distinct.where.not(current: nil).order(:created_at)
+    # lists = List.where.associated(:entries).where.not(current: nil).order(:created_at)
     current_list_index = lists.index(self)
     return list.first unless current_list_index
     new_index = current_list_index + OFFSET[change]
