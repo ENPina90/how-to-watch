@@ -6,9 +6,8 @@ require 'json'
 
 
 class Entry < ApplicationRecord
-  acts_as_paranoid
-
   belongs_to :list
+  has_one_attached :poster
   has_many :subentries, dependent: :destroy
   belongs_to :current, class_name: 'Subentry', optional: true, dependent: :destroy
   # has_many :current_list_users, class_name: 'ListUserEntries', foreign_key: 'current_entry_id'
@@ -119,5 +118,16 @@ class Entry < ApplicationRecord
     return if stream
 
     errors.add(:source, 'is unavailable, do you have an alternative?')
+  end
+
+  # Check if the entry's image URL is valid
+  def image_valid?
+    return false if pic.blank?
+    TmdbService.new.validate_image_url(pic)
+  end
+
+  # Repair the entry's image if it's broken
+  def repair_image!
+    ImageRepairService.new.repair_entry_image(self)
   end
 end
