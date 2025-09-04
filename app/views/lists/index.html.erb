@@ -1,14 +1,14 @@
 <div class="lists-container my-4">
   <div class="list">
     <%= link_to watch_entry_path(Entry.all.sample) do %>
-      <%= image_tag(asset_path('nowplaying.jpg'), class: 'list-picture') %>
+      <%= image_tag('/images/nowplaying.jpg', class: 'list-picture') %>
     <% end %>
     <p class="list-name">Now Playing</p>
   </div>
   <% @lists.each do |list| %>
     <%= link_to list_watch_current_path(list) do %>
       <div class="list">
-        <%= image_tag(list.find_entry_by_position(:current)&.pic || asset_path('please_stand_by.png'), alt: list.name, class: 'list-picture') %>
+        <%= image_tag(list.find_entry_by_position(:current)&.pic || '/images/please_stand_by.png', alt: list.name, class: 'list-picture') %>
         <p class="list-name"><%= list.name %></p>
         <%= link_to list_path(list) do %>
           <i class="fa-solid fa-list"></i>
@@ -18,7 +18,7 @@
   <% end %>
   <div class="list">
     <%= link_to new_list_path do %>
-      <%= image_tag(asset_path('upcoming.jpg'), class: 'list-picture') %>
+      <%= image_tag('/images/upcoming.jpg', class: 'list-picture') %>
     <% end %>
     <p class="list-name">New Channel</p>
   </div>
