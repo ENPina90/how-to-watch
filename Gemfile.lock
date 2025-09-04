@@ -76,6 +76,7 @@ GEM
       tzinfo (~> 2.0)
     addressable (2.8.4)
       public_suffix (>= 2.0.2, < 6.0)
+    ast (2.4.3)
     autoprefixer-rails (10.4.19.0)
       execjs (~> 2)
     bcrypt (3.1.18)
@@ -154,6 +155,8 @@ GEM
     jbuilder (2.11.5)
       actionview (>= 5.0.0)
       activesupport (>= 5.0.0)
+    json (2.13.2)
+    language_server-protocol (3.17.0.5)
     logger (1.6.1)
     loofah (2.20.0)
       crass (~> 1.0.2)
@@ -171,6 +174,7 @@ GEM
       mime-types-data (~> 3.2015)
     mime-types-data (3.2024.1001)
     mini_mime (1.1.2)
+    mini_portile2 (2.8.9)
     minitest (5.18.0)
     msgpack (1.7.0)
     multi_xml (0.7.1)
@@ -186,17 +190,21 @@ GEM
       net-protocol
     netrc (0.11.0)
     nio4r (2.5.9)
-    nokogiri (1.14.3-arm64-darwin)
-      racc (~> 1.4)
-    nokogiri (1.14.3-x86_64-linux)
+    nokogiri (1.14.3)
+      mini_portile2 (~> 2.8.0)
       racc (~> 1.4)
     orm_adapter (0.5.0)
+    parallel (1.27.0)
     paranoia (3.0.0)
       activerecord (>= 6, < 8.1)
+    parser (3.3.9.0)
+      ast (~> 2.4.1)
+      racc
     pg (1.5.3)
     pg_search (2.3.6)
       activerecord (>= 5.2)
       activesupport (>= 5.2)
+    prism (1.4.0)
     pry (0.14.2)
       coderay (~> 1.1)
       method_source (~> 1.0)
@@ -239,7 +247,10 @@ GEM
       rake (>= 12.2)
       thor (~> 1.0)
       zeitwerk (~> 2.5)
+    rainbow (3.1.1)
     rake (13.0.6)
+    rbs (3.9.4)
+      logger
     redis (4.8.1)
     regexp_parser (2.8.0)
     reline (0.3.3)
@@ -270,6 +281,26 @@ GEM
       rspec-mocks (~> 3.13)
       rspec-support (~> 3.13)
     rspec-support (3.13.1)
+    rubocop (1.69.0)
+      json (~> 2.3)
+      language_server-protocol (>= 3.17.0)
+      parallel (~> 1.10)
+      parser (>= 3.3.0.2)
+      rainbow (>= 2.2.2, < 4.0)
+      regexp_parser (>= 2.4, < 3.0)
+      rubocop-ast (>= 1.36.1, < 2.0)
+      ruby-progressbar (~> 1.7)
+      unicode-display_width (>= 2.4.0, < 4.0)
+    rubocop-ast (1.46.0)
+      parser (>= 3.3.7.2)
+      prism (~> 1.4)
+    ruby-lsp (0.26.1)
+      language_server-protocol (~> 3.17.0)
+      prism (>= 1.2, < 2.0)
+      rbs (>= 3, < 5)
+    ruby-lsp-rails (0.4.8)
+      ruby-lsp (>= 0.26.0, < 0.27.0)
+    ruby-progressbar (1.13.0)
     rubyzip (2.3.2)
     sassc (2.4.0)
       ffi (~> 1.9)
@@ -303,6 +334,9 @@ GEM
       railties (>= 6.0.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
+    unicode-display_width (3.1.5)
+      unicode-emoji (~> 4.0, >= 4.0.4)
+    unicode-emoji (4.0.4)
     warden (1.2.9)
       rack (>= 2.0.9)
     web-console (4.2.0)
@@ -330,6 +364,7 @@ PLATFORMS
   arm64-darwin-21
   arm64-darwin-22
   arm64-darwin-23
+  arm64-darwin-24
   x86_64-linux
 
 DEPENDENCIES
@@ -357,6 +392,9 @@ DEPENDENCIES
   rails-controller-testing
   redis (~> 4.0)
   rspec-rails
+  rubocop
+  ruby-lsp
+  ruby-lsp-rails
   sassc-rails
   selenium-webdriver
   simple_form!
@@ -370,7 +408,7 @@ DEPENDENCIES
   webmock
 
 RUBY VERSION
-   ruby 3.1.2p20
+   ruby 3.4.4p34
 
 BUNDLED WITH
    2.4.7

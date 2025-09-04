@@ -1,3 +1,16 @@
 {
-  "cSpell.words": ["uniqeness"]
+  "rubyLsp.rubyVersionManager": {
+    "identifier": "rbenv"
+  },
+  "rubyLsp.customRubyCommand": "/Users/nicholaspina/.rbenv/shims/ruby",
+  "rubyLsp.bundleGemfile": "",
+  "terminal.integrated.env.osx": {
+    "PATH": "/Users/nicholaspina/.rbenv/shims:/opt/homebrew/bin:/usr/local/bin:${env:PATH}",
+    "RBENV_ROOT": "/Users/nicholaspina/.rbenv"
+  },
+  "terminal.integrated.shellArgs.osx": [
+    "-l"
+  ],
+  "ruby.intellisense": "rubyLsp",
+  "ruby.useLanguageServer": true
 }

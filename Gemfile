@@ -1,9 +1,8 @@
 source "https://rubygems.org"
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby "3.1.2"
+ruby "3.4.4"
 
-gem 'faker'
 gem "pg_search"
 gem 'htmlbeautifier'
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
@@ -66,6 +65,9 @@ group :development, :test do
   gem 'factory_bot_rails'
   gem 'pry'
   gem 'pry-rails'
+  gem 'rubocop', require: false
+  gem 'ruby-lsp', require: false
+  gem 'ruby-lsp-rails', require: false
 end
 
 group :development do
