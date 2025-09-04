@@ -2,8 +2,9 @@
   "rubyLsp.rubyVersionManager": {
     "identifier": "rbenv"
   },
-  "rubyLsp.customRubyCommand": "/Users/nicholaspina/.rbenv/shims/ruby",
+  "rubyLsp.customRubyCommand": "/Users/nicholaspina/.rbenv/versions/3.4.5/bin/ruby",
   "rubyLsp.bundleGemfile": "",
+  "rubyLsp.formatter": "rubocop",
   "terminal.integrated.env.osx": {
     "PATH": "/Users/nicholaspina/.rbenv/shims:/opt/homebrew/bin:/usr/local/bin:${env:PATH}",
     "RBENV_ROOT": "/Users/nicholaspina/.rbenv"
@@ -11,6 +12,17 @@
   "terminal.integrated.shellArgs.osx": [
     "-l"
   ],
-  "ruby.intellisense": "rubyLsp",
-  "ruby.useLanguageServer": true
+  "ruby.intellisense": false,
+  "ruby.lint": {
+    "rubocop": {
+      "useBundler": true
+    }
+  },
+  "ruby.format": "rubocop",
+  "[ruby]": {
+    "editor.defaultFormatter": "Shopify.ruby-lsp",
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.semanticHighlighting.enabled": true
+  }
 }

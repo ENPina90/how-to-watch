@@ -1,0 +1,23 @@
+# Ruby LSP configuration for Rails 8 project
+enabledFeatures:
+  - diagnostics
+  - completion
+  - hover
+  - documentSymbol
+  - documentHighlight
+  - foldingRange
+  - selectionRange
+  - semanticHighlighting
+  - formatting
+  - codeAction
+  - inlayHint
+  - workspaceSymbol
+
+featuresConfiguration:
+  inlayHint:
+    enableAll: true
+
+# Ensure compatibility with Rails 8
+bundlerPath: bundle
+rubyVersionFile: .ruby-version
+
