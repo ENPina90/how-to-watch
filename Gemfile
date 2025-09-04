@@ -1,12 +1,12 @@
 source "https://rubygems.org"
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby "3.4.4"
+ruby "3.4.5"
 
 gem "pg_search"
 gem 'htmlbeautifier'
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 7.0.4", ">= 7.0.4.3"
+gem "rails", "8.0.2.1"
 
 # The original asset pipeline for Rails [https://github.com/rails/sprockets-rails]
 gem "sprockets-rails"
@@ -15,7 +15,7 @@ gem "sprockets-rails"
 gem "pg", "~> 1.1"
 
 # Use the Puma web server [https://github.com/puma/puma]
-gem "puma", "~> 5.0"
+gem "puma", "~> 6.0"
 
 # Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
 gem "importmap-rails"
@@ -27,10 +27,10 @@ gem "turbo-rails"
 gem "stimulus-rails"
 
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
-gem "jbuilder"
+gem "jbuilder", "~> 2.12"
 
 # Use Redis adapter to run Action Cable in production
-gem "redis", "~> 4.0"
+gem "redis", "~> 5.0"
 
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem "kredis"
@@ -51,7 +51,7 @@ gem "sassc-rails"
 # gem "image_processing", "~> 1.2"
 
 gem 'paranoia'
-gem "devise"
+gem "devise", "~> 4.9.4"
 gem "font-awesome-sass", "~> 6.1"
 gem "simple_form", github: "heartcombo/simple_form"
 gem 'themoviedb-api'
@@ -66,8 +66,8 @@ group :development, :test do
   gem 'pry'
   gem 'pry-rails'
   gem 'rubocop', require: false
-  gem 'ruby-lsp', require: false
-  gem 'ruby-lsp-rails', require: false
+  gem 'ruby-lsp', '~> 0.26.1', require: false
+  gem 'ruby-lsp-rails', '~> 0.4.8', require: false
 end
 
 group :development do
