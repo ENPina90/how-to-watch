@@ -2,7 +2,7 @@
   <%# <% if entry.note %>
     <%# <div class="card-note" style="grid-column: span 2;"><%= entry.note %></div> %>
   <%# <% end %>
-  <%= link_to image_tag(entry.pic, data: { hover_play_target: 'poster' }), watch_entry_path(entry), class: "card-picture" %>
+  <%= link_to image_tag((entry.poster.attached? ? entry.poster : entry.pic), data: { hover_play_target: 'poster' }), watch_entry_path(entry), class: "card-picture" %>
   <div class="card-title">
     <h4 class="card-header"><%= entry.name %></h4>
   </div>

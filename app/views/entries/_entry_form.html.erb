@@ -10,7 +10,18 @@
       <%= f.input :name %>
       <%= f.input :media %>
       <%= f.input :source %>
-      <%= f.input :pic %>
+      <%= f.input :pic, label: "Poster URL (or upload below)" %>
+
+      <% if entry.poster.attached? %>
+        <div class="mb-3">
+          <label class="form-label">Current Poster</label>
+          <div>
+            <%= image_tag entry.poster, class: "img-thumbnail", style: "max-width: 200px; max-height: 300px;" %>
+          </div>
+        </div>
+      <% end %>
+
+      <%= f.input :poster, as: :file, label: "Upload New Poster Image", hint: "Replaces current poster if uploaded" %>
       <%= f.input :series %>
       <%= f.input :plot %>
       <%= f.input :category %>
