@@ -4,7 +4,11 @@
   <div class="grid-card" id="<%= entry.imdb %>">
     <div class="card-picture">
       <%= link_to watch_entry_path(entry) do %>
-        <%= image_tag(entry.pic) %>
+        <% if entry.poster.attached? %>
+          <%= image_tag(entry.poster) %>
+        <% else %>
+          <%= image_tag(entry.pic) %>
+        <% end %>
         <span class="fa-stack fa-4x play-button">
           <i class="fa fa-circle fa-stack-2x icon-background"></i>
           <i class="fa fa-play fa-stack-1x"></i>
