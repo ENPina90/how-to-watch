@@ -17,6 +17,7 @@ Rails.application.routes.draw do
       get :complete
       get :reportlink
       get :repair_image
+      get :migrate_poster
       get :watch
       get :duplicate
       get :shuffle_current

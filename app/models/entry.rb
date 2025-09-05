@@ -130,4 +130,9 @@ class Entry < ApplicationRecord
   def repair_image!
     ImageRepairService.new.repair_entry_image(self)
   end
+
+  # Migrate the entry's pic URL to Active Storage poster
+  def migrate_poster!
+    PosterMigrationService.new.migrate_entry_poster(self)
+  end
 end
