@@ -83,11 +83,9 @@ namespace :data do
       ## Production Import Steps:
 
       1. **Setup Cloudinary Environment:**
-         Make sure production uses the same Cloudinary credentials:
+         Make sure production uses the same Cloudinary URL:
          ```
-         CLOUDINARY_CLOUD_NAME=#{ENV['CLOUDINARY_CLOUD_NAME']}
-         CLOUDINARY_API_KEY=#{ENV['CLOUDINARY_API_KEY']}
-         CLOUDINARY_API_SECRET=[your_secret]
+         CLOUDINARY_URL=#{ENV['CLOUDINARY_URL']}
          ```
 
       2. **Choose Cloudinary Folder Strategy:**
@@ -181,9 +179,17 @@ namespace :data do
     # Check Cloudinary configuration
     puts "\n⚙️  Cloudinary Configuration:"
     puts "   Service: #{Rails.application.config.active_storage.service}"
-    puts "   Cloud Name: #{ENV['CLOUDINARY_CLOUD_NAME'] ? '✅ Set' : '❌ Missing'}"
-    puts "   API Key: #{ENV['CLOUDINARY_API_KEY'] ? '✅ Set' : '❌ Missing'}"
-    puts "   API Secret: #{ENV['CLOUDINARY_API_SECRET'] ? '✅ Set' : '❌ Missing'}"
+    puts "   Cloudinary URL: #{ENV['CLOUDINARY_URL'] ? '✅ Set' : '❌ Missing'}"
+    if ENV['CLOUDINARY_URL']
+      begin
+        uri = URI.parse(ENV['CLOUDINARY_URL'])
+        puts "   Cloud Name: #{uri.host}"
+        puts "   API Key: #{uri.user ? '✅ Set' : '❌ Missing'}"
+        puts "   API Secret: #{uri.password ? '✅ Set' : '❌ Missing'}"
+      rescue StandardError => e
+        puts "   ⚠️  Error parsing CLOUDINARY_URL: #{e.message}"
+      end
+    end
   end
 
   desc "Update Cloudinary folder configuration for shared assets"
