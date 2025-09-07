@@ -123,3 +123,4 @@ rails posters:migrate
 ```
 
 Your Cloudinary dashboard will now be beautifully organized with recognizable, searchable filenames! 🎉
+

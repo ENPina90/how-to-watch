@@ -224,3 +224,4 @@ cloudinary:
 - ✅ **Future-proof architecture** for image handling
 
 Ready to migrate your posters to Cloudinary! 🚀
+

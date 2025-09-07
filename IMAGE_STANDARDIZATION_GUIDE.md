@@ -183,3 +183,4 @@ rails posters:clean_and_rebuild
 ```
 
 Your app will look professional and polished with perfectly sized, consistently formatted images! 🌟
+
