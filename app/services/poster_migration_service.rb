@@ -18,14 +18,22 @@ class PosterMigrationService
 
       # Download and attach the image
       downloaded_image = URI.open(entry.pic)
-      filename = extract_filename_from_url(entry.pic)
+      filename = generate_meaningful_filename(entry)
       content_type = extract_content_type(entry.pic, downloaded_image)
 
-      entry.poster.attach(
+      # Create blob with meaningful key for Cloudinary public_id
+      meaningful_key = generate_meaningful_key(entry)
+
+      blob = ActiveStorage::Blob.create_and_upload!(
         io: downloaded_image,
         filename: filename,
-        content_type: content_type
+        content_type: content_type,
+        service_name: 'cloudinary',
+        key: meaningful_key
       )
+
+      # Attach the blob to the entry
+      entry.poster.attach(blob)
 
       {
         status: :migrated,
@@ -191,6 +199,60 @@ class PosterMigrationService
   end
 
   private
+
+  def generate_meaningful_filename(entry)
+    # Create filename based on entry name and year
+    base_name = entry.name.to_s.strip
+
+    # Clean the name for filename use
+    clean_name = base_name.gsub(/[^a-zA-Z0-9\s\-_]/, '')  # Remove special chars
+                          .gsub(/\s+/, '_')                 # Replace spaces with underscores
+                          .downcase                         # Lowercase
+                          .truncate(50, omission: '')       # Limit length
+
+    # Add year if available
+    if entry.year.present?
+      clean_name += "_#{entry.year}"
+    end
+
+    # Add file extension based on original URL or default to jpg
+    extension = extract_extension_from_url(entry.pic) || 'jpg'
+
+    "#{clean_name}.#{extension}"
+  end
+
+  def generate_meaningful_key(entry)
+    # Create a meaningful key for Cloudinary public_id (without extension)
+    base_name = entry.name.to_s.strip
+
+    # Clean the name for Cloudinary public_id use
+    clean_name = base_name.gsub(/[^a-zA-Z0-9\s\-_]/, '')  # Remove special chars
+                          .gsub(/\s+/, '_')                 # Replace spaces with underscores
+                          .downcase                         # Lowercase
+                          .truncate(50, omission: '')       # Limit length
+
+    # Add year if available
+    if entry.year.present?
+      clean_name += "_#{entry.year}"
+    end
+
+    # Add entry ID to ensure uniqueness
+    "#{clean_name}_#{entry.id}"
+  end
+
+  def extract_extension_from_url(url)
+    return 'jpg' if url.blank?
+
+    begin
+      uri = URI.parse(url)
+      extension = File.extname(uri.path).downcase.gsub('.', '')
+
+      # Only allow common image extensions
+      %w[jpg jpeg png gif webp].include?(extension) ? extension : 'jpg'
+    rescue StandardError
+      'jpg'
+    end
+  end
 
   def extract_filename_from_url(url)
     # Extract filename from URL, or generate one
