@@ -17,3 +17,4 @@ class HandleParanoiaRemoval < ActiveRecord::Migration[8.0]
     add_index :entries, :deleted_at
   end
 end
+
