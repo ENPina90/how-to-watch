@@ -21,3 +21,4 @@ class AttachPosterFromPicJob < ApplicationJob
     Rails.logger.error e.backtrace.join("\n")
   end
 end
+
