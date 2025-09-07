@@ -6,9 +6,8 @@ require 'json'
 
 
 class Entry < ApplicationRecord
-  acts_as_paranoid
-
   belongs_to :list
+  has_one_attached :poster
   has_many :subentries, dependent: :destroy
   belongs_to :current, class_name: 'Subentry', optional: true, dependent: :destroy
   # has_many :current_list_users, class_name: 'ListUserEntries', foreign_key: 'current_entry_id'
@@ -27,6 +26,8 @@ class Entry < ApplicationRecord
                   }
 
   after_create :check_source
+  after_create :attach_poster_from_pic, if: :should_attach_poster?
+  after_update :attach_poster_from_pic, if: :should_attach_poster?
 
   def self.create_from_source(entry, list, seen)
     puts "Normalizing data"
@@ -119,5 +120,60 @@ class Entry < ApplicationRecord
     return if stream
 
     errors.add(:source, 'is unavailable, do you have an alternative?')
+  end
+
+  # Check if the entry's image URL is valid
+  def image_valid?
+    return false if pic.blank?
+    TmdbService.new.validate_image_url(pic)
+  end
+
+  # Repair the entry's image if it's broken
+  def repair_image!
+    ImageRepairService.new.repair_entry_image(self)
+  end
+
+  # Migrate the entry's pic URL to Active Storage poster
+  def migrate_poster!
+    PosterMigrationService.new.migrate_entry_poster(self)
+  end
+
+  private
+
+  # Check if we should attach a poster from pic URL
+  def should_attach_poster?
+    pic.present? && !poster.attached?
+  end
+
+  # Automatically attach poster from pic URL
+  def attach_poster_from_pic
+    return unless pic.present? && !poster.attached?
+
+    # Option 1: Background job (recommended for production)
+    if Rails.env.production?
+      AttachPosterFromPicJob.perform_later(self)
+    else
+      # Option 2: Immediate processing (for development)
+      attach_poster_immediately
+    end
+  rescue StandardError => e
+    # Log error but don't fail the main operation
+    Rails.logger.error "Failed to attach poster for Entry #{id}: #{e.message}"
+  end
+
+  # Immediately attach poster (synchronous)
+  def attach_poster_immediately
+    Rails.logger.info "Attaching poster from pic URL for Entry #{id}: #{name}"
+
+    service = PosterMigrationService.new
+    result = service.migrate_entry_poster(self)
+
+    if result[:status] == 'migrated'
+      Rails.logger.info "Successfully attached poster: #{result[:message]}"
+    else
+      Rails.logger.warn "Failed to attach poster: #{result[:message]}"
+    end
+  rescue StandardError => e
+    Rails.logger.error "Error attaching poster immediately: #{e.message}"
   end
 end

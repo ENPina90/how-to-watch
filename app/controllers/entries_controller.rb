@@ -6,7 +6,7 @@ class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink shuffle_current decrement_current increment_current]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink repair_image migrate_poster shuffle_current decrement_current increment_current]
 
   def new
     @entry = Entry.new
@@ -232,6 +232,42 @@ class EntriesController < ApplicationController
     @entry.update(stream: !@entry.stream)
   end
 
+  def repair_image
+    result = @entry.repair_image!
+
+    case result[:status]
+    when :repaired
+      flash[:notice] = "Image successfully repaired with TMDB poster"
+    when :valid
+      flash[:notice] = "Image is already working properly"
+    when :failed
+      flash[:alert] = "Could not find replacement image on TMDB"
+    when :skipped
+      flash[:alert] = result[:message]
+    when :error
+      flash[:alert] = "Error: #{result[:message]}"
+    end
+
+    redirect_back(fallback_location: entry_path(@entry))
+  end
+
+  def migrate_poster
+    result = @entry.migrate_poster!
+
+    case result[:status]
+    when :migrated
+      flash[:notice] = "Poster successfully migrated to Cloudinary (#{result[:filename]})"
+    when :skipped
+      flash[:notice] = result[:message]
+    when :failed
+      flash[:alert] = "Failed to migrate poster: #{result[:message]}"
+    when :error
+      flash[:alert] = "Error: #{result[:message]}"
+    end
+
+    redirect_back(fallback_location: entry_path(@entry))
+  end
+
   private
 
     def set_list
@@ -281,6 +317,7 @@ class EntriesController < ApplicationController
         :name,
         :year,
         :pic,
+        :poster,
         :genre,
         :director,
         :writer,

@@ -39,7 +39,8 @@
         <%= simple_form_for([@list, @entry], custom: true) do |f|%>
           <%= f.input :list_id, collection: List.where(user: current_user), selected: @list.id %>
           <%= f.input :name %>
-          <%= f.input :pic %>
+          <%= f.input :pic, label: "Poster URL (or upload below)" %>
+          <%= f.input :poster, as: :file, label: "Upload Poster Image" %>
           <%= f.input :source %>
           <%= f.input :media, collection: ['fanedit', 'movie', 'show', 'episode', 'other']  %>
           <%= f.input :series %>

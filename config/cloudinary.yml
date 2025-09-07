@@ -1,0 +1,14 @@
+# Note: Using CLOUDINARY_URL environment variable instead of individual keys
+# CLOUDINARY_URL format: cloudinary://api_key:api_secret@cloud_name
+
+development:
+  enhance_image_tag: true
+  static_file_support: false
+
+production:
+  enhance_image_tag: true
+  static_file_support: false
+
+test:
+  enhance_image_tag: true
+  static_file_support: false

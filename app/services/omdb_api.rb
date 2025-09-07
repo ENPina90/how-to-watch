@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'open-uri'
+
 class OmdbApi
 
   URL = 'http://www.omdbapi.com/?'
