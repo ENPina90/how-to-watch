@@ -10,6 +10,7 @@ Rails.application.routes.draw do
     get :randomize
     get :watch_current
     get :top_entries
+    patch :move_to_list
     resources :entries, only: [:new, :create]
   end
   resources :entries, only: [:show, :create, :edit, :update, :destroy] do

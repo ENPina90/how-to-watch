@@ -1,0 +1,29 @@
+<div class="entry-minimal d-flex justify-content-between align-items-center p-2 mb-2 border-start border-primary border-3" data-sort-target="item">
+  <div class="d-flex align-items-center">
+    <span class="position-number me-3 text-muted"><%= index %></span>
+    <div>
+      <h6 class="mb-1">
+        <%= link_to list.name, list_path(list), class: "text-decoration-none fw-bold" %>
+        <small class="text-muted">📁 List</small>
+      </h6>
+      <small class="text-muted">
+        <%= pluralize(list.entries.count, 'entry') %>
+        <% if list.child_lists.any? %>
+          • <%= pluralize(list.child_lists.count, 'sublist') %>
+        <% end %>
+      </small>
+    </div>
+  </div>
+  <div class="d-flex align-items-center">
+    <%= link_to list_path(list), class: "btn btn-sm btn-outline-primary me-2" do %>
+      <i class="fa-solid fa-eye"></i> View
+    <% end %>
+    <% if list.user == current_user %>
+      <%= link_to list_path(list), method: :delete,
+          data: {turbo_method: :delete, turbo_confirm: 'Are you sure?'},
+          class: "btn btn-sm btn-outline-danger" do %>
+        <i class="fa-solid fa-trash"></i>
+      <% end %>
+    <% end %>
+  </div>
+</div>

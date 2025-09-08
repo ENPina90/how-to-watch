@@ -1,7 +1,34 @@
 <div class="container" data-controller="edit" data-controller="search" data-search-id-value="<%= @list.id %>">
   <div class="row justify-content-center layout-title">
+    <% unless @list.top_level? %>
+      <nav aria-label="breadcrumb" class="mb-2">
+        <% if @list.parent_lists.count == 1 %>
+          <!-- Single parent path -->
+          <ol class="breadcrumb justify-content-center">
+            <% @list.primary_ancestors.reverse.each do |ancestor| %>
+              <li class="breadcrumb-item">
+                <%= link_to ancestor.name, list_path(ancestor), class: "text-decoration-none" %>
+              </li>
+            <% end %>
+            <li class="breadcrumb-item active" aria-current="page"><%= @list.name %></li>
+          </ol>
+        <% else %>
+          <!-- Multiple parent paths -->
+          <div class="text-center">
+            <small class="text-muted">This list appears in:</small>
+            <div class="d-flex flex-wrap justify-content-center gap-2 mt-1">
+              <% @list.parent_lists.each do |parent| %>
+                <span class="badge bg-secondary">
+                  <%= link_to parent.name, list_path(parent), class: "text-white text-decoration-none" %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </nav>
+    <% end %>
     <h1 class="text-center">
-      <%= render 'lists/header_count', count: @list.entries.count, list: @list %>
+      <%= render 'lists/header_count', count: @list.entries.count + @list.child_lists.count, list: @list %>
       <%= link_to @list.name, list_path(@list) %>
     </h1>
     <div class="list-input">
@@ -19,6 +46,44 @@
           <%= link_to edit_list_path(@list) do %>
             <i class="fa-solid fa-pen"></i>
           <% end %>
+          <div class="dropdown d-inline">
+            <button class="btn btn-link p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fa-solid fa-arrows-up-down-left-right"></i>
+            </button>
+            <div class="dropdown-menu" style="min-width: 250px;">
+              <h6 class="dropdown-header">Add to another list:</h6>
+              <%= form_with url: list_move_to_list_path(@list), method: :patch, class: "px-3 mb-2" do |f| %>
+                <%= f.select :target_list_id,
+                    options_from_collection_for_select(
+                      current_user.lists.where.not(id: @list.id).select { |list| @list.can_be_added_to?(list) },
+                      :id, :name
+                    ),
+                    { prompt: 'Select a list...' },
+                    { class: 'form-select form-select-sm mb-2', onchange: 'this.form.submit()' } %>
+              <% end %>
+
+              <% unless @list.parent_lists.empty? %>
+                <div class="dropdown-divider"></div>
+                <h6 class="dropdown-header">Remove from:</h6>
+                <% @list.parent_lists.each do |parent| %>
+                  <%= link_to list_move_to_list_path(@list, remove_from: parent.id),
+                      method: :patch,
+                      class: "dropdown-item text-danger",
+                      data: { turbo_confirm: "Remove '#{@list.name}' from '#{parent.name}'?" } do %>
+                    <i class="fa-solid fa-minus"></i> <%= parent.name %>
+                  <% end %>
+                <% end %>
+
+                <div class="dropdown-divider"></div>
+                <%= link_to list_move_to_list_path(@list),
+                    method: :patch,
+                    class: "dropdown-item text-danger",
+                    data: { turbo_confirm: "Remove '#{@list.name}' from all parent lists?" } do %>
+                  <i class="fa-solid fa-trash"></i> Remove from all parents
+                <% end %>
+              <% end %>
+            </div>
+          </div>
           <%= link_to list_path(@list), method: :delete, data: {turbo_method: :delete, turbo_confirm: 'Are you sure?'} do %>
             <i class="fa-solid fa-trash"></i>
           <% end %>

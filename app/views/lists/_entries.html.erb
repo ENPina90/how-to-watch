@@ -17,8 +17,12 @@
     <div class="<%= minimal ? 'col-12 px-4' : 'col-8' %>  d-flex justify-content-center">
         <% if minimal %>
           <div data-controller="sort" class="col-10">
-            <% @list.entries.order(:position).each_with_index do |entry, i| %>
-              <%= render "entries/entry_minimal", entry: entry, index: i + 1 %>
+            <% @list.all_items_by_position.each_with_index do |item, i| %>
+              <% if item.is_a?(Entry) %>
+                <%= render "entries/entry_minimal", entry: item, index: i + 1 %>
+              <% else # List %>
+                <%= render "lists/child_list_minimal", list: item, index: i + 1 %>
+              <% end %>
             <% end %>
           </div>
         <% else %>
@@ -35,15 +39,25 @@
                 <% end %>
               <% end %>
             <% else %>
-              <% entries.keys.sort.each do |key| %>
-                <% unless @criteria == 'Position' %>
-                  <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
+              <% if @criteria == 'Position' %>
+                <!-- Show mixed entries and child lists in position order -->
+                <% @list.all_items_by_position.each do |item| %>
+                  <% if item.is_a?(Entry) %>
+                    <%= render "entries/entry_#{item.media.downcase}", entry: item %>
+                  <% else # List %>
+                    <%= render "lists/child_list_card", list: item %>
+                  <% end %>
                 <% end %>
-                <% entries[key].each do |entry| %>
-                  <% if minimal %>
-                    <%= render "entries/entry_minimal", entry: entry %>
-                  <% else %>
-                    <%= render "entries/entry_#{entry.media.downcase}", entry: entry %>
+              <% else %>
+                <!-- Show entries grouped by criteria (child lists not shown in other views) -->
+                <% entries.keys.sort.each do |key| %>
+                  <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
+                  <% entries[key].each do |entry| %>
+                    <% if minimal %>
+                      <%= render "entries/entry_minimal", entry: entry %>
+                    <% else %>
+                      <%= render "entries/entry_#{entry.media.downcase}", entry: entry %>
+                    <% end %>
                   <% end %>
                 <% end %>
               <% end %>
