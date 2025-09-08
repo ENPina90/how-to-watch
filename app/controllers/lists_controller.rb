@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
-  before_action :set_list, only: [:show, :edit, :destroy, :watch_current, :top_entries]
+  before_action :set_list, only: [:show, :edit, :destroy, :watch_current, :top_entries, :move_to_list]
 
   def index
     @lists = List.order(:last_watched_at).reverse
@@ -10,15 +10,27 @@ class ListsController < ApplicationController
 
   def new
     @list = List.new
+    @list.parent_list_id = params[:parent_list_id] if params[:parent_list_id].present?
   end
 
   def create
     # @list = current_user.lists.build(list_params)
-    @list = List.new(list_params)
+    @list = List.new(list_params.except(:parent_list_id))
     @list.user = current_user
     @list.current = 0
+
     if @list.save
-      redirect_to lists_path, notice: 'List was successfully created.'
+      # Add to parent list if specified
+      if params[:list][:parent_list_id].present?
+        parent_list = List.find(params[:list][:parent_list_id])
+        if @list.add_to_parent(parent_list)
+          redirect_to list_path(parent_list), notice: "List '#{@list.name}' was successfully created and added to #{parent_list.name}."
+        else
+          redirect_to lists_path, notice: "List '#{@list.name}' was successfully created but could not be added to the parent list."
+        end
+      else
+        redirect_to lists_path, notice: 'List was successfully created.'
+      end
     else
       render :new
     end
@@ -84,6 +96,47 @@ class ListsController < ApplicationController
     redirect_to list_path(@list)
   end
 
+  def move_to_list
+    target_list_id = params[:target_list_id]
+    remove_from_id = params[:remove_from]
+
+    if remove_from_id.present?
+      # Remove from specific parent
+      parent_list = List.find(remove_from_id)
+      @list.remove_from_parent(parent_list)
+      flash[:notice] = "#{@list.name} has been removed from #{parent_list.name}"
+      redirect_to list_path(@list)
+    elsif target_list_id.blank?
+      # Remove from all parent lists (make it a top-level list)
+      @list.remove_from_all_parents
+      flash[:notice] = "#{@list.name} has been removed from all parent lists"
+      redirect_to list_path(@list)
+    else
+      target_list = List.find(target_list_id)
+
+      # Validate the move
+      unless @list.can_be_added_to?(target_list)
+        flash[:alert] = "Cannot add #{@list.name} to #{target_list.name}. This would create a circular reference or it's already added."
+        redirect_to list_path(@list) and return
+      end
+
+      # Ensure user owns the target list
+      unless target_list.user == current_user
+        flash[:alert] = "You don't have permission to add lists to #{target_list.name}"
+        redirect_to list_path(@list) and return
+      end
+
+      # Add the list to the new parent (this creates a new relationship, doesn't remove existing ones)
+      if @list.add_to_parent(target_list)
+        flash[:notice] = "#{@list.name} has been added to #{target_list.name}"
+        redirect_to list_path(target_list)
+      else
+        flash[:alert] = "Failed to add #{@list.name} to #{target_list.name}"
+        redirect_to list_path(@list)
+      end
+    end
+  end
+
   # def watch_random
   #   watch_path(@list.find_entry_by_position(:random))
   # end
@@ -100,6 +153,14 @@ class ListsController < ApplicationController
                     else
                       @list.entries
                     end
+
+    # Load child lists with their positions in this parent context
+    @child_lists = @list.child_relationships.includes(:child_list).order(:position).map do |rel|
+      child = rel.child_list
+      child.define_singleton_method(:position) { rel.position }
+      child
+    end
+
     @entries = {}
     @criteria = params[:criteria].present? ? params[:criteria] : 'Position'
     filter_entries(@criteria)
@@ -132,6 +193,6 @@ class ListsController < ApplicationController
   end
 
   def list_params
-    params.require(:list).permit(:name, :ordered, :private, :sort)
+    params.require(:list).permit(:name, :ordered, :private, :sort, :parent_list_id)
   end
 end

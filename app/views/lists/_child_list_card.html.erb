@@ -1,0 +1,52 @@
+<div class="card mb-4 border-primary">
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">
+      <i class="fa-solid fa-folder me-2"></i>
+      <%= link_to list.name, list_path(list), class: "text-white text-decoration-none" %>
+    </h5>
+    <small>List</small>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-8">
+        <p class="card-text">
+          <strong><%= pluralize(list.entries.count, 'entry') %></strong>
+          <% if list.child_lists.any? %>
+            • <strong><%= pluralize(list.child_lists.count, 'sublist') %></strong>
+          <% end %>
+        </p>
+        <% if list.entries.any? %>
+          <p class="card-text">
+            <small class="text-muted">
+              Recent entries:
+              <%= list.entries.order(created_at: :desc).limit(3).pluck(:name).join(', ') %>
+            </small>
+          </p>
+        <% end %>
+        <% if list.parent_lists.count > 1 %>
+          <p class="card-text">
+            <small class="text-info">
+              <i class="fa-solid fa-share-nodes"></i>
+              Appears in <%= pluralize(list.parent_lists.count, 'list') %>
+            </small>
+          </p>
+        <% elsif list.min_depth > 1 %>
+          <p class="card-text">
+            <small class="text-info">📁 Nested <%= list.min_depth %> level<%= 's' if list.min_depth > 1 %> deep</small>
+          </p>
+        <% end %>
+      </div>
+      <div class="col-md-4 d-flex flex-column justify-content-center">
+        <%= link_to "View List", list_path(list), class: "btn btn-primary mb-2" %>
+        <% if list.user == current_user %>
+          <%= link_to "Add Entry", new_list_entry_path(list), class: "btn btn-outline-primary mb-2" %>
+          <%= link_to list_path(list), method: :delete,
+              data: {turbo_method: :delete, turbo_confirm: 'Are you sure?'},
+              class: "btn btn-outline-danger btn-sm" do %>
+            <i class="fa-solid fa-trash"></i> Delete
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

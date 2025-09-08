@@ -1,5 +1,12 @@
 <%= simple_form_for @list do |f| %>
   <%= f.input :name %>
+  <%= f.input :parent_list_id,
+      collection: current_user.lists.where(parent_list_id: nil),
+      label_method: :name,
+      value_method: :id,
+      prompt: 'Select a parent list (optional)',
+      label: 'Add to List',
+      hint: 'Choose an existing list to add this list to, or leave blank to create a standalone list' %>
   <%= f.input :ordered, as: :boolean %>
   <%= f.input :private, as: :boolean %>
   <%= f.input :sort, collection: ['Year', 'Genre', 'Watched', 'Type', 'Length'], include_blank: true %>

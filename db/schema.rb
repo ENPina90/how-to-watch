@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_04_205259) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_07_232406) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -100,6 +100,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_04_205259) do
     t.index ["user_id"], name: "index_follows_on_user_id"
   end
 
+  create_table "list_relationships", force: :cascade do |t|
+    t.bigint "parent_list_id", null: false
+    t.bigint "child_list_id", null: false
+    t.integer "position"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["child_list_id"], name: "idx_list_rel_child"
+    t.index ["parent_list_id", "child_list_id"], name: "idx_list_rel_parent_child", unique: true
+    t.index ["parent_list_id", "position"], name: "idx_list_rel_parent_position"
+  end
+
   create_table "list_user_entries", force: :cascade do |t|
     t.bigint "list_id", null: false
     t.bigint "user_id", null: false
@@ -123,6 +134,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_04_205259) do
     t.boolean "ordered"
     t.boolean "private"
     t.datetime "last_watched_at"
+    t.bigint "parent_list_id"
+    t.integer "position"
+    t.index ["parent_list_id", "position"], name: "index_lists_on_parent_list_id_and_position"
+    t.index ["parent_list_id"], name: "index_lists_on_parent_list_id"
     t.index ["user_id"], name: "index_lists_on_user_id"
   end
 
@@ -163,9 +178,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_04_205259) do
   add_foreign_key "entries", "subentries", column: "current_id"
   add_foreign_key "follows", "lists"
   add_foreign_key "follows", "users"
+  add_foreign_key "list_relationships", "lists", column: "child_list_id"
+  add_foreign_key "list_relationships", "lists", column: "parent_list_id"
   add_foreign_key "list_user_entries", "entries", column: "current_entry_id"
   add_foreign_key "list_user_entries", "lists"
   add_foreign_key "list_user_entries", "users"
+  add_foreign_key "lists", "lists", column: "parent_list_id"
   add_foreign_key "lists", "users"
   add_foreign_key "subentries", "entries"
 end
