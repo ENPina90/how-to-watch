@@ -2,6 +2,7 @@
   <%= f.input :name %>
   <%= f.input :ordered, as: :boolean %>
   <%= f.input :private, as: :boolean %>
+  <%= f.input :reviewable, as: :boolean, label: 'Enable review prompts', hint: 'Ask for ratings and comments when marking entries as watched' %>
   <%= f.input :sort, collection: ['Year', 'Genre', 'Watched', 'Type', 'Length'], include_blank: true %>
   <%= f.button :submit %>
 <% end %>

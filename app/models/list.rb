@@ -29,12 +29,12 @@ class List < ApplicationRecord
     where('name ILIKE ?', "%#{name}%").first
   end
 
-  def watched!
-    entry = find_entry_by_position(:next)
-    self.update(current: entry.position)
+  def watched!(user = nil)
+    entry = find_next_incomplete_entry(user)
+    self.update(current: entry&.position || current)
   end
 
-  def find_entry_by_position(change)
+  def find_entry_by_position(change, user = nil)
     return nil if entries.empty?
 
     # Determine the starting position.
@@ -48,7 +48,11 @@ class List < ApplicationRecord
     # Loop until we find a valid, not completed entry or exceed the maximum bound.
     while new_position <= max_position
       entry = entries.find_by(position: new_position)
-      return entry if entry && !entry.completed
+      if entry
+        # Check per-user completion if user provided, otherwise use old system
+        completed = user ? entry.completed_by?(user) : entry.completed
+        return entry if !completed
+      end
       new_position += 1
     end
 
@@ -57,14 +61,63 @@ class List < ApplicationRecord
   end
 
 
-  def assign_current(change)
-    new_position = OFFSET[change] ? self.current + OFFSET[change] : change
-    update(current: new_position)
-    Entry.find_by(list: self, position: new_position)
+  def assign_current(change, user = nil)
+    if OFFSET.key?(change)
+      # For relative changes (:next, :previous, :current), just move sequentially
+      current_pos = current || 1  # Default to 1 if current is nil
+      new_position = current_pos + OFFSET[change]
+
+      # Ensure new_position falls within the min/max bounds of entry positions
+      min_position = entries.minimum(:position) || 1
+      max_position = entries.maximum(:position) || 1
+
+      if new_position < min_position
+        new_position = min_position
+      elsif new_position > max_position
+        new_position = max_position
+      end
+
+      # Find the entry at this position
+      entry = entries.find_by(position: new_position)
+      if entry
+        update(current: new_position)
+        return entry
+      else
+        # No entry at exact position, find closest entry or stay at current
+        closest_entry = entries.where('position >= ?', new_position).order(:position).first ||
+                       entries.where('position <= ?', new_position).order(position: :desc).first
+        if closest_entry
+          update(current: closest_entry.position)
+          return closest_entry
+        else
+          return entries.find_by(position: current_pos)
+        end
+      end
+    else
+      # For absolute position changes
+      new_position = change.to_i
+      update(current: new_position)
+      Entry.find_by(list: self, position: new_position)
+    end
   end
 
-  def find_sibling(change)
-    lists = List.joins(:entries).where(entries: { completed: false }).distinct.where.not(current: nil).order(:created_at)
+  # New method for finding next incomplete entry (used by watched! method)
+  def find_next_incomplete_entry(user = nil)
+    return find_entry_by_position(:next, user)
+  end
+
+  def find_sibling(change, user = nil)
+    if user
+      # Find lists that have incomplete entries for this user
+      lists = List.joins(entries: :user_entries)
+                  .where(user_entries: { user: user, completed: false })
+                  .distinct
+                  .where.not(current: nil)
+                  .order(:created_at)
+    else
+      # Fallback to old system
+      lists = List.joins(:entries).where(entries: { completed: false }).distinct.where.not(current: nil).order(:created_at)
+    end
     # lists = List.where.associated(:entries).where.not(current: nil).order(:created_at)
     current_list_index = lists.index(self)
     return lists.first unless current_list_index

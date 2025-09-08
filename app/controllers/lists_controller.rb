@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
-  before_action :set_list, only: [:show, :edit, :destroy, :watch_current, :top_entries, :move_to_list]
+  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :move_to_list]
 
   def index
     @lists = List.order(:last_watched_at).reverse
@@ -58,6 +58,14 @@ class ListsController < ApplicationController
   end
 
   def edit; end
+
+  def update
+    if @list.update(list_params)
+      redirect_to list_path(@list), notice: 'List was successfully updated.'
+    else
+      render :edit
+    end
+  end
 
   def destroy
     @list.destroy
@@ -185,14 +193,14 @@ class ListsController < ApplicationController
         @entries["#{year}s"] = decade_entries unless decade_entries.empty?
       end
     when 'Watched'
-      @entries['Unwatched'] = @list_entries.reject(&:completed).sort_by(&:position)
-      @entries['Watched'] = @list_entries.select(&:completed).sort_by(&:position)
+      @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by(&:position)
+      @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by(&:position)
     else
       @entries = @list_entries.group_by { |entry| entry.send(criteria.downcase) }
     end
   end
 
   def list_params
-    params.require(:list).permit(:name, :ordered, :private, :sort, :parent_list_id)
+    params.require(:list).permit(:name, :ordered, :private, :sort, :parent_list_id, :reviewable)
   end
 end

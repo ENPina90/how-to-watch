@@ -16,11 +16,7 @@
   </div>
   <div class="card-menu">
     <% if entry.list.user == current_user %>
-      <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
-      title="Mark as watched"
-      data-controller="completed"
-      data-completed-id-value="<%= entry.id %>"
-      data-action="click->completed#toggle"></i>
+      <%= render 'entries/completion_status', entry: entry, user: current_user %>
       <%= link_to edit_entry_path(entry) do %>
         <i class="fa-solid fa-pen"></i>
       <% end %>

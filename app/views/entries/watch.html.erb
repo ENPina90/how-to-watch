@@ -40,11 +40,9 @@
         <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y"></i>
       <% end %>
       <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
-      <i class="fa-<%= @entry.completed ? "solid" : "regular"%> fa-eye fa-2x text-decoration-none position-absolute top-0 start-0 translate-middle-y"
-        title="Mark as watched"
-        data-controller="completed"
-        data-completed-id-value="<%= @entry.id %>"
-        data-action="click->completed#toggle"></i>
+      <div class="position-absolute top-0 start-0 translate-middle-y">
+        <%= render 'entries/completion_status', entry: @entry, user: current_user %>
+      </div>
       <%= link_to list_watch_current_path(@entry.list.find_sibling(:next)) do %>
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
@@ -56,6 +54,10 @@
       <% end %>
     </div>
   </div>
+  <!-- Review Modal -->
+  <%= render 'entries/review_modal' %>
+
+  <!-- Edit Modal -->
   <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog" data-edit-target="modal">
       <div class="modal-content">

@@ -6,7 +6,7 @@ class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete reportlink repair_image migrate_poster shuffle_current decrement_current increment_current]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current]
 
   def new
     @entry = Entry.new
@@ -157,23 +157,38 @@ class EntriesController < ApplicationController
         redirect_to list_path(@entry.list, anchor: @entry.imdb)
       end
     else
-      if @entry.list.ordered
-        @entry.complete(false)
-        current = @entry.list.assign_current(:previous)
-        redirect_to watch_entry_path(current)
+      # decrement_current should just move to the previous entry without changing completion
+      if @entry.list.user == current_user
+        current = @entry.list.assign_current(:previous, current_user)
+        redirect_to watch_entry_path(current || @entry)
       else
-        # session[:previous_entry_positions] ||= []
-        # previous_position = @entry.list.current || @entry.list.entries.map(&:position).sample
-        # session[:previous_entry_positions] << previous_position
-        # @entry.list.find_entry_by_position(session[:previous_entry_positions][-2])
-        # redirect_to watch_entry_path(session[:previous_entry_id][-1])
-        list_positions = @entry.list.entries.map(&:position) - [@entry.list.current]
-        random_entry_position = list_positions.sample
-        current = @entry.list.assign_current(random_entry_position)
-        redirect_to watch_entry_path(current)
+        # If not the list owner, just stay on current entry
+        redirect_to watch_entry_path(@entry)
       end
     end
+  end
 
+  # Keep the old decrement logic for when we actually want to mark as incomplete
+  def mark_previous_incomplete
+    if @entry.media == 'series'
+      @entry.set_current(-1)
+      if params[:mode] == 'watch'
+        redirect_to watch_entry_path(@entry)
+      else
+        redirect_to list_path(@entry.list, anchor: @entry.imdb)
+      end
+    else
+      if @entry.list.ordered
+        @entry.mark_incomplete_by!(current_user)
+        current = @entry.list.assign_current(:previous, current_user) if @entry.list.user == current_user
+        redirect_to watch_entry_path(current || @entry)
+      else
+        list_positions = @entry.list.entries.map(&:position) - [@entry.list.current]
+        random_entry_position = list_positions.sample
+        current = @entry.list.assign_current(random_entry_position, current_user) if @entry.list.user == current_user
+        redirect_to watch_entry_path(current || @entry)
+      end
+    end
   end
 
   def increment_current
@@ -185,25 +200,37 @@ class EntriesController < ApplicationController
         redirect_to list_path(@entry.list, anchor: @entry.imdb)
       end
     else
-      if @entry.list.ordered
-        @entry.complete(true)
-        current = @entry.list.assign_current(:next)
-        redirect_to watch_entry_path(current)
+      # increment_current should just move to the next entry without marking as completed
+      if @entry.list.user == current_user
+        current = @entry.list.assign_current(:next, current_user)
+        redirect_to watch_entry_path(current || @entry)
       else
-        @entry.complete(true)
-        list_positions = @entry.list.entries.map(&:position) - [@entry.list.current]
-        random_entry_position = list_positions.sample
-        current = @entry.list.assign_current(random_entry_position)
-        redirect_to watch_entry_path(current)
+        # If not the list owner, just stay on current entry
+        redirect_to watch_entry_path(@entry)
       end
     end
   end
 
   def shuffle_current
-    list_positions = @entry.list.entries.where.not(completed: true).map(&:position) - [@entry.list.current]
+    # Get entries that are not completed by the current user
+    incomplete_entries = @entry.list.entries.joins(:user_entries)
+                                           .where(user_entries: { user: current_user, completed: false })
+
+    # If no incomplete entries found, fall back to all entries
+    if incomplete_entries.empty?
+      incomplete_entries = @entry.list.entries
+    end
+
+    # Exclude current entry
+    list_positions = incomplete_entries.where.not(id: @entry.id).pluck(:position)
     random_entry_position = list_positions.sample
-    current = @entry.list.assign_current(random_entry_position)
-    redirect_to watch_entry_path(current)
+
+    if random_entry_position && @entry.list.user == current_user
+      current = @entry.list.assign_current(random_entry_position, current_user)
+      redirect_to watch_entry_path(current)
+    else
+      redirect_to watch_entry_path(@entry)
+    end
   end
 
   def update_position
@@ -224,8 +251,82 @@ class EntriesController < ApplicationController
   end
 
   def complete
-    completed = @entry.complete(!@entry.completed)
-    @entry.list.assign_current(completed ? :next : :current)
+    # Check if entry is already completed by user
+    if @entry.completed_by?(current_user)
+      # Delete the UserEntry record to "uncomplete" it
+      @entry.remove_user_tracking!(current_user)
+    else
+      # Mark as completed
+      @entry.mark_completed_by!(current_user)
+      @entry.list.assign_current(:next, current_user) if @entry.list.user == current_user
+    end
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "completed-#{@entry.id}",
+          partial: 'entries/completion_status',
+          locals: { entry: @entry, user: current_user }
+        )
+      end
+      format.html { redirect_back(fallback_location: list_path(@entry.list)) }
+    end
+  end
+
+  def review
+    # Mark as completed first if not already completed
+    @entry.mark_completed_by!(current_user) unless @entry.completed_by?(current_user)
+
+    user_entry = @entry.user_entry_for(current_user)
+
+    # Update review and comment
+    if params[:review].present?
+      user_entry.update(review: params[:review].to_i.clamp(1, 10))
+    end
+
+    if params[:comment].present?
+      user_entry.update(comment: params[:comment])
+    end
+
+    # Handle "do not show again" option
+    if params[:disable_reviews] == "true"
+      @entry.list.update(reviewable: false)
+      flash[:notice] = "Review prompts disabled for this list"
+    else
+      flash[:notice] = "Thank you for your review!"
+    end
+
+    respond_to do |format|
+      format.html { navigate_after_completion }
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "completed-#{@entry.id}",
+          partial: 'entries/completion_status',
+          locals: { entry: @entry, user: current_user }
+        )
+      end
+    end
+  end
+
+  def complete_without_review
+    @entry.mark_completed_by!(current_user)
+
+    # Handle "do not show again" option
+    if params[:disable_reviews] == "true"
+      @entry.list.update(reviewable: false)
+      flash[:notice] = "Review prompts disabled for this list"
+    end
+
+    respond_to do |format|
+      format.html { navigate_after_completion }
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "completed-#{@entry.id}",
+          partial: 'entries/completion_status',
+          locals: { entry: @entry, user: current_user }
+        )
+      end
+    end
   end
 
   def reportlink
@@ -336,6 +437,39 @@ class EntriesController < ApplicationController
         :custom,
         subentries_attributes: [:id, :name, :plot, :imdb, :season, :episode, :rating, :length, :completed, :source, :year, :_destroy]
       )
+    end
+
+    def navigate_after_completion
+      if @entry.list.user == current_user
+        if @entry.list.ordered
+          # For ordered lists, go to next incomplete entry
+          next_entry = @entry.list.find_next_incomplete_entry(current_user)
+          if next_entry
+            @entry.list.update(current: next_entry.position)
+            redirect_to watch_entry_path(next_entry)
+          else
+            # No more incomplete entries, stay on current
+            redirect_to watch_entry_path(@entry)
+          end
+        else
+          # For unordered lists, go to random incomplete entry
+          incomplete_entries = @entry.list.entries.joins(:user_entries)
+                                                 .where(user_entries: { user: current_user, completed: false })
+                                                 .where.not(id: @entry.id)
+
+          if incomplete_entries.any?
+            random_entry = incomplete_entries.sample
+            @entry.list.update(current: random_entry.position)
+            redirect_to watch_entry_path(random_entry)
+          else
+            # No more incomplete entries, stay on current
+            redirect_to watch_entry_path(@entry)
+          end
+        end
+      else
+        # If not list owner, just redirect to current entry
+        redirect_to watch_entry_path(@entry)
+      end
     end
 
 end
