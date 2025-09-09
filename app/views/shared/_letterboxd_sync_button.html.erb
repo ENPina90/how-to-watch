@@ -1,0 +1,20 @@
+<% if current_user.letterboxd_connected? && current_user.completed?(entry) %>
+  <%= link_to sync_entry_to_letterboxd_path(entry),
+              method: :post,
+              class: "btn btn-outline-primary btn-sm",
+              data: {
+                confirm: "Sync '#{entry.name}' to your Letterboxd account?",
+                turbo: false
+              },
+              title: "Sync to Letterboxd" do %>
+    <i class="fas fa-film me-1"></i>
+    Sync to Letterboxd
+  <% end %>
+<% elsif current_user.completed?(entry) %>
+  <%= link_to connect_letterboxd_path,
+              class: "btn btn-outline-secondary btn-sm",
+              title: "Connect to Letterboxd to sync this entry" do %>
+    <i class="fas fa-link me-1"></i>
+    Connect Letterboxd
+  <% end %>
+<% end %>

@@ -9,6 +9,9 @@ class Entry < ApplicationRecord
   belongs_to :list
   has_one_attached :poster
   has_many :subentries, dependent: :destroy
+  has_many :user_entries, dependent: :destroy
+  has_many :users_who_watched, -> { where(user_entries: { completed: true }) }, through: :user_entries, source: :user
+  has_many :users_who_reviewed, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :user
   belongs_to :current, class_name: 'Subentry', optional: true, dependent: :destroy
   # has_many :current_list_users, class_name: 'ListUserEntries', foreign_key: 'current_entry_id'
   validates :name, presence: true, uniqueness: { scope: [:list, :series] }
@@ -52,6 +55,7 @@ class Entry < ApplicationRecord
       plot:         entry[:plot],
       pic:          entry[:pic],
       source:       entry[:source] || generate_source(entry) || generate_source(entry),
+      source_two:   entry[:source_two],
       genre:        entry[:genre],
       director:     entry[:director],
       writer:       entry[:writer],
@@ -114,6 +118,61 @@ class Entry < ApplicationRecord
     self.update(completed: boolean)
     self.list.watched!
     completed
+  end
+
+  # Get user_entry record for a specific user
+  def user_entry_for(user)
+    user_entries.find_or_create_by(user: user)
+  end
+
+  # Check if a specific user has completed this entry
+  def completed_by?(user)
+    return completed if user.nil? # Fallback to old system
+    user_entry_for(user).completed?
+  end
+
+  # Mark as completed for a specific user
+  def mark_completed_by!(user)
+    user_entry_for(user).mark_completed!
+    self.list.watched!(user) if user == self.list.user # Update list current if it's the list owner
+  end
+
+  # Mark as incomplete for a specific user
+  def mark_incomplete_by!(user)
+    user_entry_for(user).mark_incomplete!
+  end
+
+  # Toggle completion for a specific user
+  def toggle_completed_by!(user)
+    user_entry = user_entry_for(user)
+    user_entry.toggle_completed!
+    self.list.watched!(user) if user == self.list.user && user_entry.completed? # Update list current if it's the list owner
+    user_entry.completed?
+  end
+
+  # Get average review rating
+  def average_review
+    reviews = user_entries.where.not(review: nil).pluck(:review)
+    return nil if reviews.empty?
+    reviews.sum.to_f / reviews.count
+  end
+
+  # Get review count
+  def review_count
+    user_entries.where.not(review: nil).count
+  end
+
+  # Get completion percentage
+  def completion_percentage
+    total_users = user_entries.count
+    return 0 if total_users == 0
+    completed_users = user_entries.where(completed: true).count
+    (completed_users.to_f / total_users * 100).round(1)
+  end
+
+  # Remove user's tracking for this entry
+  def remove_user_tracking!(user)
+    user_entries.where(user: user).destroy_all
   end
 
   def streamable

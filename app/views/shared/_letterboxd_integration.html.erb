@@ -1,0 +1,92 @@
+<div class="card mt-4">
+  <div class="card-header d-flex align-items-center">
+    <i class="fas fa-film me-2"></i>
+    <h5 class="mb-0">Letterboxd Integration</h5>
+  </div>
+  <div class="card-body">
+    <% if current_user.letterboxd_connected? %>
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <i class="fas fa-check-circle text-success me-2"></i>
+          <strong>Connected to Letterboxd</strong>
+          <% if current_user.letterboxd_username.present? %>
+            <br>
+            <small class="text-muted">Username: @<%= current_user.letterboxd_username %></small>
+          <% end %>
+        </div>
+        <%= link_to disconnect_letterboxd_path,
+                    method: :delete,
+                    class: "btn btn-outline-danger btn-sm",
+                    data: {
+                      confirm: "Are you sure you want to disconnect from Letterboxd?"
+                    } do %>
+          <i class="fas fa-unlink me-1"></i>
+          Disconnect
+        <% end %>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <%= link_to bulk_sync_to_letterboxd_path,
+                      method: :post,
+                      class: "btn btn-primary w-100",
+                      data: {
+                        confirm: "This will sync all your completed entries to Letterboxd. This may take a while. Continue?"
+                      } do %>
+            <i class="fas fa-sync me-2"></i>
+            Sync All Completed Entries
+          <% end %>
+        </div>
+        <div class="col-md-6">
+          <div class="text-center">
+            <small class="text-muted">
+              <i class="fas fa-info-circle me-1"></i>
+              Individual entries can be synced from their detail pages
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <% completed_count = current_user.user_entries.completed.count %>
+      <% if completed_count > 0 %>
+        <div class="alert alert-info mb-0">
+          <i class="fas fa-check-circle me-2"></i>
+          You have <strong><%= completed_count %></strong> completed
+          <%= pluralize(completed_count, 'entry', 'entries') %> ready to sync.
+        </div>
+      <% end %>
+
+    <% else %>
+      <div class="text-center">
+        <i class="fas fa-film text-muted mb-3" style="font-size: 3rem;"></i>
+        <h6>Connect your Letterboxd account</h6>
+        <p class="text-muted mb-4">
+          Automatically sync your watched movies and reviews to Letterboxd when you mark them as complete.
+        </p>
+
+        <%= link_to connect_letterboxd_path, class: "btn btn-primary" do %>
+          <i class="fas fa-link me-2"></i>
+          Connect to Letterboxd
+        <% end %>
+
+        <div class="mt-3">
+          <small class="text-muted">
+            <i class="fas fa-lock me-1"></i>
+            Your Letterboxd credentials are securely stored and encrypted.
+          </small>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% if current_user.letterboxd_connected? %>
+  <script>
+    // Auto-refresh token if needed
+    document.addEventListener('DOMContentLoaded', function() {
+      <% if current_user.letterboxd_token_needs_refresh? %>
+        console.log('Letterboxd token needs refresh - this will happen automatically on next sync');
+      <% end %>
+    });
+  </script>
+<% end %>

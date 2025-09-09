@@ -1,10 +1,28 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
-  before_action :set_list, only: [:show, :edit, :destroy, :watch_current, :top_entries, :move_to_list]
+  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :move_to_list, :subscribe, :unsubscribe]
+  before_action :check_edit_permissions, only: [:edit, :update, :destroy]
 
   def index
-    @lists = List.order(:last_watched_at).reverse
+    # Order lists by most recent UserEntry activity (watching/reviewing)
+    lists_with_activity = List.joins(entries: :user_entries)
+                              .where(user_entries: { user: current_user })
+                              .group('lists.id')
+                              .order('MAX(user_entries.created_at) DESC')
+                              .includes(:entries, :user)
+
+    # Get IDs of lists with activity to exclude them from the second query
+    active_list_ids = lists_with_activity.pluck(:id)
+
+    # Also include lists with no user entries, ordered by creation date
+    lists_without_activity = List.where.not(id: active_list_ids)
+                                 .order(created_at: :desc)
+                                 .includes(:entries, :user)
+
+    # Combine both sets: active lists first, then inactive lists
+    @lists = lists_with_activity.to_a + lists_without_activity.to_a
+
     List.where(ordered: false).each{|unordered_list| unordered_list.assign_current(:next) }
   end
 
@@ -58,6 +76,14 @@ class ListsController < ApplicationController
   end
 
   def edit; end
+
+  def update
+    if @list.update(list_params)
+      redirect_to list_path(@list), notice: 'List was successfully updated.'
+    else
+      render :edit
+    end
+  end
 
   def destroy
     @list.destroy
@@ -137,6 +163,57 @@ class ListsController < ApplicationController
     end
   end
 
+  def subscribe
+    if current_user.subscribe_to!(@list)
+      flash[:notice] = "Subscribed to #{@list.name}"
+    else
+      flash[:alert] = "Already subscribed to #{@list.name}"
+    end
+
+    respond_to do |format|
+      format.html { redirect_to list_path(@list) }
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "subscription-#{@list.id}",
+          partial: 'lists/subscription_button',
+          locals: { list: @list, user: current_user }
+        )
+      end
+    end
+  end
+
+  def unsubscribe
+    list_name = @list.name
+    current_user.unsubscribe_from!(@list)
+
+    if params[:redirect_to_sibling] == "true"
+      # Find next subscribed list with unwatched content
+      next_list = @list.find_sibling(:next, current_user)
+
+      if next_list && next_list != @list
+        flash[:notice] = "You have unsubscribed from #{list_name}"
+        redirect_to list_watch_current_path(next_list)
+      else
+        # No other subscribed lists, go to main lists page
+        flash[:notice] = "You have unsubscribed from #{list_name}. No other subscribed lists with unwatched content."
+        redirect_to lists_path
+      end
+    else
+      flash[:notice] = "Unsubscribed from #{list_name}"
+
+      respond_to do |format|
+        format.html { redirect_to list_path(@list) }
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(
+            "subscription-#{@list.id}",
+            partial: 'lists/subscription_button',
+            locals: { list: @list, user: current_user }
+          )
+        end
+      end
+    end
+  end
+
   # def watch_random
   #   watch_path(@list.find_entry_by_position(:random))
   # end
@@ -185,14 +262,22 @@ class ListsController < ApplicationController
         @entries["#{year}s"] = decade_entries unless decade_entries.empty?
       end
     when 'Watched'
-      @entries['Unwatched'] = @list_entries.reject(&:completed).sort_by(&:position)
-      @entries['Watched'] = @list_entries.select(&:completed).sort_by(&:position)
+      @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by(&:position)
+      @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by(&:position)
     else
       @entries = @list_entries.group_by { |entry| entry.send(criteria.downcase) }
     end
   end
 
   def list_params
-    params.require(:list).permit(:name, :ordered, :private, :sort, :parent_list_id)
+    permitted = [:name, :ordered, :private, :sort, :parent_list_id, :reviewable]
+    permitted << :default if current_user&.can_set_default?
+    params.require(:list).permit(permitted)
+  end
+
+  def check_edit_permissions
+    unless current_user&.can_edit_list?(@list)
+      redirect_to lists_path, alert: 'You do not have permission to perform this action.'
+    end
   end
 end

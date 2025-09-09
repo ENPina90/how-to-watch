@@ -1,0 +1,46 @@
+<div id="completed-<%= entry.id %>" data-controller="completed" data-completed-id-value="<%= entry.id %>" class="completion-status">
+  <% completed = entry.completed_by?(user) %>
+  <% if completed %>
+    <!-- If already completed, always use toggle to uncomplete -->
+    <i class="fa-solid fa-eye <%= local_assigns[:minimal] ? '' : 'fa-2x' %> text-decoration-none"
+      title="Mark as unwatched"
+      data-action="click->completed#toggle"
+      style="cursor: pointer;"></i>
+  <% elsif entry.list.reviewable && (entry.media == 'movie' || entry.media == 'fanedit') %>
+    <!-- If not completed and reviewable movie/fanedit, show modal -->
+    <i class="fa-regular fa-eye <%= local_assigns[:minimal] ? '' : 'fa-2x' %> text-decoration-none"
+      title="Mark as watched and review"
+      data-bs-toggle="modal"
+      data-bs-target="#reviewModal<%= entry.id %>"
+      style="cursor: pointer;"></i>
+  <% else %>
+    <!-- All other cases use standard toggle -->
+    <i class="fa-regular fa-eye <%= local_assigns[:minimal] ? '' : 'fa-2x' %> text-decoration-none"
+      title="Mark as watched"
+      data-action="click->completed#toggle"
+      style="cursor: pointer;"></i>
+  <% end %>
+
+  <% unless local_assigns[:minimal] %>
+    <% if entry.review_count > 0 %>
+      <div class="mt-1">
+        <small class="text-muted">
+          <i class="fa-solid fa-star text-warning"></i>
+          <%= entry.average_review&.round(1) || "N/A" %>
+          (<%= pluralize(entry.review_count, 'review') %>)
+        </small>
+      </div>
+    <% end %>
+
+    <% if completed %>
+      <% user_review = user&.review_for(entry) %>
+      <% if user_review %>
+        <div class="mt-1">
+          <small class="text-info">
+            Your rating: <%= user_review %>/10
+          </small>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

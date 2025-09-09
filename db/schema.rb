@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_07_232406) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_09_015204) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -78,6 +78,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_07_232406) do
     t.string "tmdb"
     t.string "trailer"
     t.string "series_imdb"
+    t.string "source_two"
     t.index ["current_id"], name: "index_entries_on_current_id"
     t.index ["list_id"], name: "index_entries_on_list_id"
   end
@@ -136,8 +137,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_07_232406) do
     t.datetime "last_watched_at"
     t.bigint "parent_list_id"
     t.integer "position"
+    t.boolean "reviewable", default: false, null: false
+    t.boolean "default", default: false, null: false
+    t.index ["default"], name: "index_lists_on_default"
     t.index ["parent_list_id", "position"], name: "index_lists_on_parent_list_id_and_position"
     t.index ["parent_list_id"], name: "index_lists_on_parent_list_id"
+    t.index ["reviewable"], name: "index_lists_on_reviewable"
     t.index ["user_id"], name: "index_lists_on_user_id"
   end
 
@@ -159,6 +164,36 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_07_232406) do
     t.index ["entry_id"], name: "index_subentries_on_entry_id"
   end
 
+  create_table "subscriptions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "list_id", null: false
+    t.datetime "subscribed_at", default: -> { "CURRENT_TIMESTAMP" }
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["list_id"], name: "idx_subscriptions_list"
+    t.index ["subscribed_at"], name: "idx_subscriptions_subscribed_at"
+    t.index ["user_id", "list_id"], name: "idx_subscriptions_user_list", unique: true
+    t.index ["user_id"], name: "idx_subscriptions_user"
+  end
+
+  create_table "user_entries", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entry_id", null: false
+    t.boolean "completed", default: false, null: false
+    t.text "comment"
+    t.integer "review"
+    t.datetime "completed_at"
+    t.datetime "last_watched_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entry_id"], name: "idx_user_entries_entry"
+    t.index ["user_id", "completed"], name: "idx_user_entries_user_completed"
+    t.index ["user_id", "completed_at"], name: "idx_user_entries_user_completed_at"
+    t.index ["user_id", "entry_id"], name: "idx_user_entries_user_entry", unique: true
+    t.index ["user_id", "review"], name: "idx_user_entries_user_review"
+    t.index ["user_id"], name: "idx_user_entries_user"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -168,7 +203,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_07_232406) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "username"
+    t.text "letterboxd_access_token"
+    t.text "letterboxd_refresh_token"
+    t.datetime "letterboxd_token_expires_at"
+    t.string "letterboxd_user_id"
+    t.string "letterboxd_username"
+    t.boolean "admin", default: false, null: false
+    t.index ["admin"], name: "index_users_on_admin"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["letterboxd_user_id"], name: "index_users_on_letterboxd_user_id"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
@@ -186,4 +229,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_07_232406) do
   add_foreign_key "lists", "lists", column: "parent_list_id"
   add_foreign_key "lists", "users"
   add_foreign_key "subentries", "entries"
+  add_foreign_key "subscriptions", "lists"
+  add_foreign_key "subscriptions", "users"
+  add_foreign_key "user_entries", "entries"
+  add_foreign_key "user_entries", "users"
 end

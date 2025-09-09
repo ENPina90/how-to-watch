@@ -17,6 +17,13 @@ class List < ApplicationRecord
   has_many :entries, dependent: :destroy
   has_many :list_user_entries
   has_many :users, through: :list_user_entries
+  has_many :subscriptions, dependent: :destroy
+  has_many :subscribers, through: :subscriptions, source: :user
+
+  # Auto-subscription callbacks
+  after_create :auto_subscribe_owner
+  after_update :handle_default_subscription_changes
+  after_update :handle_privacy_subscription_changes
 
   OFFSET = {
       previous: -1,
@@ -29,12 +36,12 @@ class List < ApplicationRecord
     where('name ILIKE ?', "%#{name}%").first
   end
 
-  def watched!
-    entry = find_entry_by_position(:next)
-    self.update(current: entry.position)
+  def watched!(user = nil)
+    entry = find_next_incomplete_entry(user)
+    self.update(current: entry&.position || current)
   end
 
-  def find_entry_by_position(change)
+  def find_entry_by_position(change, user = nil)
     return nil if entries.empty?
 
     # Determine the starting position.
@@ -48,7 +55,11 @@ class List < ApplicationRecord
     # Loop until we find a valid, not completed entry or exceed the maximum bound.
     while new_position <= max_position
       entry = entries.find_by(position: new_position)
-      return entry if entry && !entry.completed
+      if entry
+        # Check per-user completion if user provided, otherwise use old system
+        completed = user ? entry.completed_by?(user) : entry.completed
+        return entry if !completed
+      end
       new_position += 1
     end
 
@@ -57,14 +68,65 @@ class List < ApplicationRecord
   end
 
 
-  def assign_current(change)
-    new_position = OFFSET[change] ? self.current + OFFSET[change] : change
-    update(current: new_position)
-    Entry.find_by(list: self, position: new_position)
+  def assign_current(change, user = nil)
+    if OFFSET.key?(change)
+      # For relative changes (:next, :previous, :current), just move sequentially
+      current_pos = current || 1  # Default to 1 if current is nil
+      new_position = current_pos + OFFSET[change]
+
+      # Ensure new_position falls within the min/max bounds of entry positions
+      min_position = entries.minimum(:position) || 1
+      max_position = entries.maximum(:position) || 1
+
+      if new_position < min_position
+        new_position = min_position
+      elsif new_position > max_position
+        new_position = max_position
+      end
+
+      # Find the entry at this position
+      entry = entries.find_by(position: new_position)
+      if entry
+        update(current: new_position)
+        return entry
+      else
+        # No entry at exact position, find closest entry or stay at current
+        closest_entry = entries.where('position >= ?', new_position).order(:position).first ||
+                       entries.where('position <= ?', new_position).order(position: :desc).first
+        if closest_entry
+          update(current: closest_entry.position)
+          return closest_entry
+        else
+          return entries.find_by(position: current_pos)
+        end
+      end
+    else
+      # For absolute position changes
+      new_position = change.to_i
+      update(current: new_position)
+      Entry.find_by(list: self, position: new_position)
+    end
   end
 
-  def find_sibling(change)
-    lists = List.joins(:entries).where(entries: { completed: false }).distinct.where.not(current: nil).order(:created_at)
+  # New method for finding next incomplete entry (used by watched! method)
+  def find_next_incomplete_entry(user = nil)
+    return find_entry_by_position(:next, user)
+  end
+
+  def find_sibling(change, user = nil)
+    if user
+      # Find subscribed lists that have incomplete entries for this user
+      lists = List.joins(:subscriptions)
+                  .joins(entries: :user_entries)
+                  .where(subscriptions: { user: user })
+                  .where(user_entries: { user: user, completed: false })
+                  .distinct
+                  .where.not(current: nil)
+                  .order(:created_at)
+    else
+      # Fallback to old system
+      lists = List.joins(:entries).where(entries: { completed: false }).distinct.where.not(current: nil).order(:created_at)
+    end
     # lists = List.where.associated(:entries).where.not(current: nil).order(:created_at)
     current_list_index = lists.index(self)
     return lists.first unless current_list_index
@@ -188,5 +250,48 @@ class List < ApplicationRecord
   # Remove this list from all parents
   def remove_from_all_parents
     parent_relationships.destroy_all
+  end
+
+  # Get subscription count
+  def subscriber_count
+    subscriptions.count
+  end
+
+  private
+
+  # Auto-subscribe the owner when creating a list
+  def auto_subscribe_owner
+    # Owner is always subscribed to their own lists (even private ones)
+    Subscription.create_subscription(user, self, 'list owner')
+
+    # If list is public, it will be handled by auto_subscribe_to_own_list
+    # If list is default, it will be handled by auto_subscribe_to_default_list
+    if default?
+      Subscription.auto_subscribe_to_default_list(self)
+    end
+  end
+
+  # Handle changes to default status
+  def handle_default_subscription_changes
+    if saved_change_to_default?
+      if default?
+        # List became default - subscribe all users
+        Subscription.auto_subscribe_to_default_list(self)
+      end
+      # Note: We don't unsubscribe when removing default status
+      # Users can manually unsubscribe if they want
+    end
+  end
+
+  # Handle changes to privacy status
+  def handle_privacy_subscription_changes
+    if saved_change_to_private?
+      if !private? && !default?
+        # List became public (and not default) - subscribe owner if not already
+        Subscription.auto_subscribe_to_own_list(user, self)
+      end
+      # Note: We don't unsubscribe when making private
+      # Existing subscribers can keep their subscription
+    end
   end
 end

@@ -14,12 +14,8 @@
   </div>
 
   <div class="col-3 d-flex justify-content-between align-items-center entry-minimal-icons">
-    <% if entry.list.user == current_user %>
-      <i class="fa-<%= entry.completed ? "solid" : "regular"%> fa-eye"
-          title="Mark as watched"
-          data-controller="completed"
-          data-completed-id-value="<%= entry.id %>"
-          data-action="click->completed#toggle"></i>
+    <%= render 'entries/completion_status', entry: entry, user: current_user, minimal: true %>
+    <% if current_user&.can_edit_entry?(entry) %>
       <i class="fa-solid fa-pen" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= entry.id %>" data-action="click->edit#toggle"></i>
       <%= link_to entry_path(entry),
           data: { turbo_method: :delete, turbo_confirm: "Are you sure?" } do %>
