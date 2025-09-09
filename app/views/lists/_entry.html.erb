@@ -25,8 +25,8 @@
         <p class="card-plot"><%= entry.plot %><%= entry.plot %></p>
       </div>
       <div class="card-menu">
-        <% if entry.list.user == current_user %>
-          <%= render 'entries/completion_status', entry: entry, user: current_user %>
+        <%= render 'entries/completion_status', entry: entry, user: current_user %>
+        <% if current_user&.can_edit_entry?(entry) %>
           <i class="fa-solid fa-pen" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= entry.id %>" data-action="click->edit#toggle"></i>
           <%# <%= link_to edit_entry_path(entry) do %>
             <%# <i class="fa-solid fa-pen"></i> %>
@@ -35,7 +35,7 @@
                 data: {turbo_method: :delete, turbo_confirm: "Are you sure?"} do %>
               <i class="fa-solid fa-trash"></i>
             <% end %>
-          <% end %>
+        <% end %>
           <i class="fa-solid fa-link-slash"
       style="color:<%= entry.stream ? "grey" : "red"%>"
       title="Report broken link"

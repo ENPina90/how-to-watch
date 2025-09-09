@@ -17,6 +17,13 @@ class List < ApplicationRecord
   has_many :entries, dependent: :destroy
   has_many :list_user_entries
   has_many :users, through: :list_user_entries
+  has_many :subscriptions, dependent: :destroy
+  has_many :subscribers, through: :subscriptions, source: :user
+
+  # Auto-subscription callbacks
+  after_create :auto_subscribe_owner
+  after_update :handle_default_subscription_changes
+  after_update :handle_privacy_subscription_changes
 
   OFFSET = {
       previous: -1,
@@ -108,8 +115,10 @@ class List < ApplicationRecord
 
   def find_sibling(change, user = nil)
     if user
-      # Find lists that have incomplete entries for this user
-      lists = List.joins(entries: :user_entries)
+      # Find subscribed lists that have incomplete entries for this user
+      lists = List.joins(:subscriptions)
+                  .joins(entries: :user_entries)
+                  .where(subscriptions: { user: user })
                   .where(user_entries: { user: user, completed: false })
                   .distinct
                   .where.not(current: nil)
@@ -241,5 +250,48 @@ class List < ApplicationRecord
   # Remove this list from all parents
   def remove_from_all_parents
     parent_relationships.destroy_all
+  end
+
+  # Get subscription count
+  def subscriber_count
+    subscriptions.count
+  end
+
+  private
+
+  # Auto-subscribe the owner when creating a list
+  def auto_subscribe_owner
+    # Owner is always subscribed to their own lists (even private ones)
+    Subscription.create_subscription(user, self, 'list owner')
+
+    # If list is public, it will be handled by auto_subscribe_to_own_list
+    # If list is default, it will be handled by auto_subscribe_to_default_list
+    if default?
+      Subscription.auto_subscribe_to_default_list(self)
+    end
+  end
+
+  # Handle changes to default status
+  def handle_default_subscription_changes
+    if saved_change_to_default?
+      if default?
+        # List became default - subscribe all users
+        Subscription.auto_subscribe_to_default_list(self)
+      end
+      # Note: We don't unsubscribe when removing default status
+      # Users can manually unsubscribe if they want
+    end
+  end
+
+  # Handle changes to privacy status
+  def handle_privacy_subscription_changes
+    if saved_change_to_private?
+      if !private? && !default?
+        # List became public (and not default) - subscribe owner if not already
+        Subscription.auto_subscribe_to_own_list(user, self)
+      end
+      # Note: We don't unsubscribe when making private
+      # Existing subscribers can keep their subscription
+    end
   end
 end

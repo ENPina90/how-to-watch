@@ -19,7 +19,16 @@
   <%# <i class="fa-solid fa-expand cinema__control" data-action="click->cinema#fullscreen"></i> %>
 
   <div class="cinema__title">
-    <h3><%= link_to @entry.list.name, list_path(@entry.list), class: 'text-white'  %></h3>
+    <h3 class="d-flex align-items-center list-name-container" onmouseover="this.querySelector('.unsubscribe-icon').style.opacity='1'" onmouseout="this.querySelector('.unsubscribe-icon').style.opacity='0'">
+      <%= link_to @entry.list.name, list_path(@entry.list), class: 'text-white text-decoration-none me-2' %>
+      <%= link_to list_unsubscribe_path(@entry.list, redirect_to_sibling: true),
+          method: :patch,
+          class: "unsubscribe-icon text-white",
+          style: "opacity: 0; transition: opacity 0.2s; cursor: pointer; font-size: 0.8em;",
+          data: { turbo_method: :patch, turbo_confirm: "Unsubscribe from #{@entry.list.name}?" } do %>
+        <i class="fa-solid fa-xmark"></i>
+      <% end %>
+    </h3>
     <h1><%= @entry.name %></h1>
     <% if @entry.media == "series" && @entry.current %>
       <h3><%= @entry.series %></h3>

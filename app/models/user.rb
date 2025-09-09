@@ -3,9 +3,15 @@ class User < ApplicationRecord
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable
+
+  # Auto-subscription callback
+  after_create :setup_initial_subscriptions
+
   has_many :lists
   has_many :list_user_entries
   has_many :user_entries, dependent: :destroy
+  has_many :subscriptions, dependent: :destroy
+  has_many :subscribed_lists, through: :subscriptions, source: :list
   has_many :watched_entries, -> { where(user_entries: { completed: true }) }, through: :user_entries, source: :entry
   has_many :unwatched_entries, -> { where(user_entries: { completed: false }) }, through: :user_entries, source: :entry
   has_many :reviewed_entries, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :entry
@@ -58,6 +64,49 @@ class User < ApplicationRecord
   # Remove user's tracking for an entry (delete UserEntry record)
   def remove_tracking_for!(entry)
     user_entries.where(entry: entry).destroy_all
+  end
+
+  # Check if user can edit a list
+  def can_edit_list?(list)
+    admin? || list.user == self
+  end
+
+  # Check if user can edit an entry
+  def can_edit_entry?(entry)
+    admin? || entry.list.user == self
+  end
+
+  # Check if user can set default lists
+  def can_set_default?
+    admin?
+  end
+
+  # Subscription methods
+  def subscribed_to?(list)
+    subscriptions.exists?(list: list)
+  end
+
+  def subscribe_to!(list)
+    return false if subscribed_to?(list)
+
+    subscriptions.create!(list: list, subscribed_at: Time.current)
+    true
+  rescue ActiveRecord::RecordInvalid
+    false
+  end
+
+  def unsubscribe_from!(list)
+    subscriptions.where(list: list).destroy_all
+  end
+
+  def toggle_subscription!(list)
+    if subscribed_to?(list)
+      unsubscribe_from!(list)
+      false
+    else
+      subscribe_to!(list)
+      true
+    end
   end
 
   # Letterboxd integration methods
@@ -126,5 +175,11 @@ class User < ApplicationRecord
       letterboxd_user_id: nil,
       letterboxd_username: nil
     )
+  end
+
+  private
+
+  def setup_initial_subscriptions
+    Subscription.auto_subscribe_user(self)
   end
 end

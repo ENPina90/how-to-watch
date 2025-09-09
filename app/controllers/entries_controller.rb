@@ -7,6 +7,7 @@ class EntriesController < ApplicationController
   skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
   before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current]
+  before_action :check_edit_permissions, only: %i[edit update destroy]
 
   def new
     @entry = Entry.new
@@ -469,6 +470,12 @@ class EntriesController < ApplicationController
       else
         # If not list owner, just redirect to current entry
         redirect_to watch_entry_path(@entry)
+      end
+    end
+
+    def check_edit_permissions
+      unless current_user&.can_edit_entry?(@entry)
+        redirect_to entry_path(@entry), alert: 'You do not have permission to perform this action.'
       end
     end
 

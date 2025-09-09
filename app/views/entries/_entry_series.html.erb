@@ -39,8 +39,8 @@
               <i class="fa-solid fa-trailer"></i>
             </a>
           <% end %>
-          <% if entry.list.user == current_user %>
-            <%= render 'entries/completion_status', entry: entry, user: current_user %>
+          <%= render 'entries/completion_status', entry: entry, user: current_user %>
+          <% if current_user&.can_edit_entry?(entry) %>
             <i class="fa-solid fa-pen" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= entry.id %>" data-action="click->edit#toggle"></i>
             <%# <%= link_to edit_entry_path(entry) do %>
               <%# <i class="fa-solid fa-pen"></i> %>

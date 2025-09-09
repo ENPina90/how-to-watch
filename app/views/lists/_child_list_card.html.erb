@@ -38,13 +38,20 @@
       </div>
       <div class="col-md-4 d-flex flex-column justify-content-center">
         <%= link_to "View List", list_path(list), class: "btn btn-primary mb-2" %>
-        <% if list.user == current_user %>
-          <%= link_to "Add Entry", new_list_entry_path(list), class: "btn btn-outline-primary mb-2" %>
+        <%= link_to "Add Entry", new_list_entry_path(list), class: "btn btn-outline-primary mb-2" %>
+        <% if current_user&.can_edit_list?(list) %>
           <%= link_to list_path(list), method: :delete,
               data: {turbo_method: :delete, turbo_confirm: 'Are you sure?'},
               class: "btn btn-outline-danger btn-sm" do %>
             <i class="fa-solid fa-trash"></i> Delete
           <% end %>
+        <% end %>
+        <% if list.default? %>
+          <div class="mt-1">
+            <span class="badge bg-success">
+              <i class="fa-solid fa-star me-1"></i>Default
+            </span>
+          </div>
         <% end %>
       </div>
     </div>

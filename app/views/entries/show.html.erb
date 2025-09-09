@@ -16,16 +16,16 @@
       <p class="mb-1"><small><%= @entry.genre %></small></p>
     </div>
     <div class="card-menu">
-      <% if @entry.list.user == current_user %>
-        <%= render 'entries/completion_status', entry: @entry, user: current_user %>
-        <%= link_to edit_entry_path(@entry) do %>
-          <i class="fa-solid fa-pen"></i>
-        <% end %>
-        <%= link_to entry_path(@entry),
-        data: {turbo_method: :delete, turbo_confirm: "Are you sure?"} do %>
-          <i class="fa-solid fa-trash"></i>
-        <% end %>
+    <%= render 'entries/completion_status', entry: @entry, user: current_user %>
+    <% if current_user&.can_edit_entry?(@entry) %>
+      <%= link_to edit_entry_path(@entry) do %>
+        <i class="fa-solid fa-pen"></i>
       <% end %>
+      <%= link_to entry_path(@entry),
+      data: {turbo_method: :delete, turbo_confirm: "Are you sure?"} do %>
+        <i class="fa-solid fa-trash"></i>
+      <% end %>
+    <% end %>
       <i class="fa-solid fa-link-slash"
       style="color:<%= @entry.stream ? "grey" : "red"%>"
       title="Report broken link"

@@ -11,6 +11,8 @@ Rails.application.routes.draw do
     get :watch_current
     get :top_entries
     patch :move_to_list
+    patch :subscribe
+    patch :unsubscribe
     resources :entries, only: [:new, :create]
   end
   resources :entries, only: [:show, :create, :edit, :update, :destroy] do
