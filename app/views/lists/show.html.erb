@@ -42,7 +42,7 @@
         </div>
         <%# <i class="fa-solid fa-up-right-and-down-left-from-center"></i> %>
         <i class="fa-solid fa-copy"></i>
-        <% if @list.user == current_user %>
+        <% if current_user&.can_edit_list?(@list) %>
           <%= link_to edit_list_path(@list) do %>
             <i class="fa-solid fa-pen"></i>
           <% end %>
@@ -88,6 +88,13 @@
             <i class="fa-solid fa-trash"></i>
           <% end %>
         <% end %>
+
+        <% if @list.default? %>
+          <span class="badge bg-success ms-2">
+            <i class="fa-solid fa-star me-1"></i>Default List
+          </span>
+        <% end %>
+
       </div>
       <div class="col-8 border-top">
         <%= form_with url: list_path(@list), method: :get, class: "d-flex" do %>
@@ -102,6 +109,7 @@
       </div>
       <div class="list-options">
         <span class="btn-action"><%= link_to '+ Entry', new_list_entry_path(@list)%></span>
+        <%= render 'lists/subscription_button', list: @list, user: current_user %>
       </div>
     </div>
     <% unless @minimal %>
@@ -119,6 +127,11 @@
   <div id="entries-container">
     <%= render "entries", list: @list, entries: @entries, sections: @sections, random_selection: @random_selection, list_entries: @list_entries, minimal: @minimal%>
   </div>
+
+  <!-- Review Modals for movies and fanedits only -->
+  <% @list_entries.select { |entry| entry.media == 'movie' || entry.media == 'fanedit' }.each do |entry| %>
+    <%= render 'entries/review_modal_list', entry: entry %>
+  <% end %>
   <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog" data-edit-target="modal">
     </div>

@@ -1,0 +1,25 @@
+<span id="subscription-<%= list.id %>" class="btn-action">
+  <% if user&.subscribed_to?(list) %>
+    <%= link_to list_unsubscribe_path(list),
+        method: :patch,
+        class: "text-success text-decoration-none",
+        style: "transition: color 0.2s; cursor: pointer;",
+        onmouseover: "this.style.color='#dc3545'",
+        onmouseout: "this.style.color='#198754'",
+        data: { turbo_method: :patch },
+        remote: true do %>
+      Subscribed
+    <% end %>
+  <% else %>
+    <%= link_to list_subscribe_path(list),
+        method: :patch,
+        class: "text-muted text-decoration-none",
+        style: "transition: color 0.2s; cursor: pointer;",
+        onmouseover: "this.style.color='#0d6efd'",
+        onmouseout: "this.style.color='#6c757d'",
+        data: { turbo_method: :patch },
+        remote: true do %>
+      Subscribe
+    <% end %>
+  <% end %>
+</span>

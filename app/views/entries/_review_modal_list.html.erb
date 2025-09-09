@@ -1,0 +1,94 @@
+<div class="modal fade" id="reviewModal<%= entry.id %>" tabindex="-1" aria-labelledby="reviewModalLabel<%= entry.id %>" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reviewModalLabel<%= entry.id %>">
+          <i class="fa-solid fa-star text-warning me-2"></i>
+          How was "<%= entry.name %>"?
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <%= form_with url: review_entry_path(entry), method: :patch, data: { turbo: true } do |f| %>
+        <div class="modal-body">
+          <div class="mb-4">
+            <label class="form-label">Rating (1-10)</label>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted">Poor</span>
+              <div class="rating-stars mx-3" id="stars-<%= entry.id %>">
+                <% (1..10).each do |rating| %>
+                  <i class="fa-regular fa-star star-rating"
+                     data-rating="<%= rating %>"
+                     onclick="selectRating(<%= entry.id %>, <%= rating %>)"
+                     style="cursor: pointer; color: #ddd; font-size: 1.5rem;"></i>
+                <% end %>
+              </div>
+              <span class="text-muted">Excellent</span>
+            </div>
+            <%= f.hidden_field :review, id: "rating-input-#{entry.id}" %>
+            <div class="text-center mt-2">
+              <span id="rating-display-<%= entry.id %>" class="badge bg-secondary">No rating selected</span>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :comment, "Comments (optional)", class: "form-label" %>
+            <%= f.text_area :comment,
+                class: "form-control",
+                rows: 3,
+                placeholder: "Share your thoughts about this #{entry.media}..." %>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <%= link_to complete_without_review_entry_path(entry, disable_reviews: true),
+              method: :patch,
+              class: "btn btn-outline-secondary me-auto",
+              remote: true,
+              data: { bs_dismiss: "modal" } do %>
+            <i class="fa-solid fa-ban me-1"></i> Don't ask again
+          <% end %>
+          <%= link_to complete_without_review_entry_path(entry),
+              method: :patch,
+              class: "btn btn-secondary",
+              remote: true,
+              data: { bs_dismiss: "modal" } do %>
+            <i class="fa-solid fa-forward me-1"></i> Skip
+          <% end %>
+          <%= f.submit "Submit Review",
+              class: "btn btn-primary submit-review-btn",
+              data: { entry_id: entry.id, bs_dismiss: "modal" },
+              disabled: true %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+  function selectRating(entryId, rating) {
+    const stars = document.querySelectorAll('#stars-' + entryId + ' .star-rating');
+    stars.forEach((star, index) => {
+      if (index < rating) {
+        star.classList.remove('fa-regular');
+        star.classList.add('fa-solid');
+        star.style.color = '#ffc107';
+      } else {
+        star.classList.remove('fa-solid');
+        star.classList.add('fa-regular');
+        star.style.color = '#ddd';
+      }
+    });
+
+    document.getElementById('rating-input-' + entryId).value = rating;
+
+    const display = document.getElementById('rating-display-' + entryId);
+    display.textContent = rating + '/10';
+    display.className = rating >= 7 ? 'badge bg-success' :
+                       rating >= 5 ? 'badge bg-warning' :
+                       'badge bg-danger';
+
+    const submitBtn = document.querySelector('.submit-review-btn[data-entry-id="' + entryId + '"]');
+    if (submitBtn) submitBtn.disabled = false;
+  }
+</script>

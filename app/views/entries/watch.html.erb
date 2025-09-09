@@ -19,7 +19,16 @@
   <%# <i class="fa-solid fa-expand cinema__control" data-action="click->cinema#fullscreen"></i> %>
 
   <div class="cinema__title">
-    <h3><%= link_to @entry.list.name, list_path(@entry.list), class: 'text-white'  %></h3>
+    <h3 class="d-flex align-items-center list-name-container" onmouseover="this.querySelector('.unsubscribe-icon').style.opacity='1'" onmouseout="this.querySelector('.unsubscribe-icon').style.opacity='0'">
+      <%= link_to @entry.list.name, list_path(@entry.list), class: 'text-white text-decoration-none me-2' %>
+      <%= link_to list_unsubscribe_path(@entry.list, redirect_to_sibling: true),
+          method: :patch,
+          class: "unsubscribe-icon text-white",
+          style: "opacity: 0; transition: opacity 0.2s; cursor: pointer; font-size: 0.8em;",
+          data: { turbo_method: :patch, turbo_confirm: "Unsubscribe from #{@entry.list.name}?" } do %>
+        <i class="fa-solid fa-xmark"></i>
+      <% end %>
+    </h3>
     <h1><%= @entry.name %></h1>
     <% if @entry.media == "series" && @entry.current %>
       <h3><%= @entry.series %></h3>
@@ -40,11 +49,9 @@
         <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y"></i>
       <% end %>
       <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
-      <i class="fa-<%= @entry.completed ? "solid" : "regular"%> fa-eye fa-2x text-decoration-none position-absolute top-0 start-0 translate-middle-y"
-        title="Mark as watched"
-        data-controller="completed"
-        data-completed-id-value="<%= @entry.id %>"
-        data-action="click->completed#toggle"></i>
+      <div class="position-absolute top-0 start-0 translate-middle-y">
+        <%= render 'entries/completion_status', entry: @entry, user: current_user %>
+      </div>
       <%= link_to list_watch_current_path(@entry.list.find_sibling(:next)) do %>
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
@@ -56,6 +63,10 @@
       <% end %>
     </div>
   </div>
+  <!-- Review Modal -->
+  <%= render 'entries/review_modal' %>
+
+  <!-- Edit Modal -->
   <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog" data-edit-target="modal">
       <div class="modal-content">
