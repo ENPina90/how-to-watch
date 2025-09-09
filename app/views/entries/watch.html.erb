@@ -6,10 +6,12 @@
       height="100%"
       allowfullscreen
       allow="autoplay"
-      src="<% if @entry.media == 'series' %>
-             <%= source = "#{@entry.source}/#{@entry.current&.season}-#{@entry.current&.episode}" %>
+      src="           <% if @entry.media == 'series' %>
+             <%= source = "#{@entry.source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=1" %>
            <% elsif @entry.media == 'episode' %>
-             <%= source = "#{@entry.source}/#{@entry.season}-#{@entry.episode}" %>
+             <%= source = "#{@entry.source}?autoplay=1" %>
+           <% elsif @entry.media == 'movie' %>
+             <%= source = "#{@entry.source}" %>
            <% else %>
             <%= source = @entry.source %>
            <% end %>

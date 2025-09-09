@@ -31,41 +31,6 @@
       <li><%= link_to 'Episode', new_list_entry_path(@list, type: 'episode')%></li>
       <li><%= link_to 'Book', new_list_entry_path(@list, type: 'Book')%></li>
       <li><%= link_to 'Game', new_list_entry_path(@list, type: 'game')%></li>
-      <li class="divider"></li>
-      <li><%= link_to '+ New List', new_list_path(parent_list_id: @list.id)%></li>
-      <li class="dropdown">
-        <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-          + Existing List
-        </a>
-        <ul class="dropdown-menu" style="max-height: 300px; overflow-y: auto;">
-          <li><h6 class="dropdown-header">Add existing list to <%= @list.name %>:</h6></li>
-          <% available_lists = List.all.where.not(id: @list.id) %>
-          <% if available_lists.any? %>
-            <% available_lists.each do |list| %>
-              <% if list.can_be_added_to?(@list) %>
-                <li>
-                  <%= form_with url: list_move_to_list_path(list), method: :patch, local: true, class: "m-0" do |f| %>
-                    <%= f.hidden_field :target_list_id, value: @list.id %>
-                    <%= f.submit list.name,
-                        class: "dropdown-item text-start border-0 bg-transparent w-100 p-2",
-                        style: "cursor: pointer;",
-                        data: { turbo_confirm: "Move '#{list.name}' to '#{@list.name}'?" },
-                        onclick: "return confirm('Move \\'#{list.name}\\' to \\'#{@list.name}\\'?')" %>
-                    <small class="text-muted d-block px-2 pb-1">
-                      <%= pluralize(list.entries.count, 'entry') %>
-                      <% if list.child_lists.any? %>
-                        • <%= pluralize(list.child_lists.count, 'sublist') %>
-                      <% end %>
-                    </small>
-                  <% end %>
-                </li>
-              <% end %>
-            <% end %>
-          <% else %>
-            <li><span class="dropdown-item-text text-muted">No available lists to add</span></li>
-          <% end %>
-        </ul>
-      </li>
     </ul>
   </div>
   <div class="row justify-content-center list-layout">

@@ -78,6 +78,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_09_015204) do
     t.string "tmdb"
     t.string "trailer"
     t.string "series_imdb"
+    t.string "source_two"
     t.index ["current_id"], name: "index_entries_on_current_id"
     t.index ["list_id"], name: "index_entries_on_list_id"
   end

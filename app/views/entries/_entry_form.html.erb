@@ -10,6 +10,7 @@
       <%= f.input :name %>
       <%= f.input :media %>
       <%= f.input :source %>
+      <%= f.input :source_two, label: "Alternative Source" %>
       <%= f.input :pic, label: "Poster URL (or upload below)" %>
 
       <% if entry.poster.attached? %>
@@ -24,6 +25,7 @@
       <%= f.input :poster, as: :file, label: "Upload New Poster Image", hint: "Replaces current poster if uploaded" %>
       <%= f.input :series %>
       <%= f.input :plot %>
+      <%= f.input :imdb %>
       <%= f.input :category %>
       <%= f.input :note %>
       <% if entry.media == 'episode' %>

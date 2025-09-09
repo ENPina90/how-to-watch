@@ -55,6 +55,7 @@ class Entry < ApplicationRecord
       plot:         entry[:plot],
       pic:          entry[:pic],
       source:       entry[:source] || generate_source(entry) || generate_source(entry),
+      source_two:   entry[:source_two],
       genre:        entry[:genre],
       director:     entry[:director],
       writer:       entry[:writer],
