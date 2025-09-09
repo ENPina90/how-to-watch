@@ -275,8 +275,12 @@ class EntriesController < ApplicationController
   end
 
   def review
-    # Mark as completed first if not already completed
-    @entry.mark_completed_by!(current_user) unless @entry.completed_by?(current_user)
+    # Mark as completed without triggering list navigation
+    unless @entry.completed_by?(current_user)
+      user_entry = @entry.user_entry_for(current_user)
+      user_entry.mark_completed!
+      # Don't call @entry.mark_completed_by! as it triggers watched! which advances the list
+    end
 
     user_entry = @entry.user_entry_for(current_user)
 
@@ -310,7 +314,12 @@ class EntriesController < ApplicationController
   end
 
   def complete_without_review
-    @entry.mark_completed_by!(current_user)
+    # Mark as completed without triggering list navigation
+    unless @entry.completed_by?(current_user)
+      user_entry = @entry.user_entry_for(current_user)
+      user_entry.mark_completed!
+      # Don't call @entry.mark_completed_by! as it triggers watched! which advances the list
+    end
 
     # Handle "do not show again" option
     if params[:disable_reviews] == "true"
