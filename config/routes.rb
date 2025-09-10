@@ -2,6 +2,9 @@ Rails.application.routes.draw do
   devise_for :users
   root to: "lists#index"
   get 'test', to: 'pages#test'
+
+  # Health check endpoint for Railway
+  get '/health', to: 'application#health'
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Defines the root path route ("/")
