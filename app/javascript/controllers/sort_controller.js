@@ -14,6 +14,12 @@ export default class extends Controller {
   updatePosition(event) {
     const entryId = event.item.dataset.id;  // Get the ID of the dragged entry
     const newPosition = event.newIndex + 1; // SortableJS gives 0-based index, we need 1-based
+    const oldPosition = event.oldIndex + 1; // Get the old position too
+
+    // Only proceed if position actually changed
+    if (oldPosition === newPosition) {
+      return;
+    }
 
     // Construct the correct URL for updating the position
     const url = `/entries/${entryId}/update_position`;
