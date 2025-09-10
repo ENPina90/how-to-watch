@@ -236,16 +236,34 @@ class EntriesController < ApplicationController
 
   def update_position
     @entry = Entry.find(params[:id])
-    new_position = params[:position].to_i
+    visual_position = params[:position].to_i
     list = @entry.list
 
-    new_position = [new_position, 1].max
-    new_position = [new_position, list.entries.count].min
+    # Get all entries in their current display order
+    ordered_entries = list.all_items_by_position.select { |item| item.is_a?(Entry) }
+
+    # Find the current visual position of this entry
+    current_visual_position = ordered_entries.index(@entry) + 1
+
+    # Clamp the visual position
+    visual_position = [visual_position, 1].max
+    visual_position = [visual_position, ordered_entries.count].min
+
+    if current_visual_position == visual_position
+      head :ok
+      return
+    end
 
     ActiveRecord::Base.transaction do
-      shift_positions(@entry, new_position)
+      # Normalize all positions first to ensure they're sequential
+      list.normalize_entry_positions!
 
-      @entry.update!(position: new_position)
+      # Now the database positions match visual positions
+      # Reload entry to get normalized position
+      @entry.reload
+
+      shift_positions(@entry, visual_position)
+      @entry.update!(position: visual_position)
     end
 
     head :ok

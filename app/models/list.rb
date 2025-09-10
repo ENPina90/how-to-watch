@@ -167,6 +167,16 @@ class List < ApplicationRecord
     [max_entry_position, max_list_position].max + 1
   end
 
+  # Normalize entry positions to be sequential (1, 2, 3, 4...)
+  def normalize_entry_positions!
+    entries.order(:position).each_with_index do |entry, index|
+      new_position = index + 1
+      if entry.position != new_position
+        entry.update_column(:position, new_position)
+      end
+    end
+  end
+
   # Check if this list can be added to the target list (prevent circular references)
   def can_be_added_to?(target_list)
     return false if target_list == self
