@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
-  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :move_to_list, :subscribe, :unsubscribe]
-  before_action :check_edit_permissions, only: [:edit, :update, :destroy]
+  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
+  before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
 
   def index
     # Order lists by most recent UserEntry activity (watching/reviewing)
@@ -92,10 +92,43 @@ class ListsController < ApplicationController
 
   def watch_current
     if @list.entries.empty?
-      redirect_to list_path(@list) if @list.entries.empty?
+      redirect_to list_path(@list), notice: "This list has no entries to watch. Add some entries first!"
     else
       @list.update(current: @list.entries.first.position) if @list.current.nil?
-      redirect_to watch_entry_path(@list.find_entry_by_position(:current))
+      current_entry = @list.find_entry_by_position(:current)
+
+      if current_entry
+        redirect_to watch_entry_path(current_entry)
+      else
+        # Fallback logic based on list type and user status
+        if current_user
+          fallback_entry = if @list.ordered?
+            # For ordered lists, find the first incomplete entry
+            @list.find_next_incomplete_entry_for_user(current_user, 0)
+          else
+            # For unordered lists, find a random incomplete entry
+            @list.find_random_incomplete_entry_for_user(current_user)
+          end
+
+          if fallback_entry
+            # Update user's position and list's current position
+            user_position = @list.position_for_user(current_user)
+            user_position.update_to_entry!(fallback_entry)
+            @list.update!(current: fallback_entry.position)
+
+            message = @list.ordered? ?
+              "Current entry not found. Starting from your next unwatched entry." :
+              "Current entry not found. Here's something you haven't watched yet!"
+            redirect_to watch_entry_path(fallback_entry), notice: message
+          else
+            redirect_to list_path(@list), notice: "You've completed all entries in this list!"
+          end
+        else
+          # For guest users, just pick the first entry
+          first_entry = @list.entries.order(:position).first
+          redirect_to watch_entry_path(first_entry), notice: "Current entry not found. Starting from the beginning."
+        end
+      end
     end
   end
 
@@ -212,6 +245,28 @@ class ListsController < ApplicationController
         end
       end
     end
+  end
+
+  def mark_all_complete
+    entries_count = @list.entries.count
+
+    @list.entries.each do |entry|
+      entry.mark_completed_by!(current_user) unless entry.completed_by?(current_user)
+    end
+
+    flash[:notice] = "Marked all #{entries_count} entries as complete"
+    redirect_to edit_list_path(@list)
+  end
+
+  def mark_all_incomplete
+    entries_count = @list.entries.count
+
+    @list.entries.each do |entry|
+      entry.mark_incomplete_by!(current_user) if entry.completed_by?(current_user)
+    end
+
+    flash[:notice] = "Marked all #{entries_count} entries as incomplete"
+    redirect_to edit_list_path(@list)
   end
 
   # def watch_random

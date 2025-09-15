@@ -18,7 +18,8 @@ class UserEntry < ApplicationRecord
 
   before_update :set_completed_at, if: :completed_changed?
   before_update :set_last_watched_at, if: :will_save_change_to_completed?
-  after_update :advance_user_list_position, if: :saved_change_to_completed?
+  # Temporarily disabled auto-advance callback
+  # after_update :advance_user_list_position, if: :saved_change_to_completed?
 
   # Mark as completed
   def mark_completed!
@@ -77,7 +78,21 @@ class UserEntry < ApplicationRecord
   def advance_user_list_position
     # Only advance if the user just completed the entry (not if they marked it incomplete)
     if completed?
-      entry.list.advance_user_position!(user)
+      list = entry.list
+
+      if list.ordered?
+        # For ordered lists, always advance to next incomplete/untracked entry
+        user_position = list.position_for_user(user)
+        next_entry = list.find_next_incomplete_entry_for_user(user, entry.position)
+
+        if next_entry
+          user_position.update!(current_position: next_entry.position)
+        end
+        # If no next incomplete entry, position stays at current completed entry
+      else
+        # For unordered lists, use the existing advance logic (random)
+        list.advance_user_position!(user)
+      end
     end
   end
 end

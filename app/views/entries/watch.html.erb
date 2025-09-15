@@ -1,4 +1,4 @@
-<div class="cinema__screen">
+<div class="cinema__screen" data-list-auto-next="<%= @entry.list.auto_next? %>" data-list-ordered="<%= @entry.list.ordered? %>">
   <iframe id="cinema"
       title="<%= @entry.name %>"
       referrerpolicy="origin"
@@ -117,3 +117,6 @@
 </div>
 
 </div>
+
+<!-- Auto-advance modal temporarily disabled -->
+<%# render 'entries/auto_advance_modal', entry: @entry, list: @entry.list %>
