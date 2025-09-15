@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import Mustache from "mustachejs";
-import TmdbService from "../services/tmdb_service";
-import TmdbMapper from "../services/tmdb_mapper";
+import TmdbService from "services/tmdb_service";
+import TmdbMapper from "services/tmdb_mapper";
 
 export default class extends Controller {
   static targets = ["input", "season", "episode", "results", "count"];
