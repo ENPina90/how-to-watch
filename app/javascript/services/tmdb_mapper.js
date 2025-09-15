@@ -20,7 +20,7 @@ export default class TmdbMapper {
       Title: episode.name,
       Season: episode.season_number,
       Episode: episode.episode_number,
-      imdbID: episode.imdb_id || seriesImdbID,
+      imdbID: episode.imdb_id || imdbID,
       tmdbID: episode.id,
     };
   }
