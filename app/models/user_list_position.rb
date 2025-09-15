@@ -43,4 +43,9 @@ class UserListPosition < ApplicationRecord
       current_entry_obj
     end
   end
+
+  # Update position to a specific entry
+  def update_to_entry!(target_entry)
+    update!(current_position: target_entry.position)
+  end
 end
