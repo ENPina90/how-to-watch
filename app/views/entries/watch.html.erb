@@ -16,7 +16,7 @@
              elsif @entry.media == 'episode'
                source = "#{base_source}?autoplay=1"
              elsif @entry.media == 'movie'
-               source = base_source
+               source =  "#{base_source}?autoplay=1"
              else
                source = base_source
              end
@@ -43,6 +43,18 @@
       <h3>S<%= @entry.current.season %>E<%= @entry.current.episode %> - <%= @entry.current.name %></h3>
     <% elsif @entry.media == "episode" %>
       <h3><%= @entry.series %> - S<%= @entry.season %>E<%= @entry.episode %></h3>
+    <% end %>
+
+    <% if @entry.completed_by?(current_user) %>
+      <% user_review = current_user&.review_for(@entry) %>
+      <% if user_review %>
+        <div class="mt-2">
+          <small class="text-info">
+            <i class="fa-solid fa-star text-warning"></i>
+            Your rating: <%= user_review %>/10
+          </small>
+        </div>
+      <% end %>
     <% end %>
   </div>
   <div class="d-flex justify-content-center cinema__control mt-5 me-5">

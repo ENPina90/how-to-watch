@@ -270,7 +270,7 @@ class ListsController < ApplicationController
   end
 
   def list_params
-    permitted = [:name, :ordered, :private, :sort, :parent_list_id, :reviewable, :preferred_source]
+    permitted = [:name, :ordered, :private, :sort, :parent_list_id, :reviewable, :preferred_source, :auto_play, :auto_next]
     permitted << :default if current_user&.can_set_default?
     params.require(:list).permit(permitted)
   end

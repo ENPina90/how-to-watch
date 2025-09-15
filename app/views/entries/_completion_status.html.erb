@@ -32,15 +32,5 @@
       </div>
     <% end %>
 
-    <% if completed %>
-      <% user_review = user&.review_for(entry) %>
-      <% if user_review %>
-        <div class="mt-1">
-          <small class="text-info">
-            Your rating: <%= user_review %>/10
-          </small>
-        </div>
-      <% end %>
-    <% end %>
   <% end %>
 </div>

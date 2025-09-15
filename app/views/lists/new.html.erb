@@ -14,5 +14,8 @@
     <%= f.input :default, as: :boolean, label: 'Set as default list', hint: 'Default lists are visible to all users' %>
   <% end %>
   <%= f.input :sort, collection: ['Year', 'Genre', 'Watched', 'Type', 'Length'], include_blank: true %>
+  <%= f.input :preferred_source, collection: [['Source 1', 1], ['Source 2', 2]], include_blank: false, label: 'Preferred Source', hint: 'Default source to use for entries in this list' %>
+  <%= f.input :auto_play, as: :boolean, label: 'Auto Play', hint: 'Automatically start playing entries when opened' %>
+  <%= f.input :auto_next, as: :boolean, label: 'Auto Next', hint: 'Automatically advance to next entry when current one is completed' %>
   <%= f.button :submit %>
 <% end %>
