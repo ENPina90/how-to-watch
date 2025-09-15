@@ -16,6 +16,7 @@ class Entry < ApplicationRecord
   # has_many :current_list_users, class_name: 'ListUserEntries', foreign_key: 'current_entry_id'
   validates :name, presence: true, uniqueness: { scope: [:list, :series] }
   validates :media, presence: true
+  validates :preferred_source, inclusion: { in: [1, 2] }, allow_nil: true
 
   accepts_nested_attributes_for :subentries, allow_destroy: true
 

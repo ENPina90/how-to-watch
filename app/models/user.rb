@@ -15,6 +15,7 @@ class User < ApplicationRecord
   has_many :watched_entries, -> { where(user_entries: { completed: true }) }, through: :user_entries, source: :entry
   has_many :unwatched_entries, -> { where(user_entries: { completed: false }) }, through: :user_entries, source: :entry
   has_many :reviewed_entries, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :entry
+  has_many :user_list_positions, dependent: :destroy
 
   # Get or create user_entry record for a specific entry
   def user_entry_for(entry)
