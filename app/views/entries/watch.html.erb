@@ -1,8 +1,4 @@
-<div class="cinema__screen"
-     <% if @entry.list.respond_to?(:auto_next?) %>
-       data-list-auto-next="<%= @entry.list.auto_next? %>"
-       data-list-ordered="<%= @entry.list.ordered? %>"
-     <% end %>>
+<div class="cinema__screen" data-list-auto-next="<%= @entry.list.auto_next? %>" data-list-ordered="<%= @entry.list.ordered? %>">
   <iframe id="cinema"
       title="<%= @entry.name %>"
       referrerpolicy="origin"
@@ -15,12 +11,8 @@
              preferred_source = @entry.preferred_source || @entry.list.preferred_source
              base_source = preferred_source == 2 ? @entry.source_two : @entry.source
 
-             # Determine autoplay setting based on list auto_play preference if available
-             if @entry.list.respond_to?(:auto_play?)
-               autoplay_param = @entry.list.auto_play? ? "1" : "0"
-             else
-               autoplay_param = "1"
-             end
+             # Determine autoplay setting based on list auto_play preference
+             autoplay_param = @entry.list.auto_play? ? "1" : "0"
 
              if @entry.media == 'series'
                source = "#{base_source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=#{autoplay_param}"
