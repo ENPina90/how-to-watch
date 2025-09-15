@@ -16,6 +16,8 @@ Rails.application.routes.draw do
     patch :move_to_list
     patch :subscribe
     patch :unsubscribe
+    patch :mark_all_complete
+    patch :mark_all_incomplete
     resources :entries, only: [:new, :create]
   end
   resources :entries, only: [:show, :create, :edit, :update, :destroy] do
