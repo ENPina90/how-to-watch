@@ -197,17 +197,21 @@ class List < ApplicationRecord
   def find_next_incomplete_entry_for_user(user, start_position = nil)
     start_pos = start_position || position_for_user(user).current_position
 
-    # Get entries starting from the next position
-    candidate_entries = entries.where('position > ?', start_pos).order(:position)
-
-    # Find first entry that doesn't have a UserEntry for this user
-    candidate_entries.each do |entry|
-      unless entry.user_entries.exists?(user: user)
-        return entry
-      end
-    end
-
-    nil
+    # Get entries starting from the next position that are either:
+    # 1. Not tracked by the user (no UserEntry), OR
+    # 2. Tracked but not completed (UserEntry with completed = false)
+    entries.left_joins(:user_entries)
+           .where('entries.position > ?', start_pos)
+           .where(
+             user_entries: { id: nil }
+           ).or(
+             entries.left_joins(:user_entries)
+                   .where('entries.position > ?', start_pos)
+                   .where(user_entries: { user: user, completed: false })
+           )
+           .order(:position)
+           .distinct
+           .first
   end
 
   # Find random incomplete entry for a user (for unordered lists)
@@ -221,18 +225,12 @@ class List < ApplicationRecord
                                        .where(user_entries: { user: user, completed: false })
                                )
 
-    Rails.logger.info "Shuffle Debug: Found #{incomplete_entries.count} incomplete entries before exclusion"
-
     # Exclude the specified entry if provided
     if exclude_entry
       incomplete_entries = incomplete_entries.where.not(id: exclude_entry.id)
-      Rails.logger.info "Shuffle Debug: Found #{incomplete_entries.count} incomplete entries after excluding #{exclude_entry.id}"
     end
 
-    Rails.logger.info "Shuffle Debug: Incomplete entry IDs: #{incomplete_entries.distinct.pluck(:id)}"
-    result = incomplete_entries.distinct.sample
-    Rails.logger.info "Shuffle Debug: Sampled entry: #{result&.id}"
-    result
+    incomplete_entries.distinct.sample
   end
 
   # Advance user's position based on list type

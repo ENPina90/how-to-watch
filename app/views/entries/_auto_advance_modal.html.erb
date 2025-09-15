@@ -1,0 +1,44 @@
+<div class="modal fade" id="autoAdvanceModal" tabindex="-1" aria-labelledby="autoAdvanceModalLabel" aria-hidden="true"
+     data-controller="auto-advance"
+     data-bs-backdrop="static"
+     data-auto-advance-entry-id-value="<%= entry.id %>"
+     data-auto-advance-list-id-value="<%= list.id %>"
+     data-auto-advance-is-ordered-value="<%= list.ordered? %>">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="autoAdvanceModalLabel">
+          <i class="fa-solid fa-check-circle text-success me-2"></i>
+          <%= entry.name %> marked as complete!
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-action="click->auto-advance#cancel"></button>
+      </div>
+      <div class="modal-body text-center">
+        <% if list.ordered? %>
+          <p class="mb-3">Playing next entry in:</p>
+        <% else %>
+          <p class="mb-3">Playing random entry in:</p>
+        <% end %>
+
+        <div class="countdown-display mb-4">
+          <span class="display-4 text-primary" data-auto-advance-target="countdown">3</span>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-center">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-action="click->auto-advance#cancel">
+            <i class="fa-solid fa-times me-1"></i>
+            Cancel
+          </button>
+          <button type="button" class="btn btn-outline-primary" data-action="click->auto-advance#goToList">
+            <i class="fa-solid fa-list me-1"></i>
+            Back to List
+          </button>
+          <button type="button" class="btn btn-primary" data-action="click->auto-advance#advance">
+            <i class="fa-solid fa-play me-1"></i>
+            Play Now
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
