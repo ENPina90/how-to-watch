@@ -11,12 +11,15 @@
              preferred_source = @entry.preferred_source || @entry.list.preferred_source
              base_source = preferred_source == 2 ? @entry.source_two : @entry.source
 
+             # Determine autoplay setting based on list auto_play preference
+             autoplay_param = @entry.list.auto_play? ? "1" : "0"
+
              if @entry.media == 'series'
-               source = "#{base_source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=1"
+               source = "#{base_source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=#{autoplay_param}"
              elsif @entry.media == 'episode'
-               source = "#{base_source}?autoplay=1"
+               source = "#{base_source}?autoplay=#{autoplay_param}"
              elsif @entry.media == 'movie'
-               source =  "#{base_source}?autoplay=1"
+               source =  "#{base_source}?autoplay=#{autoplay_param}"
              else
                source = base_source
              end
