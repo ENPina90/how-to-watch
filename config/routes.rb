@@ -2,6 +2,9 @@ Rails.application.routes.draw do
   devise_for :users
   root to: "lists#index"
   get 'test', to: 'pages#test'
+
+  # Health check endpoint for Railway
+  get '/health', to: 'application#health'
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Defines the root path route ("/")
@@ -29,6 +32,7 @@ Rails.application.routes.draw do
       get :increment_current
       get :decrement_current
       patch :update_position
+      patch :toggle_preferred_source
     end
   end
 

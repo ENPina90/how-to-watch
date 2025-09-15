@@ -6,7 +6,7 @@ class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current toggle_preferred_source]
   before_action :check_edit_permissions, only: %i[edit update destroy]
 
   def new
@@ -145,11 +145,17 @@ class EntriesController < ApplicationController
   end
 
   def watch
-    @entry.list.assign_current(@entry.position)
+    if current_user
+      # Update user's current position to this entry
+      user_position = @entry.list.position_for_user(current_user)
+      user_position.update!(current_position: @entry.position)
+    end
     render layout: 'special_layout'
   end
 
   def decrement_current
+    return redirect_to watch_entry_path(@entry) unless current_user
+
     if @entry.media == 'series'
       @entry.set_current(-1)
       if params[:mode] == 'watch'
@@ -158,12 +164,20 @@ class EntriesController < ApplicationController
         redirect_to list_path(@entry.list, anchor: @entry.imdb)
       end
     else
-      # decrement_current should just move to the previous entry without changing completion
-      if @entry.list.user == current_user
-        current = @entry.list.assign_current(:previous, current_user)
-        redirect_to watch_entry_path(current || @entry)
+      list = @entry.list
+      user_position = list.position_for_user(current_user)
+      current_pos = user_position.current_position
+
+      # Find previous entry by position
+      previous_entry = list.entries.where('position < ?', current_pos)
+                                  .order(position: :desc)
+                                  .first
+
+      if previous_entry
+        user_position.update!(current_position: previous_entry.position)
+        redirect_to watch_entry_path(previous_entry)
       else
-        # If not the list owner, just stay on current entry
+        # No previous entry, stay on current
         redirect_to watch_entry_path(@entry)
       end
     end
@@ -193,6 +207,8 @@ class EntriesController < ApplicationController
   end
 
   def increment_current
+    return redirect_to watch_entry_path(@entry) unless current_user
+
     if @entry.media == 'series'
       @entry.set_current(1)
       if params[:mode] == 'watch'
@@ -201,51 +217,80 @@ class EntriesController < ApplicationController
         redirect_to list_path(@entry.list, anchor: @entry.imdb)
       end
     else
-      # increment_current should just move to the next entry without marking as completed
-      if @entry.list.user == current_user
-        current = @entry.list.assign_current(:next, current_user)
-        redirect_to watch_entry_path(current || @entry)
+      list = @entry.list
+      user_position = list.position_for_user(current_user)
+      current_pos = user_position.current_position
+
+      # Find next entry by position
+      next_entry = list.entries.where('position > ?', current_pos)
+                              .order(:position)
+                              .first
+
+      if next_entry
+        user_position.update!(current_position: next_entry.position)
+        redirect_to watch_entry_path(next_entry)
       else
-        # If not the list owner, just stay on current entry
+        # No next entry, stay on current
         redirect_to watch_entry_path(@entry)
       end
     end
   end
 
   def shuffle_current
-    # Get entries that are not completed by the current user
-    incomplete_entries = @entry.list.entries.joins(:user_entries)
-                                           .where(user_entries: { user: current_user, completed: false })
+    return redirect_to watch_entry_path(@entry) unless current_user
 
-    # If no incomplete entries found, fall back to all entries
-    if incomplete_entries.empty?
-      incomplete_entries = @entry.list.entries
-    end
+    list = @entry.list
 
-    # Exclude current entry
-    list_positions = incomplete_entries.where.not(id: @entry.id).pluck(:position)
-    random_entry_position = list_positions.sample
+    # Get a random incomplete entry for this user, excluding the current entry
+    random_entry = list.find_random_incomplete_entry_for_user(current_user, @entry)
 
-    if random_entry_position && @entry.list.user == current_user
-      current = @entry.list.assign_current(random_entry_position, current_user)
-      redirect_to watch_entry_path(current)
+    Rails.logger.info "Shuffle Debug: random_entry = #{random_entry.inspect}"
+    Rails.logger.info "Shuffle Debug: random_entry.id = #{random_entry&.id}"
+
+    if random_entry
+      # Update user's position to the random entry
+      user_position = list.position_for_user(current_user)
+      user_position.update!(current_position: random_entry.position)
+
+      Rails.logger.info "Shuffle Debug: Redirecting to entry #{random_entry.id}"
+      redirect_to watch_entry_path(random_entry)
     else
+      Rails.logger.info "Shuffle Debug: No random entry found, staying on current"
+      # No incomplete entries available, stay on current
       redirect_to watch_entry_path(@entry)
     end
   end
 
   def update_position
     @entry = Entry.find(params[:id])
-    new_position = params[:position].to_i
+    visual_position = params[:position].to_i
     list = @entry.list
 
-    new_position = [new_position, 1].max
-    new_position = [new_position, list.entries.count].min
+    # Get all entries in their current display order
+    ordered_entries = list.all_items_by_position.select { |item| item.is_a?(Entry) }
+
+    # Find the current visual position of this entry
+    current_visual_position = ordered_entries.index(@entry) + 1
+
+    # Clamp the visual position
+    visual_position = [visual_position, 1].max
+    visual_position = [visual_position, ordered_entries.count].min
+
+    if current_visual_position == visual_position
+      head :ok
+      return
+    end
 
     ActiveRecord::Base.transaction do
-      shift_positions(@entry, new_position)
+      # Normalize all positions first to ensure they're sequential
+      list.normalize_entry_positions!
 
-      @entry.update!(position: new_position)
+      # Now the database positions match visual positions
+      # Reload entry to get normalized position
+      @entry.reload
+
+      shift_positions(@entry, visual_position)
+      @entry.update!(position: visual_position)
     end
 
     head :ok
@@ -379,6 +424,32 @@ class EntriesController < ApplicationController
     redirect_back(fallback_location: entry_path(@entry))
   end
 
+  def toggle_preferred_source
+    # Determine the new preferred_source value
+    current_preferred = @entry.preferred_source || @entry.list.preferred_source
+    new_preferred = current_preferred == 1 ? 2 : 1
+
+    # Check if the target source is available
+    target_source = new_preferred == 2 ? @entry.source_two : @entry.source
+
+    if target_source.present?
+      @entry.update!(preferred_source: new_preferred)
+
+      if params[:mode] == 'watch'
+        redirect_to watch_entry_path(@entry)
+      else
+        redirect_back(fallback_location: entry_path(@entry))
+      end
+    else
+      flash[:alert] = "Alternative source not available"
+      if params[:mode] == 'watch'
+        redirect_to watch_entry_path(@entry)
+      else
+        redirect_back(fallback_location: entry_path(@entry))
+      end
+    end
+  end
+
   private
 
     def set_list
@@ -450,34 +521,18 @@ class EntriesController < ApplicationController
     end
 
     def navigate_after_completion
-      if @entry.list.user == current_user
-        if @entry.list.ordered
-          # For ordered lists, go to next incomplete entry
-          next_entry = @entry.list.find_next_incomplete_entry(current_user)
-          if next_entry
-            @entry.list.update(current: next_entry.position)
-            redirect_to watch_entry_path(next_entry)
-          else
-            # No more incomplete entries, stay on current
-            redirect_to watch_entry_path(@entry)
-          end
-        else
-          # For unordered lists, go to random incomplete entry
-          incomplete_entries = @entry.list.entries.joins(:user_entries)
-                                                 .where(user_entries: { user: current_user, completed: false })
-                                                 .where.not(id: @entry.id)
+      return redirect_to watch_entry_path(@entry) unless current_user
 
-          if incomplete_entries.any?
-            random_entry = incomplete_entries.sample
-            @entry.list.update(current: random_entry.position)
-            redirect_to watch_entry_path(random_entry)
-          else
-            # No more incomplete entries, stay on current
-            redirect_to watch_entry_path(@entry)
-          end
-        end
+      list = @entry.list
+
+      # The UserEntry callback will have already advanced the user's position
+      # So we just need to get the user's current entry and redirect to it
+      current_entry = list.current_entry_for_user(current_user)
+
+      if current_entry && current_entry != @entry
+        redirect_to watch_entry_path(current_entry)
       else
-        # If not list owner, just redirect to current entry
+        # No next entry available or position didn't advance, stay on current
         redirect_to watch_entry_path(@entry)
       end
     end
