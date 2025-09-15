@@ -211,13 +211,28 @@ class List < ApplicationRecord
   end
 
   # Find random incomplete entry for a user (for unordered lists)
-  def find_random_incomplete_entry_for_user(user)
-    # Get all entries that don't have a UserEntry for this user
-    incomplete_entries = entries.where.not(
-      id: UserEntry.where(user: user).select(:entry_id)
-    )
+  def find_random_incomplete_entry_for_user(user, exclude_entry = nil)
+    # Get all entries that are not completed by this user
+    incomplete_entries = entries.left_joins(:user_entries)
+                               .where(
+                                 user_entries: { id: nil }
+                               ).or(
+                                 entries.left_joins(:user_entries)
+                                       .where(user_entries: { user: user, completed: false })
+                               )
 
-    incomplete_entries.sample
+    Rails.logger.info "Shuffle Debug: Found #{incomplete_entries.count} incomplete entries before exclusion"
+
+    # Exclude the specified entry if provided
+    if exclude_entry
+      incomplete_entries = incomplete_entries.where.not(id: exclude_entry.id)
+      Rails.logger.info "Shuffle Debug: Found #{incomplete_entries.count} incomplete entries after excluding #{exclude_entry.id}"
+    end
+
+    Rails.logger.info "Shuffle Debug: Incomplete entry IDs: #{incomplete_entries.distinct.pluck(:id)}"
+    result = incomplete_entries.distinct.sample
+    Rails.logger.info "Shuffle Debug: Sampled entry: #{result&.id}"
+    result
   end
 
   # Advance user's position based on list type

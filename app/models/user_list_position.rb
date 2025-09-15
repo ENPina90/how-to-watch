@@ -33,13 +33,14 @@ class UserListPosition < ApplicationRecord
 
   # Move to random incomplete position (for unordered lists)
   def advance_to_random!
-    random_entry = list.find_random_incomplete_entry_for_user(user)
+    current_entry_obj = current_entry
+    random_entry = list.find_random_incomplete_entry_for_user(user, current_entry_obj)
     if random_entry
       update!(current_position: random_entry.position)
       random_entry
     else
       # No more incomplete entries, stay at current position
-      current_entry
+      current_entry_obj
     end
   end
 end
