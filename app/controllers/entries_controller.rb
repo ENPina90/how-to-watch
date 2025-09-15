@@ -296,65 +296,18 @@ class EntriesController < ApplicationController
     if @entry.completed_by?(current_user)
       # Delete the UserEntry record to "uncomplete" it
       @entry.remove_user_tracking!(current_user)
-
-      respond_to do |format|
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            "completed-#{@entry.id}",
-            partial: 'entries/completion_status',
-            locals: { entry: @entry, user: current_user }
-          )
-        end
-        format.html { redirect_back(fallback_location: list_path(@entry.list)) }
-      end
     else
       # Mark as completed
       @entry.mark_completed_by!(current_user)
+    end
 
-      # Handle auto_next functionality
-      if @entry.list.auto_next?
-        if @entry.list.ordered?
-          # For ordered lists, find next incomplete entry
-          next_entry = @entry.list.find_next_incomplete_entry_for_user(current_user, @entry.position)
-        else
-          # For unordered lists, find random incomplete entry
-          next_entry = @entry.list.find_random_incomplete_entry_for_user(current_user, @entry)
-        end
-
-        if next_entry
-          # Update user's position to the next entry
-          user_position = @entry.list.position_for_user(current_user)
-          user_position.update!(current_position: next_entry.position)
-
-          respond_to do |format|
-            format.turbo_stream { redirect_to watch_entry_path(next_entry) }
-            format.html { redirect_to watch_entry_path(next_entry) }
-          end
-        else
-          # No next entry available, just update completion status
-          respond_to do |format|
-            format.turbo_stream do
-              render turbo_stream: turbo_stream.replace(
-                "completed-#{@entry.id}",
-                partial: 'entries/completion_status',
-                locals: { entry: @entry, user: current_user }
-              )
-            end
-            format.html { redirect_back(fallback_location: list_path(@entry.list)) }
-          end
-        end
-      else
-        # auto_next is disabled, just update completion status
-        respond_to do |format|
-          format.turbo_stream do
-            render turbo_stream: turbo_stream.replace(
-              "completed-#{@entry.id}",
-              partial: 'entries/completion_status',
-              locals: { entry: @entry, user: current_user }
-            )
-          end
-          format.html { redirect_back(fallback_location: list_path(@entry.list)) }
-        end
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "completed-#{@entry.id}",
+          partial: 'entries/completion_status',
+          locals: { entry: @entry, user: current_user }
+        )
       end
       format.html { redirect_back(fallback_location: list_path(@entry.list)) }
       format.json { head :ok }
