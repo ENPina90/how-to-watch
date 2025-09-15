@@ -19,6 +19,9 @@ class List < ApplicationRecord
   has_many :users, through: :list_user_entries
   has_many :subscriptions, dependent: :destroy
   has_many :subscribers, through: :subscriptions, source: :user
+  has_many :user_list_positions, dependent: :destroy
+
+  validates :preferred_source, inclusion: { in: [1, 2] }, allow_nil: true
 
   # Auto-subscription callbacks
   after_create :auto_subscribe_owner
@@ -174,6 +177,57 @@ class List < ApplicationRecord
       if entry.position != new_position
         entry.update_column(:position, new_position)
       end
+    end
+  end
+
+  # Get or create a user's position tracker for this list
+  def position_for_user(user)
+    user_list_positions.find_or_create_by(user: user) do |position|
+      position.current_position = 1
+    end
+  end
+
+  # Get the current entry for a specific user
+  def current_entry_for_user(user)
+    user_position = position_for_user(user)
+    entries.find_by(position: user_position.current_position)
+  end
+
+  # Find next incomplete entry for a user starting from a specific position
+  def find_next_incomplete_entry_for_user(user, start_position = nil)
+    start_pos = start_position || position_for_user(user).current_position
+
+    # Get entries starting from the next position
+    candidate_entries = entries.where('position > ?', start_pos).order(:position)
+
+    # Find first entry that doesn't have a UserEntry for this user
+    candidate_entries.each do |entry|
+      unless entry.user_entries.exists?(user: user)
+        return entry
+      end
+    end
+
+    nil
+  end
+
+  # Find random incomplete entry for a user (for unordered lists)
+  def find_random_incomplete_entry_for_user(user)
+    # Get all entries that don't have a UserEntry for this user
+    incomplete_entries = entries.where.not(
+      id: UserEntry.where(user: user).select(:entry_id)
+    )
+
+    incomplete_entries.sample
+  end
+
+  # Advance user's position based on list type
+  def advance_user_position!(user)
+    user_position = position_for_user(user)
+
+    if ordered?
+      user_position.advance_to_next!
+    else
+      user_position.advance_to_random!
     end
   end
 

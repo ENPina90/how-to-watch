@@ -18,6 +18,7 @@ class UserEntry < ApplicationRecord
 
   before_update :set_completed_at, if: :completed_changed?
   before_update :set_last_watched_at, if: :will_save_change_to_completed?
+  after_update :advance_user_list_position, if: :saved_change_to_completed?
 
   # Mark as completed
   def mark_completed!
@@ -70,5 +71,13 @@ class UserEntry < ApplicationRecord
 
   def set_last_watched_at
     self.last_watched_at = Time.current if completed?
+  end
+
+  # Advance user's position in the list when they complete an entry
+  def advance_user_list_position
+    # Only advance if the user just completed the entry (not if they marked it incomplete)
+    if completed?
+      entry.list.advance_user_position!(user)
+    end
   end
 end
