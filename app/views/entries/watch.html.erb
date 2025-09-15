@@ -6,15 +6,21 @@
       height="100%"
       allowfullscreen
       allow="autoplay"
-      src="           <% if @entry.media == 'series' %>
-             <%= source = "#{@entry.source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=1" %>
-           <% elsif @entry.media == 'episode' %>
-             <%= source = "#{@entry.source}?autoplay=1" %>
-           <% elsif @entry.media == 'movie' %>
-             <%= source = "#{@entry.source}" %>
-           <% else %>
-            <%= source = @entry.source %>
-           <% end %>
+      src="<%
+             # Determine which source to use based on preferred_source settings
+             preferred_source = @entry.preferred_source || @entry.list.preferred_source
+             base_source = preferred_source == 2 ? @entry.source_two : @entry.source
+
+             if @entry.media == 'series'
+               source = "#{base_source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=1"
+             elsif @entry.media == 'episode'
+               source = "#{base_source}?autoplay=1"
+             elsif @entry.media == 'movie'
+               source = base_source
+             else
+               source = base_source
+             end
+           %><%= source %>
           ">
 
   </iframe>
@@ -59,6 +65,9 @@
       <% end %>
       <%= link_to decrement_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
         <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
+      <% end %>
+      <%= link_to toggle_preferred_source_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none', data: { turbo_method: :patch } do %>
+        <i class="fa-solid fa-link-slash fa-2x position-absolute bottom-0 start-0 translate-middle-y"></i>
       <% end %>
       <%= link_to root_path, class: 'text-decoration-none' do %>
         <i class="fa-solid fa-house fa-2x position-absolute top-50 start-50 translate-middle"></i>

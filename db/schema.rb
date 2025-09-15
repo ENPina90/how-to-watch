@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_09_015204) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_15_180123) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -79,6 +79,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_09_015204) do
     t.string "trailer"
     t.string "series_imdb"
     t.string "source_two"
+    t.integer "preferred_source"
     t.index ["current_id"], name: "index_entries_on_current_id"
     t.index ["list_id"], name: "index_entries_on_list_id"
   end
@@ -139,6 +140,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_09_015204) do
     t.integer "position"
     t.boolean "reviewable", default: false, null: false
     t.boolean "default", default: false, null: false
+    t.integer "preferred_source", default: 1
     t.index ["default"], name: "index_lists_on_default"
     t.index ["parent_list_id", "position"], name: "index_lists_on_parent_list_id_and_position"
     t.index ["parent_list_id"], name: "index_lists_on_parent_list_id"
@@ -194,6 +196,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_09_015204) do
     t.index ["user_id"], name: "idx_user_entries_user"
   end
 
+  create_table "user_list_positions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "list_id", null: false
+    t.integer "current_position", default: 1
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["list_id"], name: "index_user_list_positions_on_list_id"
+    t.index ["user_id", "list_id"], name: "index_user_list_positions_on_user_id_and_list_id", unique: true
+    t.index ["user_id"], name: "index_user_list_positions_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -233,4 +246,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_09_015204) do
   add_foreign_key "subscriptions", "users"
   add_foreign_key "user_entries", "entries"
   add_foreign_key "user_entries", "users"
+  add_foreign_key "user_list_positions", "lists"
+  add_foreign_key "user_list_positions", "users"
 end

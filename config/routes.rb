@@ -32,6 +32,7 @@ Rails.application.routes.draw do
       get :increment_current
       get :decrement_current
       patch :update_position
+      patch :toggle_preferred_source
     end
   end
 
