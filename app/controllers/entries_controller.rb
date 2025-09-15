@@ -244,18 +244,13 @@ class EntriesController < ApplicationController
     # Get a random incomplete entry for this user, excluding the current entry
     random_entry = list.find_random_incomplete_entry_for_user(current_user, @entry)
 
-    Rails.logger.info "Shuffle Debug: random_entry = #{random_entry.inspect}"
-    Rails.logger.info "Shuffle Debug: random_entry.id = #{random_entry&.id}"
-
     if random_entry
       # Update user's position to the random entry
       user_position = list.position_for_user(current_user)
       user_position.update!(current_position: random_entry.position)
 
-      Rails.logger.info "Shuffle Debug: Redirecting to entry #{random_entry.id}"
       redirect_to watch_entry_path(random_entry)
     else
-      Rails.logger.info "Shuffle Debug: No random entry found, staying on current"
       # No incomplete entries available, stay on current
       redirect_to watch_entry_path(@entry)
     end
@@ -304,7 +299,6 @@ class EntriesController < ApplicationController
     else
       # Mark as completed
       @entry.mark_completed_by!(current_user)
-      @entry.list.assign_current(:next, current_user) if @entry.list.user == current_user
     end
 
     respond_to do |format|
@@ -316,6 +310,7 @@ class EntriesController < ApplicationController
         )
       end
       format.html { redirect_back(fallback_location: list_path(@entry.list)) }
+      format.json { head :ok }
     end
   end
 
