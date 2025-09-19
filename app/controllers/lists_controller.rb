@@ -5,6 +5,16 @@ class ListsController < ApplicationController
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
 
   def index
+    # Check if this is a mobile request
+    @is_mobile = mobile_request?
+
+    if @is_mobile
+      # For mobile, find the user's favorites list (mobile: true)
+      @favorites_list = current_user.lists.find_by(mobile: true)
+      render :index_mobile, layout: 'mobile'
+      return
+    end
+
     # Order lists by most recent UserEntry activity (watching/reviewing)
     lists_with_activity = List.joins(entries: :user_entries)
                               .where(user_entries: { user: current_user })
@@ -269,11 +279,56 @@ class ListsController < ApplicationController
     redirect_to edit_list_path(@list)
   end
 
+  def add_to_favorites
+    # Find the user's favorites list (mobile: true)
+    favorites_list = current_user.lists.find_by(mobile: true)
+
+    unless favorites_list
+      render json: { error: 'Favorites list not found' }, status: 404
+      return
+    end
+
+    # Create the entry using the same logic as the regular add to list
+    imdb_id = params[:imdb]
+    tmdb_id = params[:tmdb]
+
+    # Use the existing entry creation logic
+    begin
+      omdb_result = OmdbApi.get_movie(imdb_id)
+      if omdb_result.nil?
+        render json: { error: 'Movie not found' }, status: 404
+        return
+      end
+
+      # Add TMDB ID if provided
+      omdb_result["tmdb_id"] = tmdb_id if tmdb_id.present?
+
+      entry = Entry.create_from_source(omdb_result, favorites_list, false)
+
+      if entry.is_a?(Entry)
+        render json: {
+          success: true,
+          message: "Added to #{favorites_list.name}",
+          entry_id: entry.id
+        }
+      else
+        render json: { error: 'Failed to create entry' }, status: 500
+      end
+    rescue => e
+      Rails.logger.error "Error adding to favorites: #{e.message}"
+      render json: { error: 'Failed to add to favorites' }, status: 500
+    end
+  end
+
   # def watch_random
   #   watch_path(@list.find_entry_by_position(:random))
   # end
 
   private
+
+  def mobile_request?
+    request.user_agent =~ /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+  end
 
   def set_list
     @list = List.find(params[:id] || params[:list_id])

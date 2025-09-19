@@ -189,7 +189,8 @@ class User < ApplicationRecord
     list_name = generate_default_list_name
     lists.create!(
       name: list_name,
-      private: true
+      private: true,
+      mobile: true
     )
   end
 

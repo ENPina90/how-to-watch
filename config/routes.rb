@@ -21,6 +21,9 @@ Rails.application.routes.draw do
     patch :mark_all_incomplete
     resources :entries, only: [:new, :create]
   end
+
+  # Add to favorites route (not nested under lists)
+  post '/lists/add_to_favorites', to: 'lists#add_to_favorites'
   resources :entries, only: [:show, :create, :edit, :update, :destroy] do
     member do
       get :complete

@@ -1,0 +1,5 @@
+class AddMobileToList < ActiveRecord::Migration[8.0]
+  def change
+    add_column :lists, :mobile, :boolean, default: false, null: false
+  end
+end
