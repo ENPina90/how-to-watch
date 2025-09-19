@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>How To Watch - Mobile</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="csrf-token" content="<%= form_authenticity_token %>">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+  </head>
+
+  <body>
+    <!-- Mobile Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+          <i class="fa-solid fa-tv me-2"></i>How To Watch
+        </a>
+
+        <div class="navbar-nav ms-auto">
+          <% if user_signed_in? %>
+            <div class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" id="mobileNavbarDropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <%= current_user.username.present? ? current_user.username : current_user.email.split('@').first.capitalize %>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end" aria-labelledby="mobileNavbarDropdown">
+                <%= link_to "My Lists", lists_path, class: "dropdown-item" %>
+                <%= link_to "Log out", destroy_user_session_path, data: {turbo_method: :delete}, class: "dropdown-item" %>
+              </div>
+            </div>
+          <% else %>
+            <a class="nav-link" href="<%= new_user_session_path %>">Login</a>
+          <% end %>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" style="margin-top: 70px;">
+      <%= yield %>
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <!-- Mobile Search Templates -->
+    <template id="mobileSearchMovieTemplate">
+      {{#movies}}
+      <div class="card mb-3">
+        <div class="row g-0">
+          <div class="col-4">
+            <img src="{{Poster}}" class="img-fluid rounded-start h-100" alt="{{Title}} poster" style="object-fit: cover;">
+          </div>
+          <div class="col-8">
+            <div class="card-body p-2">
+              <h6 class="card-title">{{Title}}</h6>
+              <p class="card-text">
+                <small class="text-muted">{{Year}} • {{Rating}}/10</small><br>
+                <small class="text-muted">{{Genre}}</small>
+              </p>
+              <p class="card-text small">{{Plot}}</p>
+              <div class="d-grid">
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        data-action="click->mobile-search#addToFavorites"
+                        data-imdb-id="{{imdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-title="{{Title}}"
+                        data-poster="{{Poster}}">
+                  <i class="fa-solid fa-heart me-1"></i>Add to Favorites
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{/movies}}
+    </template>
+
+    <template id="mobileSearchShowTemplate">
+      {{#movies}}
+      <div class="card mb-3">
+        <div class="row g-0">
+          <div class="col-4">
+            <img src="{{Poster}}" class="img-fluid rounded-start h-100" alt="{{Title}} poster" style="object-fit: cover;">
+          </div>
+          <div class="col-8">
+            <div class="card-body p-2">
+              <h6 class="card-title">{{Title}}</h6>
+              <p class="card-text">
+                <small class="text-muted">{{Year}} • {{Rating}}/10</small><br>
+                <small class="text-muted">{{totalSeasons}} seasons</small>
+              </p>
+              <p class="card-text small">{{Plot}}</p>
+              <div class="d-grid">
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        data-action="click->mobile-search#addToFavorites"
+                        data-imdb-id="{{imdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-title="{{Title}}"
+                        data-poster="{{Poster}}">
+                  <i class="fa-solid fa-heart me-1"></i>Add to Favorites
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{/movies}}
+    </template>
+
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f8f9fa;
+      }
+
+      .main-content {
+        min-height: calc(100vh - 70px);
+        padding: 20px 0;
+      }
+
+      .navbar-brand {
+        font-weight: bold;
+        font-size: 1.2rem;
+      }
+
+      .search-input {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 12px 16px;
+        border-radius: 25px;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
+      }
+
+      .search-input:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+        outline: none;
+      }
+
+      .card {
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .btn-primary {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+      }
+
+      .btn-primary:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+        transform: translateY(-1px);
+      }
+
+      .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
+      }
+
+      .mobile-favorites-info {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      }
+
+      .mobile-favorites-info h5 {
+        margin-bottom: 10px;
+        font-weight: 600;
+      }
+
+      .mobile-favorites-info .btn {
+        margin-top: 15px;
+        background-color: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.3);
+        color: white;
+      }
+
+      .mobile-favorites-info .btn:hover {
+        background-color: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        color: white;
+      }
+    </style>
+  </body>
+</html>
