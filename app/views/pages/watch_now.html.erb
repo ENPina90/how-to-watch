@@ -1,0 +1,21 @@
+<div class="cinema__screen">
+  <iframe id="cinema"
+          class="h-75"
+          title="<%= @title %>"
+          referrerpolicy="origin"
+          width="90%"
+          height="90%"
+          allowfullscreen
+          allow="autoplay"
+          src="https://vidsrc.cc/v2/embed/<%= @media_type %>/<%= @imdb_id %>?autoplay=1">
+  </iframe>
+
+  <!-- Add to List Button -->
+  <div class="text-center mt-3">
+    <button type="button"
+            class="btn btn-primary"
+            onclick="openWatchNowModal('<%= @imdb_id %>', '<%= j(@title) %>', '<%= @poster %>')">
+      <i class="fas fa-plus me-2"></i>Add to List
+    </button>
+  </div>
+</div>

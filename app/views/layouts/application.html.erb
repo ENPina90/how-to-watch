@@ -16,5 +16,155 @@
       <div class="footer-container"><%= render "shared/footer" %></div>
     </div>
     <%= render "shared/flashes" %>
+
+    <!-- Global Search Templates -->
+    <template id="listSearchMovieTemplate">
+      {{#movies}}
+      <div class="card mb-3">
+        <div class="row g-0">
+          <div class="col-md-3">
+            <img src="{{Poster}}" class="img-fluid rounded-start h-100" alt="{{Title}} poster" style="object-fit: cover;">
+          </div>
+          <div class="col-md-9">
+            <div class="card-body">
+              <h6 class="card-title">{{Title}}</h6>
+              <p class="card-text">
+                <small class="text-muted">{{Year}} • {{Rating}}/10</small><br>
+                <small class="text-muted">{{Genre}}</small>
+              </p>
+              <p class="card-text">{{Plot}}</p>
+              <div class="d-flex gap-2">
+                <a href="/watch_now?imdb={{imdbID}}&title={{Title}}&type=movie&poster={{Poster}}"
+                   class="btn btn-success btn-sm">
+                  <i class="fa-solid fa-play me-1"></i>Watch Now
+                </a>
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        data-action="click->list-search#openListModal"
+                        data-imdb-id="{{imdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-title="{{Title}}"
+                        data-poster="{{Poster}}">
+                  <i class="fas fa-plus me-1"></i>Add to List
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{/movies}}
+    </template>
+
+    <template id="listSearchShowTemplate">
+      {{#movies}}
+      <div class="card mb-3">
+        <div class="row g-0">
+          <div class="col-md-3">
+            <img src="{{Poster}}" class="img-fluid rounded-start h-100" alt="{{Title}} poster" style="object-fit: cover;">
+          </div>
+          <div class="col-md-9">
+            <div class="card-body">
+              <h6 class="card-title">{{Title}}</h6>
+              <p class="card-text">
+                <small class="text-muted">{{Year}} • {{Rating}}/10</small><br>
+                <small class="text-muted">{{totalSeasons}} seasons</small>
+              </p>
+              <p class="card-text">{{Plot}}</p>
+              <div class="d-flex gap-2">
+                <a href="/watch_now?imdb={{imdbID}}&title={{Title}}&type=tv&poster={{Poster}}"
+                   class="btn btn-success btn-sm">
+                  <i class="fa-solid fa-play me-1"></i>Watch Now
+                </a>
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        data-action="click->list-search#openListModal"
+                        data-imdb-id="{{imdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-title="{{Title}}"
+                        data-poster="{{Poster}}">
+                  <i class="fas fa-plus me-1"></i>Add to List
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{/movies}}
+    </template>
+
+    <!-- Global List Selection Modal -->
+    <div class="modal fade" id="listSelectionModal" tabindex="-1" aria-labelledby="listSelectionModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="listSelectionModalLabel">Add to List</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row mb-3">
+              <div class="col-4">
+                <img id="modalMoviePoster" src="" alt="" class="img-fluid rounded">
+              </div>
+              <div class="col-8">
+                <h6>Select a list to add this item to:</h6>
+                <div id="listSelectionContainer">
+                  <!-- List options will be populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Global function to trigger modal from watch_now page
+      function openWatchNowModal(imdbId, title, poster) {
+        console.log('openWatchNowModal called with:', imdbId, title, poster);
+
+        // Try to find the navbar controller directly
+        const navbarSearchElement = document.querySelector('[data-controller*="list-search"]');
+        console.log('Found navbar element:', navbarSearchElement);
+
+        if (navbarSearchElement) {
+          // Trigger the modal opening directly
+          const fakeEvent = {
+            preventDefault: () => {},
+            currentTarget: {
+              dataset: {
+                imdbId: imdbId,
+                tmdbId: '',
+                title: title,
+                poster: poster
+              }
+            }
+          };
+
+          // Try to get the controller instance
+          const controller = navbarSearchElement.listSearchController;
+          if (controller) {
+            console.log('Found controller, calling openListModal');
+            controller.openListModal(fakeEvent);
+          } else {
+            console.log('Controller not found, trying alternative approach');
+            // Fallback: dispatch the custom event
+            const event = new CustomEvent('openListModal', {
+              detail: {
+                imdbID: imdbId,
+                tmdbID: '',
+                title: title,
+                poster: poster
+              }
+            });
+            document.dispatchEvent(event);
+          }
+        } else {
+          console.error('Navbar search element not found');
+        }
+      }
+    </script>
   </body>
 </html>
