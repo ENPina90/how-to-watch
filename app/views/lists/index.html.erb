@@ -1,3 +1,46 @@
+<!-- Search Section -->
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Search for Movies & Shows</h5>
+        </div>
+        <div class="card-body"
+             data-controller="list-search"
+             data-list-search-user-lists-value="<%= current_user.lists.map { |list| { id: list.id, name: list.name, entries_count: list.entries.count } }.to_json %>"
+             data-list-search-api-key-value="7e1c210d0c877abff8a40398735ce605">
+
+          <!-- Search Input and Type Selection -->
+          <div class="row mb-3">
+            <div class="col-md-8">
+              <input type="text"
+                     class="form-control"
+                     placeholder="Search for movies or shows..."
+                     data-list-search-target="input"
+                     data-action="input->list-search#tmdbSearch">
+            </div>
+            <div class="col-md-4">
+              <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="searchType" id="movieType" autocomplete="off" checked
+                       data-action="change->list-search#tmdbSearch">
+                <label class="btn btn-outline-primary" for="movieType">Movies</label>
+
+                <input type="radio" class="btn-check" name="searchType" id="showType" autocomplete="off"
+                       data-action="change->list-search#tmdbShow">
+                <label class="btn btn-outline-primary" for="showType">Shows</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search Results -->
+          <div data-list-search-target="results" class="search-results"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="lists-container my-4">
   <div class="list">
     <%= link_to watch_entry_path(Entry.all.sample) do %>
@@ -26,5 +69,97 @@
       <img src="/images/upcoming.jpg" class="list-picture" alt="New Channel">
     <% end %>
     <p class="list-name">New Channel</p>
+  </div>
+</div>
+
+<!-- Movie Search Results Template -->
+<template id="listSearchMovieTemplate">
+  {{#movies}}
+  <div class="card mb-3">
+    <div class="row g-0">
+      <div class="col-md-3">
+        <img src="{{Poster}}" class="img-fluid rounded-start h-100" alt="{{Title}} poster" style="object-fit: cover;">
+      </div>
+      <div class="col-md-9">
+        <div class="card-body">
+          <h6 class="card-title">{{Title}}</h6>
+          <p class="card-text">
+            <small class="text-muted">{{Year}} • {{Rating}}/10</small><br>
+            <small class="text-muted">{{Genre}}</small>
+          </p>
+          <p class="card-text">{{Plot}}</p>
+          <button type="button"
+                  class="btn btn-primary btn-sm"
+                  data-action="click->list-search#openListModal"
+                  data-imdb-id="{{imdbID}}"
+                  data-tmdb-id="{{tmdbID}}"
+                  data-title="{{Title}}"
+                  data-poster="{{Poster}}">
+            <i class="fas fa-plus me-1"></i>Add to List
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {{/movies}}
+</template>
+
+<!-- Show Search Results Template -->
+<template id="listSearchShowTemplate">
+  {{#movies}}
+  <div class="card mb-3">
+    <div class="row g-0">
+      <div class="col-md-3">
+        <img src="{{Poster}}" class="img-fluid rounded-start h-100" alt="{{Title}} poster" style="object-fit: cover;">
+      </div>
+      <div class="col-md-9">
+        <div class="card-body">
+          <h6 class="card-title">{{Title}}</h6>
+          <p class="card-text">
+            <small class="text-muted">{{Year}} • {{Rating}}/10</small><br>
+            <small class="text-muted">{{totalSeasons}} seasons</small>
+          </p>
+          <p class="card-text">{{Plot}}</p>
+          <button type="button"
+                  class="btn btn-primary btn-sm"
+                  data-action="click->list-search#openListModal"
+                  data-imdb-id="{{imdbID}}"
+                  data-tmdb-id="{{tmdbID}}"
+                  data-title="{{Title}}"
+                  data-poster="{{Poster}}">
+            <i class="fas fa-plus me-1"></i>Add to List
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {{/movies}}
+</template>
+
+<!-- List Selection Modal -->
+<div class="modal fade" id="listSelectionModal" tabindex="-1" aria-labelledby="listSelectionModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="listSelectionModalLabel">Add to List</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-4">
+            <img id="modalMoviePoster" src="" alt="" class="img-fluid rounded">
+          </div>
+          <div class="col-8">
+            <h6>Select a list to add this item to:</h6>
+            <div id="listSelectionContainer">
+              <!-- List options will be populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>

@@ -26,3 +26,40 @@
   text-align: center;
   margin-top: 10px;
 }
+
+/* Search Results Styling */
+.search-results {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.search-results .card {
+  transition: transform 0.2s ease-in-out;
+}
+
+.search-results .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.search-results .card-text {
+  font-size: 0.9rem;
+}
+
+.search-results .card img {
+  min-height: 200px;
+}
+
+/* Modal Styling */
+#listSelectionModal .list-option button {
+  transition: all 0.2s ease-in-out;
+}
+
+#listSelectionModal .list-option button:hover {
+  transform: translateX(5px);
+}
+
+/* Toast positioning */
+.toast-container {
+  z-index: 1055;
+}

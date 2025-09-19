@@ -11,6 +11,7 @@ export default class TmdbMapper {
       Rating: movieOrShow.vote_average || 'N/A',
       Genre: movieOrShow.genre_ids ? movieOrShow.genre_ids.join(', ') : 'N/A',
       Popularity: movieOrShow.popularity || 'N/A',
+      totalSeasons: movieOrShow.number_of_seasons || 'N/A',
     };
   }
 
