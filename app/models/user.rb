@@ -6,6 +6,7 @@ class User < ApplicationRecord
 
   # Auto-subscription callback
   after_create :setup_initial_subscriptions
+  after_create :create_default_list
 
   has_many :lists
   has_many :list_user_entries
@@ -182,5 +183,23 @@ class User < ApplicationRecord
 
   def setup_initial_subscriptions
     Subscription.auto_subscribe_user(self)
+  end
+
+  def create_default_list
+    list_name = generate_default_list_name
+    lists.create!(
+      name: list_name,
+      private: true
+    )
+  end
+
+  def generate_default_list_name
+    if username.present?
+      "#{username.capitalize}'s Favorites"
+    else
+      # Extract the part before @ from email and capitalize it
+      email_prefix = email.split('@').first
+      "#{email_prefix.capitalize}'s Favorites"
+    end
   end
 end
