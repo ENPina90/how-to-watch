@@ -1,10 +1,11 @@
 import { Controller } from "@hotwired/stimulus";
 import Mustache from "mustachejs";
+import * as bootstrap from "bootstrap";
 import TmdbService from "services/tmdb_service";
 import TmdbMapper from "services/tmdb_mapper";
 
 export default class extends Controller {
-  static targets = ["input", "results"];
+  static targets = ["input", "results", "typeButtons", "resultsContent"];
   static values = {
     userLists: Array,
     apiKey: String
@@ -17,21 +18,81 @@ export default class extends Controller {
     this.movieTemplate = document.querySelector("#listSearchMovieTemplate");
     this.showTemplate = document.querySelector("#listSearchShowTemplate");
     this.selectedMovie = null;
+    this.currentSearchType = 'movie'; // Default to movie search
+
+    // Listen for global modal open events
+    this.boundHandleGlobalModal = this.handleGlobalModalOpen.bind(this);
+    document.addEventListener('openListModal', this.boundHandleGlobalModal);
+  }
+
+  disconnect() {
+    // Clean up event listener
+    document.removeEventListener('openListModal', this.boundHandleGlobalModal);
+  }
+
+  handleGlobalModalOpen(event) {
+    console.log('handleGlobalModalOpen called with:', event.detail);
+    this.selectedMovie = event.detail;
+    this.updateModalContent();
+
+    const modalElement = document.getElementById('listSelectionModal');
+    if (modalElement) {
+      console.log('Modal element found, showing modal');
+      const modal = new bootstrap.Modal(modalElement);
+      modal.show();
+    } else {
+      console.error('Modal element not found');
+    }
   }
 
   // -----------------------------
   // SEARCH METHODS
   // -----------------------------
 
-  tmdbSearch() {
+  // Method called when search type radio buttons are clicked
+  switchToMovieSearch() {
+    this.currentSearchType = 'movie';
+    this.performSearch();
+  }
+
+  switchToShowSearch() {
+    this.currentSearchType = 'show';
+    this.performSearch();
+  }
+
+  // Universal search method that delegates based on current search type
+  performSearch() {
     const keyword = this.inputTarget.value.trim();
     if (keyword.length < 2) {
-      this.resultsTarget.innerHTML = '';
+      this.hideResults();
       return;
     }
 
+    // Show overlay with buttons immediately when user starts typing
+    this.showOverlay();
+
+    if (this.currentSearchType === 'movie') {
+      this.tmdbSearch();
+    } else if (this.currentSearchType === 'show') {
+      this.tmdbShow();
+    }
+  }
+
+  showOverlay() {
+    this.resultsTarget.classList.remove('d-none');
+  }
+
+  tmdbSearch() {
+    const keyword = this.inputTarget.value.trim();
+
     // Show loading state
-    this.resultsTarget.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    const loadingHtml = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    if (this.hasResultsContentTarget) {
+      this.resultsContentTarget.innerHTML = loadingHtml;
+    } else {
+      this.resultsTarget.innerHTML = loadingHtml;
+    }
+    this.resultsTarget.classList.remove('d-none');
 
     const isImdbId = /^tt\d{4,}$/.test(keyword);
 
@@ -44,7 +105,7 @@ export default class extends Controller {
 
         const movies = isImdbId ? data.movie_results : data.results;
         if (!movies || !Array.isArray(movies)) {
-          this.resultsTarget.innerHTML = '<div class="alert alert-info">No results found.</div>';
+          this.showErrorMessage();
           return;
         }
 
@@ -53,7 +114,7 @@ export default class extends Controller {
           .slice(0, 10); // Limit to top 10 results
 
         if (filteredMovies.length === 0) {
-          this.resultsTarget.innerHTML = '<div class="alert alert-info">No movies found matching your search.</div>';
+          this.showErrorMessage();
           return;
         }
 
@@ -72,7 +133,7 @@ export default class extends Controller {
 
         const validMovies = moviesWithImdb.filter(movie => movie !== null);
         if (validMovies.length === 0) {
-          this.resultsTarget.innerHTML = '<div class="alert alert-warning">Unable to load movie details.</div>';
+          this.showErrorMessage();
           return;
         }
 
@@ -80,19 +141,21 @@ export default class extends Controller {
       })
       .catch(error => {
         console.error('Error fetching movies:', error);
-        this.resultsTarget.innerHTML = '<div class="alert alert-danger">Error searching for movies. Please try again.</div>';
+        this.showErrorMessage();
       });
   }
 
   tmdbShow() {
     const keyword = this.inputTarget.value.trim();
-    if (keyword.length < 2) {
-      this.resultsTarget.innerHTML = '';
-      return;
-    }
 
     // Show loading state
-    this.resultsTarget.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    const loadingHtml = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    if (this.hasResultsContentTarget) {
+      this.resultsContentTarget.innerHTML = loadingHtml;
+    } else {
+      this.resultsTarget.innerHTML = loadingHtml;
+    }
+    this.resultsTarget.classList.remove('d-none');
 
     const isImdbId = /^tt\d{4,}$/.test(keyword);
 
@@ -105,7 +168,7 @@ export default class extends Controller {
 
         const shows = isImdbId ? data.tv_results : data.results;
         if (!shows || !Array.isArray(shows)) {
-          this.resultsTarget.innerHTML = '<div class="alert alert-info">No results found.</div>';
+          this.showErrorMessage();
           return;
         }
 
@@ -114,7 +177,7 @@ export default class extends Controller {
           .slice(0, 10); // Limit to top 10 results
 
         if (filteredShows.length === 0) {
-          this.resultsTarget.innerHTML = '<div class="alert alert-info">No shows found matching your search.</div>';
+          this.showErrorMessage();
           return;
         }
 
@@ -181,7 +244,13 @@ export default class extends Controller {
     this.updateModalContent();
 
     // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('listSelectionModal'));
+    const modalElement = document.getElementById('listSelectionModal');
+    if (!modalElement) {
+      console.error('Modal element not found');
+      return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
     modal.show();
   }
 
@@ -225,11 +294,19 @@ export default class extends Controller {
   }
 
   addToList(event) {
-    if (!this.selectedMovie) return;
+    console.log('addToList called');
+    console.log('selectedMovie:', this.selectedMovie);
+
+    if (!this.selectedMovie) {
+      console.error('No selected movie');
+      return;
+    }
 
     const button = event.currentTarget;
     const listId = button.dataset.listId;
     const listName = button.dataset.listName;
+
+    console.log('Adding to list:', listId, listName);
 
     // Show loading state
     button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding...';
@@ -245,14 +322,14 @@ export default class extends Controller {
       method: 'POST',
       body: formData,
       headers: {
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        'Accept': 'application/json'
       }
     })
     .then(response => {
       if (response.ok) {
-        // Success - show confirmation and close modal
-        this.showSuccessMessage(listName);
-        this.closeModal();
+        // Success - redirect to the list with anchor to newly added entry
+        window.location.href = `/lists/${listId}?added=${this.selectedMovie.imdbID}`;
       } else {
         throw new Error('Failed to add entry');
       }
@@ -267,7 +344,14 @@ export default class extends Controller {
   }
 
   closeModal() {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('listSelectionModal'));
+    const modalElement = document.getElementById('listSelectionModal');
+    if (!modalElement) {
+      console.error('Modal element not found');
+      this.selectedMovie = null;
+      return;
+    }
+
+    const modal = bootstrap.Modal.getInstance(modalElement);
     if (modal) {
       modal.hide();
     }
@@ -328,9 +412,61 @@ export default class extends Controller {
     });
   }
 
+
+  // Override rendering methods to show overlay
+  renderMovies(movies) {
+    const movieData = { movies };
+    const output = Mustache.render(this.movieTemplate.innerHTML, movieData);
+    this.showResultsOverlay(output);
+  }
+
+  renderShows(shows) {
+    const showData = { movies: shows };
+    const output = Mustache.render(this.showTemplate.innerHTML, showData);
+    this.showResultsOverlay(output);
+  }
+
+  showResultsOverlay(html) {
+    if (this.hasResultsContentTarget) {
+      this.resultsContentTarget.innerHTML = html;
+    } else {
+      this.resultsTarget.innerHTML = html;
+    }
+    this.resultsTarget.classList.remove('d-none');
+
+    // Add click outside to close
+    document.addEventListener('click', this.handleClickOutside.bind(this), { once: true });
+  }
+
+  handleClickOutside(event) {
+    if (!this.element.contains(event.target)) {
+      this.hideResults();
+    }
+  }
+
+  hideResults() {
+    this.resultsTarget.classList.add('d-none');
+    if (this.hasResultsContentTarget) {
+      this.resultsContentTarget.innerHTML = '';
+    } else {
+      this.resultsTarget.innerHTML = '';
+    }
+  }
+
   // Clear search results
   clearResults() {
-    this.resultsTarget.innerHTML = '';
+    this.hideResults();
     this.inputTarget.value = '';
+  }
+
+  // Override error display methods
+  showErrorMessage() {
+    const errorHtml = '<div class="text-center text-muted">No results found</div>';
+    if (this.hasResultsContentTarget) {
+      this.resultsContentTarget.innerHTML = errorHtml;
+    } else {
+      this.resultsTarget.innerHTML = '<div class="p-3">' + errorHtml + '</div>';
+    }
+    this.resultsTarget.classList.remove('d-none');
   }
 }

@@ -2,6 +2,7 @@ Rails.application.routes.draw do
   devise_for :users
   root to: "lists#index"
   get 'test', to: 'pages#test'
+  get 'watch_now', to: 'pages#watch_now'
 
   # Health check endpoint for Railway
   get '/health', to: 'application#health'

@@ -63,3 +63,95 @@
 .toast-container {
   z-index: 1055;
 }
+
+/* Watch Now button styling */
+.search-results .btn-success {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.search-results .btn-success:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+  transform: translateY(-1px);
+}
+
+.search-results .d-flex.gap-2 {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 576px) {
+  .search-results .d-flex.gap-2 {
+    flex-direction: column;
+  }
+
+  .search-results .btn {
+    width: 100%;
+  }
+}
+
+/* Navbar Search Styling */
+.navbar .search-input {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 25px;
+  padding: 8px 16px;
+  transition: all 0.3s ease;
+}
+
+.navbar .search-input:focus {
+  background-color: white;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  outline: none;
+}
+
+.navbar .search-type-buttons .btn {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}
+
+.search-results-overlay {
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure type buttons are always visible */
+.search-results-overlay [data-list-search-target="typeButtons"] {
+  display: block !important;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.search-results-overlay [data-list-search-target="typeButtons"] .btn-group {
+  display: flex;
+  width: 100%;
+}
+
+.search-results-overlay [data-list-search-target="typeButtons"] .btn {
+  flex: 1;
+}
+
+.search-results-overlay .card {
+  margin-bottom: 1rem;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.search-results-overlay .card:hover {
+  transform: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Mobile responsive navbar search */
+@media (max-width: 768px) {
+  .navbar .search-input {
+    width: 250px !important;
+  }
+
+  .search-results-overlay {
+    width: 95vw !important;
+    left: 2.5vw !important;
+    transform: none !important;
+  }
+}

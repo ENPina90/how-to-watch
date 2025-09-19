@@ -7,6 +7,45 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <!-- Search Bar in Center -->
+      <div class="position-absolute start-50 translate-middle-x"
+           data-controller="list-search"
+           data-list-search-user-lists-value="<%= user_signed_in? && current_user.lists.any? ? current_user.lists.left_joins(:entries).group('lists.id').select('lists.id, lists.name, COUNT(entries.id) as entries_count').map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>"
+           data-list-search-api-key-value="7e1c210d0c877abff8a40398735ce605">
+
+        <div class="search-container">
+          <input type="text"
+                 class="form-control search-input"
+                 placeholder="Search movies & shows..."
+                 data-list-search-target="input"
+                 data-action="input->list-search#performSearch"
+                 style="width: 300px;">
+        </div>
+
+        <!-- Search Results Overlay -->
+        <div data-list-search-target="results"
+             class="search-results-overlay position-fixed d-none"
+             style="top: 70px; left: 50%; transform: translateX(-50%); width: 80vw; max-width: 800px; max-height: 70vh; overflow-y: auto; z-index: 1050; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+
+          <!-- Movie/Show Toggle Buttons at top of overlay -->
+          <div class="p-3 border-bottom bg-light rounded-top"
+               data-list-search-target="typeButtons">
+            <div class="btn-group w-100" role="group">
+              <input type="radio" class="btn-check" name="searchType" id="navMovieType" autocomplete="off" checked
+                     data-action="change->list-search#switchToMovieSearch">
+              <label class="btn btn-outline-primary btn-sm" for="navMovieType">Movies</label>
+
+              <input type="radio" class="btn-check" name="searchType" id="navShowType" autocomplete="off"
+                     data-action="change->list-search#switchToShowSearch">
+              <label class="btn btn-outline-primary btn-sm" for="navShowType">Shows</label>
+            </div>
+          </div>
+
+          <!-- Search Results Content -->
+          <div data-list-search-target="resultsContent" class="p-3"></div>
+        </div>
+      </div>
+
       <ul class="navbar-nav me-auto">
         <% if user_signed_in? %>
           <li class="nav-item">
