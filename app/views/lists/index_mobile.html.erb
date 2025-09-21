@@ -3,7 +3,8 @@
   <div class="mobile-search-container"
        data-controller="mobile-search"
        data-mobile-search-user-lists-value="<%= user_signed_in? && current_user.lists.any? ? current_user.lists.left_joins(:entries).group('lists.id').select('lists.id, lists.name, COUNT(entries.id) as entries_count').map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>"
-       data-mobile-search-api-key-value="7e1c210d0c877abff8a40398735ce605">
+       data-mobile-search-api-key-value="7e1c210d0c877abff8a40398735ce605"
+       style="position: relative;">
 
     <div class="search-container">
       <input type="text"
@@ -11,13 +12,13 @@
              placeholder="Search movies & shows..."
              data-mobile-search-target="input"
              data-action="input->mobile-search#performSearch"
-             style="width: 100%; max-width: 400px; margin: 0 auto;">
+             style="width: 100%; max-width: 400px; margin: 0 auto; display: block; visibility: visible; opacity: 1; background: white; border: 2px solid #dc3545; font-size: 18px; padding: 15px;">
     </div>
 
     <!-- Search Results Overlay -->
     <div data-mobile-search-target="results"
-         class="search-results-overlay position-fixed d-none"
-         style="top: 20px; left: 50%; transform: translateX(-50%); width: 95vw; max-width: 600px; max-height: 80vh; overflow-y: auto; z-index: 1050; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+         class="search-results-overlay position-absolute d-none"
+         style="top: 100%; left: 0; right: 0; width: 100%; max-height: 60vh; overflow-y: auto; z-index: 1000; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-top: 10px;">
 
       <!-- Movie/Show Toggle Buttons at top of overlay -->
       <div class="p-3 border-bottom bg-light rounded-top"
@@ -60,36 +61,10 @@
 
 .mobile-search-container {
   text-align: center;
+  margin-bottom: 20px;
 }
 
-.search-input {
-  font-size: 16px; /* Prevents zoom on iOS */
-  padding: 12px;
-  border-radius: 25px;
-  border: 2px solid #e9ecef;
-}
-
-.search-input:focus {
-  border-color: #dc3545;
-  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
-}
-
-.card {
-  border: none;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.card-body {
-  padding: 0.75rem;
-}
-
-.btn-primary {
-  background-color: #dc3545;
-  border-color: #dc3545;
-}
-
-.btn-primary:hover {
-  background-color: #c82333;
-  border-color: #bd2130;
+.search-container {
+  margin-bottom: 20px;
 }
 </style>

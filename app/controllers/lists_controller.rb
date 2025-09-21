@@ -66,9 +66,16 @@ class ListsController < ApplicationController
 
   def show
     load_entries
-    @minimal = params[:view] == "minimal"
+    @is_mobile = mobile_request?
+    @minimal = params[:view] == "minimal" || @is_mobile
     @current = @list.find_entry_by_position(:current) unless @list.entries.empty?
     @random_selection = @list_entries.sample(3)
+
+    if @is_mobile
+      render :show_mobile, layout: 'mobile'
+      return
+    end
+
     respond_to do |format|
       format.html
       format.text do
