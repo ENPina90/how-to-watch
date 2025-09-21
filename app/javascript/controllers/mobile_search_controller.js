@@ -18,10 +18,6 @@ export default class extends Controller {
     this.movieTemplate = document.querySelector("#mobileSearchMovieTemplate");
     this.showTemplate = document.querySelector("#mobileSearchShowTemplate");
     this.currentSearchType = 'movie'; // Default to movie search
-
-    console.log('Mobile search controller connected');
-    console.log('Movie template found:', !!this.movieTemplate);
-    console.log('Show template found:', !!this.showTemplate);
   }
 
   // -----------------------------
@@ -247,7 +243,6 @@ export default class extends Controller {
     };
 
     console.log('Adding to favorites:', selectedItem);
-    console.log('Button dataset:', button.dataset);
 
     // Show loading state
     const originalText = button.innerHTML;
