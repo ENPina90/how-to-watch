@@ -2,7 +2,7 @@
   <!-- Mobile Search Bar -->
   <div class="mobile-search-container"
        data-controller="mobile-search"
-       data-mobile-search-user-lists-value="<%= user_signed_in? && current_user.lists.any? ? current_user.lists.left_joins(:entries).group('lists.id').select('lists.id, lists.name, COUNT(entries.id) as entries_count').map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>"
+       data-mobile-search-user-lists-value="<%= user_signed_in? && @subscribed_lists.any? ? @subscribed_lists.map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>"
        data-mobile-search-api-key-value="7e1c210d0c877abff8a40398735ce605"
        style="position: relative;">
 
@@ -18,7 +18,7 @@
     <!-- Search Results Overlay -->
     <div data-mobile-search-target="results"
          class="search-results-overlay position-absolute d-none"
-         style="top: 100%; left: 0; right: 0; width: 100%; max-height: 60vh; overflow-y: auto; z-index: 1000; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-top: 10px;">
+         style="top: 100%; left: 0; right: 0; width: 100vw; max-height: 80vh; overflow-y: auto; z-index: 1000; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-top: 10px; margin-left: -20px;">
 
       <!-- Movie/Show Toggle Buttons at top of overlay -->
       <div class="p-3 border-bottom bg-light rounded-top"
@@ -37,6 +37,28 @@
       <!-- Search Results Content -->
       <div data-mobile-search-target="resultsContent" class="p-3"></div>
     </div>
+  </div>
+
+  <!-- Mobile Subscribed Lists -->
+  <div class="mobile-subscribed-lists">
+    <h4 class="mobile-section-title">Your Lists</h4>
+
+    <% if @subscribed_lists.any? %>
+      <div class="mobile-lists-container">
+        <% @subscribed_lists.each do |list| %>
+          <div class="mobile-list-item">
+            <%= link_to list_path(list), class: "mobile-list-link" do %>
+              <div class="mobile-list-name"><%= list.name %></div>
+              <div class="mobile-list-count"><%= list.entries_count %> entries</div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="mobile-no-lists">
+        <p class="text-muted">No lists subscribed yet</p>
+      </div>
+    <% end %>
   </div>
 
   <!-- Mobile Favorites List Info -->
@@ -66,5 +88,71 @@
 
 .search-container {
   margin-bottom: 20px;
+}
+
+/* Mobile Subscribed Lists Styling */
+.mobile-subscribed-lists {
+  margin-top: 30px;
+}
+
+.mobile-section-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.mobile-lists-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-list-item {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.mobile-list-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.mobile-list-link {
+  display: block;
+  padding: 16px 20px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.mobile-list-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.mobile-list-count {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 400;
+}
+
+.mobile-no-lists {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.mobile-no-lists p {
+  margin: 0;
+  font-size: 1rem;
 }
 </style>
