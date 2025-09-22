@@ -24,6 +24,8 @@ Rails.application.routes.draw do
 
   # Add to favorites route (not nested under lists)
   post '/lists/add_to_favorites', to: 'lists#add_to_favorites'
+  # Add to list route (not nested under lists)
+  post '/lists/add_to_list', to: 'lists#add_to_list'
   resources :entries, only: [:show, :create, :edit, :update, :destroy] do
     member do
       get :complete

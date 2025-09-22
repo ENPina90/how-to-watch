@@ -64,12 +64,12 @@
           <p class="mobile-movie-meta">{{Year}} • {{Rating}}/10</p>
           <button type="button"
                   class="btn btn-primary mobile-add-btn"
-                  data-action="click->mobile-search#addToFavorites"
+                  data-action="click->mobile-search#showListSelectionModal"
                   data-imdb-id="{{imdbID}}"
                   data-tmdb-id="{{tmdbID}}"
                   data-title="{{Title}}"
                   data-poster="{{Poster}}">
-            <i class="fa-solid fa-heart me-1"></i>Add to Favorites
+            <i class="fa-solid fa-plus me-1"></i>Add to List
           </button>
         </div>
       </div>
@@ -87,17 +87,44 @@
           <p class="mobile-movie-meta">{{Year}} • {{totalSeasons}} seasons</p>
           <button type="button"
                   class="btn btn-primary mobile-add-btn"
-                  data-action="click->mobile-search#addToFavorites"
+                  data-action="click->mobile-search#showListSelectionModal"
                   data-imdb-id="{{imdbID}}"
                   data-tmdb-id="{{tmdbID}}"
                   data-title="{{Title}}"
                   data-poster="{{Poster}}">
-            <i class="fa-solid fa-heart me-1"></i>Add to Favorites
+            <i class="fa-solid fa-plus me-1"></i>Add to List
           </button>
         </div>
       </div>
       {{/movies}}
     </template>
+
+    <!-- Mobile List Selection Modal -->
+    <div class="modal fade" id="mobileListSelectionModal" tabindex="-1" aria-labelledby="mobileListSelectionModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content mobile-modal-content">
+          <div class="modal-header mobile-modal-header">
+            <h5 class="modal-title" id="mobileListSelectionModalLabel">Add to List</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body mobile-modal-body">
+            <div class="mobile-modal-movie-info">
+              <h6 id="mobileModalMovieTitle" class="mobile-modal-title"></h6>
+              <p id="mobileModalMovieYear" class="mobile-modal-year"></p>
+            </div>
+            <div class="mobile-modal-lists">
+              <h6 class="mobile-modal-subtitle">Select a list:</h6>
+              <div id="mobileListSelectionContainer">
+                <!-- List options will be populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer mobile-modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <style>
       body {
@@ -344,6 +371,106 @@
         background-color: #dc3545;
         border-color: #dc3545;
         color: white;
+      }
+
+      /* Mobile Modal Styling */
+      .mobile-modal-content {
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      }
+
+      .mobile-modal-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        border-radius: 16px 16px 0 0;
+        padding: 20px;
+      }
+
+      .mobile-modal-header .modal-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+      }
+
+      .mobile-modal-body {
+        padding: 20px;
+      }
+
+      .mobile-modal-movie-info {
+        text-align: center;
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e9ecef;
+      }
+
+      .mobile-modal-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+      }
+
+      .mobile-modal-year {
+        font-size: 1rem;
+        color: #666;
+        margin: 0;
+      }
+
+      .mobile-modal-subtitle {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+      }
+
+      .mobile-modal-lists {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .mobile-list-option {
+        display: block;
+        width: 100%;
+        padding: 15px;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        text-align: left;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #333;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+
+      .mobile-list-option:hover {
+        background: #dc3545;
+        border-color: #dc3545;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+      }
+
+      .mobile-list-option:active {
+        transform: translateY(0);
+      }
+
+      .mobile-modal-footer {
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+        border-radius: 0 0 16px 16px;
+        padding: 15px 20px;
+      }
+
+      .mobile-modal-footer .btn {
+        padding: 10px 20px;
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: 8px;
       }
     </style>
   </body>
