@@ -11,6 +11,12 @@ class ListsController < ApplicationController
     if @is_mobile
       # For mobile, find the user's favorites list (mobile: true)
       @favorites_list = current_user.lists.find_by(mobile: true)
+      # Get all subscribed lists with entry counts
+      @subscribed_lists = current_user.subscribed_lists
+                                    .left_joins(:entries)
+                                    .group('lists.id')
+                                    .select('lists.*, COUNT(entries.id) as entries_count')
+                                    .order('lists.name ASC')
       render :index_mobile, layout: 'mobile'
       return
     end
@@ -72,6 +78,12 @@ class ListsController < ApplicationController
     @random_selection = @list_entries.sample(3)
 
     if @is_mobile
+      # Get all subscribed lists with entry counts for mobile search
+      @subscribed_lists = current_user.subscribed_lists
+                                    .left_joins(:entries)
+                                    .group('lists.id')
+                                    .select('lists.*, COUNT(entries.id) as entries_count')
+                                    .order('lists.name ASC')
       render :show_mobile, layout: 'mobile'
       return
     end
@@ -324,6 +336,53 @@ class ListsController < ApplicationController
     rescue => e
       Rails.logger.error "Error adding to favorites: #{e.message}"
       render json: { error: 'Failed to add to favorites' }, status: 500
+    end
+  end
+
+  def add_to_list
+    # Find the specified list
+    list = current_user.lists.find_by(id: params[:list_id])
+
+    unless list
+      render json: { error: 'List not found' }, status: 404
+      return
+    end
+
+    # Check if user can edit this list
+    unless current_user.can_edit_list?(list)
+      render json: { error: 'You do not have permission to add to this list' }, status: 403
+      return
+    end
+
+    # Create the entry using the same logic as the regular add to list
+    imdb_id = params[:imdb]
+    tmdb_id = params[:tmdb]
+
+    # Use the existing entry creation logic
+    begin
+      omdb_result = OmdbApi.get_movie(imdb_id)
+      if omdb_result.nil?
+        render json: { error: 'Movie not found' }, status: 404
+        return
+      end
+
+      # Add TMDB ID if provided
+      omdb_result["tmdb_id"] = tmdb_id if tmdb_id.present?
+
+      entry = Entry.create_from_source(omdb_result, list, false)
+
+      if entry.is_a?(Entry)
+        render json: {
+          success: true,
+          message: "Added to #{list.name}",
+          entry_id: entry.id
+        }
+      else
+        render json: { error: 'Failed to create entry' }, status: 500
+      end
+    rescue => e
+      Rails.logger.error "Error adding to list: #{e.message}"
+      render json: { error: 'Failed to add to list' }, status: 500
     end
   end
 

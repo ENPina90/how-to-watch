@@ -14,7 +14,14 @@ class EntriesController < ApplicationController
     @ids = @list.entries.map {|entry| "#{entry.id}-#{entry.imdb}"}.join('/')
   end
 
-  def show; end
+  def show
+    @is_mobile = mobile_request?
+
+    if @is_mobile
+      render :show_mobile, layout: 'mobile'
+      return
+    end
+  end
 
   def create
     if params[:custom]
@@ -446,6 +453,10 @@ class EntriesController < ApplicationController
   end
 
   private
+
+    def mobile_request?
+      request.user_agent =~ /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+    end
 
     def set_list
       @list = List.find(params[:list_id])
