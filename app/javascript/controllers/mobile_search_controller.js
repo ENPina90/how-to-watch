@@ -8,7 +8,8 @@ export default class extends Controller {
   static targets = ["input", "results", "typeButtons", "resultsContent"];
   static values = {
     userLists: Array,
-    apiKey: String
+    apiKey: String,
+    currentListId: String
   };
 
   connect() {
@@ -227,22 +228,44 @@ export default class extends Controller {
   }
 
   // -----------------------------
-  // ADD TO FAVORITES METHOD
+  // LIST SELECTION MODAL METHODS
   // -----------------------------
 
-  addToFavorites(event) {
+  showListSelectionModal(event) {
     event.preventDefault();
     const button = event.currentTarget;
 
     // Store the selected movie/show data
-    const selectedItem = {
+    this.selectedItem = {
       imdbID: button.dataset.imdbId,
       tmdbID: button.dataset.tmdbId,
       title: button.dataset.title,
       poster: button.dataset.poster
     };
 
-    console.log('Adding to favorites:', selectedItem);
+    // Check if we're in a list show view (currentListId is present)
+    if (this.currentListIdValue) {
+      // Add directly to the current list
+      this.addToCurrentList(event);
+      return;
+    }
+
+    // Otherwise, show the list selection modal
+    // Update modal content
+    document.getElementById('mobileModalMovieTitle').textContent = this.selectedItem.title;
+    document.getElementById('mobileModalMovieYear').textContent = this.selectedItem.year || '';
+
+    // Populate list options
+    this.populateListOptions();
+
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('mobileListSelectionModal'));
+    modal.show();
+  }
+
+  addToCurrentList(event) {
+    event.preventDefault();
+    const button = event.currentTarget;
 
     // Show loading state
     const originalText = button.innerHTML;
@@ -251,11 +274,12 @@ export default class extends Controller {
 
     // Create form data
     const formData = new FormData();
-    formData.append('imdb', selectedItem.imdbID);
-    formData.append('tmdb', selectedItem.tmdbID);
+    formData.append('imdb', this.selectedItem.imdbID);
+    formData.append('tmdb', this.selectedItem.tmdbID);
+    formData.append('list_id', this.currentListIdValue);
 
-    // Submit to the add_to_favorites endpoint
-    fetch('/lists/add_to_favorites', {
+    // Submit to the add to list endpoint
+    fetch('/lists/add_to_list', {
       method: 'POST',
       body: formData,
       headers: {
@@ -266,32 +290,102 @@ export default class extends Controller {
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        this.showSuccessMessage(selectedItem.title);
-        // Reset button
-        button.innerHTML = '<i class="fa-solid fa-check me-1"></i>Added!';
-        button.classList.remove('btn-primary');
-        button.classList.add('btn-success');
-        button.disabled = true;
+        this.showSuccessMessage(this.selectedItem.title, 'this list');
+        // Hide search results
+        this.hideResults();
+        this.inputTarget.value = '';
+        // Reload the page to show the new entry
+        window.location.reload();
       } else {
-        throw new Error(data.error || 'Failed to add to favorites');
+        throw new Error(data.error || 'Failed to add to list');
       }
     })
     .catch(error => {
-      console.error('Error adding to favorites:', error);
-      this.showErrorMessage(selectedItem.title);
+      console.error('Error adding to list:', error);
+      this.showErrorMessage(this.selectedItem.title);
       // Reset button
       button.innerHTML = originalText;
       button.disabled = false;
     });
   }
 
-  showSuccessMessage(title) {
+  populateListOptions() {
+    const container = document.getElementById('mobileListSelectionContainer');
+    container.innerHTML = '';
+
+    // Get user lists from the data attribute
+    const userLists = this.userListsValue || [];
+
+    if (userLists.length === 0) {
+      container.innerHTML = '<p class="text-muted text-center">No lists available</p>';
+      return;
+    }
+
+    // Create list option buttons
+    userLists.forEach(list => {
+      const listOption = document.createElement('button');
+      listOption.className = 'mobile-list-option';
+      listOption.textContent = `${list.name} (${list.entries_count} entries)`;
+      listOption.dataset.listId = list.id;
+      listOption.addEventListener('click', (e) => this.addToList(e, list.id, list.name));
+      container.appendChild(listOption);
+    });
+  }
+
+  addToList(event, listId, listName) {
+    event.preventDefault();
+
+    // Show loading state on the clicked button
+    const button = event.currentTarget;
+    const originalText = button.textContent;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding...';
+    button.disabled = true;
+
+    // Create form data
+    const formData = new FormData();
+    formData.append('imdb', this.selectedItem.imdbID);
+    formData.append('tmdb', this.selectedItem.tmdbID);
+    formData.append('list_id', listId);
+
+    // Submit to the add to list endpoint
+    fetch('/lists/add_to_list', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        'Accept': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        this.showSuccessMessage(this.selectedItem.title, listName);
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('mobileListSelectionModal'));
+        modal.hide();
+        // Hide search results
+        this.hideResults();
+        this.inputTarget.value = '';
+      } else {
+        throw new Error(data.error || 'Failed to add to list');
+      }
+    })
+    .catch(error => {
+      console.error('Error adding to list:', error);
+      this.showErrorMessage(this.selectedItem.title);
+      // Reset button
+      button.textContent = originalText;
+      button.disabled = false;
+    });
+  }
+
+  showSuccessMessage(title, listName) {
     // Create and show a toast notification
     const toastHtml = `
       <div class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
           <div class="toast-body">
-            Successfully added "${title}" to your favorites!
+            Successfully added "${title}" to ${listName}!
           </div>
           <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>

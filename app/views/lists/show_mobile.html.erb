@@ -1,4 +1,41 @@
-<div class="mobile-list-container" data-controller="edit search entry-anchor" data-search-id-value="<%= @list.id %>">
+<div class="mobile-list-container" data-controller="edit search entry-anchor mobile-search" data-search-id-value="<%= @list.id %>" data-mobile-search-user-lists-value="<%= user_signed_in? && @subscribed_lists.any? ? @subscribed_lists.map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>" data-mobile-search-api-key-value="7e1c210d0c877abff8a40398735ce605" data-mobile-search-current-list-id-value="<%= @list.id %>">
+  <!-- Mobile Search Bar -->
+  <div class="mobile-search-container"
+       style="position: relative; margin-bottom: 20px;">
+
+    <div class="search-container">
+      <input type="text"
+             class="form-control search-input"
+             placeholder="Search movies & shows..."
+             data-mobile-search-target="input"
+             data-action="input->mobile-search#performSearch"
+             style="width: 100%; max-width: 400px; margin: 0 auto; display: block; visibility: visible; opacity: 1; background: white; border: 2px solid #dc3545; font-size: 18px; padding: 15px;">
+    </div>
+
+    <!-- Search Results Overlay -->
+    <div data-mobile-search-target="results"
+         class="search-results-overlay position-absolute d-none"
+         style="top: 100%; left: 0; right: 0; width: 100vw; max-height: 80vh; overflow-y: auto; z-index: 1000; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-top: 10px; margin-left: -20px;">
+
+      <!-- Movie/Show Toggle Buttons at top of overlay -->
+      <div class="p-3 border-bottom bg-light rounded-top"
+           data-mobile-search-target="typeButtons">
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="searchType" id="mobileMovieType" autocomplete="off" checked
+                 data-action="change->mobile-search#switchToMovieSearch">
+          <label class="btn btn-outline-primary btn-sm" for="mobileMovieType">Movies</label>
+
+          <input type="radio" class="btn-check" name="searchType" id="mobileShowType" autocomplete="off"
+                 data-action="change->mobile-search#switchToShowSearch">
+          <label class="btn btn-outline-primary btn-sm" for="mobileShowType">Shows</label>
+        </div>
+      </div>
+
+      <!-- Search Results Content -->
+      <div data-mobile-search-target="resultsContent" class="p-3"></div>
+    </div>
+  </div>
+
   <!-- Mobile List Header -->
   <div class="mobile-list-header">
     <% unless @list.top_level? %>
@@ -42,6 +79,7 @@
         </span>
       <% end %>
 
+      <!-- Mobile List Actions - Only essential actions for mobile -->
       <% if current_user&.can_edit_list?(@list) %>
         <div class="mobile-list-actions">
           <%= link_to edit_list_path(@list), class: "btn btn-outline-primary btn-sm me-2" do %>
