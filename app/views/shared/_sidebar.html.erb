@@ -1,0 +1,134 @@
+<!-- Collapse Toggle Button (visible when sidebar is collapsed) -->
+<button id="sidebarCollapseBtn" class="btn btn-dark <%= 'd-none' unless @sidebar_collapsed %>" style="position: fixed; left: 16px; top: 96px; z-index: 1050;">
+  <i class="fa-solid fa-bars"></i>
+</button>
+
+<!-- Left Sidebar -->
+<div id="mainSidebar" class="sidebar-left bg-dark text-white <%= 'd-none' if @sidebar_collapsed %>" style="width: 280px; position: fixed; left: 0; top: 80px; height: calc(100vh - 80px); display: flex; flex-direction: column; z-index: 1020;">
+  <!-- Sidebar Header -->
+  <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center" style="flex: 0 0 auto;">
+    <h5 class="mb-0">Your Library</h5>
+    <button id="sidebarExpandBtn" class="btn btn-sm btn-outline-light">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+
+  <!-- Lists Section (Scrollable) -->
+  <div class="p-3" style="flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;">
+    <h6 class="text-muted mb-3" style="font-size: 0.75rem; text-transform: uppercase;">Lists</h6>
+    <div class="list-group list-group-flush">
+      <% current_user.subscribed_lists.order(:name).each do |list| %>
+        <% is_current = @list && @list.id == list.id %>
+        <%= link_to list_path(list), class: "list-group-item list-group-item-action bg-transparent text-white border-0 py-2 px-0 mb-1 #{'active-list' if is_current}", style: "border-radius: 6px; #{is_current ? 'background-color: rgba(255, 255, 255, 0.15) !important;' : ''}" do %>
+          <div class="d-flex align-items-center">
+            <i class="fa-solid fa-list me-3 text-muted"></i>
+            <span class="text-truncate"><%= list.name %></span>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Now Playing Section (Fixed at Bottom) -->
+  <div class="border-top border-secondary p-3" style="flex: 0 0 400px; background: linear-gradient(135deg, #191414 0%, #2d2d2d 100%);">
+    <h6 class="text-muted mb-3" style="font-size: 0.85rem; text-transform: uppercase; font-weight: 700;">Now Playing</h6>
+    <%
+      # If on a list show page, use that list's current entry
+      now_playing = if @list && @list.respond_to?(:find_entry_by_position)
+        @list.find_entry_by_position(:current)
+      else
+        @now_playing_entry || find_now_playing_for_sidebar
+      end
+    %>
+    <% if now_playing %>
+      <%= link_to watch_entry_path(now_playing), class: "text-decoration-none" do %>
+        <div class="d-flex flex-column align-items-center text-center">
+          <div style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); transition: transform 0.2s ease;">
+            <%= entry_poster_image_tag(now_playing, class: 'img-fluid', style: 'width: 100%; height: 100%; object-fit: cover;') %>
+          </div>
+          <p class="mb-0 text-white fw-bold text-truncate w-100" style="font-size: 1rem;"><%= now_playing.name %></p>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="d-flex flex-column align-items-center text-center">
+        <div style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden;">
+          <img src="/images/please_stand_by.png" class="img-fluid" style="width: 100%; height: 100%; object-fit: cover;" alt="No content">
+        </div>
+        <p class="mb-0 text-white fw-bold">Nothing playing</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+// Global flag to prevent multiple initializations
+window.sidebarInitialized = false;
+
+function initializeSidebar() {
+  if (window.sidebarInitialized) return;
+
+  const sidebar = document.getElementById('mainSidebar');
+  const collapseBtn = document.getElementById('sidebarCollapseBtn');
+  const expandBtn = document.getElementById('sidebarExpandBtn');
+  const pageContainer = document.getElementById('pageContainer');
+
+  console.log('Initializing sidebar:', { sidebar: !!sidebar, collapseBtn: !!collapseBtn, expandBtn: !!expandBtn, pageContainer: !!pageContainer });
+
+  if (!sidebar || !collapseBtn || !expandBtn) {
+    // If elements aren't ready, try again in a short time
+    console.log('Elements not ready, retrying in 50ms');
+    setTimeout(initializeSidebar, 50);
+    return;
+  }
+
+  window.sidebarInitialized = true;
+  console.log('Sidebar initialized successfully');
+
+  // Ensure initial state is correct (defensive programming)
+  const isCollapsed = sidebar.classList.contains('d-none');
+  if (pageContainer) {
+    if (isCollapsed) {
+      pageContainer.style.marginLeft = '0';
+      pageContainer.style.width = '100%';
+    } else {
+      pageContainer.style.marginLeft = '280px';
+      pageContainer.style.width = 'calc(100% - 280px)';
+    }
+  }
+
+  // Collapse sidebar
+  expandBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    sidebar.classList.add('d-none');
+    collapseBtn.classList.remove('d-none');
+    document.body.classList.add('sidebar-collapsed');
+    if (pageContainer) {
+      pageContainer.style.marginLeft = '0';
+      pageContainer.style.width = '100%';
+    }
+  });
+
+  // Expand sidebar
+  collapseBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    sidebar.classList.remove('d-none');
+    collapseBtn.classList.add('d-none');
+    document.body.classList.remove('sidebar-collapsed');
+    if (pageContainer) {
+      pageContainer.style.marginLeft = '280px';
+      pageContainer.style.width = 'calc(100% - 280px)';
+    }
+  });
+}
+
+// Try multiple ways to ensure the script runs
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeSidebar);
+} else {
+  // DOM is already loaded
+  initializeSidebar();
+}
+
+// Also try after a short delay as a fallback
+setTimeout(initializeSidebar, 100);
+</script>

@@ -8,10 +8,13 @@
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
-  <body>
+  <body class="<%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %>">
     <%= render "shared/navbar" %>
     <%= render 'shared/flashes' %>
-    <div class="page-container">
+    <% if user_signed_in? && !@hide_sidebar %>
+      <%= render "shared/sidebar" %>
+    <% end %>
+    <div class="page-container" id="pageContainer" style="<%= 'margin-left: 280px; width: calc(100% - 280px);' if user_signed_in? && !@hide_sidebar && !@sidebar_collapsed %>">
       <div class="content-container"><%= yield %></div>
       <div class="footer-container"><%= render "shared/footer" %></div>
     </div>
