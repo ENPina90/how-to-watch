@@ -1,0 +1,66 @@
+/* Global Sidebar Styles */
+.sidebar-left {
+  background: linear-gradient(135deg, #191414 0%, #2d2d2d 100%);
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+  z-index: 1020 !important;
+  position: fixed !important;
+  left: 0 !important;
+  top: 80px !important;
+  width: 280px !important;
+  height: calc(100vh - 80px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.sidebar-left > div:nth-child(2)::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-left.collapsed {
+  transform: translateX(-280px);
+}
+
+.list-group-item-action:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  transform: translateX(4px);
+  transition: all 0.2s ease;
+}
+
+/* Active list styling */
+.list-group-item-action.active-list {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-left: 3px solid #1db954 !important;
+  font-weight: 600;
+}
+
+.list-group-item-action.active-list:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateX(4px);
+}
+
+/* Ensure navbar stays above sidebar */
+.navbar-lewagon {
+  z-index: 1030 !important;
+}
+
+/* Default page container margin when sidebar is visible */
+body.has-sidebar #pageContainer,
+body.has-sidebar .page-container {
+  margin-left: 280px !important;
+  width: calc(100% - 280px) !important;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Override when sidebar is collapsed */
+body.has-sidebar.sidebar-collapsed #pageContainer,
+body.has-sidebar.sidebar-collapsed .page-container {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+
+/* No margin when sidebar is not present */
+body:not(.has-sidebar) #pageContainer,
+body:not(.has-sidebar) .page-container {
+  margin-left: 0 !important;
+  width: 100% !important;
+}

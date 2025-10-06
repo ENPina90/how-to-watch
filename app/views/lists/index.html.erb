@@ -1,10 +1,9 @@
-
-<div class="lists-container my-4">
+<div class="lists-container my-4 ms-4">
   <div class="list">
-    <%= link_to watch_entry_path(Entry.all.sample) do %>
-      <img src="/images/nowplaying.jpg" class="list-picture" alt="Now Playing">
+    <%= link_to new_list_path do %>
+      <img src="/images/upcoming.jpg" class="list-picture" alt="New Channel">
     <% end %>
-    <p class="list-name">Now Playing</p>
+    <p class="list-name">New Channel</p>
   </div>
   <% @lists.each do |list| %>
     <%= link_to list_watch_current_path(list) do %>
@@ -22,10 +21,5 @@
       </div>
     <% end %>
   <% end %>
-  <div class="list">
-    <%= link_to new_list_path do %>
-      <img src="/images/upcoming.jpg" class="list-picture" alt="New Channel">
-    <% end %>
-    <p class="list-name">New Channel</p>
-  </div>
+
 </div>
