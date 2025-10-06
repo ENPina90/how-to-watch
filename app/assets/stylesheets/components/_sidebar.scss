@@ -12,6 +12,14 @@
   flex-direction: column !important;
 }
 
+/* Ensure d-none properly hides the sidebar in production */
+.sidebar-left.d-none {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .sidebar-left > div:nth-child(2)::-webkit-scrollbar {
   display: none;
 }
