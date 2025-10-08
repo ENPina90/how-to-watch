@@ -1,0 +1,191 @@
+<!-- Collapse Toggle Button for Episodes Sidebar (visible when sidebar is collapsed) -->
+<button id="episodesSidebarCollapseBtn" class="btn btn-dark d-none" style="position: fixed; right: 16px; top: 96px; z-index: 1050;">
+  <i class="fa-solid fa-bars"></i>
+</button>
+
+<!-- Right Episodes Sidebar -->
+<div id="episodesSidebar"
+     class="episodes-sidebar-right bg-dark text-white"
+     style="width: 350px; position: fixed; right: 0; top: 80px; height: calc(100vh - 80px); display: flex; flex-direction: column; z-index: 1020;"
+     data-controller="episodes"
+     data-episodes-tmdb-id-value="<%= @tmdb_id %>"
+     data-episodes-series-imdb-value="<%= @imdb_id %>"
+     data-episodes-current-season-value="<%= @season %>"
+     data-episodes-current-episode-value="<%= @episode %>">
+
+  <!-- Sidebar Header with Season Selector -->
+  <div class="p-3 border-bottom border-secondary" style="flex: 0 0 auto;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">Episodes</h5>
+      <button id="episodesSidebarExpandBtn" class="btn btn-sm btn-outline-light">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+    </div>
+
+    <% if @number_of_seasons && @number_of_seasons > 0 %>
+      <div class="form-group mb-0">
+        <label for="seasonSelect" class="form-label text-muted mb-2" style="font-size: 0.85rem;">Season</label>
+        <select id="seasonSelect"
+                class="form-select form-select-sm bg-secondary text-white border-0"
+                data-action="change->episodes#changeSeason"
+                data-episodes-target="seasonSelector">
+          <% (1..@number_of_seasons).each do |season_num| %>
+            <option value="<%= season_num %>" <%= 'selected' if season_num == @season %>>
+              Season <%= season_num %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Episodes List (Scrollable) -->
+  <div class="p-3"
+       style="flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;"
+       data-episodes-target="episodesList">
+    <div class="text-center text-muted">
+      <div class="spinner-border spinner-border-sm" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2" style="font-size: 0.85rem;">Loading episodes...</p>
+    </div>
+  </div>
+
+  <!-- Current Episode Details (Fixed at Bottom) -->
+  <div class="border-top border-secondary p-3"
+       style="flex: 0 0 280px; overflow-y: auto; background: linear-gradient(135deg, #191414 0%, #2d2d2d 100%);">
+    <h6 class="text-muted mb-3" style="font-size: 0.85rem; text-transform: uppercase; font-weight: 700;">Current Episode</h6>
+
+    <div data-episodes-target="currentEpisodeInfo">
+      <% if @current_episode %>
+        <div>
+          <p class="text-muted mb-2" style="font-size: 0.8rem;">
+            Season <%= @season %>, Episode <%= @episode %>
+          </p>
+          <h6 class="text-white mb-3" style="font-size: 0.95rem; font-weight: 600; line-height: 1.3;">
+            <%= @current_episode['name'] %>
+          </h6>
+          <% if @current_episode['overview'].present? %>
+            <p class="text-white-50 mb-0" style="font-size: 0.8rem; line-height: 1.4;">
+              <%= @current_episode['overview'] %>
+            </p>
+          <% else %>
+            <p class="text-white-50 mb-0 fst-italic" style="font-size: 0.8rem;">
+              No synopsis available
+            </p>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-muted">
+          <p class="mb-0" style="font-size: 0.85rem;">Episode info unavailable</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+// Global flag to prevent multiple initializations
+window.episodesSidebarInitialized = false;
+
+function initializeEpisodesSidebar() {
+  if (window.episodesSidebarInitialized) return;
+
+  const sidebar = document.getElementById('episodesSidebar');
+  const collapseBtn = document.getElementById('episodesSidebarCollapseBtn');
+  const expandBtn = document.getElementById('episodesSidebarExpandBtn');
+  const pageContainer = document.getElementById('pageContainer');
+
+  console.log('Initializing episodes sidebar:', { sidebar: !!sidebar, collapseBtn: !!collapseBtn, expandBtn: !!expandBtn, pageContainer: !!pageContainer });
+
+  if (!sidebar || !collapseBtn || !expandBtn) {
+    console.log('Episodes sidebar elements not ready, retrying in 50ms');
+    setTimeout(initializeEpisodesSidebar, 50);
+    return;
+  }
+
+  window.episodesSidebarInitialized = true;
+  console.log('Episodes sidebar initialized successfully');
+
+  // Ensure initial state is correct
+  const isCollapsed = sidebar.classList.contains('d-none');
+  if (pageContainer) {
+    if (isCollapsed) {
+      pageContainer.style.marginRight = '0';
+      pageContainer.style.width = '100%';
+      sidebar.style.display = 'none';
+      sidebar.style.visibility = 'hidden';
+      sidebar.style.opacity = '0';
+      sidebar.style.pointerEvents = 'none';
+      collapseBtn.style.display = 'block';
+    } else {
+      // Account for both left sidebar (280px) and right sidebar (350px)
+      const hasLeftSidebar = document.getElementById('mainSidebar') && !document.getElementById('mainSidebar').classList.contains('d-none');
+      const leftMargin = hasLeftSidebar ? '280px' : '0';
+      const totalWidth = hasLeftSidebar ? 'calc(100% - 630px)' : 'calc(100% - 350px)';
+
+      pageContainer.style.marginLeft = leftMargin;
+      pageContainer.style.marginRight = '350px';
+      pageContainer.style.width = totalWidth;
+      sidebar.style.display = 'flex';
+      sidebar.style.visibility = 'visible';
+      sidebar.style.opacity = '1';
+      sidebar.style.pointerEvents = 'auto';
+      collapseBtn.style.display = 'none';
+    }
+  }
+
+  // Collapse episodes sidebar
+  expandBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    sidebar.classList.add('d-none');
+    sidebar.style.display = 'none';
+    sidebar.style.visibility = 'hidden';
+    sidebar.style.opacity = '0';
+    sidebar.style.pointerEvents = 'none';
+    collapseBtn.classList.remove('d-none');
+    collapseBtn.style.display = 'block';
+    document.body.classList.add('episodes-sidebar-collapsed');
+    if (pageContainer) {
+      const hasLeftSidebar = document.getElementById('mainSidebar') && !document.getElementById('mainSidebar').classList.contains('d-none');
+      const leftMargin = hasLeftSidebar ? '280px' : '0';
+      const totalWidth = hasLeftSidebar ? 'calc(100% - 280px)' : '100%';
+
+      pageContainer.style.marginRight = '0';
+      pageContainer.style.marginLeft = leftMargin;
+      pageContainer.style.width = totalWidth;
+    }
+  });
+
+  // Expand episodes sidebar
+  collapseBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    sidebar.classList.remove('d-none');
+    sidebar.style.display = 'flex';
+    sidebar.style.visibility = 'visible';
+    sidebar.style.opacity = '1';
+    sidebar.style.pointerEvents = 'auto';
+    collapseBtn.classList.add('d-none');
+    collapseBtn.style.display = 'none';
+    document.body.classList.remove('episodes-sidebar-collapsed');
+    if (pageContainer) {
+      const hasLeftSidebar = document.getElementById('mainSidebar') && !document.getElementById('mainSidebar').classList.contains('d-none');
+      const leftMargin = hasLeftSidebar ? '280px' : '0';
+      const totalWidth = hasLeftSidebar ? 'calc(100% - 630px)' : 'calc(100% - 350px)';
+
+      pageContainer.style.marginLeft = leftMargin;
+      pageContainer.style.marginRight = '350px';
+      pageContainer.style.width = totalWidth;
+    }
+  });
+}
+
+// Try multiple ways to ensure the script runs
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeEpisodesSidebar);
+} else {
+  initializeEpisodesSidebar();
+}
+
+setTimeout(initializeEpisodesSidebar, 100);
+</script>

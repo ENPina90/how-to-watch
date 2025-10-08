@@ -1,0 +1,202 @@
+/* Episodes Right Sidebar Styles */
+.episodes-sidebar-right {
+  background: linear-gradient(135deg, #191414 0%, #2d2d2d 100%);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+  z-index: 1020 !important;
+  position: fixed !important;
+  right: 0 !important;
+  top: 80px !important;
+  width: 350px !important;
+  height: calc(100vh - 80px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Ensure d-none properly hides the episodes sidebar */
+.episodes-sidebar-right.d-none {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Hide scrollbar for episodes list */
+.episodes-sidebar-right > div:nth-child(2)::-webkit-scrollbar {
+  display: none;
+}
+
+/* Episode Item Styling - Matching Left Sidebar */
+.episode-item {
+  display: block;
+  padding: 12px 8px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background-color: transparent;
+  text-decoration: none !important;
+  color: #ffffff !important;
+  transition: all 0.2s ease;
+  border: 0;
+}
+
+.episode-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  transform: translateX(-4px);
+  text-decoration: none !important;
+  color: #ffffff !important;
+}
+
+.episode-item:visited {
+  color: #ffffff !important;
+}
+
+.episode-item:focus {
+  color: #ffffff !important;
+  outline: none;
+}
+
+.episode-item.active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  font-weight: 600;
+  border-radius: 6px !important;
+}
+
+.episode-item.active:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.episode-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-right: 12px;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.episode-item.active .episode-number {
+  color: #1db954;
+  font-weight: 600;
+}
+
+.episode-title-container {
+  overflow: hidden;
+}
+
+.episode-title {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #ffffff !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.episode-item.active .episode-title {
+  font-weight: 500;
+  color: #ffffff !important;
+}
+
+/* Override any link color inheritance */
+.episode-item a,
+.episode-item a:hover,
+.episode-item a:visited,
+.episode-item a:focus {
+  color: #ffffff !important;
+  text-decoration: none !important;
+}
+
+/* Page container adjustments for both sidebars */
+body.has-sidebar.has-episodes-sidebar #pageContainer,
+body.has-sidebar.has-episodes-sidebar .page-container {
+  margin-left: 280px !important;
+  margin-right: 350px !important;
+  width: calc(100% - 630px) !important;
+  transition: margin-left 0.3s ease, margin-right 0.3s ease, width 0.3s ease;
+}
+
+/* Only episodes sidebar (no left sidebar) */
+body:not(.has-sidebar).has-episodes-sidebar #pageContainer,
+body:not(.has-sidebar).has-episodes-sidebar .page-container {
+  margin-right: 350px !important;
+  width: calc(100% - 350px) !important;
+}
+
+/* Left sidebar only (episodes sidebar collapsed) */
+body.has-sidebar.episodes-sidebar-collapsed #pageContainer,
+body.has-sidebar.episodes-sidebar-collapsed .page-container {
+  margin-left: 280px !important;
+  margin-right: 0 !important;
+  width: calc(100% - 280px) !important;
+}
+
+/* Both sidebars collapsed */
+body.sidebar-collapsed.episodes-sidebar-collapsed #pageContainer,
+body.sidebar-collapsed.episodes-sidebar-collapsed .page-container {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+/* Season selector styling */
+.episodes-sidebar-right .form-select {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.episodes-sidebar-right .form-select:focus {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: #1db954 !important;
+  box-shadow: 0 0 0 0.25rem rgba(29, 185, 84, 0.25) !important;
+  color: #ffffff !important;
+}
+
+.episodes-sidebar-right .form-select option {
+  background-color: #2d2d2d;
+  color: #ffffff;
+}
+
+/* Force white text for all episode items - override Bootstrap link styles */
+#episodesSidebar a.episode-item,
+#episodesSidebar a.episode-item:link,
+#episodesSidebar a.episode-item:visited,
+#episodesSidebar a.episode-item:hover,
+#episodesSidebar a.episode-item:active,
+#episodesSidebar a.episode-item:focus,
+.episodes-sidebar-right a.episode-item,
+.episodes-sidebar-right a.episode-item:link,
+.episodes-sidebar-right a.episode-item:visited,
+.episodes-sidebar-right a.episode-item:hover,
+.episodes-sidebar-right a.episode-item:active,
+.episodes-sidebar-right a.episode-item:focus {
+  color: #ffffff !important;
+  text-decoration: none !important;
+}
+
+#episodesSidebar .episode-item span,
+#episodesSidebar .episode-item div,
+.episodes-sidebar-right .episode-item span,
+.episodes-sidebar-right .episode-item div {
+  color: inherit !important;
+}
+
+#episodesSidebar .episode-title,
+.episodes-sidebar-right .episode-title {
+  color: #ffffff !important;
+}
+
+/* Ensure episode numbers stay muted unless active */
+#episodesSidebar .episode-item .episode-number,
+.episodes-sidebar-right .episode-item .episode-number {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+#episodesSidebar .episode-item.active .episode-number,
+.episodes-sidebar-right .episode-item.active .episode-number {
+  color: #1db954 !important;
+}
