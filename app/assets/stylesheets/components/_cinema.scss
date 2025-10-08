@@ -13,6 +13,15 @@
 .cinema__screen {
   background-color: black;
   height: 100vh;
+  width: 100%;
+}
+
+/* Ensure page container doesn't constrain cinema screen */
+body.cinema__mode .page-container {
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100vh !important;
+  overflow: hidden;
 }
 
 .cinema__control {
@@ -31,3 +40,5 @@
   left: 0;
   top: 0;
 }
+
+/* No adjustment needed - sidebars start collapsed in cinema mode */

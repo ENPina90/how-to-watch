@@ -10,9 +10,15 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="cinema__mode">
-    <%= render "shared/flashes" %>
+  <body class="cinema__mode <%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> has-entries-sidebar">
+    <%= render 'shared/flashes' %>
 
-    <%= yield %>
+    <% if user_signed_in? && !@hide_sidebar %>
+      <%= render "shared/sidebar" %>
+    <% end %>
+
+    <div class="page-container" id="pageContainer" style="margin: 0; width: 100%;">
+      <%= yield %>
+    </div>
   </body>
 </html>

@@ -1,16 +1,28 @@
-<!-- Collapse Toggle Button (visible when sidebar is collapsed) -->
-<button id="sidebarCollapseBtn" class="btn btn-dark <%= 'd-none' unless @sidebar_collapsed %>" style="position: fixed; left: 16px; top: 96px; z-index: 1050;">
-  <i class="fa-solid fa-bars"></i>
-</button>
+<!-- Unified Collapse Toggle Button (visible when both sidebars are collapsed) -->
+<% if defined?(@entries_sidebar_collapsed) %>
+  <button id="unifiedSidebarCollapseBtn" class="btn btn-dark <%= 'd-none' unless @sidebar_collapsed %>" style="position: fixed; right: 16px; top: 16px; z-index: 1050;">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+<% else %>
+  <button id="sidebarCollapseBtn" class="btn btn-dark <%= 'd-none' unless @sidebar_collapsed %>" style="position: fixed; left: 16px; top: 96px; z-index: 1050;">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+<% end %>
 
 <!-- Left Sidebar -->
 <div id="mainSidebar" class="sidebar-left bg-dark text-white <%= 'd-none' if @sidebar_collapsed %>" style="width: 280px; position: fixed; left: 0; top: 80px; height: calc(100vh - 80px); display: flex; flex-direction: column; z-index: 1020;">
   <!-- Sidebar Header -->
   <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center" style="flex: 0 0 auto;">
     <h5 class="mb-0">Your Library</h5>
-    <button id="sidebarExpandBtn" class="btn btn-sm btn-outline-light">
-      <i class="fa-solid fa-bars"></i>
-    </button>
+    <% if defined?(@entries_sidebar_collapsed) %>
+      <button class="unified-collapse-btn btn btn-sm btn-outline-light">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+    <% else %>
+      <button id="sidebarExpandBtn" class="btn btn-sm btn-outline-light">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+    <% end %>
   </div>
 
   <!-- Lists Section (Scrollable) -->
@@ -217,4 +229,155 @@ if (document.readyState === 'loading') {
   initializeNowPlayingToggle();
 }
 setTimeout(initializeNowPlayingToggle, 100);
+
+// Unified Sidebar Control (for pages with both left and right sidebars)
+window.unifiedSidebarInitialized = false;
+
+function initializeUnifiedSidebarControl() {
+  if (window.unifiedSidebarInitialized) return;
+
+  const unifiedCollapseBtn = document.getElementById('unifiedSidebarCollapseBtn');
+  const unifiedExpandBtn = document.getElementById('unifiedSidebarExpandBtn');
+
+  // Only initialize if unified buttons exist
+  if (!unifiedCollapseBtn && !unifiedExpandBtn) return;
+
+  const mainSidebar = document.getElementById('mainSidebar');
+  const entriesSidebar = document.getElementById('entriesSidebar');
+  const pageContainer = document.getElementById('pageContainer');
+
+  if (!mainSidebar || !entriesSidebar) {
+    setTimeout(initializeUnifiedSidebarControl, 50);
+    return;
+  }
+
+  window.unifiedSidebarInitialized = true;
+  console.log('Unified sidebar control initialized');
+
+  // Set initial state - CRITICAL for cinema mode
+  const areBothCollapsed = mainSidebar.classList.contains('d-none') && entriesSidebar.classList.contains('d-none');
+
+  if (areBothCollapsed) {
+    console.log('Both sidebars collapsed on init - setting full width');
+
+    if (pageContainer) {
+      pageContainer.style.setProperty('margin-left', '0', 'important');
+      pageContainer.style.setProperty('margin-right', '0', 'important');
+      pageContainer.style.setProperty('width', '100%', 'important');
+    }
+
+    // Ensure sidebars are fully hidden
+    mainSidebar.style.display = 'none';
+    mainSidebar.style.visibility = 'hidden';
+    mainSidebar.style.opacity = '0';
+    mainSidebar.style.pointerEvents = 'none';
+
+    entriesSidebar.style.display = 'none';
+    entriesSidebar.style.visibility = 'hidden';
+    entriesSidebar.style.opacity = '0';
+    entriesSidebar.style.pointerEvents = 'none';
+
+    // Show unified collapse button
+    if (unifiedCollapseBtn) {
+      unifiedCollapseBtn.style.display = 'block';
+    }
+
+    // Ensure cinema controls are positioned correctly
+    const watchControls = document.getElementById('watchCinemaControls');
+    if (watchControls) {
+      watchControls.style.setProperty('right', '120px', 'important');
+      watchControls.style.setProperty('left', 'auto', 'important');
+    }
+  }
+
+  // Collapse both sidebars - listen to all collapse buttons
+  const collapseButtons = document.querySelectorAll('.unified-collapse-btn');
+  collapseButtons.forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      console.log('Collapsing both sidebars');
+
+      // Hide both sidebars
+      mainSidebar.classList.add('d-none');
+      mainSidebar.style.display = 'none';
+      mainSidebar.style.visibility = 'hidden';
+      mainSidebar.style.opacity = '0';
+      mainSidebar.style.pointerEvents = 'none';
+
+      entriesSidebar.classList.add('d-none');
+      entriesSidebar.style.display = 'none';
+      entriesSidebar.style.visibility = 'hidden';
+      entriesSidebar.style.opacity = '0';
+      entriesSidebar.style.pointerEvents = 'none';
+
+      // Show unified collapse button
+      if (unifiedCollapseBtn) {
+        unifiedCollapseBtn.classList.remove('d-none');
+        unifiedCollapseBtn.style.display = 'block';
+      }
+
+      document.body.classList.add('sidebar-collapsed');
+      document.body.classList.add('entries-sidebar-collapsed');
+
+      if (pageContainer) {
+        pageContainer.style.marginLeft = '0';
+        pageContainer.style.marginRight = '0';
+        pageContainer.style.width = '100%';
+      }
+
+      // Adjust cinema controls
+      const watchControls = document.getElementById('watchCinemaControls');
+      if (watchControls) {
+        watchControls.style.setProperty('right', '120px', 'important');
+      }
+    });
+  });
+
+  // Expand both sidebars
+  if (unifiedCollapseBtn) {
+    unifiedCollapseBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      console.log('Expanding both sidebars');
+
+      // Show both sidebars
+      mainSidebar.classList.remove('d-none');
+      mainSidebar.style.display = 'flex';
+      mainSidebar.style.visibility = 'visible';
+      mainSidebar.style.opacity = '1';
+      mainSidebar.style.pointerEvents = 'auto';
+
+      entriesSidebar.classList.remove('d-none');
+      entriesSidebar.style.display = 'flex';
+      entriesSidebar.style.visibility = 'visible';
+      entriesSidebar.style.opacity = '1';
+      entriesSidebar.style.pointerEvents = 'auto';
+
+      // Hide unified collapse button
+      unifiedCollapseBtn.classList.add('d-none');
+      unifiedCollapseBtn.style.display = 'none';
+
+      document.body.classList.remove('sidebar-collapsed');
+      document.body.classList.remove('entries-sidebar-collapsed');
+
+      if (pageContainer) {
+        pageContainer.style.marginLeft = '280px';
+        pageContainer.style.marginRight = '350px';
+        pageContainer.style.width = 'calc(100% - 630px)';
+      }
+
+      // Adjust cinema controls
+      const watchControls = document.getElementById('watchCinemaControls');
+      if (watchControls) {
+        watchControls.style.setProperty('right', '390px', 'important');
+      }
+    });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeUnifiedSidebarControl);
+} else {
+  initializeUnifiedSidebarControl();
+}
+setTimeout(initializeUnifiedSidebarControl, 100);
 </script>

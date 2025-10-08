@@ -12,6 +12,16 @@
   flex-direction: column !important;
 }
 
+/* Cinema mode - sidebar starts from top (no navbar) */
+body.cinema__mode .sidebar-left {
+  top: 0 !important;
+  height: 100vh !important;
+}
+
+body.cinema__mode #sidebarCollapseBtn {
+  top: 16px !important;
+}
+
 /* Ensure d-none properly hides the sidebar in production */
 .sidebar-left.d-none {
   display: none !important;
