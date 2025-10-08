@@ -15,14 +15,16 @@ export default class TmdbMapper {
     };
   }
 
-  static mapTmdbEpisodeToTemplate(episode, imdbID) {
+  static mapTmdbEpisodeToTemplate(episode, seriesImdbID, tmdbShowID) {
     return {
       Poster: episode.still_path ? `https://image.tmdb.org/t/p/w500${episode.still_path}` : 'N/A',
       Title: episode.name,
       Season: episode.season_number,
       Episode: episode.episode_number,
-      imdbID: episode.imdb_id || imdbID,
-      tmdbID: episode.id,
+      Plot: episode.overview || null,
+      imdbID: episode.imdb_id || seriesImdbID,
+      seriesImdbID: seriesImdbID,
+      tmdbID: tmdbShowID,
     };
   }
 }

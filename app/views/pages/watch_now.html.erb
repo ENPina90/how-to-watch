@@ -3,13 +3,6 @@
   <script>
     // Add has-episodes-sidebar class to body
     document.body.classList.add('has-episodes-sidebar');
-    console.log('Episodes sidebar should be rendering!');
-  </script>
-<% else %>
-  <script>
-    console.log('Episodes sidebar NOT rendering because:');
-    console.log('  Media type is tv?', '<%= @media_type %>' === 'tv');
-    console.log('  TMDB ID present?', <%= @tmdb_id.present? %>);
   </script>
 <% end %>
 

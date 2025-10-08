@@ -106,13 +106,17 @@ export default class extends Controller {
             .then(imdbData => {
               episode.imdb_id = imdbData.imdb_id;  // Attach the IMDb ID to the episode
               return episode;
+            })
+            .catch(error => {
+              console.warn(`Could not fetch IMDB ID for episode ${episode.episode_number}`);
+              return episode; // Continue without episode-specific IMDB ID
             });
         });
 
         // Once all episodes have their IMDb ID, map them to the template
         Promise.all(episodePromises).then(episodesWithImdb => {
           const episodeData = {
-            movies: episodesWithImdb.map(episode => TmdbMapper.mapTmdbEpisodeToTemplate(episode, imdbId))
+            movies: episodesWithImdb.map(episode => TmdbMapper.mapTmdbEpisodeToTemplate(episode, imdbId, tmdbId))
           };
           console.log(episodeData);
           const episodesHtml = Mustache.render(this.episodeTemplate.innerHTML, episodeData);
@@ -177,8 +181,8 @@ export default class extends Controller {
     let dropdownHtml = `
       <div class="d-flex align-items-center mb-3">
         <h4 class="mr-3">${seriesName}</h4>
-        <div class="form-group">
-          <label for="seasonSelect" class="mr-2">Select Season:</label>
+        <div class="form-group d-flex align-items-center gap-2">
+          <label for="seasonSelect" class="mr-2 mb-0">Select Season:</label>
           <select id="seasonSelect" class="form-control" data-tmdb-id="${tmdbId}" data-action="change->search#changeSeason">
     `;
 
@@ -189,10 +193,75 @@ export default class extends Controller {
 
     dropdownHtml += `
           </select>
+          <button type="button"
+                  class="btn btn-primary btn-sm"
+                  data-action="click->search#addSeason"
+                  data-tmdb-id="${tmdbId}"
+                  data-series-name="${this.escapeHtml(seriesName)}"
+                  data-season="${selectedSeason}">
+            + Add Season
+          </button>
         </div>
       </div>
     `;
 
     return dropdownHtml;
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  addSeason(event) {
+    const button = event.currentTarget;
+    const tmdbId = button.dataset.tmdbId;
+    const seriesName = button.dataset.seriesName;
+    const season = button.dataset.season || document.getElementById('seasonSelect').value;
+
+    console.log('Adding season:', { tmdbId, seriesName, season });
+
+    // Show loading state
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding...';
+    button.disabled = true;
+
+    // Fetch show details to get series IMDB ID
+    this.tmdbService.fetchShowDetails(tmdbId)
+      .then(showData => {
+        const seriesImdbId = showData.imdb_id;
+
+        // Create form data
+        const formData = new FormData();
+        formData.append('tmdb', tmdbId);
+        formData.append('series_imdb', seriesImdbId);
+        formData.append('series_name', seriesName);
+        formData.append('season', season);
+
+        // Submit to the add_season endpoint
+        return fetch(`/lists/${this.idValue}/add_season`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json'
+          }
+        });
+      })
+      .then(response => {
+        if (response.ok) {
+          // Success - redirect to the list
+          window.location.href = `/lists/${this.idValue}`;
+        } else {
+          throw new Error('Failed to add season');
+        }
+      })
+      .catch(error => {
+        console.error('Error adding season:', error);
+        alert('Error adding season. Please try again.');
+        // Reset button
+        button.innerHTML = '+ Add Season';
+        button.disabled = false;
+      });
   }
 }
