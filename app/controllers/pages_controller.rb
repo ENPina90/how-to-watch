@@ -81,5 +81,6 @@ class PagesController < ApplicationController
     # Set sidebar state for watch_now page
     @sidebar_collapsed = false
     @hide_sidebar = false
+    @now_playing_collapsed = true # Collapsed by default on watch_now page
   end
 end

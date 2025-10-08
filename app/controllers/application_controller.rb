@@ -17,5 +17,6 @@ class ApplicationController < ActionController::Base
     # Default: sidebar is expanded and visible
     @sidebar_collapsed ||= false
     @hide_sidebar ||= false
+    @now_playing_collapsed ||= false # Now Playing expanded by default
   end
 end
