@@ -32,6 +32,38 @@ body.cinema__mode .page-container {
   font-size: 10px;
 }
 
+/* Ensure all cinema control icons are white */
+.cinema__control i,
+.cinema__control a,
+.cinema__control a:hover,
+.cinema__control a:visited,
+.cinema__control a:focus {
+  color: white !important;
+  text-decoration: none !important;
+}
+
+/* Add gradient overlay to iframe for better text readability */
+.cinema__screen {
+  position: relative;
+}
+
+.cinema__screen::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Ensure title stays above gradient */
+.cinema__title {
+  z-index: 2;
+}
+
 .cinema__title {
   color: white;
   position: fixed;
