@@ -61,7 +61,7 @@ Rails.application.configure do
   config.assets.quiet = true
 
   # Ensure assets are served in development but don't over-process
-  config.assets.debug = false
+  config.assets.debug = true
   config.assets.compile = true
   config.assets.check_precompiled_asset = false
 

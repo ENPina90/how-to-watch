@@ -30,33 +30,41 @@
   </div>
 
   <!-- Now Playing Section (Fixed at Bottom) -->
-  <div class="border-top border-secondary p-3" style="flex: 0 0 400px; background: linear-gradient(135deg, #191414 0%, #2d2d2d 100%);">
-    <h6 class="text-muted mb-3" style="font-size: 0.85rem; text-transform: uppercase; font-weight: 700;">Now Playing</h6>
-    <%
-      # If on a list show page, use that list's current entry
-      now_playing = if @list && @list.respond_to?(:find_entry_by_position)
-        @list.find_entry_by_position(:current)
-      else
-        @now_playing_entry || find_now_playing_for_sidebar
-      end
-    %>
-    <% if now_playing %>
-      <%= link_to watch_entry_path(now_playing), class: "text-decoration-none" do %>
-        <div class="d-flex flex-column align-items-center text-center">
-          <div style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); transition: transform 0.2s ease;">
-            <%= entry_poster_image_tag(now_playing, class: 'img-fluid', style: 'width: 100%; height: 100%; object-fit: cover;') %>
+  <div class="border-top border-secondary" style="flex: 0 0 auto; background: linear-gradient(135deg, #191414 0%, #2d2d2d 100%);">
+    <!-- Now Playing Header (Always Visible) -->
+    <div class="p-3 pb-2 border-bottom border-secondary d-flex justify-content-between align-items-center" style="cursor: pointer;" id="nowPlayingToggle">
+      <h6 class="text-muted mb-0" style="font-size: 0.85rem; text-transform: uppercase; font-weight: 700;">Now Playing</h6>
+      <i id="nowPlayingCaretIcon" class="fa-solid <%= @now_playing_collapsed ? 'fa-caret-up' : 'fa-caret-down' %> text-muted"></i>
+    </div>
+
+    <!-- Now Playing Content (Collapsible) -->
+    <div id="nowPlayingContent" class="p-3 pt-3 <%= 'd-none' if @now_playing_collapsed %>" style="transition: all 0.3s ease;">
+      <%
+        # If on a list show page, use that list's current entry
+        now_playing = if @list && @list.respond_to?(:find_entry_by_position)
+          @list.find_entry_by_position(:current)
+        else
+          @now_playing_entry || find_now_playing_for_sidebar
+        end
+      %>
+      <% if now_playing %>
+        <%= link_to watch_entry_path(now_playing), class: "text-decoration-none" do %>
+          <div class="d-flex flex-column align-items-center text-center">
+            <div style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); transition: transform 0.2s ease;">
+              <%= entry_poster_image_tag(now_playing, class: 'img-fluid', style: 'width: 100%; height: 100%; object-fit: cover;') %>
+            </div>
+            <p class="mb-0 text-white fw-bold text-truncate w-100" style="font-size: 1rem;"><%= now_playing.name %></p>
           </div>
-          <p class="mb-0 text-white fw-bold text-truncate w-100" style="font-size: 1rem;"><%= now_playing.name %></p>
+        <% end %>
+      <% else %>
+        <div class="d-flex flex-column align-items-center text-center">
+          <div style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden;">
+            <img src="/images/please_stand_by.png" class="img-fluid" style="width: 100%; height: 100%; object-fit: cover;" alt="No content">
+          </div>
+          <p class="mb-0 text-white fw-bold">Nothing playing</p>
         </div>
       <% end %>
-    <% else %>
-      <div class="d-flex flex-column align-items-center text-center">
-        <div style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden;">
-          <img src="/images/please_stand_by.png" class="img-fluid" style="width: 100%; height: 100%; object-fit: cover;" alt="No content">
-        </div>
-        <p class="mb-0 text-white fw-bold">Nothing playing</p>
-      </div>
-    <% end %>
+    </div>
   </div>
 </div>
 
@@ -151,4 +159,62 @@ if (document.readyState === 'loading') {
 
 // Also try after a short delay as a fallback
 setTimeout(initializeSidebar, 100);
+
+// Now Playing Toggle Functionality
+window.nowPlayingInitialized = false;
+
+function initializeNowPlayingToggle() {
+  if (window.nowPlayingInitialized) {
+    console.log('Now Playing already initialized, skipping');
+    return;
+  }
+
+  const nowPlayingToggle = document.getElementById('nowPlayingToggle');
+  const nowPlayingContent = document.getElementById('nowPlayingContent');
+  const nowPlayingCaretIcon = document.getElementById('nowPlayingCaretIcon');
+
+  console.log('Initializing Now Playing toggle:', {
+    toggle: !!nowPlayingToggle,
+    content: !!nowPlayingContent,
+    icon: !!nowPlayingCaretIcon
+  });
+
+  if (!nowPlayingToggle || !nowPlayingContent || !nowPlayingCaretIcon) {
+    console.log('Now Playing elements not ready, retrying...');
+    setTimeout(initializeNowPlayingToggle, 50);
+    return;
+  }
+
+  window.nowPlayingInitialized = true;
+  console.log('Now Playing toggle initialized successfully');
+
+  nowPlayingToggle.addEventListener('click', function(e) {
+    console.log('Now Playing toggle clicked!');
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (nowPlayingContent.classList.contains('d-none')) {
+      // Expand
+      console.log('Expanding Now Playing');
+      nowPlayingContent.classList.remove('d-none');
+      nowPlayingContent.style.display = 'block';
+      nowPlayingCaretIcon.classList.remove('fa-caret-up');
+      nowPlayingCaretIcon.classList.add('fa-caret-down');
+    } else {
+      // Collapse
+      console.log('Collapsing Now Playing');
+      nowPlayingContent.classList.add('d-none');
+      nowPlayingContent.style.display = 'none';
+      nowPlayingCaretIcon.classList.remove('fa-caret-down');
+      nowPlayingCaretIcon.classList.add('fa-caret-up');
+    }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeNowPlayingToggle);
+} else {
+  initializeNowPlayingToggle();
+}
+setTimeout(initializeNowPlayingToggle, 100);
 </script>
