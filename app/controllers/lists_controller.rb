@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
-  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
+  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :add_season, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
 
   def index
@@ -188,6 +188,108 @@ class ListsController < ApplicationController
     end
     flash[:notice] = "#{ActionController::Base.helpers.pluralize(counter, 'episode')} of #{@list.entries.last&.series} added"
     redirect_to list_path(@list)
+  end
+
+  def add_season
+    require 'open-uri'
+
+    tmdb_id = params[:tmdb]
+    series_imdb_id = params[:series_imdb]
+    series_name = params[:series_name]
+    season_number = params[:season].to_i
+
+    # Fetch season details from TMDB
+    tmdb_api_key = ENV['TMDB_API_KEY'] || '7e1c210d0c877abff8a40398735ce605'
+    season_url = "https://api.themoviedb.org/3/tv/#{tmdb_id}/season/#{season_number}?api_key=#{tmdb_api_key}"
+
+    begin
+      season_response = URI.open(season_url).read
+      season_data = JSON.parse(season_response)
+
+      # Create main entry for the season
+      entry_name = "#{series_name} - Season #{season_number}"
+
+      # Check if this season entry already exists
+      existing_entry = @list.entries.find_by(name: entry_name, series: series_name)
+      if existing_entry
+        render json: { error: "#{entry_name} already exists in this list" }, status: :unprocessable_entity
+        return
+      end
+
+      # Create the main season entry
+      @entry = Entry.create!(
+        list: @list,
+        name: entry_name,
+        series: series_name,
+        media: 'series',
+        imdb: series_imdb_id,
+        tmdb: tmdb_id,
+        position: @list.entries.count + 1,
+        season: season_number,
+        source: "https://v2.vidsrc.me/embed/#{series_imdb_id}",
+        pic: season_data['poster_path'] ? "https://image.tmdb.org/t/p/w500#{season_data['poster_path']}" : nil,
+        plot: season_data['overview'],
+        year: season_data['air_date']&.split('-')&.first&.to_i
+      )
+
+      # Create subentries for all episodes in the season
+      counter = 0
+      failed_episodes = []
+
+      season_data['episodes'].each do |episode_data|
+        begin
+          # Fetch episode IMDB ID (optional - still create subentry if it fails)
+          episode_imdb_id = nil
+          begin
+            episode_url = "https://api.themoviedb.org/3/tv/#{tmdb_id}/season/#{season_number}/episode/#{episode_data['episode_number']}/external_ids?api_key=#{tmdb_api_key}"
+            episode_external_ids = JSON.parse(URI.open(episode_url).read)
+            episode_imdb_id = episode_external_ids['imdb_id']
+          rescue => e
+            Rails.logger.warn "Could not fetch IMDB ID for episode #{episode_data['episode_number']}: #{e.message}"
+            # Continue anyway - we'll use the series IMDB ID
+            episode_imdb_id = series_imdb_id
+          end
+
+          # Use series IMDB ID if episode doesn't have one
+          episode_imdb_id ||= series_imdb_id
+
+          Subentry.create!(
+            entry: @entry,
+            season: season_number,
+            episode: episode_data['episode_number'],
+            name: episode_data['name'],
+            imdb: episode_imdb_id,
+            source: "https://v2.vidsrc.me/embed/#{series_imdb_id}/#{season_number}-#{episode_data['episode_number']}",
+            rating: episode_data['vote_average'],
+            completed: false
+          )
+          counter += 1
+        rescue => e
+          Rails.logger.error "Failed to create subentry for episode #{episode_data['episode_number']}: #{e.message}"
+          failed_episodes << episode_data['episode_number']
+        end
+      end
+
+      # Set the first episode as current
+      first_episode = @entry.subentries.order(:episode).first
+      @entry.update(current: first_episode) if first_episode
+
+      message = "#{entry_name} added with #{counter} episodes"
+      message += " (#{failed_episodes.length} episodes failed)" if failed_episodes.any?
+
+      render json: {
+        success: true,
+        message: message,
+        entry_id: @entry.id,
+        episodes_added: counter,
+        episodes_failed: failed_episodes
+      }
+
+    rescue => e
+      Rails.logger.error "Error adding season: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      render json: { error: "Failed to add season: #{e.message}" }, status: :internal_server_error
+    end
   end
 
   def move_to_list

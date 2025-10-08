@@ -14,6 +14,7 @@ Rails.application.routes.draw do
     get :randomize
     get :watch_current
     get :top_entries
+    post :add_season
     patch :move_to_list
     patch :subscribe
     patch :unsubscribe
