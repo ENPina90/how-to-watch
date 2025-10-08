@@ -1,16 +1,104 @@
-<div class="cinema__screen">
-  <iframe id="cinema"
-          class="h-75"
-          title="<%= @title %>"
-          referrerpolicy="origin"
-          width="90%"
-          height="90%"
-          allowfullscreen
-          allow="autoplay"
-          src="https://vidsrc.cc/v2/embed/<%= @media_type %>/<%= @imdb_id %>?autoplay=1">
-  </iframe>
+<% if @media_type == 'tv' && @tmdb_id.present? %>
+  <%= render "shared/episodes_sidebar" %>
+  <script>
+    // Add has-episodes-sidebar class to body
+    document.body.classList.add('has-episodes-sidebar');
+    console.log('Episodes sidebar should be rendering!');
+  </script>
+<% else %>
+  <script>
+    console.log('Episodes sidebar NOT rendering because:');
+    console.log('  Media type is tv?', '<%= @media_type %>' === 'tv');
+    console.log('  TMDB ID present?', <%= @tmdb_id.present? %>);
+  </script>
+<% end %>
 
-  <!-- Add to List Button -->
+<div class="cinema__screen">
+  <% if @media_type == 'tv' && @season && @episode %>
+    <!-- For TV episodes, use v3 with /tv/imdb/season/episode format -->
+    <iframe id="cinema"
+            class="h-75"
+            title="<%= @title %> - S<%= @season %>E<%= @episode %>"
+            referrerpolicy="origin"
+            width="90%"
+            height="90%"
+            allowfullscreen
+            allow="autoplay"
+            src="https://vidsrc.cc/v3/embed/tv/<%= @imdb_id %>/<%= @season %>/<%= @episode %>?autoplay=1">
+    </iframe>
+  <% else %>
+    <!-- For movies, use v2 with type prefix -->
+    <iframe id="cinema"
+            class="h-75"
+            title="<%= @title %>"
+            referrerpolicy="origin"
+            width="90%"
+            height="90%"
+            allowfullscreen
+            allow="autoplay"
+            src="https://vidsrc.cc/v2/embed/<%= @media_type %>/<%= @imdb_id %>?autoplay=1">
+    </iframe>
+  <% end %>
+</div>
+
+<% if @media_type == 'tv' && @season && @episode && @show_details %>
+  <!-- Cinema Controls for TV Episodes -->
+  <div id="cinemaControls" class="d-flex justify-content-center cinema__control" style="right: 390px; top: 100px; left: auto;">
+    <div class="position-relative" style="width: 80px; height: 80px;">
+      <% # Next Episode (Right Arrow) %>
+      <% if @season && @episode %>
+        <% next_episode = @episode + 1 %>
+        <% total_episodes = @show_details.dig('seasons')&.find { |s| s['season_number'] == @season }&.dig('episode_count') %>
+        <% if total_episodes && next_episode <= total_episodes %>
+          <%= link_to watch_now_path(imdb: @imdb_id, title: @title, type: 'tv', tmdb: @tmdb_id, season: @season, episode: next_episode, poster: @poster), class: 'text-decoration-none' do %>
+            <i class="fa-solid fa-3x fa-caret-right position-absolute top-50 end-0 translate-middle-y"></i>
+          <% end %>
+        <% elsif @season < @number_of_seasons %>
+          <%= link_to watch_now_path(imdb: @imdb_id, title: @title, type: 'tv', tmdb: @tmdb_id, season: @season + 1, episode: 1, poster: @poster), class: 'text-decoration-none' do %>
+            <i class="fa-solid fa-3x fa-caret-right position-absolute top-50 end-0 translate-middle-y"></i>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <% # Shuffle (Random Episode) %>
+      <% if @number_of_seasons && @number_of_seasons > 0 %>
+        <%= link_to watch_now_path(imdb: @imdb_id, title: @title, type: 'tv', tmdb: @tmdb_id, season: rand(1..@number_of_seasons), episode: rand(1..20), poster: @poster), class: 'text-decoration-none' do %>
+          <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y"></i>
+        <% end %>
+      <% end %>
+
+      <% # Add to List (Plus Icon) %>
+      <i class="fa-solid fa-plus fa-2x position-absolute bottom-0 end-0 translate-middle-y"
+         style="cursor: pointer;"
+         onclick="openWatchNowModal('<%= @imdb_id %>', '<%= j(@title) %>', '<%= @poster %>')"></i>
+
+      <% # Previous Episode (Left Arrow) %>
+      <% if @episode && @episode > 1 %>
+        <%= link_to watch_now_path(imdb: @imdb_id, title: @title, type: 'tv', tmdb: @tmdb_id, season: @season, episode: @episode - 1, poster: @poster), class: 'text-decoration-none' do %>
+          <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
+        <% end %>
+      <% elsif @season && @season > 1 %>
+        <% # Go to last episode of previous season (approximate with 20) %>
+        <%= link_to watch_now_path(imdb: @imdb_id, title: @title, type: 'tv', tmdb: @tmdb_id, season: @season - 1, episode: 20, poster: @poster), class: 'text-decoration-none' do %>
+          <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
+        <% end %>
+      <% end %>
+
+      <% # Alternate Source (Link Slash) %>
+      <a href="https://v2.vidsrc.me/embed/<%= @imdb_id %>/<%= @season %>-<%= @episode %>"
+         target="_blank"
+         class="text-decoration-none">
+        <i class="fa-solid fa-link-slash fa-2x position-absolute bottom-0 start-0 translate-middle-y"></i>
+      </a>
+
+      <% # Home Icon %>
+      <%= link_to root_path, class: 'text-decoration-none' do %>
+        <i class="fa-solid fa-house fa-2x position-absolute top-50 start-50 translate-middle"></i>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <!-- Simple Add to List Button for Movies -->
   <div class="text-center mt-3">
     <button type="button"
             class="btn btn-primary"
@@ -18,4 +106,51 @@
       <i class="fas fa-plus me-2"></i>Add to List
     </button>
   </div>
-</div>
+<% end %>
+
+<% if @media_type == 'tv' && @season && @episode && @show_details %>
+  <script>
+    // Adjust cinema controls position based on sidebar states
+    function adjustCinemaControlsPosition() {
+      const cinemaControls = document.getElementById('cinemaControls');
+      const episodesSidebar = document.getElementById('episodesSidebar');
+      const mainSidebar = document.getElementById('mainSidebar');
+      const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
+
+      if (!cinemaControls) return;
+
+      // Calculate right position based on episodes sidebar
+      let rightPos;
+      if (episodesSidebar && !episodesSidebar.classList.contains('d-none')) {
+        rightPos = '390px'; // 370px + 20px extra clearance
+      } else {
+        rightPos = '120px'; // Extra space to avoid hamburger overlap
+      }
+      cinemaControls.style.setProperty('right', rightPos, 'important');
+
+      // Keep left as auto to maintain right-alignment
+      cinemaControls.style.setProperty('left', 'auto', 'important');
+    }
+
+    // Run on page load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', adjustCinemaControlsPosition);
+    } else {
+      adjustCinemaControlsPosition();
+    }
+
+    // Also run after a short delay to ensure sidebars are initialized
+    setTimeout(adjustCinemaControlsPosition, 200);
+
+    // Listen for sidebar collapse/expand events
+    document.addEventListener('click', function(e) {
+      const target = e.target;
+      if (target.closest('#episodesSidebarExpandBtn') ||
+          target.closest('#episodesSidebarCollapseBtn') ||
+          target.closest('#sidebarExpandBtn') ||
+          target.closest('#sidebarCollapseBtn')) {
+        setTimeout(adjustCinemaControlsPosition, 50);
+      }
+    });
+  </script>
+<% end %>
