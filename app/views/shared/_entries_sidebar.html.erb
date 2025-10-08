@@ -1,0 +1,73 @@
+<!-- Right Entries Sidebar -->
+<div id="entriesSidebar"
+     class="entries-sidebar-right bg-dark text-white <%= 'd-none' if @entries_sidebar_collapsed %>"
+     style="width: 350px; position: fixed; right: 0; top: 80px; height: calc(100vh - 80px); display: flex; flex-direction: column; z-index: 1020;"
+     data-controller="entries-sidebar"
+     data-entries-sidebar-current-entry-id-value="<%= @entry.id %>">
+
+  <!-- Sidebar Header -->
+  <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center" style="flex: 0 0 auto;">
+    <h5 class="mb-0"><%= @entry.list.name %></h5>
+    <button class="unified-collapse-btn btn btn-sm btn-outline-light">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+
+  <!-- Entries List (Scrollable) -->
+  <div class="p-3"
+       style="flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;"
+       data-entries-sidebar-target="entriesList">
+    <h6 class="text-muted mb-3" style="font-size: 0.75rem; text-transform: uppercase;">Entries</h6>
+    <div class="list-group list-group-flush">
+      <% @entry.list.entries.order(:position).each do |entry| %>
+        <% is_current = entry.id == @entry.id %>
+        <%
+          active_styles = is_current ? 'background-color: rgba(255, 255, 255, 0.15) !important; font-weight: 600 !important;' : ''
+        %>
+        <%= link_to watch_entry_path(entry),
+                    class: "entry-item #{is_current ? 'active' : ''}",
+                    style: "color: #ffffff !important; text-decoration: none !important; #{active_styles}",
+                    data: {
+                      'entries-sidebar-target': 'entryItem',
+                      'entry-id': entry.id,
+                      'entry-name': entry.name
+                    } do %>
+          <div class="d-flex align-items-center">
+            <div class="entry-position" style="color: rgba(255, 255, 255, 0.6) !important;">
+              <%= entry.position %>.&nbsp;
+            </div>
+            <div class="entry-title-container flex-grow-1">
+              <span class="entry-title" style="color: #ffffff !important;"><%= entry.name %></span>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Current Entry Details (Fixed at Bottom) -->
+  <div class="border-top border-secondary p-3"
+       style="flex: 0 0 200px; overflow-y: auto; background: linear-gradient(135deg, #191414 0%, #2d2d2d 100%);">
+    <h6 class="text-muted mb-3" style="font-size: 0.85rem; text-transform: uppercase; font-weight: 700;">Current Entry</h6>
+
+    <div>
+      <p class="text-muted mb-2" style="font-size: 0.8rem;">
+        Position <%= @entry.position %> of <%= @entry.list.entries.count %>
+      </p>
+      <h6 class="text-white mb-2" style="font-size: 0.95rem; font-weight: 600; line-height: 1.3;">
+        <%= @entry.name %>
+      </h6>
+      <% if @entry.plot.present? %>
+        <p class="text-white-50 mb-0" style="font-size: 0.8rem; line-height: 1.4;">
+          <%= truncate(@entry.plot, length: 150) %>
+        </p>
+      <% else %>
+        <p class="text-white-50 mb-0 fst-italic" style="font-size: 0.8rem;">
+          No plot available
+        </p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- Entries sidebar uses unified control from _sidebar.html.erb -->

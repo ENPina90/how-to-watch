@@ -1,0 +1,170 @@
+/* Entries Right Sidebar Styles */
+.entries-sidebar-right {
+  background: linear-gradient(135deg, #191414 0%, #2d2d2d 100%);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+  z-index: 1020 !important;
+  position: fixed !important;
+  right: 0 !important;
+  top: 80px !important;
+  width: 350px !important;
+  height: calc(100vh - 80px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Cinema mode - sidebar starts from top (no navbar) */
+body.cinema__mode .entries-sidebar-right {
+  top: 0 !important;
+  height: 100vh !important;
+}
+
+/* Ensure d-none properly hides the entries sidebar */
+.entries-sidebar-right.d-none {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Hide scrollbar for entries list */
+.entries-sidebar-right > div:nth-child(2)::-webkit-scrollbar {
+  display: none;
+}
+
+/* Entry Item Styling - Matching Episodes Sidebar */
+.entry-item {
+  display: block;
+  padding: 12px 8px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background-color: transparent;
+  text-decoration: none !important;
+  color: #ffffff !important;
+  transition: all 0.2s ease;
+  border: 0;
+}
+
+.entry-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  transform: translateX(-4px);
+  text-decoration: none !important;
+  color: #ffffff !important;
+}
+
+.entry-item:visited {
+  color: #ffffff !important;
+}
+
+.entry-item:focus {
+  color: #ffffff !important;
+  outline: none;
+}
+
+.entry-item.active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  font-weight: 600;
+  border-radius: 6px !important;
+}
+
+.entry-item.active:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.entry-position {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-right: 12px;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.entry-title-container {
+  overflow: hidden;
+}
+
+.entry-title {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #ffffff !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.entry-item.active .entry-title {
+  font-weight: 500;
+  color: #ffffff !important;
+}
+
+/* Force white text for all entry items - override Bootstrap link styles */
+#entriesSidebar a.entry-item,
+#entriesSidebar a.entry-item:link,
+#entriesSidebar a.entry-item:visited,
+#entriesSidebar a.entry-item:hover,
+#entriesSidebar a.entry-item:active,
+#entriesSidebar a.entry-item:focus,
+.entries-sidebar-right a.entry-item,
+.entries-sidebar-right a.entry-item:link,
+.entries-sidebar-right a.entry-item:visited,
+.entries-sidebar-right a.entry-item:hover,
+.entries-sidebar-right a.entry-item:active,
+.entries-sidebar-right a.entry-item:focus {
+  color: #ffffff !important;
+  text-decoration: none !important;
+}
+
+#entriesSidebar .entry-item span,
+#entriesSidebar .entry-item div,
+.entries-sidebar-right .entry-item span,
+.entries-sidebar-right .entry-item div {
+  color: inherit !important;
+}
+
+#entriesSidebar .entry-title,
+.entries-sidebar-right .entry-title {
+  color: #ffffff !important;
+}
+
+/* Ensure entry positions stay muted */
+#entriesSidebar .entry-item .entry-position,
+.entries-sidebar-right .entry-item .entry-position {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Page container adjustments for both sidebars (entries page) */
+body.has-sidebar.has-entries-sidebar #pageContainer,
+body.has-sidebar.has-entries-sidebar .page-container {
+  margin-left: 280px !important;
+  margin-right: 350px !important;
+  width: calc(100% - 630px) !important;
+  transition: margin-left 0.3s ease, margin-right 0.3s ease, width 0.3s ease;
+}
+
+/* Only entries sidebar (no left sidebar) */
+body:not(.has-sidebar).has-entries-sidebar #pageContainer,
+body:not(.has-sidebar).has-entries-sidebar .page-container {
+  margin-right: 350px !important;
+  width: calc(100% - 350px) !important;
+}
+
+/* Left sidebar only (entries sidebar collapsed) */
+body.has-sidebar.entries-sidebar-collapsed #pageContainer,
+body.has-sidebar.entries-sidebar-collapsed .page-container {
+  margin-left: 280px !important;
+  margin-right: 0 !important;
+  width: calc(100% - 280px) !important;
+}
+
+/* Both sidebars collapsed */
+body.sidebar-collapsed.entries-sidebar-collapsed #pageContainer,
+body.sidebar-collapsed.entries-sidebar-collapsed .page-container {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
