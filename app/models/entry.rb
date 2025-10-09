@@ -55,8 +55,8 @@ class Entry < ApplicationRecord
       year:         entry[:year],
       plot:         entry[:plot],
       pic:          entry[:pic],
-      source:       entry[:source] || generate_source(entry) || generate_source(entry),
-      source_two:   entry[:source_two],
+      source:       entry[:source] || generate_source(entry),
+      source_two:   entry[:source_two] || generate_source_two(entry),
       genre:        entry[:genre],
       director:     entry[:director],
       writer:       entry[:writer],
@@ -75,10 +75,40 @@ class Entry < ApplicationRecord
   end
 
   def self.generate_source(entry)
-    if entry[:media] == "episode"
-    "https://v2.vidsrc.me/embed/#{entry[:series_imdb]}/#{entry[:season]}-#{entry[:episode]}"
+    imdb_id = entry[:imdb]
+    series_imdb_id = entry[:series_imdb] || imdb_id
+
+    case entry[:media]
+    when "movie"
+      "https://vidsrc.cc/v3/embed/movie/#{imdb_id}"
+    when "series"
+      "https://vidsrc.cc/v3/embed/tv/#{imdb_id}"
+    when "episode"
+      "https://vidsrc.cc/v3/embed/tv/#{series_imdb_id}/#{entry[:season]}/#{entry[:episode]}"
+    when "anime"
+      # Anime uses absolute episode numbers, not season/episode, with /sub at the end
+      "https://vidsrc.cc/v2/embed/anime/#{imdb_id}/#{entry[:episode]}/sub"
     else
-    "https://v2.vidsrc.me/embed/#{entry[:imdb]}"
+      "https://vidsrc.cc/v2/embed/movie/#{imdb_id}"
+    end
+  end
+
+  def self.generate_source_two(entry)
+    imdb_id = entry[:imdb]
+    series_imdb_id = entry[:series_imdb] || imdb_id
+
+    case entry[:media]
+    when "movie"
+      "https://v2.vidsrc.me/embed/#{imdb_id}"
+    when "series"
+      "https://v2.vidsrc.me/embed/#{imdb_id}"
+    when "episode"
+      "https://v2.vidsrc.me/embed/#{series_imdb_id}/#{entry[:season]}-#{entry[:episode]}"
+    when "anime"
+      # Anime source_two still uses season-episode format
+      "https://v2.vidsrc.me/embed/#{imdb_id}/#{entry[:season]}-#{entry[:episode]}"
+    else
+      "https://v2.vidsrc.me/embed/#{imdb_id}"
     end
   end
 
@@ -102,9 +132,53 @@ class Entry < ApplicationRecord
   end
 
   def set_current(change)
-    subentries = self.subentries.order(:season)
-    index = subentries.index(self.current) || -1
-    self.update(current: subentries[index + change])
+    # Order by season and episode as integers (they're stored as strings in subentries table)
+    # Handle empty strings by using NULLIF to convert them to NULL before casting
+    subentries = self.subentries.where.not(season: [nil, '']).where.not(episode: [nil, ''])
+                     .order(Arel.sql('CAST(NULLIF(season, \'\') AS INTEGER), CAST(NULLIF(episode, \'\') AS INTEGER)'))
+
+    # If no subentries, do nothing
+    return if subentries.empty?
+
+    # Find current index (default to -1 if no current is set)
+    current_index = self.current ? subentries.index(self.current) : -1
+    current_index ||= -1 # In case index returns nil
+
+    new_index = current_index + change
+
+    # Ensure we stay within bounds
+    if new_index < 0
+      # At beginning, set to first episode
+      new_index = 0
+    elsif new_index >= subentries.length
+      # At end, set to last episode
+      new_index = subentries.length - 1
+    end
+
+    # Update current to new subentry
+    new_current = subentries[new_index]
+    if new_current
+      # Fix the source URL if it's broken
+      new_current.fix_source_url! if new_current.source.blank? || new_current.source.include?('//-')
+
+      self.update(current: new_current)
+      Rails.logger.info "Updated current to: S#{new_current.season}E#{new_current.episode} - #{new_current.name}"
+    else
+      Rails.logger.error "Could not find subentry at index #{new_index}"
+    end
+  end
+
+  # Fix all broken subentry sources for this entry
+  def fix_subentry_sources!
+    fixed_count = 0
+    subentries.each do |subentry|
+      if subentry.source.blank? || subentry.source.include?('//-')
+        subentry.fix_source_url!
+        fixed_count += 1
+      end
+    end
+    Rails.logger.info "Fixed #{fixed_count} subentry sources for #{name}"
+    fixed_count
   end
 
   def next

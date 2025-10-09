@@ -17,7 +17,7 @@
   <div class="p-3"
        style="flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;"
        data-entries-sidebar-target="entriesList">
-    <% if @entry.media == 'series' %>
+    <% if @entry.media == 'series' || @entry.media == 'anime' %>
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h6 class="text-muted mb-0" style="font-size: 0.75rem; text-transform: uppercase;" id="sidebarListTitle">Episodes</h6>
         <button id="toggleEntriesView"
@@ -30,7 +30,7 @@
 
       <!-- Episodes List View -->
       <div id="episodesListView" class="list-group list-group-flush">
-        <% @entry.subentries.order(:season, :episode).each do |subentry| %>
+        <% @entry.subentries.order(Arel.sql('CAST(NULLIF(season, \'\') AS INTEGER), CAST(NULLIF(episode, \'\') AS INTEGER)')).each do |subentry| %>
           <% is_current = @entry.current_id == subentry.id %>
           <%
             active_styles = is_current ? 'background-color: rgba(255, 255, 255, 0.15) !important; font-weight: 600 !important;' : ''
@@ -116,18 +116,18 @@
   <div class="border-top border-secondary p-3"
        style="flex: 0 0 280px; overflow-y: auto; background: linear-gradient(135deg, #191414 0%, #2d2d2d 100%);">
     <h6 class="text-muted mb-3" style="font-size: 0.85rem; text-transform: uppercase; font-weight: 700;">
-      <%= @entry.media == 'series' ? 'Current Episode' : 'Current Entry' %>
+      <%= (@entry.media == 'series' || @entry.media == 'anime') ? 'Current Episode' : 'Current Entry' %>
     </h6>
 
     <div>
-      <% if @entry.media == 'series' && @entry.current %>
+      <% if (@entry.media == 'series' || @entry.media == 'anime') && @entry.current %>
         <p class="text-muted mb-2" style="font-size: 0.8rem;">
           Season <%= @entry.current.season %>, Episode <%= @entry.current.episode %>
         </p>
         <h6 class="text-white mb-3" style="font-size: 0.95rem; font-weight: 600; line-height: 1.3;">
           <%= @entry.current.name %>
         </h6>
-        <% if @entry.current.respond_to?(:plot) && @entry.current.plot.present? %>
+        <% if @entry.current.plot.present? %>
           <p class="text-white-50 mb-0" style="font-size: 0.8rem; line-height: 1.4;">
             <%= @entry.current.plot %>
           </p>

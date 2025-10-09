@@ -20,8 +20,15 @@
              # Determine autoplay setting based on list auto_play preference
              autoplay_param = @entry.list.auto_play? ? "1" : "0"
 
-             if @entry.media == 'series'
-               source = "#{base_source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=#{autoplay_param}"
+             if @entry.media == 'series' || @entry.media == 'anime'
+               # For series/anime, use the subentry's source URL which is already complete
+               if @entry.current && @entry.current.source.present?
+                 # Subentry has its own complete source URL
+                 source = "#{@entry.current.source}?autoplay=#{autoplay_param}"
+               else
+                 # Fallback: construct URL from base_source
+                 source = "#{base_source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=#{autoplay_param}"
+               end
              elsif @entry.media == 'episode'
                source = "#{base_source}?autoplay=#{autoplay_param}"
              elsif @entry.media == 'movie'
@@ -115,6 +122,49 @@
         <%= f.input :season %>
         <%= f.input :episode %>
       <% end %>
+
+      <!-- Show final rendered URL for debugging -->
+      <div class="mb-3">
+        <label class="form-label text-muted">Current URL</label>
+        <div class="p-2 bg-light border rounded" style="font-family: monospace; font-size: 0.85rem; word-break: break-all;">
+          <%=
+            preferred_source = @entry.preferred_source || @entry.list.preferred_source
+            base_source = preferred_source == 2 ? @entry.source_two : @entry.source
+            autoplay_param = @entry.list.auto_play? ? "1" : "0"
+
+            if @entry.media == 'series' || @entry.media == 'anime'
+              if @entry.current && @entry.current.source.present?
+                "#{@entry.current.source}?autoplay=#{autoplay_param}"
+              else
+                "#{base_source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=#{autoplay_param}"
+              end
+            elsif @entry.media == 'episode'
+              "#{base_source}?autoplay=#{autoplay_param}"
+            elsif @entry.media == 'movie'
+              "#{base_source}?autoplay=#{autoplay_param}"
+            else
+              base_source
+            end
+          %>
+        </div>
+        <% if @entry.media == 'series' || @entry.media == 'anime' %>
+          <small class="form-text text-muted">
+            Current Episode:
+            <% if @entry.current %>
+              S<%= @entry.current.season %>E<%= @entry.current.episode %> - <%= @entry.current.name %>
+              <br>
+              Subentry Source: <%= @entry.current.source %>
+              <% if @entry.media == 'anime' %>
+                <br>
+                Absolute Episode: <%= @entry.current.calculate_absolute_episode_number %>
+              <% end %>
+            <% else %>
+              None set
+            <% end %>
+          </small>
+        <% end %>
+      </div>
+
       <%= f.button :submit %>
     <% end %>
     </div>

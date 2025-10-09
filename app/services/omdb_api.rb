@@ -51,17 +51,77 @@ class OmdbApi
   end
 
   def self.get_series_episodes(main_entry)
-    main_entry.season.times do |season|
-      query = "#{URL}i=#{main_entry.imdb}&Season=#{season + 1}&apikey=#{API_KEYS.sample}"
-      response = api_call(query)
-      next unless response
+    # If we have a TMDB ID, use TMDB for better episode data (including plots)
+    if main_entry.tmdb.present?
+      fetch_episodes_from_tmdb(main_entry)
+    else
+      # Fallback to OMDB (no plot data available)
+      main_entry.season.times do |season|
+        query = "#{URL}i=#{main_entry.imdb}&Season=#{season + 1}&apikey=#{API_KEYS.sample}"
+        response = api_call(query)
+        next unless response
 
-      response['Episodes'].each do |episode|
-        Subentry.create_from_source(main_entry, episode, season + 1)
+        response['Episodes'].each do |episode|
+          Subentry.create_from_source(main_entry, episode, season + 1)
+        end
       end
     end
-    first_episode = Subentry.find_by(entry: main_entry, season: 1, episode: 1)
-    main_entry.update(current: first_episode)
+
+    # Find first episode (season and episode are stored as strings)
+    first_episode = Subentry.find_by(entry: main_entry, season: '1', episode: '1')
+    first_episode ||= main_entry.subentries.order(Arel.sql('CAST(NULLIF(season, \'\') AS INTEGER), CAST(NULLIF(episode, \'\') AS INTEGER)')).first
+
+    if first_episode
+      main_entry.update(current: first_episode)
+      # Fix the source URL if needed
+      first_episode.fix_source_url! if first_episode.source.blank? || first_episode.source.include?('//-')
+    end
+  end
+
+  def self.fetch_episodes_from_tmdb(main_entry)
+    require 'open-uri'
+    tmdb_api_key = ENV['TMDB_API_KEY'] || '7e1c210d0c877abff8a40398735ce605'
+    series_imdb = main_entry.imdb
+
+    main_entry.season.times do |season_index|
+      season_number = season_index + 1
+      season_url = "https://api.themoviedb.org/3/tv/#{main_entry.tmdb}/season/#{season_number}?api_key=#{tmdb_api_key}"
+
+      begin
+        season_data = JSON.parse(URI.open(season_url).read)
+
+        season_data['episodes'].each do |episode_data|
+          # Calculate absolute episode for anime
+          absolute_episode = if main_entry.media == 'anime'
+            # Count all previous episodes
+            main_entry.subentries.count + 1
+          else
+            episode_data['episode_number']
+          end
+
+          # Generate source URL
+          source_url = if main_entry.media == 'anime'
+            "https://vidsrc.cc/v2/embed/anime/#{series_imdb}/#{absolute_episode}/sub"
+          else
+            "https://vidsrc.cc/v3/embed/tv/#{series_imdb}/#{season_number}/#{episode_data['episode_number']}"
+          end
+
+          Subentry.create!(
+            entry: main_entry,
+            season: season_number.to_s,
+            episode: episode_data['episode_number'].to_s,
+            name: episode_data['name'],
+            plot: episode_data['overview'], # TMDB provides overview/plot
+            imdb: series_imdb,
+            source: source_url,
+            rating: episode_data['vote_average'].to_f,
+            completed: false
+          )
+        end
+      rescue => e
+        Rails.logger.error "Failed to fetch TMDB season #{season_number} for entry #{main_entry.id}: #{e.message}"
+      end
+    end
   end
 
   def self.normalize_omdb_data(result)

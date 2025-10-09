@@ -220,7 +220,11 @@ export default class extends Controller {
     const seriesName = button.dataset.seriesName;
     const season = button.dataset.season || document.getElementById('seasonSelect').value;
 
-    console.log('Adding season:', { tmdbId, seriesName, season });
+    // Determine media type from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const mediaType = urlParams.get('type') === 'anime' ? 'anime' : 'series';
+
+    console.log('Adding season:', { tmdbId, seriesName, season, mediaType });
 
     // Show loading state
     button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding...';
@@ -237,6 +241,7 @@ export default class extends Controller {
         formData.append('series_imdb', seriesImdbId);
         formData.append('series_name', seriesName);
         formData.append('season', season);
+        formData.append('media_type', mediaType);
 
         // Submit to the add_season endpoint
         return fetch(`/lists/${this.idValue}/add_season`, {

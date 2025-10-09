@@ -197,6 +197,7 @@ class ListsController < ApplicationController
     series_imdb_id = params[:series_imdb]
     series_name = params[:series_name]
     season_number = params[:season].to_i
+    media_type = params[:media_type] || 'series' # Can be 'series' or 'anime'
 
     # Fetch season details from TMDB
     tmdb_api_key = ENV['TMDB_API_KEY'] || '7e1c210d0c877abff8a40398735ce605'
@@ -221,12 +222,13 @@ class ListsController < ApplicationController
         list: @list,
         name: entry_name,
         series: series_name,
-        media: 'series',
+        media: media_type, # Use the media_type parameter (series or anime)
         imdb: series_imdb_id,
         tmdb: tmdb_id,
         position: @list.entries.count + 1,
         season: season_number,
-        source: "https://v2.vidsrc.me/embed/#{series_imdb_id}",
+        source: media_type == 'anime' ? "https://vidsrc.cc/v2/embed/anime/#{series_imdb_id}" : "https://vidsrc.cc/v3/embed/tv/#{series_imdb_id}",
+        source_two: "https://v2.vidsrc.me/embed/#{series_imdb_id}",
         pic: season_data['poster_path'] ? "https://image.tmdb.org/t/p/w500#{season_data['poster_path']}" : nil,
         plot: season_data['overview'],
         year: season_data['air_date']&.split('-')&.first&.to_i
@@ -235,6 +237,21 @@ class ListsController < ApplicationController
       # Create subentries for all episodes in the season
       counter = 0
       failed_episodes = []
+
+      # For anime, calculate the starting absolute episode number
+      absolute_episode_offset = 0
+      if media_type == 'anime' && season_number > 1
+        # Count episodes in all previous seasons
+        (1...season_number).each do |prev_season|
+          prev_season_url = "https://api.themoviedb.org/3/tv/#{tmdb_id}/season/#{prev_season}?api_key=#{tmdb_api_key}"
+          begin
+            prev_season_data = JSON.parse(URI.open(prev_season_url).read)
+            absolute_episode_offset += prev_season_data['episodes'].length
+          rescue => e
+            Rails.logger.warn "Could not fetch season #{prev_season} data: #{e.message}"
+          end
+        end
+      end
 
       season_data['episodes'].each do |episode_data|
         begin
@@ -253,13 +270,23 @@ class ListsController < ApplicationController
           # Use series IMDB ID if episode doesn't have one
           episode_imdb_id ||= series_imdb_id
 
+          # Generate appropriate source URL based on media type
+          source_url = if media_type == 'anime'
+            # Anime uses absolute episode numbers across all seasons, with /sub at the end
+            absolute_episode = absolute_episode_offset + episode_data['episode_number']
+            "https://vidsrc.cc/v2/embed/anime/#{series_imdb_id}/#{absolute_episode}/sub"
+          else
+            "https://vidsrc.cc/v3/embed/tv/#{series_imdb_id}/#{season_number}/#{episode_data['episode_number']}"
+          end
+
           Subentry.create!(
             entry: @entry,
             season: season_number,
             episode: episode_data['episode_number'],
             name: episode_data['name'],
+            plot: episode_data['overview'], # Add plot from TMDB episode data
             imdb: episode_imdb_id,
-            source: "https://v2.vidsrc.me/embed/#{series_imdb_id}/#{season_number}-#{episode_data['episode_number']}",
+            source: source_url,
             rating: episode_data['vote_average'],
             completed: false
           )

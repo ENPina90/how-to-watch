@@ -40,9 +40,15 @@ class EntriesController < ApplicationController
     else
       omdb_result = OmdbApi.get_movie(params[:imdb])
       omdb_result["tmdb"] = params[:tmdb]
+
+      # Override media type to 'anime' if that's the type parameter
+      if params[:type] == 'anime'
+        omdb_result["Type"] = 'anime'
+      end
+
       @entry = Entry.create_from_source(omdb_result, @list, false)
       if @entry.is_a?(Entry)
-        if @entry.media == 'series'
+        if @entry.media == 'series' || @entry.media == 'anime'
           begin
             OmdbApi.get_series_episodes(@entry)
           rescue
@@ -72,7 +78,7 @@ class EntriesController < ApplicationController
   def edit
     @entry.streamable
     @user_lists = List.where(user: current_user)
-    @entry.subentries.build if @entry.media == 'series'
+    @entry.subentries.build if @entry.media == 'series' || @entry.media == 'anime'
     respond_to do |format|
       format.html
       format.text do
@@ -86,8 +92,20 @@ class EntriesController < ApplicationController
   def update
     old_position = @entry.position
     new_position = entry_params[:position].to_i
-    entry_params.merge(list: @entry.list, source: fix_external_sources(entry_params["source"]))
-    if @entry.update(entry_params)
+
+    # Clean up entry params - remove empty subentries
+    cleaned_params = entry_params.to_h
+    if cleaned_params[:subentries_attributes]
+      cleaned_params[:subentries_attributes].each do |key, subentry_attrs|
+        # Mark for destruction if name, season, and episode are all empty
+        if subentry_attrs[:name].blank? && subentry_attrs[:season].blank? && subentry_attrs[:episode].blank?
+          cleaned_params[:subentries_attributes][key][:_destroy] = '1'
+        end
+      end
+    end
+
+    cleaned_params.merge!(list: @entry.list, source: fix_external_sources(cleaned_params["source"]))
+    if @entry.update(cleaned_params)
       if old_position != new_position
         shift_positions(@entry, new_position)
       end
@@ -170,7 +188,7 @@ class EntriesController < ApplicationController
   def decrement_current
     return redirect_to watch_entry_path(@entry) unless current_user
 
-    if @entry.media == 'series'
+    if @entry.media == 'series' || @entry.media == 'anime'
       @entry.set_current(-1)
       if params[:mode] == 'watch'
         redirect_to watch_entry_path(@entry)
@@ -223,7 +241,7 @@ class EntriesController < ApplicationController
   def increment_current
     return redirect_to watch_entry_path(@entry) unless current_user
 
-    if @entry.media == 'series'
+    if @entry.media == 'series' || @entry.media == 'anime'
       @entry.set_current(1)
       if params[:mode] == 'watch'
         redirect_to watch_entry_path(@entry)
@@ -522,6 +540,7 @@ class EntriesController < ApplicationController
         :length,
         :media,
         :source,
+        :source_two,
         :imdb,
         :tmdb,
         :language,
