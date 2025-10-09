@@ -10,14 +10,10 @@
       <div class="col-8" id="search">
         <% if params['type'].nil? || params['type'] == 'movie' %>
           <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#tmdbSearch' } } %>
-        <% elsif params['type'] == 'show' %>
+        <% elsif params['type'] == 'show' || params['type'] == 'anime' %>
           <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#tmdbShow' } } %>
         <% elsif params['type'] == 'custom' %>
           <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#custom' } } %>
-        <% elsif params['type'] == 'episode' %>
-          <%= text_field_tag :entry, nil, data: { search_target: 'input', action: 'input->search#tmdbShow', placeholder: 'Enter show title or IMDb ID' } %>
-          <%= text_field_tag :entry, nil, data: { search_target: 'season', action: 'input->search#tmdbEpisode', placeholder: 'Season number' } %>
-          <%= text_field_tag :entry, nil, data: { search_target: 'episode', action: 'input->search#tmdbEpisode', placeholder: 'Episode number' } %>
         <% else %>
           <h5>Coming soon</h5>
         <% end %>
@@ -26,11 +22,15 @@
       </div>
     </div>
     <ul class="menu">
-      <li><%= link_to 'Movie', new_list_entry_path(@list, type: 'movie')%></li>
-      <li><%= link_to 'Show', new_list_entry_path(@list, type: 'show')%></li>
-      <li><%= link_to 'Episode', new_list_entry_path(@list, type: 'episode')%></li>
-      <li><%= link_to 'Book', new_list_entry_path(@list, type: 'Book')%></li>
-      <li><%= link_to 'Game', new_list_entry_path(@list, type: 'game')%></li>
+      <li class="<%= 'active' if params['type'].nil? || params['type'] == 'movie' %>">
+        <%= link_to 'Movie', new_list_entry_path(@list, type: 'movie') %>
+      </li>
+      <li class="<%= 'active' if params['type'] == 'show' %>">
+        <%= link_to 'Show', new_list_entry_path(@list, type: 'show') %>
+      </li>
+      <li class="<%= 'active' if params['type'] == 'anime' %>">
+        <%= link_to 'Anime', new_list_entry_path(@list, type: 'anime') %>
+      </li>
     </ul>
   </div>
   <div class="row justify-content-center list-layout">
@@ -127,7 +127,10 @@
             <form action="/lists/<%= @list.id %>/entries" method='post'>
               <input class='d-none' name='imdb' value='{{imdbID}}'>
               <input class='d-none' name='tmdb' value='{{tmdbID}}'>
-              <button type='submit' name='create' value='create' class="btn btn-primary">+ Show</button>
+              <input class='d-none' name='type' value='<%= params[:type] || "show" %>'>
+              <button type='submit' name='create' value='create' class="btn btn-primary">
+                + <%= params[:type] == 'anime' ? 'Anime' : 'Show' %>
+              </button>
             </form>
           </turbo-frame>
           <button class="btn btn-primary"

@@ -155,3 +155,38 @@
     transform: none !important;
   }
 }
+
+/* Entry type menu styling */
+.menu {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.menu li {
+  padding: 8px 20px;
+  border-radius: 6px;
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.menu li a {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.menu li.active {
+  background-color: #000000;
+}
+
+.menu li.active a {
+  color: #1db954;
+}
+
+.menu li:hover:not(.active) {
+  background-color: rgba(0, 0, 0, 0.1);
+}
