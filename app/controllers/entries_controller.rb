@@ -179,7 +179,7 @@ class EntriesController < ApplicationController
     # Set sidebar states for watch page - both sidebars collapsed by default
     @sidebar_collapsed = true # Left sidebar collapsed
     @hide_sidebar = false # But still render it
-    @now_playing_collapsed = true # Now Playing collapsed
+    @now_playing_collapsed = false # Now Playing EXPANDED on watch page
     @entries_sidebar_collapsed = true # Right entries sidebar collapsed by default
 
     render layout: 'special_layout'

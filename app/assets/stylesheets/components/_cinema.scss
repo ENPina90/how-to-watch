@@ -71,6 +71,11 @@ body.cinema__mode .page-container {
   padding-left: 20px;
   left: 0;
   top: 0;
+  transition: left 0.3s ease;
+  z-index: 10;
 }
 
-/* No adjustment needed - sidebars start collapsed in cinema mode */
+/* Adjust title position when left sidebar is expanded in cinema mode */
+body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
+  left: 280px;
+}
