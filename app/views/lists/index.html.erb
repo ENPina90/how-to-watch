@@ -8,7 +8,7 @@
   <% @lists.each do |list| %>
     <%= link_to list_watch_current_path(list) do %>
       <div class="list">
-        <% current_entry = list.find_entry_by_position(:current) %>
+        <% current_entry = list.current_entry(current_user) %>
         <% if current_entry %>
           <%= entry_poster_image_tag(current_entry, class: 'list-picture', alt: list.name) %>
         <% else %>

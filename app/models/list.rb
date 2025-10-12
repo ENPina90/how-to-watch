@@ -193,6 +193,12 @@ class List < ApplicationRecord
     entries.find_by(position: user_position.current_position)
   end
 
+  # Primary method to get current entry - ALWAYS uses user position
+  def current_entry(user)
+    return nil unless user
+    current_entry_for_user(user)
+  end
+
   # Find next incomplete entry for a user starting from a specific position
   def find_next_incomplete_entry_for_user(user, start_position = nil)
     start_pos = start_position || position_for_user(user).current_position
