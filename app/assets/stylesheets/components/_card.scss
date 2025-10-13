@@ -16,9 +16,8 @@
 .card-container {
   // margin: 0 16px !important;
   &:hover {
-    .grid-card,
-    .card-note {
-      background-color: white;
+    .grid-card {
+      border-color: rgba(255, 255, 255, 0.3);
       transition: all 0.3s ease;
     }
     .play-button {
@@ -40,8 +39,9 @@
     "picture details"
     "picture details"
     "picture menu";
-  border-top: 1px solid black;
-  border-bottom: 1px solid black;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #0a0a0a;
   height: 50vh;
   max-height: 600px;
   width: 40vw;
@@ -60,10 +60,11 @@
   padding: 16px 16px 16px 0px;
   width: 40vw;
   max-width: 800px;
-  border-top: 2px solid black;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   text-align: center;
   font-style: italic;
-  color: black;
+  color: #ffffff;
+  background-color: #0a0a0a;
 }
 
 .card-title {
@@ -87,17 +88,17 @@
   align-items: center;
   justify-content: space-around;
   text-decoration: none;
-  // color: black;
-  i: {
-    color: black;
+  color: #ffffff;
+  i {
+    color: #ffffff;
   }
   a {
-    color: inherit;
+    color: #ffffff;
   }
 }
 
 .icon-background {
-  color: rgba(0, 0, 0, 0.7);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .play-button {
@@ -118,7 +119,7 @@
   grid-area: picture;
   padding: 16px 16px 16px 0px;
   // border-top: 1px solid;
-  border-right: 2px solid black;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   // border-bottom: 2px solid;
   width: 20vw;
   max-width: 400px;
@@ -160,9 +161,9 @@
   //     /* for Chrome, Safari, and Opera */
   //   }
   // max-height: 36vh;
-  border-top: 2px solid;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   // border-right: 2px solid;
-  border-bottom: 2px solid;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   box-sizing: border-box;
   display: flex;
   // align-items: center;
@@ -193,8 +194,9 @@
   grid-area: footer;
   text-align: center;
   font-style: italic;
-  color: #666;
-  border-top: 2px solid black;
+  color: rgba(255, 255, 255, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #0a0a0a;
 }
 
 .card-spacer {

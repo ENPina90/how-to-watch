@@ -11,6 +11,9 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   # root "articles#index"
   resources :lists do
+    collection do
+      get :search
+    end
     get :randomize
     get :watch_current
     get :top_entries

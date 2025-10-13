@@ -2,6 +2,52 @@
   display: grid;
   min-height: 100vh;
   grid-template-rows: 1fr auto;
+  background-color: #0a0a0a;
+  color: #ffffff;
+}
+
+/* Make all text and icons white on dark background (except specific green elements) */
+.page-container h1,
+.page-container h2,
+.page-container h3,
+.page-container h4,
+.page-container h5,
+.page-container h6,
+.page-container p,
+.page-container label,
+.page-container i,
+.page-container a {
+  color: #ffffff !important;
+}
+
+/* Allow specific elements to keep their colors */
+.page-container .header-count,
+.page-container span.header-count {
+  color: #1a936f !important;
+}
+
+.page-container .form-control,
+.page-container .form-select {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border-color: #333333;
+}
+
+.page-container .form-control:focus,
+.page-container .form-select:focus {
+  background-color: #222222;
+  color: #ffffff;
+  border-color: #1db954;
+}
+
+.page-container .btn {
+  color: #ffffff;
+}
+
+.page-container .card {
+  background-color: #1a1a1a;
+  border-color: #333333;
+  color: #ffffff;
 }
 
 .menu {
@@ -28,31 +74,31 @@
   max-width: 200px;
   margin: 12px;
   padding: 16px 0px;
-  background-color: #f5f2e8;
+  background-color: #1a1a1a;
   // padding: 16px 16px 16px 16px;
   a {
     text-decoration: none;
     font-weight: bold;
-    color: black;
+    color: #ffffff;
   }
 }
 
 .layout-box {
   padding: 16px 0px;
   // margin: 16px 0px;
-  border-top: 2px solid black;
-  border-bottom: 2px solid black;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .layout-title {
   position: sticky;
-  top: 80px;
+  top: 60px;
   height: fit-content;
   z-index: 1;
-  background-color: #f5f2e8;
+  background-color: #0a0a0a;
   margin: auto;
   padding-top: 16px;
-  border-bottom: 2px solid black;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   &:hover {
     .icon-hover {
       opacity: 1;
@@ -61,7 +107,7 @@
   a {
     text-decoration: none;
     font-weight: bold;
-    color: black;
+    color: #ffffff;
   }
 }
 
@@ -76,15 +122,16 @@
     margin: 0px;
     padding-top: 16px;
     padding-bottom: 16px;
+    color: #ffffff;
   }
   .grid-card:first-child {
-    border-top: 1px solid black;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 }
 
 .header-count {
   font-weight: 100;
-  color: #1a936f;
+  color: #1a936f !important;
 }
 
 .icon-hover {
@@ -97,8 +144,8 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  border-top: 2px solid black;
-  border-bottom: 2px solid black;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 16px 0px;
   .list-options {
     width: 10vw;
@@ -111,8 +158,8 @@
 }
 
 .border-top-bottom {
-  border-top: 2px solid black;
-  border-bottom: 2px solid black;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 16px;
   display: flex;
   justify-content: center;

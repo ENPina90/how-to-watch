@@ -4,7 +4,7 @@
     <i class="fa-solid fa-bars"></i>
   </button>
 <% else %>
-  <button id="sidebarCollapseBtn" class="btn btn-dark <%= 'd-none' unless @sidebar_collapsed %>" style="position: fixed; left: 16px; top: 96px; z-index: 1050;">
+  <button id="sidebarCollapseBtn" class="btn btn-dark <%= 'd-none' unless @sidebar_collapsed %>" style="position: fixed; left: 16px; top: 140px; z-index: 1050;">
     <i class="fa-solid fa-bars"></i>
   </button>
 <% end %>
@@ -32,9 +32,15 @@
       <% current_user.subscribed_lists.order(:name).each do |list| %>
         <%
           # Check if this is the current entry's list (for watch page)
-          is_current = defined?(@entry) ? (@entry && @entry.list.id == list.id) : (@list && @list.id == list.id)
+          is_current = if defined?(@entry) && @entry && @entry.list
+            @entry.list.id == list.id
+          elsif @list && @list.persisted?
+            @list.id == list.id
+          else
+            false
+          end
           # Link to watch_current if on watch page, otherwise to list show
-          link_path = defined?(@entry) ? list_watch_current_path(list) : list_path(list)
+          link_path = defined?(@entry) && @entry && @entry.persisted? ? list_watch_current_path(list) : list_path(list)
         %>
         <%= link_to link_path, class: "list-group-item list-group-item-action bg-transparent text-white border-0 py-2 px-0 mb-1 #{'active-list' if is_current}", style: "border-radius: 6px; #{is_current ? 'background-color: rgba(255, 255, 255, 0.15) !important;' : ''}" do %>
           <div class="d-flex align-items-center">
@@ -69,13 +75,22 @@
           @now_playing_entry || find_now_playing_for_sidebar
         end
       %>
-      <% if now_playing %>
-        <%= link_to watch_entry_path(now_playing), class: "text-decoration-none" do %>
+      <% if now_playing && now_playing.persisted? %>
+        <%= link_to watch_entry_path(now_playing), class: "text-decoration-none now-playing-card" do %>
           <div class="d-flex flex-column align-items-center text-center">
-            <div style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); transition: transform 0.2s ease;">
+            <div class="now-playing-poster-container" style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); position: relative;">
               <%= entry_poster_image_tag(now_playing, class: 'img-fluid', style: 'width: 100%; height: 100%; object-fit: cover;') %>
+              <div class="now-playing-overlay">
+                <div class="overlay-content">
+                  <p class="mb-1"><strong><%= now_playing.list.name %></strong></p>
+                  <% if now_playing.series.present? %>
+                    <p class="mb-1 text-muted small"><%= now_playing.series %></p>
+                  <% end %>
+                  <p class="mb-2"><%= now_playing.name %></p>
+                  <i class="fa-solid fa-play fa-3x"></i>
+                </div>
+              </div>
             </div>
-            <p class="mb-0 text-white fw-bold text-truncate w-100" style="font-size: 1rem;"><%= now_playing.name %></p>
           </div>
         <% end %>
       <% else %>

@@ -17,6 +17,7 @@ export default class extends Controller {
     this.tmdbService = new TmdbService(this.apiKey);
     this.movieTemplate = document.querySelector("#listSearchMovieTemplate");
     this.showTemplate = document.querySelector("#listSearchShowTemplate");
+    this.listTemplate = document.querySelector("#listSearchListTemplate");
     this.selectedMovie = null;
     this.currentSearchType = 'movie'; // Default to movie search
 
@@ -60,6 +61,16 @@ export default class extends Controller {
     this.performSearch();
   }
 
+  switchToAnimeSearch() {
+    this.currentSearchType = 'anime';
+    this.performSearch();
+  }
+
+  switchToListSearch() {
+    this.currentSearchType = 'list';
+    this.performSearch();
+  }
+
   // Universal search method that delegates based on current search type
   performSearch() {
     const keyword = this.inputTarget.value.trim();
@@ -75,6 +86,10 @@ export default class extends Controller {
       this.tmdbSearch();
     } else if (this.currentSearchType === 'show') {
       this.tmdbShow();
+    } else if (this.currentSearchType === 'anime') {
+      this.tmdbShow(); // Anime uses same search as shows
+    } else if (this.currentSearchType === 'list') {
+      this.searchLists();
     }
   }
 
@@ -468,5 +483,42 @@ export default class extends Controller {
       this.resultsTarget.innerHTML = '<div class="p-3">' + errorHtml + '</div>';
     }
     this.resultsTarget.classList.remove('d-none');
+  }
+
+  // Search for lists
+  searchLists() {
+    const keyword = this.inputTarget.value.trim();
+
+    // Show loading state
+    const loadingHtml = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    if (this.hasResultsContentTarget) {
+      this.resultsContentTarget.innerHTML = loadingHtml;
+    }
+    this.resultsTarget.classList.remove('d-none');
+
+    // Fetch lists from server
+    fetch(`/lists/search?q=${encodeURIComponent(keyword)}`, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.lists && data.lists.length > 0) {
+          this.renderLists(data.lists);
+        } else {
+          this.showErrorMessage();
+        }
+      })
+      .catch(error => {
+        console.error('Error searching lists:', error);
+        this.showErrorMessage();
+      });
+  }
+
+  renderLists(lists) {
+    const listData = { lists };
+    const output = Mustache.render(this.listTemplate.innerHTML, listData);
+    this.showResultsOverlay(output);
   }
 }

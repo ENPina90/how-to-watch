@@ -24,25 +24,64 @@ class ListsController < ApplicationController
       return
     end
 
-    # Order lists by most recent UserEntry activity (watching/reviewing)
-    lists_with_activity = List.joins(entries: :user_entries)
-                              .where(user_entries: { user: current_user })
-                              .group('lists.id')
-                              .order('MAX(user_entries.created_at) DESC')
+    # Category 1: Your Lists (created by current user)
+    @your_lists = current_user.lists
+                              .order(created_at: :desc)
                               .includes(:entries, :user)
 
-    # Get IDs of lists with activity to exclude them from the second query
-    active_list_ids = lists_with_activity.pluck(:id)
+    # Category 2: Recently Watched (lists with completed entries)
+    @recently_watched_lists = List.joins(entries: :user_entries)
+                                  .where(user_entries: { user: current_user, completed: true })
+                                  .group('lists.id')
+                                  .order('MAX(user_entries.completed_at) DESC')
+                                  .includes(:entries, :user)
+                                  .limit(20)
 
-    # Also include lists with no user entries, ordered by creation date
-    lists_without_activity = List.where.not(id: active_list_ids)
-                                 .order(created_at: :desc)
-                                 .includes(:entries, :user)
+    # Category 3: Community Lists (created by other users that are public OR you're subscribed to)
+    community_list_ids = List.where.not(user_id: current_user.id)
+                             .where(private: [false, nil])
+                             .pluck(:id) +
+                         List.where.not(user_id: current_user.id)
+                             .joins(:subscriptions)
+                             .where(subscriptions: { user_id: current_user.id })
+                             .pluck(:id)
 
-    # Combine both sets: active lists first, then inactive lists
-    @lists = lists_with_activity.to_a + lists_without_activity.to_a
+    @community_lists = List.where(id: community_list_ids.uniq)
+                           .order(created_at: :desc)
+                           .includes(:entries, :user)
+                           .limit(20)
+  end
 
-    List.where(ordered: false).each{|unordered_list| unordered_list.assign_current(:next) }
+  def search
+    query = params[:q]
+
+    if query.present?
+      # Search lists by name (public lists OR user's own lists)
+      public_lists = List.where('name ILIKE ?', "%#{query}%").where(private: [false, nil])
+      own_lists = List.where('name ILIKE ?', "%#{query}%").where(user_id: current_user.id)
+      list_ids = (public_lists.pluck(:id) + own_lists.pluck(:id)).uniq
+
+      lists = List.where(id: list_ids).limit(20)
+
+      # Format for JSON response
+      results = lists.map do |list|
+        current_entry = list.current_entry(current_user)
+        {
+          id: list.id,
+          name: list.name,
+          description: list.description,
+          creator: list.user.username || list.user.email.split('@').first,
+          entryCount: list.entries.count,
+          isPrivate: list.private?,
+          posterUrl: current_entry && current_entry.poster.attached? ? url_for(current_entry.poster) : (current_entry&.pic),
+          canSubscribe: current_user && list.user_id != current_user.id && !current_user.subscribed_to?(list)
+        }
+      end
+
+      render json: { lists: results }
+    else
+      render json: { lists: [] }
+    end
   end
 
   def new
@@ -581,7 +620,7 @@ class ListsController < ApplicationController
   end
 
   def list_params
-    permitted = [:name, :ordered, :private, :sort, :parent_list_id, :reviewable, :preferred_source, :auto_play, :auto_next]
+    permitted = [:name, :description, :ordered, :private, :sort, :parent_list_id, :reviewable, :preferred_source, :auto_play, :auto_next]
     permitted << :default if current_user&.can_set_default?
     params.require(:list).permit(permitted)
   end

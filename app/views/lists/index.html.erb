@@ -1,25 +1,116 @@
-<div class="lists-container my-4 ms-4">
-  <div class="list">
-    <%= link_to new_list_path do %>
-      <img src="/images/upcoming.jpg" class="list-picture" alt="New Channel">
-    <% end %>
-    <p class="list-name">New Channel</p>
-  </div>
-  <% @lists.each do |list| %>
-    <%= link_to list_watch_current_path(list) do %>
-      <div class="list">
-        <% current_entry = list.current_entry(current_user) %>
-        <% if current_entry %>
-          <%= entry_poster_image_tag(current_entry, class: 'list-picture', alt: list.name) %>
-        <% else %>
-          <img src="/images/please_stand_by.png" alt="<%= list.name %>" class="list-picture">
-        <% end %>
-        <p class="list-name"><%= list.name %></p>
-        <%= link_to list_path(list) do %>
-          <i class="fa-solid fa-list"></i>
+<div class="lists-index-container">
+  <!-- Recently Watched Row (FIRST) -->
+  <% if @recently_watched_lists.any? %>
+    <div class="list-row">
+      <h3 class="row-title">Up Next</h3>
+      <div class="list-carousel pe-5">
+        <% @recently_watched_lists.each do |list| %>
+          <% current_entry = list.current_entry(current_user) %>
+          <div class="list-card">
+            <%= link_to list_watch_current_path(list), class: "text-decoration-none" do %>
+              <div class="list-card-poster">
+                <% if current_entry %>
+                  <%= entry_poster_image_tag(current_entry, class: 'list-poster-img', alt: list.name) %>
+                <% else %>
+                  <img src="/images/please_stand_by.png" alt="<%= list.name %>" class="list-poster-img">
+                <% end %>
+                <div class="list-card-overlay">
+                  <i class="fa-solid fa-play fa-3x"></i>
+                </div>
+              </div>
+            <% end %>
+            <%= link_to list_path(list), class: "text-decoration-none list-info-link" do %>
+              <div class="list-card-info">
+                <div class="list-card-text">
+                  <p class="list-card-name"><%= list.name %></p>
+                  <p class="list-card-meta">
+                    <%= current_entry ? current_entry.name : pluralize(list.entries.count, 'entry') %>
+                  </p>
+                </div>
+                <i class="fa-solid fa-list list-info-icon"></i>
+              </div>
+            <% end %>
+          </div>
         <% end %>
       </div>
-    <% end %>
+    </div>
   <% end %>
 
+  <!-- Your Lists Row (SECOND) -->
+  <% if @your_lists.any? %>
+    <div class="list-row">
+      <div class="d-flex align-items-center">
+        <h3 class="row-title">Your Lists</h3>
+        <%= link_to new_list_path do %>
+          <i class="fa-solid fa-plus ms-2" title="Create New List"></i>
+        <% end %>
+      </div>
+      <div class="list-carousel pe-5">
+        <% @your_lists.each do |list| %>
+          <% current_entry = list.current_entry(current_user) %>
+          <div class="list-card">
+            <%= link_to list_watch_current_path(list), class: "text-decoration-none" do %>
+              <div class="list-card-poster">
+                <% if current_entry %>
+                  <%= entry_poster_image_tag(current_entry, class: 'list-poster-img', alt: list.name) %>
+                <% else %>
+                  <img src="/images/please_stand_by.png" alt="<%= list.name %>" class="list-poster-img">
+                <% end %>
+                <div class="list-card-overlay">
+                  <i class="fa-solid fa-play fa-3x"></i>
+                </div>
+              </div>
+            <% end %>
+            <%= link_to list_path(list), class: "text-decoration-none list-info-link" do %>
+              <div class="list-card-info">
+                <div class="list-card-text">
+                  <p class="list-card-name"><%= list.name %></p>
+                  <p class="list-card-meta"><%= pluralize(list.entries.count, 'entry') %></p>
+                </div>
+                <i class="fa-solid fa-list list-info-icon"></i>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+
+  <!-- Community Lists Row -->
+  <% if @community_lists.any? %>
+    <div class="list-row">
+      <h3 class="row-title">Community Lists</h3>
+      <div class="list-carousel pe-5">
+        <% @community_lists.each do |list| %>
+          <% current_entry = list.current_entry(current_user) %>
+          <div class="list-card">
+            <%= link_to list_path(list), class: "text-decoration-none" do %>
+              <div class="list-card-poster">
+                <% if current_entry %>
+                  <%= entry_poster_image_tag(current_entry, class: 'list-poster-img', alt: list.name) %>
+                <% else %>
+                  <img src="/images/please_stand_by.png" alt="<%= list.name %>" class="list-poster-img">
+                <% end %>
+                <div class="list-card-overlay">
+                  <i class="fa-solid fa-eye fa-3x"></i>
+                </div>
+              </div>
+            <% end %>
+            <%= link_to list_path(list), class: "text-decoration-none list-info-link" do %>
+              <div class="list-card-info">
+                <div class="list-card-text">
+                  <p class="list-card-name"><%= list.name %></p>
+                  <p class="list-card-meta">
+                    by <%= list.user.username || list.user.email.split('@').first %> · <%= pluralize(list.entries.count, 'entry') %>
+                  </p>
+                </div>
+                <i class="fa-solid fa-list list-info-icon"></i>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 </div>

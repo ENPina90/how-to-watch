@@ -1,5 +1,6 @@
 <%= simple_form_for @list do |f| %>
   <%= f.input :name %>
+  <%= f.input :description, as: :text, input_html: { rows: 3 }, hint: 'Optional description of this list' %>
   <%= f.input :ordered, as: :boolean %>
   <%= f.input :private, as: :boolean %>
   <%= f.input :reviewable, as: :boolean, label: 'Enable review prompts', hint: 'Ask for ratings and comments when marking entries as watched' %>
