@@ -176,6 +176,29 @@ class EntriesController < ApplicationController
       user_position.update!(current_position: @entry.position)
     end
 
+    # Check if we have a valid source to display
+    preferred_source = @entry.preferred_source || @entry.list.preferred_source
+    primary_source = preferred_source == 2 ? @entry.source_two : @entry.source
+    fallback_source = preferred_source == 2 ? @entry.source : @entry.source_two
+
+    # For series/anime, check subentry source
+    if @entry.media == 'series' || @entry.media == 'anime'
+      effective_source = @entry.current&.source || primary_source
+    else
+      effective_source = primary_source
+    end
+
+    # If primary source is nil, try fallback
+    if effective_source.blank? && fallback_source.present?
+      # Switch to fallback source
+      @entry.update(preferred_source: preferred_source == 2 ? 1 : 2)
+      flash[:notice] = "Primary source unavailable, switched to alternate source"
+    elsif effective_source.blank?
+      # No sources available at all
+      flash[:alert] = "No video source available for this entry"
+      redirect_to list_path(@entry.list) and return
+    end
+
     # Set sidebar states for watch page - both sidebars collapsed by default
     @sidebar_collapsed = true # Left sidebar collapsed
     @hide_sidebar = false # But still render it
@@ -197,16 +220,14 @@ class EntriesController < ApplicationController
       end
     else
       list = @entry.list
-      user_position = list.position_for_user(current_user)
-      current_pos = user_position.current_position
 
-      # Find previous entry by position
-      previous_entry = list.entries.where('position < ?', current_pos)
+      # Find previous entry by position (relative to current entry, not user's position)
+      previous_entry = list.entries.where('position < ?', @entry.position)
                                   .order(position: :desc)
                                   .first
 
       if previous_entry
-        user_position.update!(current_position: previous_entry.position)
+        # Navigate to previous entry - watch action will set position
         redirect_to watch_entry_path(previous_entry)
       else
         # No previous entry, stay on current
@@ -250,16 +271,14 @@ class EntriesController < ApplicationController
       end
     else
       list = @entry.list
-      user_position = list.position_for_user(current_user)
-      current_pos = user_position.current_position
 
-      # Find next entry by position
-      next_entry = list.entries.where('position > ?', current_pos)
+      # Find next entry by position (relative to current entry, not user's position)
+      next_entry = list.entries.where('position > ?', @entry.position)
                               .order(:position)
                               .first
 
       if next_entry
-        user_position.update!(current_position: next_entry.position)
+        # Navigate to next entry - watch action will set position
         redirect_to watch_entry_path(next_entry)
       else
         # No next entry, stay on current
@@ -331,6 +350,22 @@ class EntriesController < ApplicationController
     else
       # Mark as completed
       @entry.mark_completed_by!(current_user)
+
+      # Advance user's position to next entry in the list
+      if current_user
+        list = @entry.list
+        user_position = list.position_for_user(current_user)
+
+        # Find next entry by position
+        next_entry = list.entries.where('position > ?', @entry.position)
+                        .order(:position)
+                        .first
+
+        # Update position if there's a next entry
+        if next_entry
+          user_position.update!(current_position: next_entry.position)
+        end
+      end
     end
 
     respond_to do |format|

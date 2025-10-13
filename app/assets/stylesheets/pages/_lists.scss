@@ -237,15 +237,28 @@ body:not(.has-sidebar) .lists-index-container {
   position: relative;
 }
 
-/* Gradient fade on right edge to indicate scrollable content */
-.list-row::after {
+/* Gradient fade on right edge to indicate scrollable content - Dark Mode */
+body.dark-mode .list-row::after {
   content: '';
   position: absolute;
   right: 0;
   top: 0;
   bottom: 0;
-  width: 150px;
-  background: linear-gradient(to right, rgba(13, 13, 13, 0) 0%, rgba(13, 13, 13, 0.8) 50%, rgba(13, 13, 13, 1) 100%);
+  width: 100px;
+  background: linear-gradient(to right, rgba(13, 13, 13, 0) 0%, rgba(13, 13, 13, 1) 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Gradient fade on right edge to indicate scrollable content - Light Mode */
+body.light-mode .list-row::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 100px;
+  background: linear-gradient(to right, rgba(245, 242, 232, 0) 0%, rgba(245, 242, 232, 1) 100%);
   pointer-events: none;
   z-index: 2;
 }
@@ -267,6 +280,7 @@ body:not(.has-sidebar) .lists-index-container {
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 0.25rem;
+  padding-right: 200px; /* Extra space after last card to avoid gradient overlap */
   scroll-snap-type: x proximity;
   max-width: 100%;
   /* Hide scrollbar */

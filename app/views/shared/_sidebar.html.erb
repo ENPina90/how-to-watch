@@ -63,13 +63,26 @@
     <!-- Now Playing Content (Collapsible) -->
     <div id="nowPlayingContent" class="p-3 pt-3 <%= 'd-none' if @now_playing_collapsed %>" style="transition: all 0.3s ease;">
       <%
-        # Priority: 1) Current entry on watch page, 2) List's current entry, 3) Global now playing
+        # Priority: 1) Current entry on watch page, 2) List's current entry, 3) Context-specific
         now_playing = if defined?(@entry) && @entry
           # On watch page - show the entry being watched
           @entry
         elsif @list && current_user
           # On list show page - show user's current entry in that list
           @list.current_entry(current_user)
+        elsif current_user && controller_name == 'lists' && action_name == 'index'
+          # On list index - show current entry from a random subscribed list
+          random_list = current_user.subscribed_lists.sample
+          random_list&.current_entry(current_user)
+        elsif current_user
+          # Other pages - use most recently updated position
+          most_recent_position = current_user.user_list_positions
+                                            .joins(:list)
+                                            .where(lists: { private: [false, nil] })
+                                            .or(current_user.user_list_positions.joins(:list).where(lists: { user_id: current_user.id }))
+                                            .order(updated_at: :desc)
+                                            .first
+          most_recent_position&.current_entry
         else
           # Other pages - show global now playing
           @now_playing_entry || find_now_playing_for_sidebar

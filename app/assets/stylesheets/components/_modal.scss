@@ -2,3 +2,158 @@
   position: absolute;
   top: 20vh;
 }
+
+// Dark mode styles for modals
+body.dark-mode {
+  .modal-content {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .modal-header {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    .modal-title {
+      color: #ffffff;
+    }
+
+    .btn-close {
+      filter: invert(1);
+    }
+  }
+
+  .modal-body {
+    background-color: #1a1a1a;
+    color: #ffffff;
+
+    // Form inputs
+    input[type="text"],
+    input[type="email"],
+    input[type="number"],
+    input[type="url"],
+    input[type="file"],
+    textarea,
+    select {
+      background-color: #2d2d2d;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+
+      &:focus {
+        background-color: #2d2d2d;
+        color: #ffffff;
+        border-color: #1a936f;
+        box-shadow: 0 0 0 0.2rem rgba(26, 147, 111, 0.25);
+      }
+
+      &::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+      }
+    }
+
+    // Labels
+    label {
+      color: #ffffff !important;
+    }
+
+    // Form text/hints
+    .form-text,
+    small {
+      color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    // Checkboxes
+    .form-check-input {
+      background-color: #2d2d2d;
+      border-color: rgba(255, 255, 255, 0.2);
+
+      &:checked {
+        background-color: #1a936f;
+        border-color: #1a936f;
+      }
+    }
+
+    // Buttons
+    .btn {
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        background-color: #2d2d2d;
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+    }
+
+    .btn-primary,
+    .btn-action {
+      background-color: #1a936f;
+      border-color: #1a936f;
+      color: #ffffff;
+
+      &:hover {
+        background-color: #157f5f;
+        border-color: #157f5f;
+      }
+    }
+
+    // Image thumbnails
+    .img-thumbnail {
+      background-color: #2d2d2d;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+// Light mode styles for modals
+body.light-mode {
+  .modal-content {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #dee2e6;
+  }
+
+  .modal-header {
+    background-color: #ffffff;
+    color: #000000;
+    border-bottom: 1px solid #dee2e6;
+
+    .modal-title {
+      color: #000000;
+    }
+  }
+
+  .modal-body {
+    background-color: #ffffff;
+    color: #000000;
+
+    input[type="text"],
+    input[type="email"],
+    input[type="number"],
+    input[type="url"],
+    input[type="file"],
+    textarea,
+    select {
+      background-color: #ffffff;
+      color: #000000;
+      border: 1px solid #ced4da;
+
+      &:focus {
+        background-color: #ffffff;
+        color: #000000;
+        border-color: #1a936f;
+        box-shadow: 0 0 0 0.2rem rgba(26, 147, 111, 0.25);
+      }
+    }
+
+    label {
+      color: #000000 !important;
+    }
+
+    .form-text,
+    small {
+      color: #6c757d !important;
+    }
+  }
+}

@@ -3,6 +3,10 @@
   <head>
     <title>HowToWatch</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="turbo-cache-control" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
@@ -10,7 +14,7 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="cinema__mode <%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> has-entries-sidebar">
+  <body class="cinema__mode <%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> has-entries-sidebar <%= user_signed_in? && current_user.dark_mode ? 'dark-mode' : 'light-mode' %>" data-turbo="false">
     <%= render 'shared/flashes' %>
 
     <% if user_signed_in? && !@hide_sidebar %>

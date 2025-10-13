@@ -2,6 +2,24 @@
 <script>
   // Add has-entries-sidebar class to body
   document.body.classList.add('has-entries-sidebar');
+
+  // Prevent iframe from navigating parent page or opening multiple windows
+  let autoplayAttempts = 0;
+  const originalOpen = window.open;
+  window.open = function(...args) {
+    console.log('window.open intercepted:', args);
+    // Block repeated autoplay attempts
+    return null;
+  };
+
+  // Prevent iframe from reloading parent
+  window.addEventListener('beforeunload', function(e) {
+    if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  });
 </script>
 
 <div class="cinema__screen" data-list-auto-next="<%= @entry.list.auto_next? %>" data-list-ordered="<%= @entry.list.ordered? %>">
@@ -43,14 +61,25 @@
   <%# <i class="fa-solid fa-expand cinema__control" data-action="click->cinema#fullscreen"></i> %>
 
   <div class="cinema__title">
-    <h3 class="d-flex align-items-center list-name-container" onmouseover="this.querySelector('.unsubscribe-icon').style.opacity='1'" onmouseout="this.querySelector('.unsubscribe-icon').style.opacity='0'">
+    <h3 class="d-flex align-items-center list-name-container" onmouseover="this.querySelector('.subscription-icon').style.opacity='1'" onmouseout="this.querySelector('.subscription-icon').style.opacity='0'">
       <%= link_to @entry.list.name, list_path(@entry.list), class: 'text-white text-decoration-none me-2' %>
-      <%= link_to list_unsubscribe_path(@entry.list, redirect_to_sibling: true),
-          method: :patch,
-          class: "unsubscribe-icon text-white",
-          style: "opacity: 0; transition: opacity 0.2s; cursor: pointer; font-size: 0.8em;",
-          data: { turbo_method: :patch, turbo_confirm: "Unsubscribe from #{@entry.list.name}?" } do %>
-        <i class="fa-solid fa-xmark"></i>
+      <% if current_user.subscribed_to?(@entry.list) %>
+        <%= button_to list_unsubscribe_path(@entry.list, redirect_to_sibling: true),
+            method: :patch,
+            class: "border-0 bg-transparent p-0 subscription-icon text-white",
+            style: "opacity: 0; transition: opacity 0.2s; cursor: pointer; font-size: 0.8em;",
+            data: { turbo_confirm: "Unsubscribe from #{@entry.list.name}?" },
+            form: { style: "display: inline;" } do %>
+          <i class="fa-solid fa-xmark"></i>
+        <% end %>
+      <% else %>
+        <%= button_to list_subscribe_path(@entry.list),
+            method: :patch,
+            class: "border-0 bg-transparent p-0 subscription-icon text-white",
+            style: "opacity: 0; transition: opacity 0.2s; cursor: pointer; font-size: 0.8em;",
+            form: { style: "display: inline;" } do %>
+          <i class="fa-solid fa-plus" title="Subscribe to list"></i>
+        <% end %>
       <% end %>
     </h3>
     <h1><%= @entry.name %></h1>
@@ -94,8 +123,8 @@
       <%= link_to decrement_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
         <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
       <% end %>
-      <%= link_to toggle_preferred_source_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none', data: { turbo_method: :patch } do %>
-        <i class="fa-solid fa-rotate-right fa-2x position-absolute bottom-0 start-0 translate-middle-y" title="Load new source"></i>
+      <%= button_to toggle_preferred_source_entry_path(@entry, mode: 'watch'), method: :patch, class: 'border-0 bg-transparent p-0 text-decoration-none', style: 'cursor: pointer;' do %>
+        <i class="fa-solid fa-rotate-right fa-2x position-absolute bottom-0 start-0 translate-middle-y text-white" title="Load new source"></i>
       <% end %>
       <%= link_to root_path, class: 'text-decoration-none' do %>
         <i class="fa-solid fa-house fa-2x position-absolute top-50 start-50 translate-middle"></i>
