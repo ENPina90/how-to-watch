@@ -49,6 +49,8 @@ Rails.application.routes.draw do
       get :decrement_current
       patch :update_position
       patch :toggle_preferred_source
+      get :fetch_posters
+      patch :update_poster
     end
   end
 

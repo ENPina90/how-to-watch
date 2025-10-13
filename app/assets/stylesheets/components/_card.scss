@@ -101,6 +101,10 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
+.icon-foreground {
+  color: #000000 !important;
+}
+
 .play-button {
   position: absolute;
   top: 50%;
@@ -203,4 +207,20 @@
   // grid-area: header;
   width: 20vw;
   // max-width: 800px;
+}
+
+// Poster selector styles
+.poster-option {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  img {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+  }
 }
