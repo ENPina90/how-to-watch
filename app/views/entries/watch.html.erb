@@ -33,25 +33,30 @@
       src="<%
              # Determine which source to use based on preferred_source settings
              preferred_source = @entry.preferred_source || @entry.list.preferred_source
-             base_source = preferred_source == 2 ? @entry.source_two : @entry.source
 
              # Determine autoplay setting based on list auto_play preference
              autoplay_param = @entry.list.auto_play? ? "1" : "0"
 
              if @entry.media == 'series' || @entry.media == 'anime'
-               # For series/anime, use the subentry's source URL which is already complete
-               if @entry.current && @entry.current.source.present?
-                 # Subentry has its own complete source URL
+               # Construct URL based on preferred source
+               if preferred_source == 2 && @entry.source_two.present?
+                 # Source 2 uses format: source_two/season-episode
+                 source = "#{@entry.source_two}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=#{autoplay_param}"
+               elsif @entry.source.present?
+                 # Source 1 uses format: source/season/episode
+                 source = "#{@entry.source}/#{@entry.current&.season}/#{@entry.current&.episode}?autoplay=#{autoplay_param}"
+               elsif @entry.current && @entry.current.source.present?
+                 # Fallback: use the subentry's source URL if no base sources available
                  source = "#{@entry.current.source}?autoplay=#{autoplay_param}"
-               else
-                 # Fallback: construct URL from base_source
-                 source = "#{base_source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=#{autoplay_param}"
                end
              elsif @entry.media == 'episode'
+               base_source = preferred_source == 2 ? @entry.source_two : @entry.source
                source = "#{base_source}?autoplay=#{autoplay_param}"
              elsif @entry.media == 'movie'
+               base_source = preferred_source == 2 ? @entry.source_two : @entry.source
                source = "#{base_source}?autoplay=#{autoplay_param}"
              else
+               base_source = preferred_source == 2 ? @entry.source_two : @entry.source
                source = base_source
              end
            %><%= source %>
@@ -123,8 +128,8 @@
       <%= link_to decrement_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
         <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
       <% end %>
-      <%= button_to toggle_preferred_source_entry_path(@entry, mode: 'watch'), method: :patch, class: 'border-0 bg-transparent p-0 text-decoration-none', style: 'cursor: pointer;' do %>
-        <i class="fa-solid fa-rotate-right fa-2x position-absolute bottom-0 start-0 translate-middle-y text-white" title="Load new source"></i>
+      <%= button_to toggle_preferred_source_entry_path(@entry, mode: 'watch'), method: :patch, class: 'border-0 bg-transparent p-0 text-decoration-none position-absolute bottom-0 start-0 translate-middle-y', style: 'cursor: pointer;' do %>
+        <i class="fa-solid fa-rotate-right fa-2x text-white" title="Load new source"></i>
       <% end %>
       <%= link_to root_path, class: 'text-decoration-none' do %>
         <i class="fa-solid fa-house fa-2x position-absolute top-50 start-50 translate-middle"></i>
