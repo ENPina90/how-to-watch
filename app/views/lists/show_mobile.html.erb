@@ -68,7 +68,7 @@
 
     <h1 class="mobile-list-title text-center">
       <%= render 'lists/header_count', count: @list.entries.count + @list.child_lists.count, list: @list %>
-      <%= link_to @list.name, list_path(@list) %>
+      - <%= link_to @list.name, list_path(@list) %>
     </h1>
 
     <!-- Mobile List Info -->

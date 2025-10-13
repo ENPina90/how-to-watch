@@ -29,7 +29,7 @@
     <% end %>
     <h1 class="text-center">
       <%= render 'lists/header_count', count: @list.entries.count + @list.child_lists.count, list: @list %>
-      <%= link_to @list.name, list_path(@list) %>
+      - <%= link_to @list.name, list_path(@list) %>
     </h1>
     <div class="list-input">
       <div class="list-options">
@@ -114,13 +114,13 @@
     </div>
     <% unless @minimal %>
       <ul class="menu">
-        <li><%= link_to 'Year', list_path(@list, criteria: 'Year'), data: { action: "click->search#entries"} %></li>
-        <li><%= link_to 'Rating', list_path(@list, criteria: 'Rating'), data: { action: "click->search#entries"} %></li>
-        <li><%= link_to 'Genre', list_path(@list, criteria: 'Genre'), data: { action: "click->search#entries"} %></li>
-        <li><%= link_to 'Category', list_path(@list, criteria: 'Category'), data: { action: "click->search#entries"} %></li>
-        <li><%= link_to 'Watched', list_path(@list, criteria: 'Watched'), data: { action: "click->search#entries"} %></li>
-        <li><%= link_to 'Media', list_path(@list, criteria: 'Media'), data: { action: "click->search#entries"} %></li>
-        <li><%= link_to 'Length', list_path(@list, criteria: 'Length'), data: { action: "click->search#entries"} %></li>
+        <li class="<%= 'active' if @criteria == 'Year' %>"><%= link_to 'Year', list_path(@list, criteria: 'Year'), data: { action: "click->search#entries"} %></li>
+        <li class="<%= 'active' if @criteria == 'Rating' %>"><%= link_to 'Rating', list_path(@list, criteria: 'Rating'), data: { action: "click->search#entries"} %></li>
+        <li class="<%= 'active' if @criteria == 'Genre' %>"><%= link_to 'Genre', list_path(@list, criteria: 'Genre'), data: { action: "click->search#entries"} %></li>
+        <li class="<%= 'active' if @criteria == 'Category' %>"><%= link_to 'Category', list_path(@list, criteria: 'Category'), data: { action: "click->search#entries"} %></li>
+        <li class="<%= 'active' if @criteria == 'Watched' %>"><%= link_to 'Watched', list_path(@list, criteria: 'Watched'), data: { action: "click->search#entries"} %></li>
+        <li class="<%= 'active' if @criteria == 'Media' %>"><%= link_to 'Media', list_path(@list, criteria: 'Media'), data: { action: "click->search#entries"} %></li>
+        <li class="<%= 'active' if @criteria == 'Length' %>"><%= link_to 'Length', list_path(@list, criteria: 'Length'), data: { action: "click->search#entries"} %></li>
       </ul>
     <% end %>
   </div>

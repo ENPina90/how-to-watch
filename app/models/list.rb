@@ -196,6 +196,7 @@ class List < ApplicationRecord
   # Primary method to get current entry - ALWAYS uses user position
   def current_entry(user)
     return nil unless user
+    return nil unless persisted? # Can't have positions for unsaved lists
     current_entry_for_user(user)
   end
 

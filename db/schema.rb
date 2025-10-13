@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_19_201623) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_12_212856) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -144,6 +144,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_19_201623) do
     t.boolean "auto_play", default: true
     t.boolean "auto_next", default: true
     t.boolean "mobile", default: false, null: false
+    t.text "description"
     t.index ["default"], name: "index_lists_on_default"
     t.index ["parent_list_id", "position"], name: "index_lists_on_parent_list_id_and_position"
     t.index ["parent_list_id"], name: "index_lists_on_parent_list_id"

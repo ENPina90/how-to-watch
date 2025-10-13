@@ -95,6 +95,55 @@
       {{/movies}}
     </template>
 
+    <template id="listSearchListTemplate">
+      {{#lists}}
+      <div class="card mb-3">
+        <div class="row g-0">
+          <div class="col-md-3">
+            {{#posterUrl}}
+            <img src="{{posterUrl}}" class="img-fluid rounded-start h-100" alt="{{name}} poster" style="object-fit: cover;">
+            {{/posterUrl}}
+            {{^posterUrl}}
+            <div class="bg-secondary h-100 d-flex align-items-center justify-content-center">
+              <i class="fa-solid fa-list fa-3x text-muted"></i>
+            </div>
+            {{/posterUrl}}
+          </div>
+          <div class="col-md-9">
+            <div class="card-body">
+              <h6 class="card-title">{{name}}</h6>
+              <p class="card-text">
+                <small class="text-muted">by {{creator}} • {{entryCount}} entries</small><br>
+                {{#isPrivate}}
+                <small class="badge bg-secondary">Private</small>
+                {{/isPrivate}}
+                {{^isPrivate}}
+                <small class="badge bg-success">Public</small>
+                {{/isPrivate}}
+              </p>
+              {{#description}}
+              <p class="card-text"><small>{{description}}</small></p>
+              {{/description}}
+              <div class="d-flex gap-2">
+                <a href="/lists/{{id}}" class="btn btn-primary btn-sm">
+                  <i class="fa-solid fa-eye me-1"></i>View List
+                </a>
+                {{#canSubscribe}}
+                <form action="/lists/{{id}}/subscribe" method="post" style="display: inline;">
+                  <input type="hidden" name="_method" value="patch">
+                  <button type="submit" class="btn btn-outline-primary btn-sm">
+                    <i class="fa-solid fa-bookmark me-1"></i>Subscribe
+                  </button>
+                </form>
+                {{/canSubscribe}}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{/lists}}
+    </template>
+
     <!-- Global List Selection Modal -->
     <div class="modal fade" id="listSelectionModal" tabindex="-1" aria-labelledby="listSelectionModalLabel" aria-hidden="true">
       <div class="modal-dialog">

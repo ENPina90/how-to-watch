@@ -2,7 +2,7 @@
   <div class="row justify-content-center layout-title">
     <h1 class="text-center">
       <%= render 'lists/header_count', count: @list.entries.count, list: @list %>
-      <%= link_to @list.name, list_path(@list) %>
+      - <%= link_to @list.name, list_path(@list) %>
     </h1>
     <div class="list-input">
       <div class="list-options">

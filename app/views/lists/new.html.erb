@@ -1,5 +1,6 @@
 <%= simple_form_for @list do |f| %>
   <%= f.input :name %>
+  <%= f.input :description, as: :text, input_html: { rows: 3 }, hint: 'Optional description of this list' %>
   <%= f.input :parent_list_id,
       collection: current_user.lists.where(parent_list_id: nil),
       label_method: :name,

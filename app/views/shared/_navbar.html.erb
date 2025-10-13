@@ -27,7 +27,7 @@
              class="search-results-overlay position-fixed d-none"
              style="top: 70px; left: 50%; transform: translateX(-50%); width: 80vw; max-width: 800px; max-height: 70vh; overflow-y: auto; z-index: 1050; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
 
-          <!-- Movie/Show Toggle Buttons at top of overlay -->
+          <!-- Search Type Toggle Buttons at top of overlay -->
           <div class="p-3 border-bottom bg-light rounded-top"
                data-list-search-target="typeButtons">
             <div class="btn-group w-100" role="group">
@@ -38,6 +38,14 @@
               <input type="radio" class="btn-check" name="searchType" id="navShowType" autocomplete="off"
                      data-action="change->list-search#switchToShowSearch">
               <label class="btn btn-outline-primary btn-sm" for="navShowType">Shows</label>
+
+              <input type="radio" class="btn-check" name="searchType" id="navAnimeType" autocomplete="off"
+                     data-action="change->list-search#switchToAnimeSearch">
+              <label class="btn btn-outline-primary btn-sm" for="navAnimeType">Anime</label>
+
+              <input type="radio" class="btn-check" name="searchType" id="navListType" autocomplete="off"
+                     data-action="change->list-search#switchToListSearch">
+              <label class="btn btn-outline-primary btn-sm" for="navListType">Lists</label>
             </div>
           </div>
 
@@ -48,12 +56,6 @@
 
       <ul class="navbar-nav me-auto">
         <% if user_signed_in? %>
-          <li class="nav-item">
-            <%= link_to "My Lists", "#", class: "nav-link" %>
-          </li>
-          <li class="nav-item">
-            <%= link_to "Favorites", "#", class: "nav-link" %>
-          </li>
           <li class="nav-item dropdown" style="color:black;">
             <a href="#" class="nav-link" id="navbarDropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
               <%= current_user.username %>
