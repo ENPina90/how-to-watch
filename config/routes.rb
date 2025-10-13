@@ -1,5 +1,9 @@
 Rails.application.routes.draw do
   devise_for :users
+
+  # User preferences
+  patch '/users/toggle_dark_mode', to: 'users#toggle_dark_mode', as: :toggle_dark_mode
+
   root to: "lists#index"
   get 'test', to: 'pages#test'
   get 'watch_now', to: 'pages#watch_now'

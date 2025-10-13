@@ -8,7 +8,7 @@
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
-  <body class="<%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %>">
+  <body class="<%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> <%= user_signed_in? && current_user.dark_mode ? 'dark-mode' : 'light-mode' %>">
     <%= render "shared/navbar" %>
     <%= render 'shared/flashes' %>
     <% if user_signed_in? && !@hide_sidebar %>

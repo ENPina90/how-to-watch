@@ -1,0 +1,136 @@
+/* Light Mode Theme Overrides */
+body.light-mode {
+  background-color: #f5f2e8;
+}
+
+body.light-mode .page-container {
+  background-color: #f5f2e8;
+  color: #000000;
+}
+
+/* Revert all text to dark in light mode */
+body.light-mode .page-container h1,
+body.light-mode .page-container h2,
+body.light-mode .page-container h3,
+body.light-mode .page-container h4,
+body.light-mode .page-container h5,
+body.light-mode .page-container h6,
+body.light-mode .page-container p,
+body.light-mode .page-container label,
+body.light-mode .page-container i,
+body.light-mode .page-container a {
+  color: #000000 !important;
+}
+
+/* Keep green accent in light mode */
+body.light-mode .page-container .header-count,
+body.light-mode .page-container span.header-count {
+  color: #1a936f !important;
+}
+
+/* Light mode form elements */
+body.light-mode .page-container .form-control,
+body.light-mode .page-container .form-select {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #cccccc;
+}
+
+body.light-mode .page-container .form-control:focus,
+body.light-mode .page-container .form-select:focus {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #1a936f;
+}
+
+/* Light mode cards */
+body.light-mode .page-container .card {
+  background-color: #ffffff;
+  border-color: #cccccc;
+  color: #000000;
+}
+
+body.light-mode .grid-card {
+  background-color: #f5f2e8;
+  border-top: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+}
+
+body.light-mode .card-picture {
+  border-right: 2px solid #000000;
+}
+
+body.light-mode .card-details {
+  border-top: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+}
+
+body.light-mode .card-menu i,
+body.light-mode .card-menu a {
+  color: #000000;
+}
+
+body.light-mode .card-note {
+  border-top: 2px solid #000000;
+  color: #000000;
+  background-color: #f5f2e8;
+}
+
+/* Light mode layout elements */
+body.light-mode .layout {
+  background-color: #f5f2e8;
+}
+
+body.light-mode .layout a {
+  color: #000000;
+}
+
+body.light-mode .layout-box {
+  border-top: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+}
+
+body.light-mode .layout-title {
+  background-color: #f5f2e8;
+  border-bottom: 2px solid #000000;
+}
+
+body.light-mode .layout-title a {
+  color: #000000;
+}
+
+body.light-mode .list-input {
+  border-top: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+}
+
+body.light-mode .border-top-bottom {
+  border-top: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+}
+
+/* Light mode lists index */
+body.light-mode .lists-index-container {
+  background-color: #f5f2e8;
+}
+
+body.light-mode .row-title {
+  color: #000000;
+}
+
+body.light-mode .list-card-name {
+  color: #000000 !important;
+}
+
+body.light-mode .list-card-meta {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Light mode menu */
+body.light-mode .menu li.active {
+  background-color: #000000;
+}
+
+body.light-mode .menu li.active a {
+  color: #1a936f !important;
+}

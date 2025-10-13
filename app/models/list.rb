@@ -183,21 +183,50 @@ class List < ApplicationRecord
   # Get or create a user's position tracker for this list
   def position_for_user(user)
     user_list_positions.find_or_create_by(user: user) do |position|
-      position.current_position = 1
+      # Set initial position to first entry's position (not always 1)
+      first_entry = entries.order(:position).first
+      position.current_position = first_entry&.position || 1
     end
   end
 
   # Get the current entry for a specific user
   def current_entry_for_user(user)
     user_position = position_for_user(user)
-    entries.find_by(position: user_position.current_position)
+    entry = entries.find_by(position: user_position.current_position)
+
+    # If no entry at current position, find the closest valid entry
+    if entry.nil? && entries.exists?
+      # Try to find next entry after current position
+      entry = entries.where('position >= ?', user_position.current_position)
+                    .order(:position)
+                    .first
+
+      # If nothing after, get the first entry
+      entry ||= entries.order(:position).first
+
+      # Update position to valid entry
+      if entry
+        user_position.update!(current_position: entry.position)
+      end
+    end
+
+    entry
   end
 
-  # Primary method to get current entry - ALWAYS uses user position
+  # Primary method to get current entry
+  # For ordered lists: returns exact current position
+  # For unordered lists: returns random incomplete entry
   def current_entry(user)
     return nil unless user
     return nil unless persisted? # Can't have positions for unsaved lists
-    current_entry_for_user(user)
+
+    if ordered?
+      # Ordered lists: show exact current position
+      current_entry_for_user(user)
+    else
+      # Unordered lists: show random incomplete entry (shuffles each time)
+      find_random_incomplete_entry_for_user(user) || current_entry_for_user(user)
+    end
   end
 
   # Find next incomplete entry for a user starting from a specific position

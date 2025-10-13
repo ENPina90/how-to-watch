@@ -4,20 +4,27 @@
     <div class="list-row">
       <h3 class="row-title">Up Next</h3>
       <div class="list-carousel pe-5">
-        <% @recently_watched_lists.each do |list| %>
+        <% @recently_watched_lists.first(10).each do |list| %>
           <% current_entry = list.current_entry(current_user) %>
           <div class="list-card">
-            <%= link_to list_watch_current_path(list), class: "text-decoration-none" do %>
-              <div class="list-card-poster">
-                <% if current_entry %>
+            <% if current_entry %>
+              <%= link_to watch_entry_path(current_entry), class: "text-decoration-none" do %>
+                <div class="list-card-poster">
                   <%= entry_poster_image_tag(current_entry, class: 'list-poster-img', alt: list.name) %>
-                <% else %>
-                  <img src="/images/please_stand_by.png" alt="<%= list.name %>" class="list-poster-img">
-                <% end %>
-                <div class="list-card-overlay">
-                  <i class="fa-solid fa-play fa-3x"></i>
+                  <div class="list-card-overlay">
+                    <i class="fa-solid fa-play fa-3x"></i>
+                  </div>
                 </div>
-              </div>
+              <% end %>
+            <% else %>
+              <%= link_to list_path(list), class: "text-decoration-none" do %>
+                <div class="list-card-poster">
+                  <img src="/images/please_stand_by.png" alt="<%= list.name %>" class="list-poster-img">
+                  <div class="list-card-overlay">
+                    <i class="fa-solid fa-play fa-3x"></i>
+                  </div>
+                </div>
+              <% end %>
             <% end %>
             <%= link_to list_path(list), class: "text-decoration-none list-info-link" do %>
               <div class="list-card-info">
@@ -49,17 +56,24 @@
         <% @your_lists.each do |list| %>
           <% current_entry = list.current_entry(current_user) %>
           <div class="list-card">
-            <%= link_to list_watch_current_path(list), class: "text-decoration-none" do %>
-              <div class="list-card-poster">
-                <% if current_entry %>
+            <% if current_entry %>
+              <%= link_to watch_entry_path(current_entry), class: "text-decoration-none" do %>
+                <div class="list-card-poster">
                   <%= entry_poster_image_tag(current_entry, class: 'list-poster-img', alt: list.name) %>
-                <% else %>
-                  <img src="/images/please_stand_by.png" alt="<%= list.name %>" class="list-poster-img">
-                <% end %>
-                <div class="list-card-overlay">
-                  <i class="fa-solid fa-play fa-3x"></i>
+                  <div class="list-card-overlay">
+                    <i class="fa-solid fa-play fa-3x"></i>
+                  </div>
                 </div>
-              </div>
+              <% end %>
+            <% else %>
+              <%= link_to list_path(list), class: "text-decoration-none" do %>
+                <div class="list-card-poster">
+                  <img src="/images/please_stand_by.png" alt="<%= list.name %>" class="list-poster-img">
+                  <div class="list-card-overlay">
+                    <i class="fa-solid fa-play fa-3x"></i>
+                  </div>
+                </div>
+              <% end %>
             <% end %>
             <%= link_to list_path(list), class: "text-decoration-none list-info-link" do %>
               <div class="list-card-info">
@@ -85,17 +99,24 @@
         <% @community_lists.each do |list| %>
           <% current_entry = list.current_entry(current_user) %>
           <div class="list-card">
-            <%= link_to list_path(list), class: "text-decoration-none" do %>
-              <div class="list-card-poster">
-                <% if current_entry %>
+            <% if current_entry %>
+              <%= link_to watch_entry_path(current_entry), class: "text-decoration-none" do %>
+                <div class="list-card-poster">
                   <%= entry_poster_image_tag(current_entry, class: 'list-poster-img', alt: list.name) %>
-                <% else %>
-                  <img src="/images/please_stand_by.png" alt="<%= list.name %>" class="list-poster-img">
-                <% end %>
-                <div class="list-card-overlay">
-                  <i class="fa-solid fa-eye fa-3x"></i>
+                  <div class="list-card-overlay">
+                    <i class="fa-solid fa-play fa-3x"></i>
+                  </div>
                 </div>
-              </div>
+              <% end %>
+            <% else %>
+              <%= link_to list_path(list), class: "text-decoration-none" do %>
+                <div class="list-card-poster">
+                  <img src="/images/please_stand_by.png" alt="<%= list.name %>" class="list-poster-img">
+                  <div class="list-card-overlay">
+                    <i class="fa-solid fa-play fa-3x"></i>
+                  </div>
+                </div>
+              <% end %>
             <% end %>
             <%= link_to list_path(list), class: "text-decoration-none list-info-link" do %>
               <div class="list-card-info">

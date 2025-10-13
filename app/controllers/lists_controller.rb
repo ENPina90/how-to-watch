@@ -37,19 +37,29 @@ class ListsController < ApplicationController
                                   .includes(:entries, :user)
                                   .limit(20)
 
-    # Category 3: Community Lists (created by other users that are public OR you're subscribed to)
-    community_list_ids = List.where.not(user_id: current_user.id)
-                             .where(private: [false, nil])
-                             .pluck(:id) +
-                         List.where.not(user_id: current_user.id)
-                             .joins(:subscriptions)
-                             .where(subscriptions: { user_id: current_user.id })
-                             .pluck(:id)
+    # Category 3: Community Lists (created by other users)
+    # Show: public lists OR subscribed lists OR (if admin) all lists
+    if current_user.admin?
+      # Admins see all lists created by other users (including private)
+      @community_lists = List.where.not(user_id: current_user.id)
+                             .order(created_at: :desc)
+                             .includes(:entries, :user)
+                             .limit(20)
+    else
+      # Regular users see public lists OR subscribed lists
+      community_list_ids = List.where.not(user_id: current_user.id)
+                               .where(private: [false, nil])
+                               .pluck(:id) +
+                           List.where.not(user_id: current_user.id)
+                               .joins(:subscriptions)
+                               .where(subscriptions: { user_id: current_user.id })
+                               .pluck(:id)
 
-    @community_lists = List.where(id: community_list_ids.uniq)
-                           .order(created_at: :desc)
-                           .includes(:entries, :user)
-                           .limit(20)
+      @community_lists = List.where(id: community_list_ids.uniq)
+                             .order(created_at: :desc)
+                             .includes(:entries, :user)
+                             .limit(20)
+    end
   end
 
   def search
