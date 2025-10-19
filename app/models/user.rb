@@ -11,6 +11,7 @@ class User < ApplicationRecord
   has_many :lists
   has_many :list_user_entries
   has_many :user_entries, dependent: :destroy
+  has_many :user_entry_positions, dependent: :destroy
   has_many :subscriptions, dependent: :destroy
   has_many :subscribed_lists, through: :subscriptions, source: :list
   has_many :watched_entries, -> { where(user_entries: { completed: true }) }, through: :user_entries, source: :entry
@@ -70,12 +71,12 @@ class User < ApplicationRecord
 
   # Check if user can edit a list
   def can_edit_list?(list)
-    admin? || list.user == self
+    admin? || list.user == self || list.default?
   end
 
   # Check if user can edit an entry
   def can_edit_entry?(entry)
-    admin? || entry.list.user == self
+    admin? || entry.list.user == self || entry.list.default?
   end
 
   # Check if user can set default lists

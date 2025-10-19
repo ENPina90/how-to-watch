@@ -37,17 +37,22 @@
              # Determine autoplay setting based on list auto_play preference
              autoplay_param = @entry.list.auto_play? ? "1" : "0"
 
-             if @entry.media == 'series' || @entry.media == 'anime'
+             if @entry.media == 'anime'
+               # Anime uses absolute episode numbers - use subentry source directly
+               if @current_subentry && @current_subentry.source.present?
+                 source = "#{@current_subentry.source}?autoplay=#{autoplay_param}"
+               end
+             elsif @entry.media == 'series'
                # Construct URL based on preferred source
                if preferred_source == 2 && @entry.source_two.present?
                  # Source 2 uses format: source_two/season-episode
-                 source = "#{@entry.source_two}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=#{autoplay_param}"
+                 source = "#{@entry.source_two}/#{@current_subentry&.season}-#{@current_subentry&.episode}?autoplay=#{autoplay_param}"
                elsif @entry.source.present?
                  # Source 1 uses format: source/season/episode
-                 source = "#{@entry.source}/#{@entry.current&.season}/#{@entry.current&.episode}?autoplay=#{autoplay_param}"
-               elsif @entry.current && @entry.current.source.present?
+                 source = "#{@entry.source}/#{@current_subentry&.season}/#{@current_subentry&.episode}?autoplay=#{autoplay_param}"
+               elsif @current_subentry && @current_subentry.source.present?
                  # Fallback: use the subentry's source URL if no base sources available
-                 source = "#{@entry.current.source}?autoplay=#{autoplay_param}"
+                 source = "#{@current_subentry.source}?autoplay=#{autoplay_param}"
                end
              elsif @entry.media == 'episode'
                base_source = preferred_source == 2 ? @entry.source_two : @entry.source
@@ -88,9 +93,11 @@
       <% end %>
     </h3>
     <h1><%= @entry.name %></h1>
-    <% if @entry.media == "series" && @entry.current %>
+    <% if @entry.media == "series" && @current_subentry %>
       <h3><%= @entry.series %></h3>
-      <h3>S<%= @entry.current.season %>E<%= @entry.current.episode %> - <%= @entry.current.name %></h3>
+      <h3>S<%= @current_subentry.season %>E<%= @current_subentry.episode %> - <%= @current_subentry.name %></h3>
+    <% elsif @entry.media == "anime" && @current_subentry %>
+      <h3>E<%= @current_subentry.calculate_absolute_episode_number %> - <%= @current_subentry.name %></h3>
     <% elsif @entry.media == "episode" %>
       <h3><%= @entry.series %> - S<%= @entry.season %>E<%= @entry.episode %></h3>
     <% end %>
@@ -166,11 +173,18 @@
             base_source = preferred_source == 2 ? @entry.source_two : @entry.source
             autoplay_param = @entry.list.auto_play? ? "1" : "0"
 
-            if @entry.media == 'series' || @entry.media == 'anime'
-              if @entry.current && @entry.current.source.present?
-                "#{@entry.current.source}?autoplay=#{autoplay_param}"
+            if @entry.media == 'anime'
+              # Anime uses absolute episode numbers - use subentry source directly
+              if @current_subentry && @current_subentry.source.present?
+                "#{@current_subentry.source}?autoplay=#{autoplay_param}"
               else
-                "#{base_source}/#{@entry.current&.season}-#{@entry.current&.episode}?autoplay=#{autoplay_param}"
+                "No current episode set"
+              end
+            elsif @entry.media == 'series'
+              if @current_subentry && @current_subentry.source.present?
+                "#{@current_subentry.source}?autoplay=#{autoplay_param}"
+              else
+                "#{base_source}/#{@current_subentry&.season}/#{@current_subentry&.episode}?autoplay=#{autoplay_param}"
               end
             elsif @entry.media == 'episode'
               "#{base_source}?autoplay=#{autoplay_param}"
@@ -184,13 +198,17 @@
         <% if @entry.media == 'series' || @entry.media == 'anime' %>
           <small class="form-text text-muted">
             Current Episode:
-            <% if @entry.current %>
-              S<%= @entry.current.season %>E<%= @entry.current.episode %> - <%= @entry.current.name %>
+            <% if @current_subentry %>
+              <% if @entry.media == 'anime' %>
+                Episode <%= @current_subentry.calculate_absolute_episode_number %> - <%= @current_subentry.name %>
+              <% else %>
+                S<%= @current_subentry.season %>E<%= @current_subentry.episode %> - <%= @current_subentry.name %>
+              <% end %>
               <br>
-              Subentry Source: <%= @entry.current.source %>
+              Subentry Source: <%= @current_subentry.source %>
               <% if @entry.media == 'anime' %>
                 <br>
-                Absolute Episode: <%= @entry.current.calculate_absolute_episode_number %>
+                Absolute Episode: <%= @current_subentry.calculate_absolute_episode_number %>
               <% end %>
             <% else %>
               None set
