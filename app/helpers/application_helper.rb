@@ -3,6 +3,22 @@ module ApplicationHelper
     "entry_#{entry.id}_partial"
   end
 
+  # Helper method to check if current user can edit an entry
+  # Works even when current_user is nil (for default lists)
+  def can_edit_entry?(entry)
+    return true if entry.list.default?
+    return false unless current_user
+    current_user.can_edit_entry?(entry)
+  end
+
+  # Helper method to check if current user can edit a list
+  # Works even when current_user is nil (for default lists)
+  def can_edit_list?(list)
+    return true if list.default?
+    return false unless current_user
+    current_user.can_edit_list?(list)
+  end
+
   def find_now_playing_for_sidebar
     return nil unless current_user
 

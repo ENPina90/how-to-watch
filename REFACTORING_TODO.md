@@ -849,3 +849,4 @@ When starting a refactoring session:
 - Oct 13, 2025: Added dark/light mode support
 - Oct 13, 2025: Fixed anime source URL generation (absolute episodes + /sub)
 - Oct 13, 2025: Added auto-position fixing for invalid positions
+

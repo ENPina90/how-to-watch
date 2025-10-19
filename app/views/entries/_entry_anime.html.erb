@@ -18,6 +18,7 @@
         </div>
 
         <!-- Episode Navigation Section -->
+        <% current_subentry = entry.current_subentry_for_user(current_user) %>
         <div class="episode-navigation d-flex align-items-center justify-content-between border-top border-bottom py-3">
           <%= link_to decrement_current_entry_path(entry), class: 'text-decoration-none episode-nav-btn' do %>
             <i class="fa-solid fa-2x fa-chevron-left"></i>
@@ -25,10 +26,10 @@
 
           <div class="current-episode-info text-center flex-grow-1 mx-3">
             <div class="episode-label mb-1">
-              <strong>S<%= entry.current&.season %>E<%= entry.current&.episode %></strong>
+              <strong>Episode <%= current_subentry&.calculate_absolute_episode_number %></strong>
             </div>
             <div class="episode-name text-truncate" style="font-size: 0.9rem;">
-              <%= entry.current&.name %>
+              <%= current_subentry&.name %>
             </div>
           </div>
 
@@ -43,7 +44,7 @@
             <p><%= entry.rating %></p>
           </div>
           <p class="mb-4"><small><%= entry.genre %></small></p>
-          <p class="card-plot"><%= entry.current&.plot.present? ? entry.current.plot : entry.plot %></p>
+          <p class="card-plot"><%= current_subentry&.plot.present? ? current_subentry.plot : entry.plot %></p>
         </div>
         <div class="card-menu">
           <% if entry.trailer.present? %>
