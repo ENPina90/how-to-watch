@@ -30,8 +30,9 @@
 
       <!-- Episodes List View -->
       <div id="episodesListView" class="list-group list-group-flush">
+        <% current_user_subentry = @entry.current_subentry_for_user(current_user) %>
         <% @entry.subentries.order(Arel.sql('CAST(NULLIF(season, \'\') AS INTEGER), CAST(NULLIF(episode, \'\') AS INTEGER)')).each do |subentry| %>
-          <% is_current = @entry.current_id == subentry.id %>
+          <% is_current = current_user_subentry&.id == subentry.id %>
           <%
             active_styles = is_current ? 'background-color: rgba(255, 255, 255, 0.15) !important; font-weight: 600 !important;' : ''
           %>
@@ -46,7 +47,11 @@
                       } do %>
             <div class="d-flex align-items-center">
               <div class="entry-position" style="color: rgba(255, 255, 255, 0.6) !important;">
-                S<%= subentry.season %>E<%= subentry.episode %>.&nbsp;
+                <% if @entry.media == 'anime' %>
+                  E<%= subentry.calculate_absolute_episode_number %>.&nbsp;
+                <% else %>
+                  S<%= subentry.season %>E<%= subentry.episode %>.&nbsp;
+                <% end %>
               </div>
               <div class="entry-title-container flex-grow-1">
                 <span class="entry-title" style="color: #ffffff !important;"><%= subentry.name %></span>

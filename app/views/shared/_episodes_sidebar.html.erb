@@ -60,7 +60,11 @@
       <% if @current_episode %>
         <div>
           <p class="text-muted mb-2" style="font-size: 0.8rem;">
-            Season <%= @season %>, Episode <%= @episode %>
+            <% if @entry&.media == 'anime' %>
+              Episode <%= @episode %>
+            <% else %>
+              Season <%= @season %>, Episode <%= @episode %>
+            <% end %>
           </p>
           <h6 class="text-white mb-3" style="font-size: 0.95rem; font-weight: 600; line-height: 1.3;">
             <%= @current_episode['name'] %>

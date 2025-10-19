@@ -10,6 +10,7 @@ class Entry < ApplicationRecord
   has_one_attached :poster
   has_many :subentries, dependent: :destroy
   has_many :user_entries, dependent: :destroy
+  has_many :user_entry_positions, dependent: :destroy
   has_many :users_who_watched, -> { where(user_entries: { completed: true }) }, through: :user_entries, source: :user
   has_many :users_who_reviewed, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :user
   belongs_to :current, class_name: 'Subentry', optional: true, dependent: :destroy
@@ -129,6 +130,23 @@ class Entry < ApplicationRecord
 
   def check_source
     update(stream: UrlCheckerService.new(source).valid_source?)
+  end
+
+  # Get user's current episode for this entry
+  def current_subentry_for_user(user)
+    return nil unless user
+    return current unless media == 'series' || media == 'anime' # Fallback to entry-level current
+
+    user_position = UserEntryPosition.find_or_create_for(user, self)
+    user_position.current_subentry || current # Fallback to entry-level current
+  end
+
+  # Update user's episode position
+  def update_user_subentry!(user, subentry)
+    return unless user && subentry
+
+    user_position = UserEntryPosition.find_or_create_for(user, self)
+    user_position.update_to_subentry!(subentry)
   end
 
   def set_current(change)

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'open-uri'
+require 'net/http'
+require 'json'
 
 class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
@@ -183,7 +185,37 @@ class EntriesController < ApplicationController
 
     # For series/anime, check subentry source
     if @entry.media == 'series' || @entry.media == 'anime'
-      effective_source = @entry.current&.source || primary_source
+      # Use user's current episode position instead of global entry.current
+      @current_subentry = @entry.current_subentry_for_user(current_user)
+      effective_source = @current_subentry&.source || primary_source
+
+      # Set episode sidebar variables based on user's current episode
+      if @current_subentry
+        @season = @current_subentry.season.to_i if @current_subentry.season.present?
+        @episode = @current_subentry.episode.to_i if @current_subentry.episode.present?
+
+        # For anime, use absolute episode number
+        if @entry.media == 'anime'
+          @episode = @current_subentry.calculate_absolute_episode_number
+        end
+
+        # Fetch current episode details from TMDB if available
+        if @entry.tmdb.present? && @season && @episode
+          begin
+            tmdb_api_key = ENV['TMDB_API_KEY']
+            if tmdb_api_key.present?
+              episode_url = "https://api.themoviedb.org/3/tv/#{@entry.tmdb}/season/#{@season}/episode/#{@episode}?api_key=#{tmdb_api_key}"
+              episode_response = Net::HTTP.get(URI(episode_url))
+              @current_episode = JSON.parse(episode_response)
+            end
+          rescue => e
+            Rails.logger.error "Error fetching episode details from TMDB: #{e.message}"
+            @current_episode = nil
+          end
+        else
+          @current_episode = nil
+        end
+      end
     else
       effective_source = primary_source
     end
@@ -199,6 +231,10 @@ class EntriesController < ApplicationController
       redirect_to list_path(@entry.list) and return
     end
 
+    # Set episode sidebar variables
+    @tmdb_id = @entry.tmdb
+    @imdb_id = @entry.imdb
+
     # Set sidebar states for watch page - both sidebars collapsed by default
     @sidebar_collapsed = true # Left sidebar collapsed
     @hide_sidebar = false # But still render it
@@ -212,7 +248,10 @@ class EntriesController < ApplicationController
     return redirect_to watch_entry_path(@entry) unless current_user
 
     if @entry.media == 'series' || @entry.media == 'anime'
-      @entry.set_current(-1)
+      # Use user-level episode positioning
+      user_position = UserEntryPosition.find_or_create_for(current_user, @entry)
+      user_position.go_to_previous!
+
       if params[:mode] == 'watch'
         redirect_to watch_entry_path(@entry)
       else
@@ -263,7 +302,10 @@ class EntriesController < ApplicationController
     return redirect_to watch_entry_path(@entry) unless current_user
 
     if @entry.media == 'series' || @entry.media == 'anime'
-      @entry.set_current(1)
+      # Use user-level episode positioning
+      user_position = UserEntryPosition.find_or_create_for(current_user, @entry)
+      user_position.advance_to_next!
+
       if params[:mode] == 'watch'
         redirect_to watch_entry_path(@entry)
       else
@@ -751,7 +793,8 @@ class EntriesController < ApplicationController
     end
 
     def check_edit_permissions
-      unless current_user&.can_edit_entry?(@entry)
+      # Allow editing if user is authenticated and has permission, OR if entry is in a default list
+      unless (current_user&.can_edit_entry?(@entry)) || @entry.list.default?
         redirect_to entry_path(@entry), alert: 'You do not have permission to perform this action.'
       end
     end
