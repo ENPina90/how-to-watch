@@ -62,8 +62,8 @@
     <div class="card-picture">
       <a href="/watch_now?imdb={{imdbID}}&title={{Title}}&type=movie&poster={{Poster}}"><img src="{{Poster}}" class="card-img-top" alt="Watch {{Title}} now"></a>
       <span class="fa-stack fa-4x play-button">
-        <i class="fa fa-circle fa-stack-2x icon-background"></i>
-        <a href="/watch_now?imdb={{imdbID}}&title={{Title}}&type=movie&poster={{Poster}}"><i class="fa fa-play fa-stack-1x icon-foreground"></i></a>
+        <i class="fa-solid fa-circle fa-stack-2x icon-background"></i>
+        <a href="/watch_now?imdb={{imdbID}}&title={{Title}}&type=movie&poster={{Poster}}"><i class="fa-solid fa-play fa-stack-1x icon-foreground"></i></a>
       </span>
     </div>
     <div class="card-stuff w-100 d-flex justify-content-center align-items-center p-auto">
@@ -191,8 +191,11 @@
             </a>
             <turbo-frame id="entry_S{{Season}}E{{Episode}}_partial">
               <form action="/lists/<%= @list.id %>/entries" method='post'>
-                <input class='d-none' name='imdb' value='{{imdbID}}'>
+                <input class='d-none' name='imdb' value='{{seriesImdbID}}'>
                 <input class='d-none' name='tmdb' value='{{tmdbID}}'>
+                <input class='d-none' name='series_imdb' value='{{seriesImdbID}}'>
+                <input class='d-none' name='season' value='{{Season}}'>
+                <input class='d-none' name='episode' value='{{Episode}}'>
                 <button type='submit' name='create' value='create' class="btn btn-primary btn-sm d-flex justify-content-center align-items-center" data-controller="button"  data-action="click->button#start">
                   <span class="static-text">+ Episode</span><span class="ellipsis"></span>
                 </button>

@@ -97,12 +97,12 @@
   }
 }
 
-.icon-background {
-  color: rgba(255, 255, 255, 0.7);
+.card-picture:hover .play-button .icon-background {
+  color: rgba(0, 0, 0, 0.8) !important;
 }
 
-.icon-foreground {
-  color: #000000 !important;
+.card-picture:hover .play-button .icon-foreground {
+  color: #ffffff !important;
 }
 
 .play-button {
