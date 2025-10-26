@@ -636,7 +636,8 @@ class ListsController < ApplicationController
   end
 
   def check_edit_permissions
-    unless current_user&.can_edit_list?(@list)
+    # Allow editing if user is authenticated and has permission, OR if list is default
+    unless (current_user&.can_edit_list?(@list)) || @list.default?
       redirect_to lists_path, alert: 'You do not have permission to perform this action.'
     end
   end

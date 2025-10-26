@@ -167,7 +167,7 @@
       <!-- Show final rendered URL for debugging -->
       <div class="mb-3">
         <label class="form-label text-muted">Current URL</label>
-        <div class="p-2 bg-light border rounded" style="font-family: monospace; font-size: 0.85rem; word-break: break-all;">
+        <div class="p-2 border rounded" style="font-family: monospace; font-size: 0.85rem; word-break: break-all;">
           <%=
             preferred_source = @entry.preferred_source || @entry.list.preferred_source
             base_source = preferred_source == 2 ? @entry.source_two : @entry.source

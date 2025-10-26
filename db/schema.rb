@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_13_163948) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_19_180010) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -200,6 +200,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_13_163948) do
     t.index ["user_id"], name: "idx_user_entries_user"
   end
 
+  create_table "user_entry_positions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entry_id", null: false
+    t.bigint "current_subentry_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["current_subentry_id"], name: "index_user_entry_positions_on_current_subentry_id"
+    t.index ["entry_id"], name: "index_user_entry_positions_on_entry_id"
+    t.index ["user_id", "entry_id"], name: "index_user_entry_positions_on_user_id_and_entry_id", unique: true
+    t.index ["user_id"], name: "index_user_entry_positions_on_user_id"
+  end
+
   create_table "user_list_positions", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "list_id", null: false
@@ -251,6 +263,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_13_163948) do
   add_foreign_key "subscriptions", "users"
   add_foreign_key "user_entries", "entries"
   add_foreign_key "user_entries", "users"
+  add_foreign_key "user_entry_positions", "entries"
+  add_foreign_key "user_entry_positions", "subentries", column: "current_subentry_id"
+  add_foreign_key "user_entry_positions", "users"
   add_foreign_key "user_list_positions", "lists"
   add_foreign_key "user_list_positions", "users"
 end
