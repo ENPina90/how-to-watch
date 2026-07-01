@@ -99,6 +99,13 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   opacity: 1;
 }
 
+/* watch_now's iframe is only 75vh tall (h-75) inside a 100vh screen, so pin the
+   switcher to the iframe's bottom edge rather than the bottom of the screen —
+   keeps it visible on first load without scrolling. */
+.source-switcher--watch-now {
+  bottom: calc(25vh + 16px);
+}
+
 .source-switcher .btn {
   white-space: nowrap;
 }
