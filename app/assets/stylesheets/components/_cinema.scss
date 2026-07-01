@@ -99,11 +99,12 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   opacity: 1;
 }
 
-/* watch_now's iframe is only 75vh tall (h-75) inside a 100vh screen, so pin the
-   switcher to the iframe's bottom edge rather than the bottom of the screen —
-   keeps it visible on first load without scrolling. */
+/* watch_now's iframe is only 75vh tall (h-75) inside a 100vh screen. Place the
+   switcher just below the iframe's bottom edge (not overlapping the video, not at
+   the bottom of the screen) so it sits right under it and stays above the fold. */
 .source-switcher--watch-now {
-  bottom: calc(25vh + 16px);
+  top: calc(75vh + 10px);
+  bottom: auto;
 }
 
 .source-switcher .btn {
