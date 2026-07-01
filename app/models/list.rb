@@ -3,6 +3,7 @@
 class List < ApplicationRecord
 
   belongs_to :user
+  belongs_to :provider, class_name: 'Source', optional: true
 
   # Many-to-many relationships through list_relationships
   has_many :parent_relationships, class_name: 'ListRelationship', foreign_key: 'child_list_id', dependent: :destroy

@@ -7,6 +7,7 @@ require 'json'
 
 class Entry < ApplicationRecord
   belongs_to :list
+  belongs_to :provider, class_name: 'Source', optional: true
   has_one_attached :poster
   has_many :subentries, dependent: :destroy
   has_many :user_entries, dependent: :destroy
@@ -130,6 +131,32 @@ class Entry < ApplicationRecord
 
   def check_source
     update(stream: UrlCheckerService.new(source).valid_source?)
+  end
+
+  # The Source provider to use for this entry: its own override, else the list default.
+  def resolved_source
+    provider || list&.provider
+  end
+
+  # Providers this entry can actually play on:
+  #   - every active imdb provider, when the entry has an imdb id, and
+  #   - its own direct provider, when a source_key is present (the key is provider-specific).
+  def eligible_sources
+    sources = []
+    sources.concat(Source.active.where(kind: 'imdb').order(:position).to_a) if imdb.present?
+    current = resolved_source
+    sources << current if current&.direct? && source_key.present?
+    sources.uniq
+  end
+
+  # Computed, on-demand embed URL built from the resolved provider's template.
+  # Pass the current subentry for series/anime so season/episode resolve correctly.
+  # Falls back to the legacy source columns when the resolver yields nothing (e.g.
+  # before the production backfill has run, or if a Source was deleted) so playback
+  # never breaks while the new provider data is missing.
+  def embed_url(subentry: nil, autoplay: false)
+    resolved_source&.url_for(self, subentry: subentry, autoplay: autoplay).presence ||
+      legacy_embed_url(subentry: subentry, autoplay: autoplay)
   end
 
   # Get user's current episode for this entry
@@ -291,6 +318,31 @@ class Entry < ApplicationRecord
   end
 
   private
+
+  # Reproduces the pre-refactor URL logic from the legacy source/source_two columns.
+  # Used only as a fallback when the provider resolver returns nothing.
+  def legacy_embed_url(subentry: nil, autoplay: false)
+    flag = autoplay ? "1" : "0"
+    pref = preferred_source || list&.preferred_source
+
+    case media
+    when "anime"
+      "#{subentry.source}?autoplay=#{flag}" if subentry&.source.present?
+    when "series"
+      if pref == 2 && source_two.present?
+        "#{source_two}/#{subentry&.season}-#{subentry&.episode}?autoplay=#{flag}"
+      elsif source.present?
+        "#{source}/#{subentry&.season}/#{subentry&.episode}?autoplay=#{flag}"
+      elsif subentry&.source.present?
+        "#{subentry.source}?autoplay=#{flag}"
+      end
+    when "episode", "movie"
+      base = pref == 2 ? source_two : source
+      "#{base}?autoplay=#{flag}" if base.present?
+    else
+      (pref == 2 ? source_two : source).presence
+    end
+  end
 
   # Check if we should attach a poster from pic URL
   def should_attach_poster?

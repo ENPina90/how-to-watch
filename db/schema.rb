@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_19_180010) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_24_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -80,8 +80,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_19_180010) do
     t.string "series_imdb"
     t.string "source_two"
     t.integer "preferred_source"
+    t.bigint "provider_id"
+    t.string "source_key"
     t.index ["current_id"], name: "index_entries_on_current_id"
     t.index ["list_id"], name: "index_entries_on_list_id"
+    t.index ["provider_id"], name: "index_entries_on_provider_id"
   end
 
   create_table "failed_entries", force: :cascade do |t|
@@ -145,11 +148,26 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_19_180010) do
     t.boolean "auto_next", default: true
     t.boolean "mobile", default: false, null: false
     t.text "description"
+    t.bigint "provider_id"
     t.index ["default"], name: "index_lists_on_default"
     t.index ["parent_list_id", "position"], name: "index_lists_on_parent_list_id_and_position"
     t.index ["parent_list_id"], name: "index_lists_on_parent_list_id"
+    t.index ["provider_id"], name: "index_lists_on_provider_id"
     t.index ["reviewable"], name: "index_lists_on_reviewable"
     t.index ["user_id"], name: "index_lists_on_user_id"
+  end
+
+  create_table "sources", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.string "kind", default: "imdb", null: false
+    t.jsonb "templates", default: {}, null: false
+    t.string "autoplay_param"
+    t.boolean "active", default: true, null: false
+    t.integer "position"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_sources_on_slug", unique: true
   end
 
   create_table "subentries", force: :cascade do |t|
@@ -248,6 +266,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_19_180010) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "entries", "lists"
+  add_foreign_key "entries", "sources", column: "provider_id"
   add_foreign_key "entries", "subentries", column: "current_id"
   add_foreign_key "follows", "lists"
   add_foreign_key "follows", "users"
@@ -257,6 +276,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_19_180010) do
   add_foreign_key "list_user_entries", "lists"
   add_foreign_key "list_user_entries", "users"
   add_foreign_key "lists", "lists", column: "parent_list_id"
+  add_foreign_key "lists", "sources", column: "provider_id"
   add_foreign_key "lists", "users"
   add_foreign_key "subentries", "entries"
   add_foreign_key "subscriptions", "lists"
