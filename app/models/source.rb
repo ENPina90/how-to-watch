@@ -46,8 +46,10 @@ class Source < ApplicationRecord
     {
       imdb:             entry.imdb,
       series_imdb:      entry.series_imdb.presence || entry.imdb,
-      season:           subentry&.season,
-      episode:          subentry&.episode,
+      # Series/anime carry season/episode on the subentry; standalone `episode`
+      # entries carry them on the entry itself.
+      season:           subentry&.season.presence || entry.season,
+      episode:          subentry&.episode.presence || entry.episode,
       absolute_episode: subentry&.calculate_absolute_episode_number,
       source_key:       entry.source_key,
     }

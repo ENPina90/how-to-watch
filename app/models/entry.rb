@@ -134,8 +134,17 @@ class Entry < ApplicationRecord
   end
 
   # The Source provider to use for this entry: its own override, else the list default.
+  # If that provider is missing or has been deactivated, fall back to a present, active
+  # source so the entry always loads a working player on first view.
   def resolved_source
-    provider || list&.provider
+    linked = provider || list&.provider
+    return linked if linked&.active?
+
+    # imdb entries can play on any active imdb provider; direct entries only work on
+    # their own linked provider (its source_key is provider-specific), so keep it.
+    return Source.active.where(kind: 'imdb').order(:position).first if imdb.present?
+
+    linked
   end
 
   # Providers this entry can actually play on:
