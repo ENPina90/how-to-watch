@@ -2,7 +2,7 @@
   <!-- Recently Watched Row (FIRST) -->
   <% if @recently_watched_lists.any? %>
     <div class="list-row">
-      <h3 class="row-title">Up Next</h3>
+      <h3 class="row-title">Continue Watching</h3>
       <div class="list-carousel pe-5">
         <% @recently_watched_lists.first(10).each do |list| %>
           <% current_entry = list.current_entry(current_user) %>
