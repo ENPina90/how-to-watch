@@ -1,1 +1,1 @@
-App for discovering, listing, and watching your favorite things.
+A social streaming platform that brings back the joy of channel surfing by letting you curate personalized channels of movies, shows, and episodes, then flip through your or your friends' content—find it, save it, watch it all in one place.
