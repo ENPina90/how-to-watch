@@ -1,13 +1,11 @@
 <%# Source switcher for the transient watch_now page. No Entry exists here, so buttons
     swap the iframe src client-side. All providers are treated as imdb-kind. %>
 <% imdb_sources = Source.active.where(kind: 'imdb').order(:position) %>
-<% media_key = @media_type == 'tv' ? 'episode' : 'movie' %>
-<% vars = { imdb: @imdb_id, series_imdb: @imdb_id, season: @season, episode: @episode, absolute_episode: @episode, source_key: nil } %>
 
 <div class="source-switcher source-switcher--watch-now d-flex align-items-center gap-2 flex-wrap justify-content-center">
   <% rendered = 0 %>
   <% imdb_sources.each do |source| %>
-    <% url = source.build_url(media_key, vars, autoplay: true) %>
+    <% url = source.build_url(@source_media_key, @source_vars, autoplay: true) %>
     <% next if url.blank? %>
     <button type="button"
             class="btn btn-sm source-switcher__btn <%= 'source-switcher__btn--active' if rendered.zero? %>"

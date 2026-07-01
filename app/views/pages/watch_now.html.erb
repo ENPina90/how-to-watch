@@ -17,7 +17,7 @@
             height="90%"
             allowfullscreen
             allow="autoplay"
-            src="https://vidsrc.cc/v3/embed/tv/<%= @imdb_id %>/<%= @season %>/<%= @episode %>?autoplay=1">
+            src="<%= @default_source&.build_url(@source_media_key, @source_vars, autoplay: true) %>">
     </iframe>
   <% else %>
     <!-- For movies, use v2 with type prefix -->
@@ -29,7 +29,7 @@
             height="90%"
             allowfullscreen
             allow="autoplay"
-            src="https://vidsrc.cc/v2/embed/<%= @media_type %>/<%= @imdb_id %>?autoplay=1">
+            src="<%= @default_source&.build_url(@source_media_key, @source_vars, autoplay: true) %>">
     </iframe>
   <% end %>
   <%= render 'pages/watch_now_source_switcher' %>

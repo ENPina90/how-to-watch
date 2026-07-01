@@ -78,6 +78,19 @@ class PagesController < ApplicationController
       end
     end
 
+    # Source resolution for the initial iframe + switcher. No Entry exists here, so we
+    # build URLs straight from the active imdb providers (shared by the switcher partial).
+    @source_media_key = if @media_type == 'tv'
+                          (@season && @episode) ? 'episode' : 'series'
+                        else
+                          'movie'
+                        end
+    @source_vars = {
+      imdb: @imdb_id, series_imdb: @imdb_id,
+      season: @season, episode: @episode, absolute_episode: @episode, source_key: nil
+    }
+    @default_source = Source.active.where(kind: 'imdb').order(:position).first
+
     # Set sidebar state for watch_now page
     @sidebar_collapsed = false
     @hide_sidebar = false
