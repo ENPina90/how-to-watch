@@ -1,0 +1,42 @@
+<%# Shared "edit sources" modal. Triggered by the pencil icon. A single dropdown picks
+    which provider to edit; the matching edit/delete form is revealed below. %>
+<% all_sources = Source.order(:position, :name) %>
+<div class="modal fade" id="manageSourcesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit sources</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label" for="manageSourceSelect">Choose a source to edit</label>
+        <select id="manageSourceSelect" class="form-select mb-3" onchange="manageSourcesShow(this.value)">
+          <option value="">— select a source —</option>
+          <% all_sources.each do |s| %>
+            <option value="<%= s.id %>"><%= s.name %> (<%= s.kind %>)</option>
+          <% end %>
+        </select>
+
+        <% all_sources.each do |s| %>
+          <div class="source-edit-block" id="source-edit-<%= s.id %>" style="display:none;">
+            <%= render 'sources/form', source: s %>
+            <hr>
+            <%= button_to "Delete source", source_path(s), method: :delete,
+                  class: "btn btn-outline-danger btn-sm",
+                  form: { onsubmit: "return confirm('Delete this source? Entries using it fall back to their list default.');" } %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function manageSourcesShow(id) {
+    document.querySelectorAll('#manageSourcesModal .source-edit-block').forEach(function (b) { b.style.display = 'none'; });
+    if (id) {
+      var target = document.getElementById('source-edit-' + id);
+      if (target) target.style.display = 'block';
+    }
+  }
+</script>

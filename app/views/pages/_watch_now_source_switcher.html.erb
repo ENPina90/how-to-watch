@@ -1,0 +1,47 @@
+<%# Source switcher for the transient watch_now page. No Entry exists here, so buttons
+    swap the iframe src client-side. All providers are treated as imdb-kind. %>
+<% imdb_sources = Source.active.where(kind: 'imdb').order(:position) %>
+<% media_key = @media_type == 'tv' ? 'episode' : 'movie' %>
+<% vars = { imdb: @imdb_id, series_imdb: @imdb_id, season: @season, episode: @episode, absolute_episode: @episode, source_key: nil } %>
+
+<div class="source-switcher d-flex align-items-center gap-2 flex-wrap justify-content-center">
+  <% rendered = 0 %>
+  <% imdb_sources.each do |source| %>
+    <% url = source.build_url(media_key, vars, autoplay: true) %>
+    <% next if url.blank? %>
+    <button type="button"
+            class="btn btn-sm source-switcher__btn <%= 'source-switcher__btn--active' if rendered.zero? %>"
+            data-src="<%= url %>"
+            onclick="watchNowSetSource(this)">
+      <%= source.name %>
+    </button>
+    <% rendered += 1 %>
+  <% end %>
+
+  <% if current_user&.admin? %>
+    <button type="button" class="btn btn-sm source-switcher__icon"
+            data-bs-toggle="modal" data-bs-target="#manageSourcesModal" title="Edit sources">
+      <i class="fa-solid fa-pen"></i>
+    </button>
+    <button type="button" class="btn btn-sm source-switcher__icon"
+            data-bs-toggle="modal" data-bs-target="#newSourceModal" title="Add a new source">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+  <% end %>
+</div>
+
+<script>
+  function watchNowSetSource(btn) {
+    var frame = document.getElementById('cinema');
+    if (frame) frame.src = btn.dataset.src;
+    document.querySelectorAll('.source-switcher__btn').forEach(function (b) {
+      b.classList.remove('source-switcher__btn--active');
+    });
+    btn.classList.add('source-switcher__btn--active');
+  }
+</script>
+
+<% if current_user&.admin? %>
+  <%= render 'sources/new_modal' %>
+  <%= render 'sources/manage_modal' %>
+<% end %>

@@ -11,6 +11,14 @@
       <%= f.input :media %>
       <%= f.input :source %>
       <%= f.input :source_two, label: "Alternative Source" %>
+      <%= f.association :provider,
+            collection: Source.active.order(:position),
+            label_method: ->(s) { "#{s.name} (#{s.kind})" },
+            include_blank: "— Inherit list default —",
+            label: "Source provider" %>
+      <%= f.input :source_key,
+            label: "Source key / URL",
+            hint: "Direct providers only: Drive file id, mega key#fragment, YouTube id, or full URL for Custom. Leave blank for imdb providers." %>
       <%= f.input :pic, label: "Poster URL (or upload below)" %>
 
       <% if entry.poster.attached? %>

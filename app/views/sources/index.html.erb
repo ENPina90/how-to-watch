@@ -1,0 +1,44 @@
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Source providers</h1>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newSourceModal">
+      <i class="fa-solid fa-plus"></i> New source
+    </button>
+  </div>
+
+  <table class="table align-middle">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Slug</th>
+        <th>Kind</th>
+        <th>Templates</th>
+        <th>Autoplay</th>
+        <th>Active</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @sources.each do |source| %>
+        <tr>
+          <td><%= source.name %></td>
+          <td><code><%= source.slug %></code></td>
+          <td><%= source.kind %></td>
+          <td><small class="text-muted"><%= source.templates.keys.join(', ') %></small></td>
+          <td><%= source.autoplay_param.presence || '—' %></td>
+          <td><%= source.active? ? '✅' : '—' %></td>
+          <td class="text-end">
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    data-bs-toggle="modal" data-bs-target="#manageSourcesModal"
+                    onclick="document.getElementById('manageSourceSelect').value='<%= source.id %>'; manageSourcesShow('<%= source.id %>')">
+              <i class="fa-solid fa-pen"></i> Edit
+            </button>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<%= render 'sources/new_modal' %>
+<%= render 'sources/manage_modal' %>

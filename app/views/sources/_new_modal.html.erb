@@ -1,0 +1,14 @@
+<%# Shared "add a new source provider" modal. Triggered by the + icon. %>
+<div class="modal fade" id="newSourceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New source provider</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <%= render 'sources/form', source: Source.new(kind: 'imdb', active: true) %>
+      </div>
+    </div>
+  </div>
+</div>

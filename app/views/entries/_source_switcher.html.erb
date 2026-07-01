@@ -1,0 +1,31 @@
+<%# Source switcher beneath the iframe: one button per eligible provider (active
+    highlighted), a pencil to edit/delete providers, and a + to add one. %>
+<% eligible = @entry.eligible_sources %>
+<% active_source = @entry.resolved_source %>
+
+<div class="source-switcher d-flex align-items-center gap-2 flex-wrap justify-content-center">
+  <% eligible.each do |source| %>
+    <%= button_to set_source_entry_path(@entry, source_id: source.id, mode: 'watch'),
+          method: :patch,
+          class: "btn btn-sm source-switcher__btn #{'source-switcher__btn--active' if source == active_source}",
+          form: { class: 'd-inline-block m-0' } do %>
+      <%= source.name %>
+    <% end %>
+  <% end %>
+
+  <% if current_user&.admin? %>
+    <button type="button" class="btn btn-sm source-switcher__icon"
+            data-bs-toggle="modal" data-bs-target="#manageSourcesModal" title="Edit sources">
+      <i class="fa-solid fa-pen"></i>
+    </button>
+    <button type="button" class="btn btn-sm source-switcher__icon"
+            data-bs-toggle="modal" data-bs-target="#newSourceModal" title="Add a new source">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+  <% end %>
+</div>
+
+<% if current_user&.admin? %>
+  <%= render 'sources/new_modal' %>
+  <%= render 'sources/manage_modal' %>
+<% end %>

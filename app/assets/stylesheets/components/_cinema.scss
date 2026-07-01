@@ -79,3 +79,67 @@ body.cinema__mode .page-container {
 body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   left: 280px;
 }
+
+/* Source switcher pinned beneath the iframe (bottom-centre of the cinema screen) */
+.source-switcher {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: 90%;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 999px;
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+}
+
+.source-switcher:hover {
+  opacity: 1;
+}
+
+.source-switcher .btn {
+  white-space: nowrap;
+}
+
+/* High-contrast switcher buttons (don't rely on Bootstrap btn-light, which the
+   dark theme overrides into unreadable dark-on-dark). */
+.source-switcher__btn,
+.source-switcher__btn:hover,
+.source-switcher__btn:focus {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+.source-switcher__btn:hover {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+.source-switcher__btn--active,
+.source-switcher__btn--active:hover,
+.source-switcher__btn--active:focus {
+  background-color: #fff !important;
+  color: #000 !important;
+  border-color: #fff;
+  font-weight: 600;
+}
+
+.source-switcher__icon,
+.source-switcher__icon:hover,
+.source-switcher__icon:focus {
+  background-color: transparent;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+.source-switcher__icon:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Source CRUD modals sit above the cinema chrome */
+#newSourceModal,
+[id^="editSourceModal-"] {
+  z-index: 1100;
+}

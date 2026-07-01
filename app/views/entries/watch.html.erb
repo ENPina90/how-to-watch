@@ -30,44 +30,10 @@
       height="100%"
       allowfullscreen
       allow="autoplay"
-      src="<%
-             # Determine which source to use based on preferred_source settings
-             preferred_source = @entry.preferred_source || @entry.list.preferred_source
-
-             # Determine autoplay setting based on list auto_play preference
-             autoplay_param = @entry.list.auto_play? ? "1" : "0"
-
-             if @entry.media == 'anime'
-               # Anime uses absolute episode numbers - use subentry source directly
-               if @current_subentry && @current_subentry.source.present?
-                 source = "#{@current_subentry.source}?autoplay=#{autoplay_param}"
-               end
-             elsif @entry.media == 'series'
-               # Construct URL based on preferred source
-               if preferred_source == 2 && @entry.source_two.present?
-                 # Source 2 uses format: source_two/season-episode
-                 source = "#{@entry.source_two}/#{@current_subentry&.season}-#{@current_subentry&.episode}?autoplay=#{autoplay_param}"
-               elsif @entry.source.present?
-                 # Source 1 uses format: source/season/episode
-                 source = "#{@entry.source}/#{@current_subentry&.season}/#{@current_subentry&.episode}?autoplay=#{autoplay_param}"
-               elsif @current_subentry && @current_subentry.source.present?
-                 # Fallback: use the subentry's source URL if no base sources available
-                 source = "#{@current_subentry.source}?autoplay=#{autoplay_param}"
-               end
-             elsif @entry.media == 'episode'
-               base_source = preferred_source == 2 ? @entry.source_two : @entry.source
-               source = "#{base_source}?autoplay=#{autoplay_param}"
-             elsif @entry.media == 'movie'
-               base_source = preferred_source == 2 ? @entry.source_two : @entry.source
-               source = "#{base_source}?autoplay=#{autoplay_param}"
-             else
-               base_source = preferred_source == 2 ? @entry.source_two : @entry.source
-               source = base_source
-             end
-           %><%= source %>
-          ">
+      src="<%= @embed_url %>">
 
   </iframe>
+  <%= render 'entries/source_switcher' %>
   <%# <i class="fa-solid fa-expand cinema__control" data-action="click->cinema#fullscreen"></i> %>
 
   <div class="cinema__title">
@@ -158,6 +124,13 @@
     <%= simple_form_for(@entry, html: { data: { turbo: false } }) do |f| %>
       <%= f.input :name %>
       <%= f.input :source %>
+      <%= f.association :provider,
+            collection: Source.active.order(:position),
+            label_method: ->(s) { "#{s.name} (#{s.kind})" },
+            include_blank: "— Inherit list default —",
+            label: "Source provider" %>
+      <%= f.input :source_key, label: "Source key / URL",
+            hint: "Direct providers only (Drive id, mega key#fragment, YouTube id, or full URL)." %>
       <%= f.input :plot %>
       <% if @entry.media == 'episode' %>
         <%= f.input :season %>
@@ -168,33 +141,12 @@
       <div class="mb-3">
         <label class="form-label text-muted">Current URL</label>
         <div class="p-2 border rounded" style="font-family: monospace; font-size: 0.85rem; word-break: break-all;">
-          <%=
-            preferred_source = @entry.preferred_source || @entry.list.preferred_source
-            base_source = preferred_source == 2 ? @entry.source_two : @entry.source
-            autoplay_param = @entry.list.auto_play? ? "1" : "0"
-
-            if @entry.media == 'anime'
-              # Anime uses absolute episode numbers - use subentry source directly
-              if @current_subentry && @current_subentry.source.present?
-                "#{@current_subentry.source}?autoplay=#{autoplay_param}"
-              else
-                "No current episode set"
-              end
-            elsif @entry.media == 'series'
-              if @current_subentry && @current_subentry.source.present?
-                "#{@current_subentry.source}?autoplay=#{autoplay_param}"
-              else
-                "#{base_source}/#{@current_subentry&.season}/#{@current_subentry&.episode}?autoplay=#{autoplay_param}"
-              end
-            elsif @entry.media == 'episode'
-              "#{base_source}?autoplay=#{autoplay_param}"
-            elsif @entry.media == 'movie'
-              "#{base_source}?autoplay=#{autoplay_param}"
-            else
-              base_source
-            end
-          %>
+          <%= @entry.embed_url(subentry: @current_subentry, autoplay: @entry.list.auto_play?) || "No source available" %>
         </div>
+        <small class="form-text text-muted d-block">
+          Provider: <%= @entry.resolved_source&.name || "none" %>
+          <% if @entry.source_key.present? %> &middot; key: <%= @entry.source_key %><% end %>
+        </small>
         <% if @entry.media == 'series' || @entry.media == 'anime' %>
           <small class="form-text text-muted">
             Current Episode:

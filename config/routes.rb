@@ -49,10 +49,14 @@ Rails.application.routes.draw do
       get :decrement_current
       patch :update_position
       patch :toggle_preferred_source
+      patch :set_source
       get :fetch_posters
       patch :update_poster
     end
   end
+
+  # Streaming source/provider definitions (managed via modals on the watch page)
+  resources :sources, only: [:index, :create, :update, :destroy]
 
   # Letterboxd integration routes
   get '/letterboxd/connect', to: 'letterboxd#connect', as: :connect_letterboxd

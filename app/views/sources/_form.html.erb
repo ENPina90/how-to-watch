@@ -1,0 +1,68 @@
+<%# Reusable source-provider form (new + edit modals). Field ids are namespaced by
+    `prefix` so several of these forms can coexist on one page as valid HTML. %>
+<% prefix = source.persisted? ? source.id.to_s : 'new' %>
+<%= form_with model: source,
+      url: (source.persisted? ? source_path(source) : sources_path),
+      method: (source.persisted? ? :patch : :post),
+      html: { id: "source-form-#{prefix}" },
+      data: { turbo: false } do |f| %>
+
+  <% if source.errors.any? %>
+    <div class="alert alert-danger py-2">
+      <%= source.errors.full_messages.to_sentence %>
+    </div>
+  <% end %>
+
+  <div class="mb-2">
+    <%= f.label :name, class: "form-label", for: "src_#{prefix}_name" %>
+    <%= f.text_field :name, class: "form-control", id: "src_#{prefix}_name" %>
+  </div>
+
+  <div class="mb-2">
+    <%= f.label :slug, "Slug", class: "form-label", for: "src_#{prefix}_slug" %>
+    <%= f.text_field :slug, class: "form-control", id: "src_#{prefix}_slug", placeholder: "auto-generated from name if blank" %>
+  </div>
+
+  <div class="mb-2">
+    <%= f.label :kind, class: "form-label", for: "src_#{prefix}_kind" %>
+    <%= f.select :kind, Source::KINDS, {}, class: "form-select", id: "src_#{prefix}_kind" %>
+    <small class="form-text text-muted">imdb = built from imdb id + season/episode; direct = built from source_key.</small>
+  </div>
+
+  <fieldset class="mb-2 border rounded p-2">
+    <legend class="fs-6 text-muted">URL templates</legend>
+    <small class="form-text text-muted d-block mb-2">
+      Placeholders: <code>%{imdb}</code> <code>%{series_imdb}</code> <code>%{season}</code>
+      <code>%{episode}</code> <code>%{absolute_episode}</code> <code>%{source_key}</code>.
+      imdb providers use movie/series/episode/anime; direct providers use <strong>default</strong>.
+    </small>
+    <% %w[movie series episode anime default].each do |key| %>
+      <div class="mb-1">
+        <%= label_tag "src_#{prefix}_tmpl_#{key}", key.capitalize, class: "form-label mb-0" %>
+        <%= text_field_tag "source[templates][#{key}]", source.templates[key],
+              id: "src_#{prefix}_tmpl_#{key}", class: "form-control",
+              style: "font-family: monospace; font-size: 0.8rem;" %>
+      </div>
+    <% end %>
+  </fieldset>
+
+  <div class="mb-2">
+    <%= f.label :autoplay_param, "Autoplay query param", class: "form-label", for: "src_#{prefix}_autoplay" %>
+    <%= f.text_field :autoplay_param, class: "form-control", id: "src_#{prefix}_autoplay", placeholder: "e.g. autoplay (blank = ignores autoplay)" %>
+  </div>
+
+  <div class="row align-items-end">
+    <div class="col mb-2">
+      <%= f.label :position, class: "form-label", for: "src_#{prefix}_position" %>
+      <%= f.number_field :position, class: "form-control", id: "src_#{prefix}_position" %>
+    </div>
+    <div class="col mb-2">
+      <div class="form-check">
+        <%= f.check_box :active, class: "form-check-input", id: "src_#{prefix}_active" %>
+        <%= f.label :active, "Active", class: "form-check-label", for: "src_#{prefix}_active" %>
+      </div>
+    </div>
+  </div>
+
+  <%= f.submit (source.persisted? ? "Save source" : "Create source"), class: "btn btn-primary" %>
+<% end %>

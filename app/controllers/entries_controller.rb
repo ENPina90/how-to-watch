@@ -8,7 +8,7 @@ class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current toggle_preferred_source fetch_posters update_poster]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current toggle_preferred_source set_source fetch_posters update_poster]
   before_action :check_edit_permissions, only: %i[edit update destroy update_poster]
 
   def new
@@ -204,16 +204,10 @@ class EntriesController < ApplicationController
       user_position.update!(current_position: @entry.position)
     end
 
-    # Check if we have a valid source to display
-    preferred_source = @entry.preferred_source || @entry.list.preferred_source
-    primary_source = preferred_source == 2 ? @entry.source_two : @entry.source
-    fallback_source = preferred_source == 2 ? @entry.source : @entry.source_two
-
-    # For series/anime, check subentry source
+    # For series/anime, resolve the user's current episode (drives season/episode in the URL)
     if @entry.media == 'series' || @entry.media == 'anime'
       # Use user's current episode position instead of global entry.current
       @current_subentry = @entry.current_subentry_for_user(current_user)
-      effective_source = @current_subentry&.source || primary_source
 
       # Set episode sidebar variables based on user's current episode
       if @current_subentry
@@ -242,17 +236,11 @@ class EntriesController < ApplicationController
           @current_episode = nil
         end
       end
-    else
-      effective_source = primary_source
     end
 
-    # If primary source is nil, try fallback
-    if effective_source.blank? && fallback_source.present?
-      # Switch to fallback source
-      @entry.update(preferred_source: preferred_source == 2 ? 1 : 2)
-      flash[:notice] = "Primary source unavailable, switched to alternate source"
-    elsif effective_source.blank?
-      # No sources available at all
+    # Computed embed URL, built on-demand from the resolved provider's template.
+    @embed_url = @entry.embed_url(subentry: @current_subentry, autoplay: @entry.list.auto_play?)
+    if @embed_url.blank?
       flash[:alert] = "No video source available for this entry"
       redirect_to list_path(@entry.list) and return
     end
@@ -555,28 +543,38 @@ class EntriesController < ApplicationController
   end
 
   def toggle_preferred_source
-    # Determine the new preferred_source value
-    current_preferred = @entry.preferred_source || @entry.list.preferred_source
-    new_preferred = current_preferred == 1 ? 2 : 1
+    # Swap between the two imdb-keyed providers. Only meaningful for imdb entries;
+    # direct-link entries (Drive/mega/etc.) have no interchangeable alternative.
+    current = @entry.resolved_source
 
-    # Check if the target source is available
-    target_source = new_preferred == 2 ? @entry.source_two : @entry.source
-
-    if target_source.present?
-      @entry.update!(preferred_source: new_preferred)
-
-      if params[:mode] == 'watch'
-        redirect_to watch_entry_path(@entry)
-      else
-        redirect_back(fallback_location: entry_path(@entry))
-      end
+    if current.nil? || current.imdb?
+      vidsrc_cc = Source.find_by(slug: 'vidsrc-cc')
+      vidsrcme  = Source.find_by(slug: 'vidsrcme')
+      @entry.update!(provider: current&.slug == 'vidsrcme' ? vidsrc_cc : vidsrcme)
     else
-      flash[:alert] = "Alternative source not available"
-      if params[:mode] == 'watch'
-        redirect_to watch_entry_path(@entry)
-      else
-        redirect_back(fallback_location: entry_path(@entry))
-      end
+      flash[:alert] = "No alternative source available"
+    end
+
+    if params[:mode] == 'watch'
+      redirect_to watch_entry_path(@entry)
+    else
+      redirect_back(fallback_location: entry_path(@entry))
+    end
+  end
+
+  def set_source
+    source = Source.find_by(id: params[:source_id])
+
+    if source && @entry.eligible_sources.include?(source)
+      @entry.update!(provider: source)
+    else
+      flash[:alert] = "That source isn't available for this entry"
+    end
+
+    if params[:mode] == 'watch'
+      redirect_to watch_entry_path(@entry)
+    else
+      redirect_back(fallback_location: entry_path(@entry))
     end
   end
 
@@ -893,6 +891,8 @@ class EntriesController < ApplicationController
         :media,
         :source,
         :source_two,
+        :provider_id,
+        :source_key,
         :imdb,
         :tmdb,
         :language,
