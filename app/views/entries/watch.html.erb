@@ -101,9 +101,6 @@
       <%= link_to decrement_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
         <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
       <% end %>
-      <%= button_to toggle_preferred_source_entry_path(@entry, mode: 'watch'), method: :patch, class: 'border-0 bg-transparent p-0 text-decoration-none position-absolute bottom-0 start-0 translate-middle-y', style: 'cursor: pointer;' do %>
-        <i class="fa-solid fa-rotate-right fa-2x text-white" title="Load new source"></i>
-      <% end %>
       <%= link_to root_path, class: 'text-decoration-none' do %>
         <i class="fa-solid fa-house fa-2x position-absolute top-50 start-50 translate-middle"></i>
       <% end %>

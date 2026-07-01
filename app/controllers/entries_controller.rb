@@ -8,7 +8,7 @@ class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current toggle_preferred_source set_source fetch_posters update_poster]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster]
   before_action :check_edit_permissions, only: %i[edit update destroy update_poster]
 
   def new
@@ -540,26 +540,6 @@ class EntriesController < ApplicationController
     end
 
     redirect_back(fallback_location: entry_path(@entry))
-  end
-
-  def toggle_preferred_source
-    # Swap between the two imdb-keyed providers. Only meaningful for imdb entries;
-    # direct-link entries (Drive/mega/etc.) have no interchangeable alternative.
-    current = @entry.resolved_source
-
-    if current.nil? || current.imdb?
-      vidsrc_cc = Source.find_by(slug: 'vidsrc-cc')
-      vidsrcme  = Source.find_by(slug: 'vidsrcme')
-      @entry.update!(provider: current&.slug == 'vidsrcme' ? vidsrc_cc : vidsrcme)
-    else
-      flash[:alert] = "No alternative source available"
-    end
-
-    if params[:mode] == 'watch'
-      redirect_to watch_entry_path(@entry)
-    else
-      redirect_back(fallback_location: entry_path(@entry))
-    end
   end
 
   def set_source
