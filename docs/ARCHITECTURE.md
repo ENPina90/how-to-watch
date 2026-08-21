@@ -92,6 +92,11 @@ the entry's own `source_key`: a Drive file id, mega key, YouTube id, or a full U
 | `UserEntryPosition` | user × entry | `current_subentry_id` — which episode you're on |
 | `Subscription` | user × list | which channels appear in your sidebar |
 
+**Reads must not write.** `Entry#user_entry_for` / `List#position_for_user` are lookups
+returning nil; the `!` variants (`user_entry_for!`, `position_for_user!`) create. Both reads
+use the preloaded association when the caller eager-loaded it, so controllers that render
+many entries should `includes(:user_entries)` / `includes(:user_list_positions)`.
+
 Rule of thumb: **anything user-specific is in one of these four tables.** The columns
 `entries.completed`, `lists.current`, and `entries.current_id` are the pre-multi-user
 versions and are only touched by legacy paths.
@@ -360,7 +365,7 @@ Not yet committed, and it matters when reading `git log`:
 | Search returns nothing | client-side TMDB fetch in the Stimulus controller (check the browser console + the `<template>` id in the layout), not the server. |
 | Adding a series creates no episodes | `OmdbApi.get_series_episodes` → needs `entry.season` and (ideally) `entry.tmdb`. Failures here surface as the misleading flash "This already exists in your list". |
 | Sort/group setting doesn't stick | `ListsController#load_entries` — writes are guarded to explicit params, and `settings` is read back as the default. |
-| Slow list page | `list.current_entry(current_user)` per card, `entry.completed_by?` per entry (each a `find_or_create_by`), `find_now_playing_for_sidebar` on every page. |
+| Slow list page | check the preloads first: `ListsController#with_card_data` (index) and the `includes(:user_entries)` in `load_entries` (show). Losing either turns `completed_by?` / `current_entry` back into a query per row. `find_now_playing_for_sidebar` also runs on every page. |
 | Worker crashes at boot with `libffi.so.8: cannot open shared object file` | Railpack's runtime image lacks libffi, which `sassc-rails → sassc → ffi` needs at Rails boot. Fixed with `RAILPACK_DEPLOY_APT_PACKAGES=libffi8 libpq5` on the service. `/mise/installs/...` paths in a trace mean Railpack; `/nix/store/...` means Nixpacks. |
 | Job "didn't run" | check `/sidekiq` (admin) for retries/dead jobs, then `railway logs --service worker`. In development jobs run on `:async` in-process, so a dev-only failure is a different animal. |
 | Mobile layout differs from desktop | user-agent sniffing in both controllers → `*_mobile` views + `layouts/mobile`. |

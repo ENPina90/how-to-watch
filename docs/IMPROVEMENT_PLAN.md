@@ -52,7 +52,7 @@ controllers read it; server code goes through `TmdbService.api_key`, which is
 anywhere in `app/`. **Still yours to do: rotate the key at themoviedb.org** — it is in git
 history and cannot be un-published.
 
-### 3. ⬜ Reading completion state writes to the database
+### 3. ✅ Reading completion state writes to the database
 `Entry#user_entry_for` (`app/models/entry.rb:272`) is `find_or_create_by`, and
 `Entry#completed_by?` (`:277`) calls it. `entries/_completion_status.html.erb` renders per
 entry, so **viewing a list INSERTs a `user_entries` row for every entry on the page**.
@@ -66,6 +66,12 @@ rows that make `find_next_incomplete_entry_for_user`'s left-join logic do more w
 a separate `user_entry_for!` (or `find_or_create_by`) on the write paths
 (`mark_completed_by!`, `review`, position updates). `completed_by?` becomes
 `user_entries.find_by(user: user)&.completed?` — and with a preload, free.
+
+**Done (2026-08-22):** `Entry#user_entry_for` and `List#position_for_user` are reads that
+return nil; the creating variants are `user_entry_for!` / `position_for_user!` and are used
+only where something is actually recorded. Both reads use the preloaded association when
+the caller eager-loaded it. Covered by `spec/requests/reads_do_not_write_spec.rb`, which
+asserts that rendering a list or the index creates no rows.
 
 ### 4. ✅ Visiting a list wipes its saved grouping
 `app/controllers/lists_controller.rb:609` — `@list.update(settings: params[:criteria], sort: params[:sort])`
@@ -256,6 +262,17 @@ well-populated account, which is why it survived this long.
 **Done:** falls back to the current list, so the up/down arrows stay put and simply reload
 the same channel. Found by a request spec written for #26.
 
+### 30. ✅ "Next unwatched" skipped entries another user had touched (found 2026-08-22)
+`find_next_incomplete_entry_for_user` and `find_random_incomplete_entry_for_user` asked for
+"entries with no `user_entries` row **or** a row belonging to this user that says
+incomplete". Because the left join is not scoped to the current user, the first branch fails
+as soon as *any* user has a row for that entry — so if someone else had watched it and you
+had no row of your own, neither branch matched and the entry was silently treated as
+watched. On a shared or default list, your "next unwatched" quietly skipped entries.
+
+**Done:** both now ask the direct question — entries whose id is not in this user's
+completed set (`completed_entry_ids_for`), kept as a subquery.
+
 ---
 
 ## P1 — Performance
@@ -273,12 +290,32 @@ the same channel. Found by a request spec written for #26.
 controller and pass them down; replace `.sample` with `ORDER BY RANDOM() LIMIT 1`; cache
 the "now playing" lookup per request (`@now_playing_entry ||=` is already half-wired).
 
+**Done (2026-08-22).** Measured with a query counter over 8 lists × 5 entries:
+**index 45 → 31**, **show 34 → 27** queries.
+- The index no longer eager-loads every entry of every list to call `.count`; the count
+  comes from `COUNT(entries.id)` in the select, and `user_list_positions` are preloaded.
+- List pages preload `user_entries`, so `completed_by?`, `review_count` and
+  `average_review` read from memory instead of three queries per entry.
+- `@list.parent_lists` is loaded once per page; the breadcrumb called `top_level?` and
+  `parent_lists.count` repeatedly, each a fresh EXISTS/COUNT.
+- `find_random_incomplete_entry_for_user` picks with `ORDER BY RANDOM() LIMIT 1` instead of
+  loading every incomplete entry and calling `#sample`.
+
+**Still open, smaller:** the index issues one `active_storage_attachments` lookup per card
+(poster), and a list page still fires a handful of `SELECT 1 AS one` EXISTS checks I did
+not track down. Both are indexed and cheap; worth a look if the page ever feels slow.
+
 ### 13. Missing indexes
 `entries` has an index on `list_id` only. Add:
 `entries (list_id, position)`, `entries (imdb)`, `entries (media)`,
 `subentries (entry_id, season, episode)`, `lists (user_id, private)`.
 (The `user_entries` / `subscriptions` / `user_*_positions` indexes from the old TODO are
 already in `schema.rb`.)
+
+**Done (2026-08-22)** in `AddPerformanceIndexes`: `entries (list_id, position)`,
+`entries (imdb)`, `entries (media)`, `subentries (entry_id, season, episode)` and
+`lists (user_id, private)`. Plain `add_index` — at this table size each build took under
+60ms, so `algorithm: :concurrently` was not warranted.
 
 ### 14. Synchronous third-party HTTP inside requests
 - `entries#watch` — a TMDB episode fetch on every play.
