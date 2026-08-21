@@ -153,11 +153,19 @@ tree, repair the Devise mapping in `spec/support/`, add `rubocop-rspec` (or drop
 - **Still open:** the `test/` Minitest tree (7 stub tests, all erroring) should be deleted
   now that RSpec is the live suite — left in place pending your call.
 
-### 11. ⬜ No queue backend in production
+### 11. ✅ No queue backend in production
 Active Job falls back to the in-process `:async` adapter (`config/environments/production.rb:62`
 is still the commented-out `:resque` line). Poster attachment and source checks are silently
 dropped on every deploy. Redis is already provisioned for Action Cable.
 **Fix:** add Sidekiq (or `solid_queue`) and a worker process in the `Procfile`.
+
+**Done (2026-08-21):** Sidekiq 7.3 on the Railway Redis service, running as a separate
+`worker` service with its start command in its Railway service settings — separate because the
+web start command runs `assets:precompile && db:migrate`, and two services racing
+migrations is a hazard. `ApplicationJob` gained `discard_on ActiveJob::DeserializationError`
+(jobs now outlive the process that enqueued them) and `retry_on ActiveRecord::Deadlocked`.
+`/sidekiq` is mounted for admins. Development stays on `:async`, so no local Redis is
+needed. Covered by `spec/jobs/entry_jobs_spec.rb`.
 
 ### 24. ✅ `?criteria=` called any method it liked on every entry (found 2026-08-21)
 `ListsController#filter_entries`'s default branch was
@@ -190,6 +198,22 @@ and crawlers can trip them by accident, too.
 navigation arrows (they would become `button_to`, which needs the surrounding CSS checked).
 Medium-sized change across routes, two Stimulus controllers and the player UI, so it was
 left out of the P0 batch rather than done halfway.
+
+### 27. ⬜ Railway config-as-code is removed on 2026-12-01 (deadline)
+`railway.json` supplies the web service's start command
+(`rails assets:precompile && rails db:migrate && rails server`). Railway deprecated
+config-as-code: existing files are read until **2026-12-01**, and from **2026-08-28**
+services that never used it cannot opt in. On the cutoff the file is simply ignored, so the
+start command silently reverts to the dashboard setting or the Procfile — losing
+`assets:precompile` and `db:migrate` if neither supplies them. Nothing breaks loudly; the
+next deploy just ships unmigrated.
+
+**Fix:** migrate to Infrastructure as Code — a `.railway/railway.ts` describing the project
+(web, worker, Postgres, Redis), with `railway config migrate --apply --delete-files`, then
+`railway config plan` / `railway config apply`. Needs a Railway CLI newer than 4.7.3.
+Do it deliberately: `apply` acts on the whole project, so read the plan output first.
+Interim safety net: confirm the web service's dashboard start command (or the Procfile
+`web:` line) matches `railway.json`, so the cutoff is a no-op.
 
 ---
 
@@ -312,6 +336,7 @@ Safe to delete (verified: zero references outside their own definition):
 | `Entry#complete(boolean)`, `Entry#fix_subentry_sources!` | `entry.rb:265,245` |
 | `Entry#set_current` (only caller is the dead action above) | `entry.rb:207` |
 | `ListUserEntry` + `Follow` models and their tables | superseded by `Subscription` / `UserListPosition` |
+| `LetterboxdSyncJob` (nothing enqueues it; verified 2026-08-21) | `app/jobs/letterboxd_sync_job.rb` |
 | `hello_controller.js`, `cinema`, `frame_loader`, `omdb` controllers | no `data-controller` reference |
 | `app/javascript/test.js` (`let idk = 23`) | |
 | `pages#test` + `views/pages/test.html.erb`, `pages/home.html.erb` (scaffold placeholder that is the only public page) | routes + views |
@@ -345,7 +370,7 @@ Safe to delete (verified: zero references outside their own definition):
    (27 examples green; `test/` tree still to be deleted).
 3. **Next up — #26** (state-changing GETs): the other half of the CSRF story, and the
    natural follow-on from #1.
-4. **Then #11** (real queue backend) so #14 has somewhere to go.
+4. ~~**Then #11** (real queue backend) so #14 has somewhere to go.~~ **Done 2026-08-21.**
 5. **Then #3 + #12 + #13** together — the read/write split, the N+1s and the indexes are
    what make the list and sidebar pages fast.
 6. **Then P3** — the dead-code sweep. Cheap, and it shrinks the surface for everything after.

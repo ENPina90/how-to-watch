@@ -1,0 +1,9 @@
+# Each Sidekiq thread checks out its own Active Record connection, so concurrency must
+# stay at or below the pool size (RAILS_MAX_THREADS, default 5 -- see config/database.yml).
+# The job volume here is a handful of poster downloads and source checks per added entry,
+# so three threads is plenty.
+:concurrency: 3
+
+:queues:
+  - default   # everything ActiveJob enqueues via queue_as :default
+  - mailers   # ActionMailer#deliver_later
