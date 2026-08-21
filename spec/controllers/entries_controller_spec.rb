@@ -40,9 +40,11 @@ RSpec.describe EntriesController, type: :controller do
         }.to change(Entry, :count).by(1)
       end
 
-      it 'redirects to the edit entry page' do
+      it 'answers with the turbo streams that update the list in place' do
         post :create, params: { list_id: list.id, imdb: 'tt0848228' }
-        expect(response).to redirect_to(edit_entry_path(assigns(:entry)))
+        expect(response).to be_successful
+        expect(response.media_type).to eq(Mime[:turbo_stream].to_s)
+        expect(response.body).to include('entry_tt0848228_partial')
       end
     end
 
@@ -51,9 +53,10 @@ RSpec.describe EntriesController, type: :controller do
         allow(Entry).to receive(:create_from_source).and_return("Error")
       end
 
-      it 'renders the new template' do
+      it 'reports the problem in the flash stream' do
         post :create, params: { list_id: list.id, imdb: 'invalid_id' }
-        expect(response).to render_template(:new)
+        expect(response).to render_template(partial: 'shared/_flashes')
+        expect(flash.now[:alert]).to be_present
       end
     end
   end
@@ -93,9 +96,11 @@ RSpec.describe EntriesController, type: :controller do
 
   describe 'POST #duplicate' do
     it 'duplicates the entry and redirects to the edit page' do
+      entry_to_duplicate = entry
       expect {
-        post :duplicate, params: { id: entry.id }
+        post :duplicate, params: { id: entry_to_duplicate.id }
       }.to change(Entry, :count).by(1)
+      expect(response).to redirect_to(edit_entry_path(Entry.last))
     end
   end
 
@@ -122,13 +127,18 @@ RSpec.describe EntriesController, type: :controller do
   end
 
   describe 'PATCH #complete' do
-    it 'toggles the completed attribute' do
+    it 'toggles completion for the signed-in user' do
       patch :complete, params: { id: entry.id }
-      entry.reload
-      expect(entry.completed).to be_truthy
+      expect(entry.completed_by?(@user)).to be_truthy
+
+      # Toggling again removes the user's tracking entirely.
       patch :complete, params: { id: entry.id }
-      entry.reload
-      expect(entry.completed).to be_falsey
+      expect(entry.reload.completed_by?(@user)).to be_falsey
+    end
+
+    it 'does not touch the legacy list-wide completed column' do
+      patch :complete, params: { id: entry.id }
+      expect(entry.reload.completed).to be_falsey
     end
   end
 
