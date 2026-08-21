@@ -21,7 +21,8 @@ RSpec.describe 'Entry navigation verbs', type: :request do
       get "/entries/#{first_entry.id}/increment_current"
 
       expect(response).to have_http_status(:not_found)
-      expect(list.position_for_user(user).current_position).to eq(1)
+      # Not merely unchanged -- a read must not create a position row at all.
+      expect(list.position_for_user(user)).to be_nil
     end
   end
 
