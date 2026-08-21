@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-# Baseline streaming providers. Run via `rails sources:seed` (also runs on boot).
+# Baseline streaming providers. Run manually via `rails sources:seed` -- nothing
+# loads this at boot, so editing it does not change an already-seeded database.
 #
 # CREATE-ONLY: existing rows are never modified, so admin edits made through the UI
 # (activating/deactivating a provider, tweaking a template) survive deploys. To change
@@ -17,8 +18,10 @@ SOURCES = [
     autoplay_param: "autoplay", position: 1, active: true,
     templates: {
       "movie"   => "https://vidsrc-embed.ru/embed/movie?imdb=%{imdb}&ds_lang=en",
-      "series"  => "https://vidsrc-embed.ru/embed/tv?imdb=%{series_imdb}&ds_lang=en",
+      "series"  => "https://vidsrc-embed.ru/embed/tv?imdb=%{series_imdb}&season=%{season}&episode=%{episode}&ds_lang=en",
       "episode" => "https://vidsrc-embed.ru/embed/tv?imdb=%{series_imdb}&season=%{season}&episode=%{episode}&ds_lang=en",
+      # vidsrc.ru has no anime-specific endpoint; anime plays through the tv one.
+      "anime"   => "https://vidsrc-embed.ru/embed/tv?imdb=%{series_imdb}&season=%{season}&episode=%{episode}&ds_lang=en",
     },
   },
   {
