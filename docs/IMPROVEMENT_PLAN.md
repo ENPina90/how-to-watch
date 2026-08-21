@@ -199,7 +199,7 @@ navigation arrows (they would become `button_to`, which needs the surrounding CS
 Medium-sized change across routes, two Stimulus controllers and the player UI, so it was
 left out of the P0 batch rather than done halfway.
 
-### 27. ⬜ Railway config-as-code is removed on 2026-12-01 (deadline)
+### 27. ✅ Railway config-as-code is removed on 2026-12-01 (deadline)
 `railway.json` supplies the web service's start command
 (`rails assets:precompile && rails db:migrate && rails server`). Railway deprecated
 config-as-code: existing files are read until **2026-12-01**, and from **2026-08-28**
@@ -214,6 +214,14 @@ next deploy just ships unmigrated.
 Do it deliberately: `apply` acts on the whole project, so read the plan output first.
 Interim safety net: confirm the web service's dashboard start command (or the Procfile
 `web:` line) matches `railway.json`, so the cutoff is a no-op.
+
+**Done (2026-08-21), the simple way instead:** `railway.json` is deleted. It was only
+supplying the web start command, and a repo-root config file applies to *every* service
+built from the repo while outranking the dashboard field — which is what stopped the
+`worker` service from overriding it. Start commands now live in each service's Railway
+settings, mirrored by the `Procfile` (which Railway's builder honours as the fallback).
+No config-as-code left, so the December cutoff is a no-op and the IaC migration becomes
+optional rather than a deadline.
 
 ---
 
