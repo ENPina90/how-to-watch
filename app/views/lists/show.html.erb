@@ -2,7 +2,7 @@
   <div class="row justify-content-center layout-title">
     <% unless @list.top_level? %>
       <nav aria-label="breadcrumb" class="mb-2">
-        <% if @list.parent_lists.count == 1 %>
+        <% if @list.parent_lists.size == 1 %>
           <!-- Single parent path -->
           <ol class="breadcrumb justify-content-center">
             <% @list.primary_ancestors.reverse.each do |ancestor| %>

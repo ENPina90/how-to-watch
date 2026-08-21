@@ -196,7 +196,11 @@ class List < ApplicationRecord
   def position_for_user(user)
     return nil unless user
 
-    user_list_positions.find_by(user: user)
+    if user_list_positions.loaded?
+      user_list_positions.detect { |position| position.user_id == user.id }
+    else
+      user_list_positions.find_by(user: user)
+    end
   end
 
   # WRITE. Creates the tracker, starting at the first entry's position (not always 1).
