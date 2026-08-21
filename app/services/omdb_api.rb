@@ -51,6 +51,14 @@ class OmdbApi
   end
 
   def self.get_series_episodes(main_entry)
+    # `season` holds the season *count* for series entries. OMDB omits totalSeasons for
+    # some titles, and `nil.times` used to blow up here and surface as a bogus
+    # "already exists" flash.
+    if main_entry.season.to_i < 1
+      Rails.logger.warn "Entry #{main_entry.id} (#{main_entry.name}) has no season count; skipping episode import"
+      return
+    end
+
     # If we have a TMDB ID, use TMDB for better episode data (including plots)
     if main_entry.tmdb.present?
       fetch_episodes_from_tmdb(main_entry)
