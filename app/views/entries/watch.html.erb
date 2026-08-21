@@ -82,7 +82,7 @@
   </div>
   <div id="watchCinemaControls" class="d-flex justify-content-center cinema__control" style="right: 390px; top: 100px; left: auto;">
     <div class="position-relative" style="width: 80px; height: 80px;">
-      <%= link_to list_watch_current_path(@entry.list.find_sibling(:previous)) do %>
+      <%= link_to list_watch_current_path(@entry.list.find_sibling(:previous) || @entry.list) do %>
         <i class="fa-solid fa-3x fa-caret-up position-absolute top-0 start-50 translate-middle-x"></i>
       <% end %>
       <%= link_to increment_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
@@ -95,7 +95,7 @@
       <div class="position-absolute top-0 start-0 translate-middle-y">
         <%= render 'entries/completion_status', entry: @entry, user: current_user %>
       </div>
-      <%= link_to list_watch_current_path(@entry.list.find_sibling(:next)) do %>
+      <%= link_to list_watch_current_path(@entry.list.find_sibling(:next) || @entry.list) do %>
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
       <%= link_to decrement_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
