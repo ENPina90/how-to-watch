@@ -38,13 +38,35 @@ export default class extends Controller {
 
     if (this.isOrderedValue) {
       // For ordered lists, go to next entry in sequence
-      const incrementUrl = `/entries/${this.entryIdValue}/increment_current?mode=watch`
-      window.location.href = incrementUrl
+      this.submitPatch(`/entries/${this.entryIdValue}/increment_current?mode=watch`)
     } else {
       // For unordered lists, go to random incomplete entry
-      const shuffleUrl = `/entries/${this.entryIdValue}/shuffle_current?mode=watch`
-      window.location.href = shuffleUrl
+      this.submitPatch(`/entries/${this.entryIdValue}/shuffle_current?mode=watch`)
     }
+  }
+
+  // These advance the user's position, so they are PATCH routes now. Turbo is disabled on
+  // the watch page, so post a real form rather than relying on data-turbo-method.
+  submitPatch(path) {
+    const form = document.createElement("form")
+    form.method = "post"
+    form.action = path
+    form.style.display = "none"
+
+    const override = document.createElement("input")
+    override.type = "hidden"
+    override.name = "_method"
+    override.value = "patch"
+    form.appendChild(override)
+
+    const token = document.createElement("input")
+    token.type = "hidden"
+    token.name = "authenticity_token"
+    token.value = document.querySelector('meta[name="csrf-token"]')?.content
+    form.appendChild(token)
+
+    document.body.appendChild(form)
+    form.submit()
   }
 
   goToList() {
