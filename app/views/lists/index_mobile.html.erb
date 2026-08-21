@@ -3,7 +3,6 @@
   <div class="mobile-search-container"
        data-controller="mobile-search"
        data-mobile-search-user-lists-value="<%= user_signed_in? && @subscribed_lists.any? ? @subscribed_lists.map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>"
-       data-mobile-search-api-key-value="7e1c210d0c877abff8a40398735ce605"
        style="position: relative;">
 
     <div class="search-container">

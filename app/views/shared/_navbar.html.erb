@@ -10,8 +10,7 @@
       <!-- Search Bar in Center -->
       <div class="position-absolute start-50 translate-middle-x"
            data-controller="list-search"
-           data-list-search-user-lists-value="<%= user_signed_in? && current_user.lists.any? ? current_user.lists.left_joins(:entries).group('lists.id').select('lists.id, lists.name, COUNT(entries.id) as entries_count').map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>"
-           data-list-search-api-key-value="7e1c210d0c877abff8a40398735ce605">
+           data-list-search-user-lists-value="<%= user_signed_in? && current_user.lists.any? ? current_user.lists.left_joins(:entries).group('lists.id').select('lists.id, lists.name, COUNT(entries.id) as entries_count').map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>">
 
         <div class="search-container">
           <input type="text"

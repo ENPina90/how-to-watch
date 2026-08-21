@@ -224,7 +224,7 @@ class EntriesController < ApplicationController
         # Fetch current episode details from TMDB if available
         if @entry.tmdb.present? && @season && @episode
           begin
-            tmdb_api_key = ENV['TMDB_API_KEY']
+            tmdb_api_key = TmdbService.api_key
             if tmdb_api_key.present?
               episode_url = "https://api.themoviedb.org/3/tv/#{@entry.tmdb}/season/#{@season}/episode/#{@episode}?api_key=#{tmdb_api_key}"
               episode_response = Net::HTTP.get(URI(episode_url))
@@ -581,7 +581,7 @@ class EntriesController < ApplicationController
 
       # Also fetch additional TMDB images
       begin
-        tmdb_images_url = "https://api.themoviedb.org/3/#{media_type}/#{@entry.tmdb}/images?api_key=#{ENV['TMDB_API_KEY']}"
+        tmdb_images_url = "https://api.themoviedb.org/3/#{media_type}/#{@entry.tmdb}/images?api_key=#{TmdbService.api_key}"
         response = Net::HTTP.get(URI(tmdb_images_url))
         images_data = JSON.parse(response)
 
@@ -603,7 +603,7 @@ class EntriesController < ApplicationController
 
       begin
         # Use TMDB's find endpoint to search by external IMDB ID
-        tmdb_find_url = "https://api.themoviedb.org/3/find/#{imdb_id}?api_key=#{ENV['TMDB_API_KEY']}&external_source=imdb_id"
+        tmdb_find_url = "https://api.themoviedb.org/3/find/#{imdb_id}?api_key=#{TmdbService.api_key}&external_source=imdb_id"
         response = Net::HTTP.get(URI(tmdb_find_url))
         find_data = JSON.parse(response)
 
@@ -722,7 +722,7 @@ class EntriesController < ApplicationController
       episode_num = params[:episode].to_i
 
       begin
-        tmdb_api_key = ENV['TMDB_API_KEY'] || '7e1c210d0c877abff8a40398735ce605'
+        tmdb_api_key = TmdbService.api_key
 
         # Fetch series details from TMDB to get series name
         series_url = "https://api.themoviedb.org/3/tv/#{series_tmdb_id}?api_key=#{tmdb_api_key}"

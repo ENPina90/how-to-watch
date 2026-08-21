@@ -88,7 +88,7 @@ class OmdbApi
 
   def self.fetch_episodes_from_tmdb(main_entry)
     require 'open-uri'
-    tmdb_api_key = ENV['TMDB_API_KEY'] || '7e1c210d0c877abff8a40398735ce605'
+    tmdb_api_key = TmdbService.api_key
     series_imdb = main_entry.imdb
 
     main_entry.season.times do |season_index|
