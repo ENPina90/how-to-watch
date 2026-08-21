@@ -203,7 +203,7 @@ class ListsController < ApplicationController
 
         if fallback_entry
           # Update user's position
-          user_position = @list.position_for_user(current_user)
+          user_position = @list.position_for_user!(current_user)
           user_position.update_to_entry!(fallback_entry)
 
           message = @list.ordered? ?

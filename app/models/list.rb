@@ -190,10 +190,18 @@ class List < ApplicationRecord
     end
   end
 
-  # Get or create a user's position tracker for this list
+  # READ. nil when this user has never opened the list. Rendering the index page calls
+  # this once per card, so it must not write -- use #position_for_user! when the user
+  # actually moves.
   def position_for_user(user)
+    return nil unless user
+
+    user_list_positions.find_by(user: user)
+  end
+
+  # WRITE. Creates the tracker, starting at the first entry's position (not always 1).
+  def position_for_user!(user)
     user_list_positions.find_or_create_by(user: user) do |position|
-      # Set initial position to first entry's position (not always 1)
       first_entry = entries.order(:position).first
       position.current_position = first_entry&.position || 1
     end
@@ -201,26 +209,16 @@ class List < ApplicationRecord
 
   # Get the current entry for a specific user
   def current_entry_for_user(user)
-    user_position = position_for_user(user)
-    entry = entries.find_by(position: user_position.current_position)
+    current_position = position_for_user(user)&.current_position
+    # No stored position yet: show the start of the list without recording anything.
+    return entries.order(:position).first if current_position.nil?
 
-    # If no entry at current position, find the closest valid entry
-    if entry.nil? && entries.exists?
-      # Try to find next entry after current position
-      entry = entries.where('position >= ?', user_position.current_position)
-                    .order(:position)
-                    .first
-
-      # If nothing after, get the first entry
-      entry ||= entries.order(:position).first
-
-      # Update position to valid entry
-      if entry
-        user_position.update!(current_position: entry.position)
-      end
-    end
-
-    entry
+    # The stored position can point at a deleted entry, so fall forward to the next one
+    # and finally to the first. The repair is left to whichever action actually moves the
+    # user (see `rails positions:fix_invalid` for a bulk pass).
+    entries.find_by(position: current_position) ||
+      entries.where('position >= ?', current_position).order(:position).first ||
+      entries.order(:position).first
   end
 
   # Primary method to get current entry
@@ -241,53 +239,46 @@ class List < ApplicationRecord
 
   # Find next incomplete entry for a user starting from a specific position
   def find_next_incomplete_entry_for_user(user, start_position = nil)
-    start_pos = start_position || position_for_user(user).current_position
+    start_pos = start_position || position_for_user(user)&.current_position || 0
 
-    # Get entries starting from the next position that are either:
-    # 1. Not tracked by the user (no UserEntry), OR
-    # 2. Tracked but not completed (UserEntry with completed = false)
-    entries.left_joins(:user_entries)
-           .where('entries.position > ?', start_pos)
-           .where(
-             user_entries: { id: nil }
-           ).or(
-             entries.left_joins(:user_entries)
-                   .where('entries.position > ?', start_pos)
-                   .where(user_entries: { user: user, completed: false })
-           )
+    entries.where('entries.position > ?', start_pos)
+           .where.not(id: completed_entry_ids_for(user))
            .order(:position)
-           .distinct
            .first
   end
 
   # Find random incomplete entry for a user (for unordered lists)
   def find_random_incomplete_entry_for_user(user, exclude_entry = nil)
-    # Get all entries that are not completed by this user
-    incomplete_entries = entries.left_joins(:user_entries)
-                               .where(
-                                 user_entries: { id: nil }
-                               ).or(
-                                 entries.left_joins(:user_entries)
-                                       .where(user_entries: { user: user, completed: false })
-                               )
+    incomplete_entries = entries.where.not(id: completed_entry_ids_for(user))
+    incomplete_entries = incomplete_entries.where.not(id: exclude_entry.id) if exclude_entry
 
-    # Exclude the specified entry if provided
-    if exclude_entry
-      incomplete_entries = incomplete_entries.where.not(id: exclude_entry.id)
-    end
-
-    incomplete_entries.distinct.sample
+    # Pick in the database. This used to load every incomplete entry and call #sample on
+    # the array, which is the whole list for anyone who has not watched much.
+    incomplete_entries.order(Arel.sql('RANDOM()')).first
   end
 
   # Advance user's position based on list type
   def advance_user_position!(user)
-    user_position = position_for_user(user)
+    user_position = position_for_user!(user)
 
     if ordered?
       user_position.advance_to_next!
     else
       user_position.advance_to_random!
     end
+  end
+
+  # Entry ids this user has marked complete. Kept as a relation so callers can use it as a
+  # subquery rather than loading ids into Ruby.
+  #
+  # The previous left_joins/OR version asked "row is absent OR this user's row says
+  # incomplete", which mismatched whenever *another* user had a row for the entry: the
+  # absent-row branch failed and this user's branch had nothing to match, so the entry was
+  # silently treated as watched and skipped.
+  def completed_entry_ids_for(user)
+    return UserEntry.none.select(:entry_id) unless user
+
+    UserEntry.where(user: user, completed: true).select(:entry_id)
   end
 
   # Check if this list can be added to the target list (prevent circular references)
