@@ -68,6 +68,7 @@ group :development, :test do
   gem 'pry'
   gem 'pry-rails'
   gem 'rubocop', require: false
+  gem 'rubocop-rspec', require: false
   gem 'ruby-lsp', '~> 0.26.1', require: false
   gem 'ruby-lsp-rails', '~> 0.4.8', require: false
 end
