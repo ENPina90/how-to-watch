@@ -37,7 +37,7 @@ class ListsController < ApplicationController
     # Category 2: Recently Watched (lists with completed entries)
     @recently_watched_lists = with_card_data(
       List.joins(entries: :user_entries).where(user_entries: { user: current_user, completed: true })
-    ).order('MAX(user_entries.completed_at) DESC').limit(20)
+    ).group('lists.id').order('MAX(user_entries.completed_at) DESC').limit(20)
 
     # Category 3: Community Lists (created by other users)
     # Show: public lists OR subscribed lists OR (if admin) all lists
@@ -583,10 +583,11 @@ class ListsController < ApplicationController
   # Everything a list card on the index renders: the owner, the entry count, and the
   # current user's stored position (read by List#current_entry).
   def with_card_data(scope)
+    # A correlated subquery rather than COUNT over a join: the recently-watched scope
+    # already inner-joins entries filtered to this user's completed rows, and a joined
+    # COUNT there silently reports completed entries instead of the list's real size.
     scope.includes(:user, :user_list_positions)
-         .left_joins(:entries)
-         .group('lists.id')
-         .select('lists.*, COUNT(entries.id) AS entries_count')
+         .select('lists.*, (SELECT COUNT(*) FROM entries WHERE entries.list_id = lists.id) AS entries_count')
   end
 
   def mobile_request?

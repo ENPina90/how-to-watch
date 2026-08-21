@@ -79,3 +79,27 @@ RSpec.describe 'Reads do not write', type: :request do
     end
   end
 end
+
+RSpec.describe 'List card entry counts', type: :request do
+  let(:user) { create(:user) }
+  let!(:list) { create(:list, user: user, name: 'Counted list') }
+
+  before do
+    sign_in user
+    3.times { |i| create(:entry, list: list, name: "E#{i}", position: i + 1) }
+    # Completing entries puts the list in the "recently watched" section, whose scope
+    # inner-joins entries filtered to this user. A joined COUNT there reports the number
+    # of completed entries rather than the list's size.
+    list.entries.order(:position).first.mark_completed_by!(user)
+  end
+
+  it 'reports the list size, not the number of completed entries' do
+    get lists_path
+
+    counts = assigns(:recently_watched_lists).map { |l| [l.name, l.entries_count.to_i] }.to_h
+    expect(counts['Counted list']).to eq(3)
+
+    own = assigns(:your_lists).map { |l| [l.name, l.entries_count.to_i] }.to_h
+    expect(own['Counted list']).to eq(3)
+  end
+end
