@@ -271,14 +271,21 @@ neither needs a local Redis.
 ## 10. Routes worth knowing
 
 `config/routes.rb` — non-obvious ones:
-- `lists`: member `randomize`, `watch_current`, `top_entries`, `add_season`,
+- `lists`: member `watch_current` (GET), `top_entries` (POST), `add_season` (POST),
   `move_to_list`, `subscribe`, `unsubscribe`, `mark_all_complete/incomplete`;
   collection `search` (JSON).
 - Two non-RESTful posts outside the resource: `/lists/add_to_favorites`, `/lists/add_to_list`.
-- `entries`: `complete`, `review`, `complete_without_review`, `reportlink`, `repair_image`,
-  `migrate_poster`, `watch`, `duplicate`, `shuffle_current`, `increment_current`,
-  `decrement_current`, `update_position`, `set_source`, `fetch_posters`, `update_poster`.
-  There is **no `index`** action even though `entries_path` is referenced.
+- `entries` member routes are split by side effect: **writes are PATCH/POST**
+  (`complete`, `review`, `complete_without_review`, `reportlink`, `repair_image`,
+  `migrate_poster`, `duplicate`, `shuffle_current`, `increment_current`,
+  `decrement_current`, `update_position`, `set_source`, `update_poster`) and only reads
+  stay GET (`watch`, `fetch_posters`). CSRF tokens do not protect GET, so nothing that
+  writes may be reachable that way. There is **no `index`** action.
+  - `lists#watch_current` and `entries#watch` are the deliberate exceptions: they render
+    or redirect to the player and write the user's position as a side effect of "I am
+    watching this now". They are navigation targets, not actions.
+  - The watch page sets `data-turbo="false"`, so its controls are `button_to` forms —
+    `data-turbo-method` links would silently fall back to GET there.
 - `sources` (admin only), `/watch_now`, `/health`, `/letterboxd/*`.
 
 ---
