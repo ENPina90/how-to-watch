@@ -15,6 +15,9 @@ export default class extends Controller {
     } else {
       this.element.style.color = "red";
     }
-    fetch(url);
+    fetch(url, {
+      method: 'PATCH',
+      headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content }
+    });
   }
 }

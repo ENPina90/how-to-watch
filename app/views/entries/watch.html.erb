@@ -82,23 +82,26 @@
   </div>
   <div id="watchCinemaControls" class="d-flex justify-content-center cinema__control" style="right: 390px; top: 100px; left: auto;">
     <div class="position-relative" style="width: 80px; height: 80px;">
-      <%= link_to list_watch_current_path(@entry.list.find_sibling(:previous)) do %>
+      <%= link_to list_watch_current_path(@entry.list.find_sibling(:previous) || @entry.list) do %>
         <i class="fa-solid fa-3x fa-caret-up position-absolute top-0 start-50 translate-middle-x"></i>
       <% end %>
-      <%= link_to increment_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
+      <%= button_to increment_current_entry_path(@entry, mode: 'watch'), method: :patch,
+            class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
         <i class="fa-solid fa-3x fa-caret-right position-absolute top-50 end-0 translate-middle-y"></i>
       <% end %>
-      <%= link_to shuffle_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
+      <%= button_to shuffle_current_entry_path(@entry, mode: 'watch'), method: :patch,
+            class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
         <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y" title="Shuffle channel"></i>
       <% end %>
       <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
       <div class="position-absolute top-0 start-0 translate-middle-y">
         <%= render 'entries/completion_status', entry: @entry, user: current_user %>
       </div>
-      <%= link_to list_watch_current_path(@entry.list.find_sibling(:next)) do %>
+      <%= link_to list_watch_current_path(@entry.list.find_sibling(:next) || @entry.list) do %>
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
-      <%= link_to decrement_current_entry_path(@entry, mode: 'watch'), class: 'text-decoration-none' do %>
+      <%= button_to decrement_current_entry_path(@entry, mode: 'watch'), method: :patch,
+            class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
         <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
       <% end %>
       <%= link_to root_path, class: 'text-decoration-none' do %>

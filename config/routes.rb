@@ -26,9 +26,8 @@ Rails.application.routes.draw do
     collection do
       get :search
     end
-    get :randomize
     get :watch_current
-    get :top_entries
+    post :top_entries
     post :add_season
     patch :move_to_list
     patch :subscribe
@@ -44,21 +43,24 @@ Rails.application.routes.draw do
   post '/lists/add_to_list', to: 'lists#add_to_list'
   resources :entries, only: [:show, :create, :edit, :update, :destroy] do
     member do
-      get :complete
+      # Anything that writes is a non-GET verb: CSRF tokens do not protect GET, so a
+      # prefetch, a crawler, or an <img src> pointing here could otherwise change state.
+      patch :complete
       patch :review
       patch :complete_without_review
-      get :reportlink
-      get :repair_image
-      get :migrate_poster
-      get :watch
-      get :duplicate
-      get :shuffle_current
-      get :increment_current
-      get :decrement_current
+      patch :reportlink
+      patch :repair_image
+      patch :migrate_poster
+      post :duplicate
+      patch :shuffle_current
+      patch :increment_current
+      patch :decrement_current
       patch :update_position
       patch :set_source
-      get :fetch_posters
       patch :update_poster
+      # Reads stay GET: `watch` renders the player page and `fetch_posters` is a lookup.
+      get :watch
+      get :fetch_posters
     end
   end
 
