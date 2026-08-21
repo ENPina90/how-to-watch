@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
+  # The grouping options offered on the list page. Everything except Position, Genre,
+  # Year and Watched is handled by reading the matching Entry attribute, so this doubles
+  # as the whitelist for that lookup.
+  GROUPING_CRITERIA = %w[Position Genre Year Watched Rating Category Media Length].freeze
+
   before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :add_season, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
 
@@ -600,6 +605,8 @@ class ListsController < ApplicationController
 
     @entries = {}
     @criteria = params[:criteria].present? ? params[:criteria] : 'Position'
+    # Anything outside this list would reach `public_send` in filter_entries.
+    @criteria = 'Position' unless GROUPING_CRITERIA.include?(@criteria)
     filter_entries(@criteria)
      @entries = @entries.transform_keys { |key| key.nil? ? 'Other' : key }
     @sections = params[:sort].present? ? @entries.keys.sort.reverse : @entries.keys.sort
@@ -625,7 +632,9 @@ class ListsController < ApplicationController
       @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by(&:position)
       @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by(&:position)
     else
-      @entries = @list_entries.group_by { |entry| entry.send(criteria.downcase) }
+      # criteria is whitelisted in load_entries, so this only ever reaches an attribute
+      # reader -- it used to `send` any params-supplied method name.
+      @entries = @list_entries.group_by { |entry| entry.public_send(criteria.downcase) }
     end
   end
 
