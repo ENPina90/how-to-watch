@@ -36,7 +36,7 @@ class PagesController < ApplicationController
     # For TV shows, fetch episode data
     if @media_type == 'tv'
       begin
-        tmdb_api_key = ENV['TMDB_API_KEY'] || '7e1c210d0c877abff8a40398735ce605'
+        tmdb_api_key = TmdbService.api_key
 
         # If we don't have a TMDB ID, try to fetch it from IMDB ID
         if !@tmdb_id.present? && @imdb_id.present?

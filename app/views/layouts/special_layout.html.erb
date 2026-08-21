@@ -9,6 +9,8 @@
     <meta http-equiv="Expires" content="0">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <%# TMDB key for the client-side search controllers. Browser-side keys are public by nature; keep it in one place. %>
+    <meta name="tmdb-key" content="<%= ENV["TMDB_API_KEY"] %>">
 
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
