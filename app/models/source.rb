@@ -37,7 +37,7 @@ class Source < ApplicationRecord
   end
 
   def template_for(media)
-    templates[media.to_s].presence || templates["default"].presence
+    templates[media.to_s.downcase].presence || templates["default"].presence
   end
 
   private

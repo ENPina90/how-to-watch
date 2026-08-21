@@ -10,7 +10,7 @@ class AttachPosterFromPicJob < ApplicationJob
     service = PosterMigrationService.new
     result = service.migrate_entry_poster(entry)
 
-    if result[:status] == 'migrated'
+    if result[:status] == :migrated
       Rails.logger.info "Successfully attached poster for Entry #{entry.id}: #{result[:message]}"
     else
       Rails.logger.warn "Failed to attach poster for Entry #{entry.id}: #{result[:message]}"
