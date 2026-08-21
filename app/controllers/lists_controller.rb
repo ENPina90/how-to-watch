@@ -604,7 +604,8 @@ class ListsController < ApplicationController
     end
 
     @entries = {}
-    @criteria = params[:criteria].present? ? params[:criteria] : 'Position'
+    # `settings` is the list's remembered grouping; an explicit param wins over it.
+    @criteria = params[:criteria].presence || @list.settings.presence || 'Position'
     # Anything outside this list would reach `public_send` in filter_entries.
     @criteria = 'Position' unless GROUPING_CRITERIA.include?(@criteria)
     filter_entries(@criteria)
@@ -612,6 +613,9 @@ class ListsController < ApplicationController
     @sections = params[:sort].present? ? @entries.keys.sort.reverse : @entries.keys.sort
 
     return unless @list.user == current_user
+    # Only persist an explicit choice. A plain visit carries no params, and writing them
+    # blindly used to wipe the list's remembered grouping on every page view.
+    return if params[:criteria].blank? && params[:sort].blank?
 
     @list.update(settings: params[:criteria], sort: params[:sort])
   end
