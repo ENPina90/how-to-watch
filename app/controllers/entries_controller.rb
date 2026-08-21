@@ -78,8 +78,11 @@ class EntriesController < ApplicationController
         if @entry.media == 'series' || @entry.media == 'anime'
           begin
             OmdbApi.get_series_episodes(@entry)
-          rescue
-            flash.now[:error] = "This already exists in your list"
+          rescue StandardError => e
+            # The entry itself was created; only the episode import failed. Report the
+            # real reason instead of guessing at a duplicate.
+            Rails.logger.error "Failed to import episodes for Entry #{@entry.id}: #{e.class}: #{e.message}"
+            flash.now[:alert] = "#{@entry.name} was added, but its episodes could not be imported: #{e.message}"
             render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
             return
           end
