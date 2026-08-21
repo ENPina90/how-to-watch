@@ -285,14 +285,16 @@ neither needs a local Redis.
 
 ## 11. Deployment & operations
 
-- **Railway.** `Procfile` and `railway.json` both run
-  `rails assets:precompile && rails db:migrate && rails server`. Migrations run on every
-  boot, so a bad migration takes the app down.
-- ⚠️ **`railway.json` is legacy config-as-code, which Railway stops reading on 2026-12-01.**
-  After that the web service falls back to its dashboard settings / the Procfile, so verify
-  the start command still includes `assets:precompile` and `db:migrate` before that date.
-  Railway's replacement is `.railway/railway.ts` (Infrastructure as Code), applied with
-  `railway config plan` / `railway config apply` — needs a CLI newer than 4.7.3.
+- **Railway.** Start commands live in each service's settings (Deploy → Custom Start
+  Command), *not* in a config file — there is no `railway.json`, deliberately: a repo-root
+  config applies to **every** service built from this repo and outranks the dashboard, so
+  the worker could not override the web command. Config-as-code is also deprecated
+  (Railway stops reading those files on 2026-12-01).
+  - `how-to-watch`: `rails assets:precompile && rails db:migrate && rails server -b 0.0.0.0 -p $PORT`
+  - `worker`: `bundle exec sidekiq -C config/sidekiq.yml`
+  - Both are mirrored in the `Procfile` (`web:` / `worker:`), which is what Railway's
+    builder falls back to when a service has no custom start command.
+- Migrations run on every web boot, so a bad migration takes the app down.
 - Health check: `GET /health` (the only unauthenticated action besides `pages#home`).
 - Production forces SSL, allows `*.railway.app` and `RAILS_HOST`.
 - The `worker` service shares the app's env via Railway references; it needs
