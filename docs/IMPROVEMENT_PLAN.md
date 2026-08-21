@@ -223,6 +223,18 @@ settings, mirrored by the `Procfile` (which Railway's builder honours as the fal
 No config-as-code left, so the December cutoff is a no-op and the IaC migration becomes
 optional rather than a deadline.
 
+### 28. ⬜ `sassc-rails` drags a native `ffi` dependency into every process
+`sassc-rails` is deprecated *and* it is the reason the Sidekiq worker loads `ffi` at all:
+`Bundler.require` pulls in `sassc-rails → sassc → ffi`, which needs `libffi.so.8` at
+runtime. That crashed the worker's first deployment on Railpack, whose runtime image is
+minimal. Worked around with `RAILPACK_DEPLOY_APT_PACKAGES=libffi8 libpq5`, but the worker
+has no business loading an SCSS compiler.
+
+**Fix:** move to `dartsass-rails` (no FFI, actively maintained). That removes the native
+dependency from every process, not just the worker, and clears the deprecated gem out of
+the Gemfile. Check `app/assets/stylesheets` compiles identically — the SCSS here is plain
+nesting/variables plus Bootstrap, so it should port cleanly.
+
 ---
 
 ## P1 — Performance
