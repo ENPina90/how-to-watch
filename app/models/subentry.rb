@@ -1,5 +1,9 @@
 class Subentry < ApplicationRecord
   belongs_to :entry
+  # A user's saved position points here. Without this, destroying a subentry (on its
+  # own, or via the parent entry's cascade) violates the current_subentry_id FK.
+  has_many :user_entry_positions, foreign_key: :current_subentry_id,
+                                  inverse_of: :current_subentry, dependent: :nullify
   validates :episode, uniqueness: { scope: [:season, :entry_id], message: "season and episode combination must be unique within the same entry" }
 
   before_destroy :nullify_current_entries

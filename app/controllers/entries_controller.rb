@@ -780,7 +780,7 @@ class EntriesController < ApplicationController
         # Create the standalone episode entry
         @entry = Entry.create!(
           list: @list,
-          position: @list.entries.count + 1,
+          position: Entry.next_position(@list),
           name: "#{series_data['name']} - #{episode_data['name']}",
           series: series_data['name'],
           media: 'episode',
