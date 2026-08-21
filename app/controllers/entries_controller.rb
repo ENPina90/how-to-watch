@@ -6,7 +6,6 @@ require 'json'
 
 class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
-  skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
   before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster]
   before_action :check_edit_permissions, only: %i[edit update destroy update_poster]
