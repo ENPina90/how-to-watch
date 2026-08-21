@@ -32,7 +32,7 @@ are generated from provider URL templates.
 | Files | Active Storage → **Cloudinary** (`config.active_storage.service = :cloudinary` in *both* dev and prod) |
 | Jobs | Active Job → **Sidekiq** in production (Redis-backed); `:async` in development, `:test` in test (see §8) |
 | Redis | Railway `Redis` service on the private network; used by Sidekiq and available to Action Cable |
-| Hosting | Railway: `how-to-watch` (web, `railway.json`) + `worker` (Sidekiq, `railway.worker.json`), plus `Postgres` and `Redis` |
+| Hosting | Railway: `how-to-watch` (web) + `worker` (Sidekiq), plus `Postgres` and `Redis` |
 
 ---
 
@@ -234,8 +234,10 @@ Two jobs actually run, both enqueued from `Entry` `after_commit` callbacks:
 nothing enqueues it.
 
 **Production runs Sidekiq** (`config.active_job.queue_adapter = :sidekiq`) against the
-Railway Redis service, in a **separate `worker` service** whose start command comes from
-`railway.worker.json` (`bundle exec sidekiq -C config/sidekiq.yml`). Keeping it separate
+Railway Redis service, in a **separate `worker` service**. Its start command —
+`bundle exec sidekiq -C config/sidekiq.yml`, the same as the Procfile's `worker:` line —
+is set in that service's Railway settings (Deploy → Custom Start Command), *not* in a
+config file: Railway is retiring config-as-code (see §11). Keeping the worker separate
 matters: the web start command runs `assets:precompile && db:migrate`, and two services
 racing migrations is a real hazard.
 
@@ -286,6 +288,11 @@ neither needs a local Redis.
 - **Railway.** `Procfile` and `railway.json` both run
   `rails assets:precompile && rails db:migrate && rails server`. Migrations run on every
   boot, so a bad migration takes the app down.
+- ⚠️ **`railway.json` is legacy config-as-code, which Railway stops reading on 2026-12-01.**
+  After that the web service falls back to its dashboard settings / the Procfile, so verify
+  the start command still includes `assets:precompile` and `db:migrate` before that date.
+  Railway's replacement is `.railway/railway.ts` (Infrastructure as Code), applied with
+  `railway config plan` / `railway config apply` — needs a CLI newer than 4.7.3.
 - Health check: `GET /health` (the only unauthenticated action besides `pages#home`).
 - Production forces SSL, allows `*.railway.app` and `RAILS_HOST`.
 - The `worker` service shares the app's env via Railway references; it needs
