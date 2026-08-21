@@ -30,9 +30,9 @@ are generated from provider URL templates.
 | Views | ERB + Turbo + Stimulus, Bootstrap 5 via importmap, Mustache.js for client-rendered search cards |
 | Assets | Sprockets + `sassc-rails` for CSS, **importmap-rails** for JS (no bundler/node build) |
 | Files | Active Storage → **Cloudinary** (`config.active_storage.service = :cloudinary` in *both* dev and prod) |
-| Jobs | Active Job, **no adapter configured** → in-process `:async` (see §8) |
-| Redis | Action Cable only (`config/cable.yml`); no Sidekiq |
-| Hosting | Railway (`Procfile`, `railway.json`); assets precompile + `db:migrate` run on every boot |
+| Jobs | Active Job → **Sidekiq** in production (Redis-backed); `:async` in development, `:test` in test (see §8) |
+| Redis | Railway `Redis` service on the private network; used by Sidekiq and available to Action Cable |
+| Hosting | Railway: `how-to-watch` (web, `railway.json`) + `worker` (Sidekiq, `railway.worker.json`), plus `Postgres` and `Redis` |
 
 ---
 
@@ -228,12 +228,27 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
 
 ## 8. Background jobs
 
-`CheckEntrySourceJob` (validates a new entry's URL), `AttachPosterFromPicJob` (mirrors
-`pic` into Cloudinary), `LetterboxdSyncJob`.
+Two jobs actually run, both enqueued from `Entry` `after_commit` callbacks:
+`CheckEntrySourceJob` (validates a new entry's URL → `entries.stream`) and
+`AttachPosterFromPicJob` (mirrors `pic` into Cloudinary). `LetterboxdSyncJob` exists but
+nothing enqueues it.
 
-**No queue adapter is configured**, so Active Job runs the default `:async` in-process
-executor: jobs are lost on deploy/restart and share the web dyno's threads. Anything that
-"sometimes doesn't get a poster" is usually this.
+**Production runs Sidekiq** (`config.active_job.queue_adapter = :sidekiq`) against the
+Railway Redis service, in a **separate `worker` service** whose start command comes from
+`railway.worker.json` (`bundle exec sidekiq -C config/sidekiq.yml`). Keeping it separate
+matters: the web start command runs `assets:precompile && db:migrate`, and two services
+racing migrations is a real hazard.
+
+- `config/sidekiq.yml` — concurrency 3, queues `default` and `mailers`. Concurrency must
+  stay ≤ the Active Record pool (`RAILS_MAX_THREADS`, default 5).
+- `config/initializers/sidekiq.rb` — points at `REDIS_URL` when set; otherwise Sidekiq's
+  own localhost default.
+- `ApplicationJob` sets `discard_on ActiveJob::DeserializationError` — jobs now outlive the
+  process that enqueued them, so a record deleted between enqueue and perform is common.
+- **Dashboard: `/sidekiq`**, mounted for admins only. Enqueued / retrying / dead jobs.
+
+**Development still uses `:async`** (in-process, no Redis needed) and test uses `:test`, so
+neither needs a local Redis.
 
 ---
 
@@ -273,6 +288,9 @@ executor: jobs are lost on deploy/restart and share the web dyno's threads. Anyt
   boot, so a bad migration takes the app down.
 - Health check: `GET /health` (the only unauthenticated action besides `pages#home`).
 - Production forces SSL, allows `*.railway.app` and `RAILS_HOST`.
+- The `worker` service shares the app's env via Railway references; it needs
+  `DATABASE_URL`, `REDIS_URL`, `RAILS_MASTER_KEY`, `SECRET_KEY_BASE`, `CLOUDINARY_URL`
+  and the TMDB/OMDB keys.
 - Useful rake tasks: `sources:seed`, `sources:backfill`, `entry:check_sources`,
   `images:check` / `images:repair`, `positions:fix_invalid`, `db:backup:full`,
   `db:backup:restore[file]`, `export:entries`.
@@ -284,7 +302,7 @@ executor: jobs are lost on deploy/restart and share the web dyno's threads. Anyt
 
 ## 11a. Tests
 
-RSpec is the live suite (`bundle exec rspec` — 27 examples). `spec/rails_helper.rb` calls
+RSpec is the live suite (`bundle exec rspec` — 31 examples). `spec/rails_helper.rb` calls
 `Rails.application.reload_routes_unless_loaded` because Rails 8 draws routes lazily and
 Devise registers its mappings during that draw; without it every `sign_in` fails. The test
 env uses the `:test` job adapter, since entry callbacks enqueue network-touching jobs.
@@ -323,6 +341,6 @@ Not yet committed, and it matters when reading `git log`:
 | Adding a series creates no episodes | `OmdbApi.get_series_episodes` → needs `entry.season` and (ideally) `entry.tmdb`. Failures here surface as the misleading flash "This already exists in your list". |
 | Sort/group setting doesn't stick | `ListsController#load_entries` — writes are guarded to explicit params, and `settings` is read back as the default. |
 | Slow list page | `list.current_entry(current_user)` per card, `entry.completed_by?` per entry (each a `find_or_create_by`), `find_now_playing_for_sidebar` on every page. |
-| Job "didn't run" | no queue backend — `:async` in-process (§8). |
+| Job "didn't run" | check `/sidekiq` (admin) for retries/dead jobs, then `railway logs --service worker`. In development jobs run on `:async` in-process, so a dev-only failure is a different animal. |
 | Mobile layout differs from desktop | user-agent sniffing in both controllers → `*_mobile` views + `layouts/mobile`. |
 | Admin-only UI missing | `users.admin`; sources CRUD and default-list toggles are admin-gated. |
