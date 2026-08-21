@@ -339,14 +339,24 @@ class Entry < ApplicationRecord
 
   # Get average review rating
   def average_review
-    reviews = user_entries.where.not(review: nil).pluck(:review)
+    reviews = scored_reviews
     return nil if reviews.empty?
-    reviews.sum.to_f / reviews.count
+    reviews.sum.to_f / reviews.size
   end
 
   # Get review count
   def review_count
-    user_entries.where.not(review: nil).count
+    scored_reviews.size
+  end
+
+  # Both aggregates render once per entry on a list page, so use the preloaded rows when
+  # the caller eager-loaded them instead of two queries per entry.
+  def scored_reviews
+    if user_entries.loaded?
+      user_entries.filter_map(&:review)
+    else
+      user_entries.where.not(review: nil).pluck(:review)
+    end
   end
 
   # Get completion percentage
