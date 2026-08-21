@@ -367,6 +367,12 @@ GEM
       rexml (~> 3.2, >= 3.2.5)
       rubyzip (>= 1.2.2, < 3.0)
       websocket (~> 1.0)
+    sidekiq (7.3.10)
+      base64
+      connection_pool (>= 2.3.0, < 3)
+      logger
+      rack (>= 2.2.4, < 3.3)
+      redis-client (>= 0.23.0, < 1)
     sprockets (4.2.0)
       concurrent-ruby (~> 1.0)
       rack (>= 2.2.4, < 4)
@@ -455,6 +461,7 @@ DEPENDENCIES
   ruby-lsp-rails (~> 0.4.8)
   sassc-rails
   selenium-webdriver
+  sidekiq (~> 7.3)
   simple_form!
   sprockets-rails
   stimulus-rails
