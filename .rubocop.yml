@@ -4,7 +4,7 @@ require:
 #################### AllCops ###########################
 
 AllCops:
-  TargetRubyVersion: 3.2.1
+  TargetRubyVersion: 3.4
   SuggestExtensions: false
   Exclude:
     - /**/db/**/*
@@ -637,16 +637,6 @@ Lint/UselessRescue: # new in 1.43
 
 ### Capybara
 
-Capybara/MatchStyle: # new in 2.17
-  Enabled: false
-Capybara/NegationMatcher: # new in 2.14
-  Enabled: false
-Capybara/SpecificActions: # new in 2.14
-  Enabled: false
-Capybara/SpecificFinders: # new in 2.13
-  Enabled: false
-Capybara/SpecificMatcher: # new in 2.12
-  Enabled: false
 
 ### RSpec
 RSpec/AlignLeftLetBrace:
@@ -737,9 +727,6 @@ RSpec/ExpectInHook:
 RSpec/ExpectOutput:
   Enabled: true
 
-RSpec/FilePath:
-  Enabled: true
-  IgnoreMethods: true
 
 RSpec/Focus:
   Enabled: true
@@ -899,8 +886,6 @@ RSpec/IdenticalEqualityAssertion:
 RSpec/SubjectDeclaration:
   Enabled: true
 
-RSpec/Rails/AvoidSetupHook:
-  Enabled: true
 
 RSpec/StubbedMock:
   Enabled: false
@@ -924,20 +909,6 @@ RSpec/SkipBlockInsideExample: # new in 2.19
 RSpec/SortMetadata: # new in 2.14
   Enabled: false
 RSpec/VerifiedDoubleReference: # new in 2.10.0
-  Enabled: false
-RSpec/FactoryBot/ConsistentParenthesesStyle: # new in 2.14
-  Enabled: false
-RSpec/FactoryBot/FactoryNameStyle: # new in 2.16
-  Enabled: false
-RSpec/FactoryBot/SyntaxMethods: # new in 2.7
-  Enabled: false
-RSpec/Rails/HaveHttpStatus: # new in 2.12
-  Enabled: false
-RSpec/Rails/InferredSpecType: # new in 2.14
-  Enabled: false
-RSpec/Rails/MinitestAssertions: # new in 2.17
-  Enabled: false
-RSpec/Rails/TravelAround: # new in 2.19
   Enabled: false
 
 # Security
