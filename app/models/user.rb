@@ -19,49 +19,55 @@ class User < ApplicationRecord
   has_many :reviewed_entries, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :entry
   has_many :user_list_positions, dependent: :destroy
 
-  # Get or create user_entry record for a specific entry
+  # READ. nil when this user has never tracked the entry -- see Entry#user_entry_for for
+  # why the read path must not create rows.
   def user_entry_for(entry)
+    user_entries.find_by(entry: entry)
+  end
+
+  # WRITE. Creates the tracking row if it does not exist yet.
+  def user_entry_for!(entry)
     user_entries.find_or_create_by(entry: entry)
   end
 
   # Check if user has completed an entry
   def completed?(entry)
-    user_entry_for(entry).completed?
+    user_entry_for(entry)&.completed? || false
   end
 
   # Mark entry as completed for this user
   def mark_completed!(entry)
-    user_entry_for(entry).mark_completed!
+    user_entry_for!(entry).mark_completed!
   end
 
   # Mark entry as incomplete for this user
   def mark_incomplete!(entry)
-    user_entry_for(entry).mark_incomplete!
+    user_entry_for(entry)&.mark_incomplete!
   end
 
   # Toggle completion status for an entry
   def toggle_completed!(entry)
-    user_entry_for(entry).toggle_completed!
+    user_entry_for!(entry).toggle_completed!
   end
 
   # Add review for an entry
   def review_entry!(entry, rating)
-    user_entry_for(entry).set_review!(rating)
+    user_entry_for!(entry).set_review!(rating)
   end
 
   # Add comment for an entry
   def comment_on_entry!(entry, comment)
-    user_entry_for(entry).set_comment!(comment)
+    user_entry_for!(entry).set_comment!(comment)
   end
 
   # Get user's review for an entry
   def review_for(entry)
-    user_entry_for(entry).review
+    user_entry_for(entry)&.review
   end
 
   # Get user's comment for an entry
   def comment_for(entry)
-    user_entry_for(entry).comment
+    user_entry_for(entry)&.comment
   end
 
   # Remove user's tracking for an entry (delete UserEntry record)
@@ -161,7 +167,7 @@ class User < ApplicationRecord
     return { error: true, message: "Not connected to Letterboxd" } unless letterboxd_connected?
 
     user_entry = user_entry_for(entry)
-    return { error: true, message: "Entry not completed" } unless user_entry.completed?
+    return { error: true, message: "Entry not completed" } unless user_entry&.completed?
 
     token = valid_letterboxd_token
     return { error: true, message: "Invalid Letterboxd token" } unless token
