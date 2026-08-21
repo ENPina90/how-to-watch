@@ -15,14 +15,23 @@ class List < ApplicationRecord
   # Legacy support - keep for backward compatibility during transition
   belongs_to :parent_list, class_name: 'List', optional: true
 
-  has_many :entries, dependent: :destroy
-  has_many :list_user_entries
+  # Deleted in bulk rather than one destroy per row. #bulk_delete_entry_graph below
+  # does everything Entry's destroy callbacks would have done, in a fixed number of
+  # statements instead of ~11 per entry.
+  has_many :entries, dependent: :delete_all
+  has_many :list_user_entries, dependent: :delete_all
   has_many :users, through: :list_user_entries
   has_many :subscriptions, dependent: :destroy
   has_many :subscribers, through: :subscriptions, source: :user
   has_many :user_list_positions, dependent: :destroy
 
   validates :preferred_source, inclusion: { in: [1, 2] }, allow_nil: true
+
+  # Runs ahead of every dependent callback (prepend) so the whole entry graph is
+  # cleared before `entries` is bulk-deleted out from under it.
+  before_destroy :bulk_delete_entry_graph, prepend: true
+  # Remote files are released only once the delete has actually committed.
+  after_destroy_commit :purge_detached_posters
 
   # Auto-subscription callbacks
   after_create :auto_subscribe_owner
@@ -372,6 +381,37 @@ class List < ApplicationRecord
   end
 
   private
+
+  # Everything Entry#destroy would have done for each of this list's entries, done
+  # once for the whole set. Ordered so no FK is left dangling: references into the
+  # subentries first, then into the entries, then the rows themselves. Every scope is
+  # a subquery over `entries`, which is still intact -- the bulk delete of `entries`
+  # itself is the dependent callback that runs after this one.
+  def bulk_delete_entry_graph
+    entry_ids = entries.select(:id)
+    subentry_ids = Subentry.where(entry_id: entry_ids).select(:id)
+
+    UserEntryPosition.where(current_subentry_id: subentry_ids).update_all(current_subentry_id: nil)
+    Entry.where(current_id: subentry_ids).update_all(current_id: nil)
+    ListUserEntry.where(current_entry_id: entry_ids).update_all(current_entry_id: nil)
+
+    # has_one_attached :poster purges per record on destroy; delete_all skips that, so
+    # detach here and hold the blob ids for the post-commit purge.
+    attachments = ActiveStorage::Attachment.where(record_type: 'Entry', record_id: entry_ids)
+    @detached_blob_ids = attachments.pluck(:blob_id)
+    attachments.delete_all
+
+    Subentry.where(entry_id: entry_ids).delete_all
+    UserEntry.where(entry_id: entry_ids).delete_all
+    UserEntryPosition.where(entry_id: entry_ids).delete_all
+  end
+
+  # Deliberately after commit: a rolled-back delete must not purge live files.
+  def purge_detached_posters
+    return if @detached_blob_ids.blank?
+
+    ActiveStorage::Blob.where(id: @detached_blob_ids).find_each(&:purge_later)
+  end
 
   # Auto-subscribe the owner when creating a list
   def auto_subscribe_owner

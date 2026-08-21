@@ -9,13 +9,22 @@ class Entry < ApplicationRecord
   belongs_to :list
   belongs_to :provider, class_name: 'Source', optional: true
   has_one_attached :poster
-  has_many :subentries, dependent: :destroy
+  # Deleted in bulk rather than one destroy per row: a long-running series has
+  # hundreds of subentries, and Subentry's per-record callbacks only exist to clear
+  # references that #release_subentry_references already clears in two statements.
+  has_many :subentries, dependent: :delete_all
   has_many :user_entries, dependent: :destroy
   has_many :user_entry_positions, dependent: :destroy
   has_many :users_who_watched, -> { where(user_entries: { completed: true }) }, through: :user_entries, source: :user
   has_many :users_who_reviewed, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :user
-  belongs_to :current, class_name: 'Subentry', optional: true, dependent: :destroy
-  # has_many :current_list_users, class_name: 'ListUserEntries', foreign_key: 'current_entry_id'
+  # No dependent: :destroy here -- `current` is always one of this entry's own
+  # subentries, so the has_many above already removes it. Destroying it a second
+  # time (after the bulk delete) would just re-run callbacks against a dead row.
+  belongs_to :current, class_name: 'Subentry', optional: true
+  # Same FK hazard as Subentry#user_entry_positions: current_entry_id references this
+  # row, so it has to be cleared before the entry can be deleted.
+  has_many :current_list_users, class_name: 'ListUserEntry', foreign_key: 'current_entry_id',
+                                inverse_of: :current_entry, dependent: :nullify
   validates :name, presence: true, uniqueness: { scope: [:list, :series] }
   validates :media, presence: true
   validates :preferred_source, inclusion: { in: [1, 2] }, allow_nil: true
@@ -31,9 +40,23 @@ class Entry < ApplicationRecord
                     },
                   }
 
-  after_create :check_source
-  after_create :attach_poster_from_pic, if: :should_attach_poster?
-  after_update :attach_poster_from_pic, if: :should_attach_poster?
+  # `media` is free text in the entry form, so it can arrive as "Movie". Every
+  # comparison against it -- the provider template lookup, the partial picker, the
+  # legacy URL builder -- is case-sensitive, so normalize on the way in.
+  before_validation :normalize_media
+
+  # Runs ahead of every dependent-destroy callback (prepend), so the FKs pointing
+  # into this entry's subentries are gone before the bulk delete fires. Scoped by
+  # subentry id rather than entry id so a stray cross-entry reference can't survive.
+  before_destroy :release_subentry_references, prepend: true
+
+  # Both of these hit the network, so they run after the transaction commits and
+  # off the request thread -- otherwise a slow or dead host holds the connection
+  # and the new row's locks open for the duration of the request.
+  after_commit :enqueue_source_check, on: :create, if: -> { source.present? }
+  # One registration covering both create and update: two after_commit callbacks
+  # naming the same method would dedupe, and only the last one would survive.
+  after_commit :attach_poster_from_pic, on: %i[create update], if: -> { saved_change_to_pic? && should_attach_poster? }
 
   def self.create_from_source(entry, list, seen)
     puts "Normalizing data"
@@ -131,6 +154,22 @@ class Entry < ApplicationRecord
 
   def check_source
     update(stream: UrlCheckerService.new(source).valid_source?)
+  end
+
+  def release_subentry_references
+    subentry_ids = subentries.select(:id)
+    UserEntryPosition.where(current_subentry_id: subentry_ids).update_all(current_subentry_id: nil)
+    Entry.where(current_id: subentry_ids).update_all(current_id: nil)
+  end
+
+  def normalize_media
+    self.media = media.to_s.strip.downcase.presence
+  end
+
+  def enqueue_source_check
+    CheckEntrySourceJob.perform_later(self)
+  rescue StandardError => e
+    Rails.logger.error "Failed to enqueue source check for Entry #{id}: #{e.message}"
   end
 
   # The Source provider to use for this entry: its own override, else the list default.
@@ -358,20 +397,15 @@ class Entry < ApplicationRecord
     pic.present? && !poster.attached?
   end
 
-  # Automatically attach poster from pic URL
+  # Automatically attach poster from pic URL. The download and the Cloudinary
+  # upload together take a couple of seconds, so they always go to a job.
   def attach_poster_from_pic
-    return unless pic.present? && !poster.attached?
+    return unless should_attach_poster?
 
-    # Option 1: Background job (recommended for production)
-    if Rails.env.production?
-      AttachPosterFromPicJob.perform_later(self)
-    else
-      # Option 2: Immediate processing (for development)
-      attach_poster_immediately
-    end
+    AttachPosterFromPicJob.perform_later(self)
   rescue StandardError => e
     # Log error but don't fail the main operation
-    Rails.logger.error "Failed to attach poster for Entry #{id}: #{e.message}"
+    Rails.logger.error "Failed to enqueue poster attachment for Entry #{id}: #{e.message}"
   end
 
   # Immediately attach poster (synchronous)
@@ -381,7 +415,7 @@ class Entry < ApplicationRecord
     service = PosterMigrationService.new
     result = service.migrate_entry_poster(self)
 
-    if result[:status] == 'migrated'
+    if result[:status] == :migrated
       Rails.logger.info "Successfully attached poster: #{result[:message]}"
     else
       Rails.logger.warn "Failed to attach poster: #{result[:message]}"
