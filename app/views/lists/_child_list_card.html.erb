@@ -23,11 +23,11 @@
             </small>
           </p>
         <% end %>
-        <% if list.parent_lists.count > 1 %>
+        <% if list.parent_lists.size > 1 %>
           <p class="card-text">
             <small class="text-info">
               <i class="fa-solid fa-share-nodes"></i>
-              Appears in <%= pluralize(list.parent_lists.count, 'list') %>
+              Appears in <%= pluralize(list.parent_lists.size, 'list') %>
             </small>
           </p>
         <% elsif list.min_depth > 1 %>
