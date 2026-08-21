@@ -31,7 +31,7 @@
                 <div class="list-card-text">
                   <p class="list-card-name"><%= list.name %></p>
                   <p class="list-card-meta">
-                    <%= current_entry ? current_entry.name : pluralize(list.entries.count, 'entry') %>
+                    <%= current_entry ? current_entry.name : pluralize(list.entries_count, 'entry') %>
                   </p>
                 </div>
                 <i class="fa-solid fa-list list-info-icon"></i>
@@ -79,7 +79,7 @@
               <div class="list-card-info">
                 <div class="list-card-text">
                   <p class="list-card-name"><%= list.name %></p>
-                  <p class="list-card-meta"><%= pluralize(list.entries.count, 'entry') %></p>
+                  <p class="list-card-meta"><%= pluralize(list.entries_count, 'entry') %></p>
                 </div>
                 <i class="fa-solid fa-list list-info-icon"></i>
               </div>
@@ -123,7 +123,7 @@
                 <div class="list-card-text">
                   <p class="list-card-name"><%= list.name %></p>
                   <p class="list-card-meta">
-                    by <%= list.user.username || list.user.email.split('@').first %> · <%= pluralize(list.entries.count, 'entry') %>
+                    by <%= list.user.username || list.user.email.split('@').first %> · <%= pluralize(list.entries_count, 'entry') %>
                   </p>
                 </div>
                 <i class="fa-solid fa-list list-info-icon"></i>
