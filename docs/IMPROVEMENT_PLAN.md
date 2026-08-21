@@ -186,7 +186,7 @@ one 500'd. Surfaced by the controller specs once they could run at all.
 **Done:** returns early on a blank URL. `@entry.media.empty?` in the custom-entry branch
 had the same nil problem and is now `.blank?`.
 
-### 26. ⬜ State-changing actions are routed as GET
+### 26. ✅ State-changing actions are routed as GET
 `complete`, `reportlink`, `duplicate`, `repair_image`, `migrate_poster`,
 `increment_current`, `decrement_current` and `shuffle_current` are all `get` routes that
 write to the database. CSRF tokens do not protect GET, so #1's fix does not cover these:
@@ -198,6 +198,17 @@ and crawlers can trip them by accident, too.
 navigation arrows (they would become `button_to`, which needs the surrounding CSS checked).
 Medium-sized change across routes, two Stimulus controllers and the player UI, so it was
 left out of the P0 batch rather than done halfway.
+
+**Done (2026-08-21):** every writing route is now PATCH or POST. Callers updated:
+`completed_controller` and `link_controller` send PATCH with the token; `duplicate` links
+use `data-turbo-method`; the watch page's arrows became `button_to` forms because that page
+sets `data-turbo="false"`, which would silently degrade a `turbo_method` link to GET;
+`auto_advance_controller` and `slider_controller` build and submit real forms.
+`lists#top_entries` is POST (it scrapes IMDb and creates records) and the dead
+`lists#randomize` route — which pointed at an action that does not exist — is gone.
+`entries#watch` and `lists#watch_current` deliberately stay GET as navigation targets.
+Covered by `spec/requests/entry_write_verbs_spec.rb`,
+`entry_navigation_verbs_spec.rb` and `list_write_verbs_spec.rb`.
 
 ### 27. ✅ Railway config-as-code is removed on 2026-12-01 (deadline)
 `railway.json` supplies the web service's start command
@@ -222,6 +233,28 @@ built from the repo while outranking the dashboard field — which is what stopp
 settings, mirrored by the `Procfile` (which Railway's builder honours as the fallback).
 No config-as-code left, so the December cutoff is a no-op and the IaC migration becomes
 optional rather than a deadline.
+
+### 28. ⬜ `sassc-rails` drags a native `ffi` dependency into every process
+`sassc-rails` is deprecated *and* it is the reason the Sidekiq worker loads `ffi` at all:
+`Bundler.require` pulls in `sassc-rails → sassc → ffi`, which needs `libffi.so.8` at
+runtime. That crashed the worker's first deployment on Railpack, whose runtime image is
+minimal. Worked around with `RAILPACK_DEPLOY_APT_PACKAGES=libffi8 libpq5`, but the worker
+has no business loading an SCSS compiler.
+
+**Fix:** move to `dartsass-rails` (no FFI, actively maintained). That removes the native
+dependency from every process, not just the worker, and clears the deprecated gem out of
+the Gemfile. Check `app/assets/stylesheets` compiles identically — the SCSS here is plain
+nesting/variables plus Bootstrap, so it should port cleanly.
+
+### 29. ✅ The watch page crashed when a user had no sibling list (found 2026-08-21)
+`watch.html.erb` called `list_watch_current_path(@entry.list.find_sibling(:previous))`, and
+`find_sibling` returns nil when the user has no *other* subscribed list holding unwatched
+entries — a new account, or one that has finished everything. `list_watch_current_path(nil)`
+raises `ActionController::UrlGenerationError`, so the whole player page 500s. Invisible on a
+well-populated account, which is why it survived this long.
+
+**Done:** falls back to the current list, so the up/down arrows stay put and simply reload
+the same channel. Found by a request spec written for #26.
 
 ---
 

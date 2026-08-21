@@ -271,14 +271,21 @@ neither needs a local Redis.
 ## 10. Routes worth knowing
 
 `config/routes.rb` — non-obvious ones:
-- `lists`: member `randomize`, `watch_current`, `top_entries`, `add_season`,
+- `lists`: member `watch_current` (GET), `top_entries` (POST), `add_season` (POST),
   `move_to_list`, `subscribe`, `unsubscribe`, `mark_all_complete/incomplete`;
   collection `search` (JSON).
 - Two non-RESTful posts outside the resource: `/lists/add_to_favorites`, `/lists/add_to_list`.
-- `entries`: `complete`, `review`, `complete_without_review`, `reportlink`, `repair_image`,
-  `migrate_poster`, `watch`, `duplicate`, `shuffle_current`, `increment_current`,
-  `decrement_current`, `update_position`, `set_source`, `fetch_posters`, `update_poster`.
-  There is **no `index`** action even though `entries_path` is referenced.
+- `entries` member routes are split by side effect: **writes are PATCH/POST**
+  (`complete`, `review`, `complete_without_review`, `reportlink`, `repair_image`,
+  `migrate_poster`, `duplicate`, `shuffle_current`, `increment_current`,
+  `decrement_current`, `update_position`, `set_source`, `update_poster`) and only reads
+  stay GET (`watch`, `fetch_posters`). CSRF tokens do not protect GET, so nothing that
+  writes may be reachable that way. There is **no `index`** action.
+  - `lists#watch_current` and `entries#watch` are the deliberate exceptions: they render
+    or redirect to the player and write the user's position as a side effect of "I am
+    watching this now". They are navigation targets, not actions.
+  - The watch page sets `data-turbo="false"`, so its controls are `button_to` forms —
+    `data-turbo-method` links would silently fall back to GET there.
 - `sources` (admin only), `/watch_now`, `/health`, `/letterboxd/*`.
 
 ---
@@ -295,6 +302,10 @@ neither needs a local Redis.
   - Both are mirrored in the `Procfile` (`web:` / `worker:`), which is what Railway's
     builder falls back to when a service has no custom start command.
 - Migrations run on every web boot, so a bad migration takes the app down.
+- **Builders differ per service.** The worker builds with Railpack (Nixpacks is deprecated);
+  Railpack's final image is minimal, so gems with native extensions need their shared
+  libraries declared: `RAILPACK_DEPLOY_APT_PACKAGES=libffi8 libpq5` is set on both services.
+  It is ignored by Nixpacks, so it is safe to carry on a service that has not migrated yet.
 - Health check: `GET /health` (the only unauthenticated action besides `pages#home`).
 - Production forces SSL, allows `*.railway.app` and `RAILS_HOST`.
 - The `worker` service shares the app's env via Railway references; it needs
@@ -350,6 +361,7 @@ Not yet committed, and it matters when reading `git log`:
 | Adding a series creates no episodes | `OmdbApi.get_series_episodes` → needs `entry.season` and (ideally) `entry.tmdb`. Failures here surface as the misleading flash "This already exists in your list". |
 | Sort/group setting doesn't stick | `ListsController#load_entries` — writes are guarded to explicit params, and `settings` is read back as the default. |
 | Slow list page | `list.current_entry(current_user)` per card, `entry.completed_by?` per entry (each a `find_or_create_by`), `find_now_playing_for_sidebar` on every page. |
+| Worker crashes at boot with `libffi.so.8: cannot open shared object file` | Railpack's runtime image lacks libffi, which `sassc-rails → sassc → ffi` needs at Rails boot. Fixed with `RAILPACK_DEPLOY_APT_PACKAGES=libffi8 libpq5` on the service. `/mise/installs/...` paths in a trace mean Railpack; `/nix/store/...` means Nixpacks. |
 | Job "didn't run" | check `/sidekiq` (admin) for retries/dead jobs, then `railway logs --service worker`. In development jobs run on `:async` in-process, so a dev-only failure is a different animal. |
 | Mobile layout differs from desktop | user-agent sniffing in both controllers → `*_mobile` views + `layouts/mobile`. |
 | Admin-only UI missing | `users.admin`; sources CRUD and default-list toggles are admin-gated. |

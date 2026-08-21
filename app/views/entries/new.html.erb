@@ -161,9 +161,9 @@
           <input type="range" class="form-range" min="1" max="20" id="topNumberSlider" value="10" data-action="input->slider#updateSliderValue" data-slider-target="slider">
         </div>
         <div class="modal-footer">
-          <a href="/lists/<%= @list.id %>/top_entries?tmdb={{tmdbID}}&top_number=25" data-slider-target="topEntriesLink" class="btn btn-primary d-flex justify-content-center align-items-center w-50  ps-3" data-controller="button"  data-action="click->button#start">
+          <button type="button" class="btn btn-primary d-flex justify-content-center align-items-center w-50  ps-3" data-controller="button" data-action="click->button#start click->slider#addTopEntries">
             <span class="static-text">Top Entries</span><span class="ellipsis text-start" style="width: 16px;"></span>
-          </a>
+          </button>
         </div>
       </div>
     </div>
