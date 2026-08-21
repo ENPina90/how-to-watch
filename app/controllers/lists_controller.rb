@@ -229,7 +229,7 @@ class ListsController < ApplicationController
     counter = 0
     episodes.each do |episode|
       break if counter == params[:top_number].to_i || counter == 20
-      puts "Fetcing movie ##{counter + 1} data"
+      Rails.logger.info "Fetching episode ##{counter + 1} data"
       omdb_result = OmdbApi.get_movie(episode[:imdb_id])
       next if omdb_result.nil?
       next if !!(omdb_result["Title"] =~ /\s[Pp]art\s/)
@@ -237,7 +237,9 @@ class ListsController < ApplicationController
       omdb_result["imdbRating"] = episode[:rating]
       @entry = Entry.create_from_source(omdb_result, @list, false)
       next unless @entry.is_a?(Entry)
-      @entry.update(series: scraper_results[:title]) if @entry.series.nil?
+      # The scraper returns the episode's own title; fall back to it when OMDB gave us
+      # no series name (`scraper_results` never existed and raised NameError here).
+      @entry.update(series: episode[:title]) if @entry.series.nil?
       counter += 1
     end
     flash[:notice] = "#{ActionController::Base.helpers.pluralize(counter, 'episode')} of #{@list.entries.last&.series} added"
