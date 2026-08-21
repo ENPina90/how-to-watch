@@ -30,7 +30,7 @@ class EntriesController < ApplicationController
       @entry.source = fix_external_sources(entry_params["source"])
       @entry.list = @list
       @entry.position = @list.entries.count + 1
-      @entry.media = 'fanedit' if @entry.media.empty?
+      @entry.media = 'fanedit' if @entry.media.blank?
       if @entry.save
         redirect_to list_path(@list)
         flash.now[:notice] = "#{@entry.name} successfully created"
@@ -182,7 +182,7 @@ class EntriesController < ApplicationController
     else
       respond_to do |format|
         format.html do
-          redirect_to entries_path, notice: "#{name} was successfully deleted."
+          redirect_to list_path(@list), notice: "#{name} was successfully deleted."
         end
 
         format.turbo_stream do
@@ -839,6 +839,10 @@ class EntriesController < ApplicationController
     end
 
     def fix_external_sources(url)
+      # Entries created from TMDB/OMDB have no hand-entered source, so this is routinely
+      # called with nil -- it used to raise NoMethodError and 500 the edit form.
+      return url if url.blank?
+
       if url.include?("mega")
         url.gsub("file", "embed")
       elsif url.include?("google")
