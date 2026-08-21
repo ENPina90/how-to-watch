@@ -160,7 +160,7 @@ dropped on every deploy. Redis is already provisioned for Action Cable.
 **Fix:** add Sidekiq (or `solid_queue`) and a worker process in the `Procfile`.
 
 **Done (2026-08-21):** Sidekiq 7.3 on the Railway Redis service, running as a separate
-`worker` service with its start command in `railway.worker.json` — separate because the
+`worker` service with its start command in its Railway service settings — separate because the
 web start command runs `assets:precompile && db:migrate`, and two services racing
 migrations is a hazard. `ApplicationJob` gained `discard_on ActiveJob::DeserializationError`
 (jobs now outlive the process that enqueued them) and `retry_on ActiveRecord::Deadlocked`.
@@ -198,6 +198,22 @@ and crawlers can trip them by accident, too.
 navigation arrows (they would become `button_to`, which needs the surrounding CSS checked).
 Medium-sized change across routes, two Stimulus controllers and the player UI, so it was
 left out of the P0 batch rather than done halfway.
+
+### 27. ⬜ Railway config-as-code is removed on 2026-12-01 (deadline)
+`railway.json` supplies the web service's start command
+(`rails assets:precompile && rails db:migrate && rails server`). Railway deprecated
+config-as-code: existing files are read until **2026-12-01**, and from **2026-08-28**
+services that never used it cannot opt in. On the cutoff the file is simply ignored, so the
+start command silently reverts to the dashboard setting or the Procfile — losing
+`assets:precompile` and `db:migrate` if neither supplies them. Nothing breaks loudly; the
+next deploy just ships unmigrated.
+
+**Fix:** migrate to Infrastructure as Code — a `.railway/railway.ts` describing the project
+(web, worker, Postgres, Redis), with `railway config migrate --apply --delete-files`, then
+`railway config plan` / `railway config apply`. Needs a Railway CLI newer than 4.7.3.
+Do it deliberately: `apply` acts on the whole project, so read the plan output first.
+Interim safety net: confirm the web service's dashboard start command (or the Procfile
+`web:` line) matches `railway.json`, so the cutoff is a no-op.
 
 ---
 
