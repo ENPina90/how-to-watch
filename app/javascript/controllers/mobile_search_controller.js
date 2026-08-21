@@ -14,7 +14,7 @@ export default class extends Controller {
 
   connect() {
     this.api = 'https://api.themoviedb.org/3/'
-    this.apiKey = this.apiKeyValue || '7e1c210d0c877abff8a40398735ce605'
+    this.apiKey = this.apiKeyValue.length ? this.apiKeyValue : document.querySelector('meta[name="tmdb-key"]')?.content
     this.tmdbService = new TmdbService(this.apiKey);
     this.movieTemplate = document.querySelector("#mobileSearchMovieTemplate");
     this.showTemplate = document.querySelector("#mobileSearchShowTemplate");

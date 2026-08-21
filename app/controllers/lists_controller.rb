@@ -256,7 +256,7 @@ class ListsController < ApplicationController
     media_type = params[:media_type] || 'series' # Can be 'series' or 'anime'
 
     # Fetch season details from TMDB
-    tmdb_api_key = ENV['TMDB_API_KEY'] || '7e1c210d0c877abff8a40398735ce605'
+    tmdb_api_key = TmdbService.api_key
     season_url = "https://api.themoviedb.org/3/tv/#{tmdb_id}/season/#{season_number}?api_key=#{tmdb_api_key}"
 
     begin
