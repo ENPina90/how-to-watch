@@ -4,6 +4,11 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static values = { id: Number }
 
+  // Completion is a write, so the route is PATCH and the token is required.
+  csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content
+  }
+
   connect() {
     // console.log(this.idValue)
   }
@@ -17,10 +22,11 @@ export default class extends Controller {
     const completeUrl = `${window.location.origin}/entries/${this.idValue}/complete`
 
     fetch(completeUrl, {
-      method: 'GET',
+      method: 'PATCH',
       headers: {
         'Accept': 'text/vnd.turbo-stream.html',
-        'X-Requested-With': 'XMLHttpRequest'
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-Token': this.csrfToken()
       }
     }).then(response => {
       if (response.ok) {
@@ -54,11 +60,12 @@ export default class extends Controller {
     const url = `${window.location.origin}/entries/${this.idValue}/complete`
 
     fetch(url, {
-      method: 'GET',
+      method: 'PATCH',
       headers: {
         'Accept': 'text/vnd.turbo-stream.html, text/html',
         'X-Requested-With': 'XMLHttpRequest',
-        'X-Turbo-Frame': 'true'
+        'X-Turbo-Frame': 'true',
+        'X-CSRF-Token': this.csrfToken()
       }
     }).then(response => {
       if (response.ok) {
