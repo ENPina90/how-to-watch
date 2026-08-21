@@ -609,8 +609,8 @@ class ListsController < ApplicationController
     # Anything outside this list would reach `public_send` in filter_entries.
     @criteria = 'Position' unless GROUPING_CRITERIA.include?(@criteria)
     filter_entries(@criteria)
-     @entries = @entries.transform_keys { |key| key.nil? ? 'Other' : key }
-    @sections = params[:sort].present? ? @entries.keys.sort.reverse : @entries.keys.sort
+    @entries = @entries.transform_keys { |key| key.nil? ? 'Other' : key }
+    @sections = sort_sections(@entries.keys, params[:sort].present? || @list.sort.present?)
 
     return unless @list.user == current_user
     # Only persist an explicit choice. A plain visit carries no params, and writing them
@@ -622,24 +622,35 @@ class ListsController < ApplicationController
 
   def filter_entries(criteria)
     case criteria
+    # `genre` and `year` are nullable (hand-added entries, fanedits), so every branch here
+    # has to tolerate blanks rather than 500 the whole list page.
     when 'Genre'
-      genres = @list_entries.flat_map { |entry| entry.genre.split(',').map(&:strip) }.uniq.sort
+      genres = @list_entries.flat_map { |entry| entry.genre.to_s.split(',').map(&:strip) }.reject(&:empty?).uniq.sort
       genres.each do |genre|
-        @entries[genre] = @list_entries.select { |entry| entry.genre.include?(genre) }
+        @entries[genre] = @list_entries.select { |entry| entry.genre.to_s.include?(genre) }
       end
+      ungrouped = @list_entries.select { |entry| entry.genre.blank? }
+      @entries['Other'] = ungrouped if ungrouped.any?
     when 'Year'
       (1900..Date.today.year).step(10) do |year|
-        decade_entries = @list_entries.select { |entry| entry.year >= year && entry.year < year + 10 }
+        decade_entries = @list_entries.select { |entry| entry.year.present? && entry.year >= year && entry.year < year + 10 }
         @entries["#{year}s"] = decade_entries unless decade_entries.empty?
       end
     when 'Watched'
-      @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by(&:position)
-      @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by(&:position)
+      @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
+      @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
     else
       # criteria is whitelisted in load_entries, so this only ever reaches an attribute
       # reader -- it used to `send` any params-supplied method name.
       @entries = @list_entries.group_by { |entry| entry.public_send(criteria.downcase) }
     end
+  end
+
+  # Section keys are a mix of strings ('Action', 'Other') and numbers (Rating, Length,
+  # Year), which raises if you just call .sort on them. Numbers first, then strings.
+  def sort_sections(keys, descending)
+    sorted = keys.sort_by { |key| [key.is_a?(Numeric) ? 0 : 1, key.is_a?(Numeric) ? key : key.to_s] }
+    descending ? sorted.reverse : sorted
   end
 
   def list_params

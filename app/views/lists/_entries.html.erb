@@ -28,7 +28,8 @@
         <% else %>
           <div>
             <% if @list.sort || params[:sort] %>
-              <% entries.keys.sort.reverse.each do |key| %>
+              <%# `sections` is pre-sorted by the controller; keys mix numbers and strings. %>
+              <% sections.each do |key| %>
                 <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
                 <% entries[key].each do |entry| %>
                   <% if minimal %>
@@ -50,7 +51,7 @@
                 <% end %>
               <% else %>
                 <!-- Show entries grouped by criteria (child lists not shown in other views) -->
-                <% entries.keys.sort.each do |key| %>
+                <% sections.each do |key| %>
                   <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
                   <% entries[key].each do |entry| %>
                     <% if minimal %>
