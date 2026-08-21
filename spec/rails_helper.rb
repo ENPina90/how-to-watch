@@ -6,10 +6,12 @@ abort("The Rails environment is running in production mode!") if Rails.env.produ
 require 'rspec/rails'
 require 'devise'
 require 'webmock/rspec'  # Add this line
-require 'support/controller_macros'
+Dir[Rails.root.join('spec/support/**/*.rb')].sort.each { |file| require file }
 
-# Add additional requires below this line. Rails is not loaded until this point!
-# ...
+# Rails 8 draws routes lazily. Devise registers its mappings while the routes are being
+# drawn, so without this `Devise.mappings[:user]` is nil in specs and every `sign_in`
+# fails with "Could not find a valid mapping".
+Rails.application.reload_routes_unless_loaded
 
 # Checks for pending migrations and applies them before tests are run.
 # If you are not using ActiveRecord, you can remove these lines.
@@ -21,10 +23,11 @@ rescue ActiveRecord::PendingMigrationError => e
 end
 
 RSpec.configure do |config|
-  config.fixture_path = "#{::Rails.root}/spec/fixtures"
+  config.fixture_paths = ["#{::Rails.root}/spec/fixtures"]
   config.use_transactional_fixtures = true
 
   config.include Devise::Test::ControllerHelpers, type: :controller
+  config.include Devise::Test::IntegrationHelpers, type: :request
   config.include FactoryBot::Syntax::Methods
   config.include ControllerMacros, type: :controller
 
