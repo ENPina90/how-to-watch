@@ -130,7 +130,7 @@ class LetterboxdController < ApplicationController
 
   def can_access_entry?(entry)
     # User can access if they own the list or if it's a public/shared list
-    entry.list.user == current_user || entry.list.public?
+    entry.list.user == current_user || !entry.list.private?
   end
 
   def profile_path

@@ -15,7 +15,7 @@ export default class extends Controller {
     console.log('Current Season:', this.currentSeasonValue);
     console.log('Current Episode:', this.currentEpisodeValue);
 
-    this.apiKey = '7e1c210d0c877abff8a40398735ce605';
+    this.apiKey = document.querySelector('meta[name="tmdb-key"]')?.content;
     this.api = 'https://api.themoviedb.org/3/';
 
     // Load episodes for current season

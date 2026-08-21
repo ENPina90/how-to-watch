@@ -4,12 +4,18 @@ require 'json'
 class TmdbService
   BASE_URL = 'https://api.themoviedb.org/3'
 
+  # Single source of truth for the TMDB key, server side. Deliberately `fetch`: a missing
+  # key should fail loudly instead of silently falling back to a hardcoded one.
+  def self.api_key
+    ENV.fetch('TMDB_API_KEY')
+  end
+
   def fetch_imdb_id(tmdb_id, type = 'movie')
     url = case type
           when 'movie'
-            "#{BASE_URL}/movie/#{tmdb_id}?api_key=#{ENV['TMDB_API_KEY']}"
+            "#{BASE_URL}/movie/#{tmdb_id}?api_key=#{self.class.api_key}"
           when 'show'
-            "#{BASE_URL}/tv/#{tmdb_id}/external_ids?api_key=#{ENV['TMDB_API_KEY']}"
+            "#{BASE_URL}/tv/#{tmdb_id}/external_ids?api_key=#{self.class.api_key}"
           else
             raise "Invalid type. Must be 'movie' or 'tv'."
           end
@@ -25,7 +31,7 @@ class TmdbService
   def fetch_trailer_url(entry)
     return nil unless entry.tmdb
 
-    url = URI("#{BASE_URL}/movie/#{entry.tmdb}/videos?api_key=#{ENV['TMDB_API_KEY']}")
+    url = URI("#{BASE_URL}/movie/#{entry.tmdb}/videos?api_key=#{self.class.api_key}")
 
     begin
       # Make the HTTP request
@@ -54,11 +60,11 @@ class TmdbService
 
     url = case media_type
           when 'movie'
-            "#{BASE_URL}/movie/#{tmdb_id}?api_key=#{ENV['TMDB_API_KEY']}"
+            "#{BASE_URL}/movie/#{tmdb_id}?api_key=#{self.class.api_key}"
           when 'tv', 'show', 'episode'
-            "#{BASE_URL}/tv/#{tmdb_id}?api_key=#{ENV['TMDB_API_KEY']}"
+            "#{BASE_URL}/tv/#{tmdb_id}?api_key=#{self.class.api_key}"
           else
-            "#{BASE_URL}/movie/#{tmdb_id}?api_key=#{ENV['TMDB_API_KEY']}"
+            "#{BASE_URL}/movie/#{tmdb_id}?api_key=#{self.class.api_key}"
           end
 
     begin

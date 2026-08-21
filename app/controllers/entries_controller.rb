@@ -6,7 +6,6 @@ require 'json'
 
 class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
-  skip_before_action :verify_authenticity_token
   before_action :set_list, only: %i[new create]
   before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster]
   before_action :check_edit_permissions, only: %i[edit update destroy update_poster]
@@ -31,7 +30,7 @@ class EntriesController < ApplicationController
       @entry.source = fix_external_sources(entry_params["source"])
       @entry.list = @list
       @entry.position = @list.entries.count + 1
-      @entry.media = 'fanedit' if @entry.media.empty?
+      @entry.media = 'fanedit' if @entry.media.blank?
       if @entry.save
         redirect_to list_path(@list)
         flash.now[:notice] = "#{@entry.name} successfully created"
@@ -79,8 +78,11 @@ class EntriesController < ApplicationController
         if @entry.media == 'series' || @entry.media == 'anime'
           begin
             OmdbApi.get_series_episodes(@entry)
-          rescue
-            flash.now[:error] = "This already exists in your list"
+          rescue StandardError => e
+            # The entry itself was created; only the episode import failed. Report the
+            # real reason instead of guessing at a duplicate.
+            Rails.logger.error "Failed to import episodes for Entry #{@entry.id}: #{e.class}: #{e.message}"
+            flash.now[:alert] = "#{@entry.name} was added, but its episodes could not be imported: #{e.message}"
             render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
             return
           end
@@ -183,7 +185,7 @@ class EntriesController < ApplicationController
     else
       respond_to do |format|
         format.html do
-          redirect_to entries_path, notice: "#{name} was successfully deleted."
+          redirect_to list_path(@list), notice: "#{name} was successfully deleted."
         end
 
         format.turbo_stream do
@@ -222,7 +224,7 @@ class EntriesController < ApplicationController
         # Fetch current episode details from TMDB if available
         if @entry.tmdb.present? && @season && @episode
           begin
-            tmdb_api_key = ENV['TMDB_API_KEY']
+            tmdb_api_key = TmdbService.api_key
             if tmdb_api_key.present?
               episode_url = "https://api.themoviedb.org/3/tv/#{@entry.tmdb}/season/#{@season}/episode/#{@episode}?api_key=#{tmdb_api_key}"
               episode_response = Net::HTTP.get(URI(episode_url))
@@ -579,7 +581,7 @@ class EntriesController < ApplicationController
 
       # Also fetch additional TMDB images
       begin
-        tmdb_images_url = "https://api.themoviedb.org/3/#{media_type}/#{@entry.tmdb}/images?api_key=#{ENV['TMDB_API_KEY']}"
+        tmdb_images_url = "https://api.themoviedb.org/3/#{media_type}/#{@entry.tmdb}/images?api_key=#{TmdbService.api_key}"
         response = Net::HTTP.get(URI(tmdb_images_url))
         images_data = JSON.parse(response)
 
@@ -601,7 +603,7 @@ class EntriesController < ApplicationController
 
       begin
         # Use TMDB's find endpoint to search by external IMDB ID
-        tmdb_find_url = "https://api.themoviedb.org/3/find/#{imdb_id}?api_key=#{ENV['TMDB_API_KEY']}&external_source=imdb_id"
+        tmdb_find_url = "https://api.themoviedb.org/3/find/#{imdb_id}?api_key=#{TmdbService.api_key}&external_source=imdb_id"
         response = Net::HTTP.get(URI(tmdb_find_url))
         find_data = JSON.parse(response)
 
@@ -720,7 +722,7 @@ class EntriesController < ApplicationController
       episode_num = params[:episode].to_i
 
       begin
-        tmdb_api_key = ENV['TMDB_API_KEY'] || '7e1c210d0c877abff8a40398735ce605'
+        tmdb_api_key = TmdbService.api_key
 
         # Fetch series details from TMDB to get series name
         series_url = "https://api.themoviedb.org/3/tv/#{series_tmdb_id}?api_key=#{tmdb_api_key}"
@@ -840,6 +842,10 @@ class EntriesController < ApplicationController
     end
 
     def fix_external_sources(url)
+      # Entries created from TMDB/OMDB have no hand-entered source, so this is routinely
+      # called with nil -- it used to raise NoMethodError and 500 the edit form.
+      return url if url.blank?
+
       if url.include?("mega")
         url.gsub("file", "embed")
       elsif url.include?("google")

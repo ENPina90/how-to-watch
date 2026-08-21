@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
+  # The grouping options offered on the list page. Everything except Position, Genre,
+  # Year and Watched is handled by reading the matching Entry attribute, so this doubles
+  # as the whitelist for that lookup.
+  GROUPING_CRITERIA = %w[Position Genre Year Watched Rating Category Media Length].freeze
+
   before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :add_season, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
 
@@ -224,7 +229,7 @@ class ListsController < ApplicationController
     counter = 0
     episodes.each do |episode|
       break if counter == params[:top_number].to_i || counter == 20
-      puts "Fetcing movie ##{counter + 1} data"
+      Rails.logger.info "Fetching episode ##{counter + 1} data"
       omdb_result = OmdbApi.get_movie(episode[:imdb_id])
       next if omdb_result.nil?
       next if !!(omdb_result["Title"] =~ /\s[Pp]art\s/)
@@ -232,7 +237,9 @@ class ListsController < ApplicationController
       omdb_result["imdbRating"] = episode[:rating]
       @entry = Entry.create_from_source(omdb_result, @list, false)
       next unless @entry.is_a?(Entry)
-      @entry.update(series: scraper_results[:title]) if @entry.series.nil?
+      # The scraper returns the episode's own title; fall back to it when OMDB gave us
+      # no series name (`scraper_results` never existed and raised NameError here).
+      @entry.update(series: episode[:title]) if @entry.series.nil?
       counter += 1
     end
     flash[:notice] = "#{ActionController::Base.helpers.pluralize(counter, 'episode')} of #{@list.entries.last&.series} added"
@@ -249,7 +256,7 @@ class ListsController < ApplicationController
     media_type = params[:media_type] || 'series' # Can be 'series' or 'anime'
 
     # Fetch season details from TMDB
-    tmdb_api_key = ENV['TMDB_API_KEY'] || '7e1c210d0c877abff8a40398735ce605'
+    tmdb_api_key = TmdbService.api_key
     season_url = "https://api.themoviedb.org/3/tv/#{tmdb_id}/season/#{season_number}?api_key=#{tmdb_api_key}"
 
     begin
@@ -599,34 +606,53 @@ class ListsController < ApplicationController
     end
 
     @entries = {}
-    @criteria = params[:criteria].present? ? params[:criteria] : 'Position'
+    # `settings` is the list's remembered grouping; an explicit param wins over it.
+    @criteria = params[:criteria].presence || @list.settings.presence || 'Position'
+    # Anything outside this list would reach `public_send` in filter_entries.
+    @criteria = 'Position' unless GROUPING_CRITERIA.include?(@criteria)
     filter_entries(@criteria)
-     @entries = @entries.transform_keys { |key| key.nil? ? 'Other' : key }
-    @sections = params[:sort].present? ? @entries.keys.sort.reverse : @entries.keys.sort
+    @entries = @entries.transform_keys { |key| key.nil? ? 'Other' : key }
+    @sections = sort_sections(@entries.keys, params[:sort].present? || @list.sort.present?)
 
     return unless @list.user == current_user
+    # Only persist an explicit choice. A plain visit carries no params, and writing them
+    # blindly used to wipe the list's remembered grouping on every page view.
+    return if params[:criteria].blank? && params[:sort].blank?
 
     @list.update(settings: params[:criteria], sort: params[:sort])
   end
 
   def filter_entries(criteria)
     case criteria
+    # `genre` and `year` are nullable (hand-added entries, fanedits), so every branch here
+    # has to tolerate blanks rather than 500 the whole list page.
     when 'Genre'
-      genres = @list_entries.flat_map { |entry| entry.genre.split(',').map(&:strip) }.uniq.sort
+      genres = @list_entries.flat_map { |entry| entry.genre.to_s.split(',').map(&:strip) }.reject(&:empty?).uniq.sort
       genres.each do |genre|
-        @entries[genre] = @list_entries.select { |entry| entry.genre.include?(genre) }
+        @entries[genre] = @list_entries.select { |entry| entry.genre.to_s.include?(genre) }
       end
+      ungrouped = @list_entries.select { |entry| entry.genre.blank? }
+      @entries['Other'] = ungrouped if ungrouped.any?
     when 'Year'
       (1900..Date.today.year).step(10) do |year|
-        decade_entries = @list_entries.select { |entry| entry.year >= year && entry.year < year + 10 }
+        decade_entries = @list_entries.select { |entry| entry.year.present? && entry.year >= year && entry.year < year + 10 }
         @entries["#{year}s"] = decade_entries unless decade_entries.empty?
       end
     when 'Watched'
-      @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by(&:position)
-      @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by(&:position)
+      @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
+      @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
     else
-      @entries = @list_entries.group_by { |entry| entry.send(criteria.downcase) }
+      # criteria is whitelisted in load_entries, so this only ever reaches an attribute
+      # reader -- it used to `send` any params-supplied method name.
+      @entries = @list_entries.group_by { |entry| entry.public_send(criteria.downcase) }
     end
+  end
+
+  # Section keys are a mix of strings ('Action', 'Other') and numbers (Rating, Length,
+  # Year), which raises if you just call .sort on them. Numbers first, then strings.
+  def sort_sections(keys, descending)
+    sorted = keys.sort_by { |key| [key.is_a?(Numeric) ? 0 : 1, key.is_a?(Numeric) ? key : key.to_s] }
+    descending ? sorted.reverse : sorted
   end
 
   def list_params
