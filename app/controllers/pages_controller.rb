@@ -2,11 +2,6 @@ require 'open-uri'
 require 'json'
 
 class PagesController < ApplicationController
-  skip_before_action :authenticate_user!, only: [ :home ]
-
-  def home
-  end
-
   def watch_now
     @imdb_id = params[:imdb]&.strip
     @title = params[:title]&.strip || 'Movie'
