@@ -538,116 +538,12 @@ class EntriesController < ApplicationController
   end
 
   def fetch_posters
-    posters = []
-    recent_images = []
-    tmdb_service = TmdbService.new
-
-    # Try TMDB first if we have a TMDB ID
-    if @entry.tmdb.present?
-      media_type = case @entry.media
-                   when 'series', 'anime', 'episode'
-                     'tv'
-                   else
-                     'movie'
-                   end
-
-      tmdb_poster = tmdb_service.fetch_poster_url(@entry.tmdb, media_type)
-      if tmdb_poster
-        posters << { url: tmdb_poster, source: 'TMDB' }
-      end
-
-      # Also fetch additional TMDB images
-      begin
-        tmdb_images_url = "https://api.themoviedb.org/3/#{media_type}/#{@entry.tmdb}/images?api_key=#{TmdbService.api_key}"
-        response = Net::HTTP.get(URI(tmdb_images_url))
-        images_data = JSON.parse(response)
-
-        # Get top 4 posters from TMDB
-        if images_data['posters']
-          images_data['posters'].first(4).each do |poster|
-            poster_url = "https://image.tmdb.org/t/p/w500#{poster['file_path']}"
-            posters << { url: poster_url, source: 'TMDB' }
-          end
-        end
-      rescue => e
-        Rails.logger.error "Error fetching TMDB images: #{e.message}"
-      end
-    end
-
-    # Try TMDB find endpoint with IMDB IDs to get alternative results
-    [@entry.imdb, @entry.series_imdb].compact.uniq.each do |imdb_id|
-      next if imdb_id.blank?
-
-      begin
-        # Use TMDB's find endpoint to search by external IMDB ID
-        tmdb_find_url = "https://api.themoviedb.org/3/find/#{imdb_id}?api_key=#{TmdbService.api_key}&external_source=imdb_id"
-        response = Net::HTTP.get(URI(tmdb_find_url))
-        find_data = JSON.parse(response)
-
-        # Check movie results
-        if find_data['movie_results']&.any?
-          poster_path = find_data['movie_results'].first['poster_path']
-          if poster_path
-            poster_url = "https://image.tmdb.org/t/p/w500#{poster_path}"
-            posters << { url: poster_url, source: 'TMDB (via IMDB)' } unless posters.any? { |p| p[:url] == poster_url }
-          end
-        end
-
-        # Check TV results
-        if find_data['tv_results']&.any?
-          poster_path = find_data['tv_results'].first['poster_path']
-          if poster_path
-            poster_url = "https://image.tmdb.org/t/p/w500#{poster_path}"
-            posters << { url: poster_url, source: 'TMDB (via IMDB)' } unless posters.any? { |p| p[:url] == poster_url }
-          end
-        end
-      rescue => e
-        Rails.logger.error "Error fetching TMDB via IMDB ID #{imdb_id}: #{e.message}"
-      end
-    end
-
-    # Try OMDB for BOTH imdb and series_imdb if they exist
-    [@entry.imdb, @entry.series_imdb].compact.uniq.each do |imdb_id|
-      next if imdb_id.blank?
-
-      omdb_poster = tmdb_service.fetch_omdb_poster_url(imdb_id)
-      if omdb_poster && !posters.any? { |p| p[:url] == omdb_poster }
-        posters << { url: omdb_poster, source: 'OMDB' }
-      end
-    end
-
-    # Get recent images from previous 2 entries in the same list
-    if @entry.list.present?
-      previous_entries = @entry.list.entries
-                               .where('position < ?', @entry.position)
-                               .order(position: :desc)
-                               .limit(2)
-
-      previous_entries.each do |prev_entry|
-        if prev_entry.poster.attached?
-          begin
-            poster_url = if prev_entry.poster.service_name == 'cloudinary'
-                          # Cloudinary URL
-                          prev_entry.poster.url
-                        else
-                          # Local Active Storage URL
-                          Rails.application.routes.url_helpers.rails_blob_url(prev_entry.poster, only_path: false, host: request.base_url)
-                        end
-
-            # Add to the end of the posters array with "Recent" label
-            posters << {
-              url: poster_url,
-              source: "Recent: #{prev_entry.name}"
-            }
-          rescue => e
-            Rails.logger.error "Error fetching poster for entry #{prev_entry.id}: #{e.message}"
-          end
-        end
-      end
-    end
-
-    # Remove duplicates from posters
-    posters.uniq! { |p| p[:url] }
+    posters = PosterCandidates.new(
+      @entry,
+      url_builder: ->(poster) {
+        Rails.application.routes.url_helpers.rails_blob_url(poster, only_path: false, host: request.base_url)
+      }
+    ).call
 
     render json: { posters: posters }
   end
