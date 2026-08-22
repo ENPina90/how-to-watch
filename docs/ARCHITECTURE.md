@@ -178,8 +178,8 @@ jumps to a random unwatched entry.
 | Path | Entry point | Notes |
 |---|---|---|
 | Search → add to open list | `search_controller.js` (TMDB, client-side) → `POST /lists/:list_id/entries` | `entries#create` re-fetches from OMDB, then `Entry.create_from_source` |
-| Add a whole season | `episodes_controller.js` → `POST /lists/:id/add_season` | `lists#add_season` — dozens of synchronous TMDB calls, creates the parent `Entry` + one `Subentry` per episode |
-| Add a single episode | `entries#create` with `season`/`episode`/`tmdb` → `handle_episode_from_tmdb` | creates a standalone `media: "episode"` entry |
+| Add a whole season | `episodes_controller.js` → `POST /lists/:id/add_season` | → `SeasonImporter`; still synchronous, still dozens of TMDB calls (plan #14) |
+| Add a single episode | `entries#create` with `season`/`episode`/`tmdb` | → `EpisodeImporter`, creating a standalone `media: "episode"` entry |
 | Global navbar search | `list_search_controller.js` → `POST /lists/add_to_list` (JSON) | |
 | Mobile | `mobile_search_controller.js` → `POST /lists/add_to_favorites` (JSON) | targets the user's `mobile: true` list |
 | Top-rated episodes | `lists#top_entries` → `ImdbScraper` | scrapes IMDb search HTML |
@@ -221,7 +221,11 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
 | Service | Role |
 |---|---|
 | `OmdbApi` | OMDB lookups; rotates across `OMDB_API_KEY_1..3` by `sample`. Also fetches series episodes (TMDB when a `tmdb` id exists, else OMDB). |
-| `TmdbService` | trailers, posters, IMDb id lookup, image URL validation (HEAD request) |
+| `EpisodeImporter` | one standalone `episode` entry from TMDB |
+| `SeasonImporter` | a season: parent entry + a `Subentry` per episode, incl. anime absolute numbering |
+| `ImdbEntryImporter` | one movie/series entry from an IMDb id via OMDB |
+| `PosterCandidates` | poster options for the picker (TMDB, OMDB, recent list entries) |
+| `TmdbService` | the TMDB client: typed endpoints (`fetch_show`, `fetch_season`, `fetch_episode`, `find_by_imdb_id`, …) through one `get_json` with timeouts, raising `TmdbService::RequestError`; plus trailers, posters and image URL validation |
 | `ImdbScraper` | scrapes IMDb search results for top-rated episodes (HTTParty + Nokogiri) |
 | `UrlCheckerService` | fetches a source URL and checks for a non-empty `<title>` → sets `entries.stream` |
 | `ImageRepairService` / `PosterMigrationService` | fix broken `pic` URLs; copy `pic` → Active Storage/Cloudinary. Return `{status: :migrated|:repaired|:valid|:failed|:skipped|:error, message:}` — **status values are symbols** |

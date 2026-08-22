@@ -3,11 +3,58 @@ require 'json'
 
 class TmdbService
   BASE_URL = 'https://api.themoviedb.org/3'
+  IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500'
+  OPEN_TIMEOUT = 5
+  READ_TIMEOUT = 10
+
+  # Raised when TMDB cannot be reached or answers with something unparseable. Callers that
+  # can carry on without the data rescue it; importers turn it into a user-facing message.
+  class RequestError < StandardError; end
 
   # Single source of truth for the TMDB key, server side. Deliberately `fetch`: a missing
   # key should fail loudly instead of silently falling back to a hardcoded one.
   def self.api_key
     ENV.fetch('TMDB_API_KEY')
+  end
+
+  # --- Typed endpoints -------------------------------------------------------------
+  # These replace the hand-rolled URI.open calls that used to live in the controllers.
+  # Everything funnels through #get_json, so timeouts and error handling are in one place
+  # (and caching, when it is added, will be too).
+
+  def fetch_show(tmdb_id)
+    get_json("tv/#{tmdb_id}")
+  end
+
+  def fetch_season(tmdb_id, season_number)
+    get_json("tv/#{tmdb_id}/season/#{season_number}")
+  end
+
+  def fetch_episode(tmdb_id, season_number, episode_number)
+    get_json("tv/#{tmdb_id}/season/#{season_number}/episode/#{episode_number}")
+  end
+
+  def fetch_show_external_ids(tmdb_id)
+    get_json("tv/#{tmdb_id}/external_ids")
+  end
+
+  def fetch_episode_external_ids(tmdb_id, season_number, episode_number)
+    get_json("tv/#{tmdb_id}/season/#{season_number}/episode/#{episode_number}/external_ids")
+  end
+
+  def find_by_imdb_id(imdb_id)
+    get_json("find/#{imdb_id}", external_source: 'imdb_id')
+  end
+
+  def fetch_images(tmdb_id, media_type = 'movie')
+    get_json("#{media_type}/#{tmdb_id}/images")
+  end
+
+  # Full URL for a TMDB image path, or nil when the payload had none.
+  def self.image_url(path)
+    return nil if path.blank?
+
+    "#{IMAGE_BASE_URL}#{path}"
   end
 
   def fetch_imdb_id(tmdb_id, type = 'movie')
@@ -112,6 +159,26 @@ class TmdbService
       Rails.logger.error "Error fetching OMDB poster for IMDB ID #{imdb_id}: #{e.message}"
       nil
     end
+  end
+
+  # Single place where a TMDB request is actually made. Raises RequestError so callers
+  # decide what a failure means; the older methods above keep their nil-on-error contract.
+  def get_json(path, **query)
+    uri = URI("#{BASE_URL}/#{path}")
+    uri.query = URI.encode_www_form(query.merge(api_key: self.class.api_key))
+
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true,
+                               open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT) do |http|
+      http.request(Net::HTTP::Get.new(uri))
+    end
+
+    raise RequestError, "TMDB #{path} returned #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+
+    JSON.parse(response.body)
+  rescue JSON::ParserError => e
+    raise RequestError, "TMDB #{path} returned unparseable JSON: #{e.message}"
+  rescue Timeout::Error, SystemCallError, IOError, OpenSSL::SSL::SSLError => e
+    raise RequestError, "TMDB #{path} failed: #{e.class}: #{e.message}"
   end
 
   def validate_image_url(url, show_debug: false)
