@@ -423,7 +423,7 @@ drifts (mobile has favorites, desktop doesn't).
 collapse the layouts by making the desktop views responsive, starting with
 `lists/index_mobile` (which is mostly the same cards).
 
-### 20. 🟡 Two eras of playback code coexist
+### 20. ✅ Two eras of playback code coexist
 The `Source` template system is live, but URL strings are still built by hand in
 `Entry.generate_source`/`generate_source_two`, `Subentry.generate_source`/`fix_source_url!`,
 `OmdbApi.fetch_episodes_from_tmdb`, `lists#add_season`, and `entries#handle_episode_from_tmdb`
@@ -444,7 +444,25 @@ column. `legacy_embed_url` stays for old rows. `Entry#check_source` now validate
 entries. `spec/models/playback_resolution_spec.rb` proves every media type plays with the
 legacy columns empty.
 
-**(c) not yet — and `rails sources:audit` is how you decide.** Production today:
+**(c) done 2026-08-23.** `entries.source`, `entries.source_two`, `entries.preferred_source`,
+`lists.preferred_source` and `subentries.source` are dropped, along with
+`Entry#legacy_embed_url` and the `preferred_source` validations. `embed_url` returning
+blank now genuinely means "nothing can play this", and the watch action says so instead of
+loading a dead iframe.
+
+Getting there took three production data passes, all snapshotted first:
+1. **Repointed** 54 lists + 14 entries off the deactivated vidsrc-cc.
+2. **Backfilled 32 imdb ids** — 32 of the 33 stragglers had their id sitting inside the
+   legacy URL already, so no title guessing was needed.
+3. **Deleted 15 empty series shells** and (by hand) two entries that were fixable but
+   unwanted. Audit went 33 → 17 → 0.
+
+The manual entry form now takes a pasted URL (`Entry#source_url`, a virtual attribute)
+and classifies it into provider + `source_key` via `Source.classify_url`, so Drive/mega/
+YouTube/archive links keep working without a `source` column. `MissingSourceResolver` and
+`sources:resolve_missing` were deleted with the columns they read.
+
+**Historic state before the drop:**
 
 ```
 Entries:                      3480
@@ -531,6 +549,5 @@ tables were confirmed empty in production (0 rows) rather than assumed:
 5. **Then #3 + #12 + #13** together — the read/write split, the N+1s and the indexes are
    what make the list and sidebar pages fast.
 6. ~~**Then P3** — the dead-code sweep.~~ **Done 2026-08-22.**
-7. ~~#17, #14~~ done; **#20 is at (a)+(b)** — the final column drop waits on
-   `rails sources:audit` reaching zero. Next: **#21** (integer season/episode) → #28
-   (dartsass, which also removes the libffi workaround) → #18/#19 (front-end).
+7. ~~#17, #14, #20~~ all done. Next: **#21** (integer season/episode) → #28 (dartsass,
+   which also removes the libffi workaround) → #18/#19 (front-end consolidation).
