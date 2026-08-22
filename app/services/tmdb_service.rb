@@ -6,6 +6,9 @@ class TmdbService
   IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500'
   OPEN_TIMEOUT = 5
   READ_TIMEOUT = 10
+  # Show, season and episode metadata is effectively immutable; the player page and
+  # watch_now both re-request the same episode every time they render.
+  CACHE_TTL = 12.hours
 
   # Raised when TMDB cannot be reached or answers with something unparseable. Callers that
   # can carry on without the data rescue it; importers turn it into a user-facing message.
@@ -58,19 +61,14 @@ class TmdbService
   end
 
   def fetch_imdb_id(tmdb_id, type = 'movie')
-    url = case type
-          when 'movie'
-            "#{BASE_URL}/movie/#{tmdb_id}?api_key=#{self.class.api_key}"
-          when 'show'
-            "#{BASE_URL}/tv/#{tmdb_id}/external_ids?api_key=#{self.class.api_key}"
-          else
-            raise "Invalid type. Must be 'movie' or 'tv'."
-          end
+    path = case type
+           when 'movie' then "movie/#{tmdb_id}"
+           when 'show'  then "tv/#{tmdb_id}/external_ids"
+           else raise ArgumentError, "Invalid type. Must be 'movie' or 'show'."
+           end
 
-    response = Net::HTTP.get(URI(url))
-    parsed_response = JSON.parse(response)
-    parsed_response['imdb_id']
-  rescue StandardError => e
+    get_json(path)['imdb_id']
+  rescue RequestError => e
     Rails.logger.error "Error fetching IMDb ID: #{e.message}"
     nil
   end
@@ -78,59 +76,29 @@ class TmdbService
   def fetch_trailer_url(entry)
     return nil unless entry.tmdb
 
-    url = URI("#{BASE_URL}/movie/#{entry.tmdb}/videos?api_key=#{self.class.api_key}")
+    videos = get_json("movie/#{entry.tmdb}/videos")['results'] || []
+    trailer = videos.find { |video| video['type'] == 'Trailer' && video['site'] == 'YouTube' }
 
-    begin
-      # Make the HTTP request
-      response = Net::HTTP.get(url)
-      parsed_response = JSON.parse(response)
+    return "https://www.youtube.com/watch?v=#{trailer['key']}" if trailer && trailer['key']
 
-      # Find the first YouTube trailer
-      trailer = parsed_response['results'].find { |video| video['type'] == 'Trailer' && video['site'] == 'YouTube' }
-
-      if trailer && trailer['key']
-        # Return the YouTube link
-        "https://www.youtube.com/watch?v=#{trailer['key']}"
-      else
-        Rails.logger.info "No trailer found for Entry ##{entry.id}"
-        nil
-      end
-
-    rescue StandardError => e
-      Rails.logger.error "Error fetching trailer for Entry ##{entry.id}: #{e.message}"
-      nil
-    end
+    Rails.logger.info "No trailer found for Entry ##{entry.id}"
+    nil
+  rescue RequestError => e
+    Rails.logger.error "Error fetching trailer for Entry ##{entry.id}: #{e.message}"
+    nil
   end
 
   def fetch_poster_url(tmdb_id, media_type = 'movie')
     return nil unless tmdb_id
 
-    url = case media_type
-          when 'movie'
-            "#{BASE_URL}/movie/#{tmdb_id}?api_key=#{self.class.api_key}"
-          when 'tv', 'show', 'episode'
-            "#{BASE_URL}/tv/#{tmdb_id}?api_key=#{self.class.api_key}"
-          else
-            "#{BASE_URL}/movie/#{tmdb_id}?api_key=#{self.class.api_key}"
-          end
+    path = %w[tv show episode].include?(media_type) ? "tv/#{tmdb_id}" : "movie/#{tmdb_id}"
+    poster_url = self.class.image_url(get_json(path)['poster_path'])
 
-    begin
-      response = Net::HTTP.get(URI(url))
-      parsed_response = JSON.parse(response)
-      poster_path = parsed_response['poster_path']
-
-      if poster_path
-        # TMDB images base URL with w500 size (good quality, not too large)
-        "https://image.tmdb.org/t/p/w500#{poster_path}"
-      else
-        Rails.logger.info "No poster found for TMDB ID: #{tmdb_id}"
-        nil
-      end
-
-    rescue StandardError => e
-      Rails.logger.error "Error fetching poster for TMDB ID #{tmdb_id}: #{e.message}"
-      nil
-    end
+    Rails.logger.info "No poster found for TMDB ID: #{tmdb_id}" if poster_url.nil?
+    poster_url
+  rescue RequestError => e
+    Rails.logger.error "Error fetching poster for TMDB ID #{tmdb_id}: #{e.message}"
+    nil
   end
 
   def fetch_omdb_poster_url(imdb_id)
@@ -164,21 +132,7 @@ class TmdbService
   # Single place where a TMDB request is actually made. Raises RequestError so callers
   # decide what a failure means; the older methods above keep their nil-on-error contract.
   def get_json(path, **query)
-    uri = URI("#{BASE_URL}/#{path}")
-    uri.query = URI.encode_www_form(query.merge(api_key: self.class.api_key))
-
-    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true,
-                               open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT) do |http|
-      http.request(Net::HTTP::Get.new(uri))
-    end
-
-    raise RequestError, "TMDB #{path} returned #{response.code}" unless response.is_a?(Net::HTTPSuccess)
-
-    JSON.parse(response.body)
-  rescue JSON::ParserError => e
-    raise RequestError, "TMDB #{path} returned unparseable JSON: #{e.message}"
-  rescue Timeout::Error, SystemCallError, IOError, OpenSSL::SSL::SSLError => e
-    raise RequestError, "TMDB #{path} failed: #{e.class}: #{e.message}"
+    Rails.cache.fetch(cache_key(path, query), expires_in: CACHE_TTL) { request_json(path, query) }
   end
 
   def validate_image_url(url, show_debug: false)
@@ -217,4 +171,32 @@ class TmdbService
       false
     end
   end
+
+  private
+
+  def cache_key(path, query)
+    # The api key is added at request time, so it never lands in a cache key.
+    ['tmdb', path, query.sort.to_h].join(':')
+  end
+
+  # A raised RequestError propagates out of Rails.cache.fetch without being cached, so a
+  # blip is retried on the next call rather than remembered for 12 hours.
+  def request_json(path, query)
+    uri = URI("#{BASE_URL}/#{path}")
+    uri.query = URI.encode_www_form(query.merge(api_key: self.class.api_key))
+
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true,
+                               open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT) do |http|
+      http.request(Net::HTTP::Get.new(uri))
+    end
+
+    raise RequestError, "TMDB #{path} returned #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+
+    JSON.parse(response.body)
+  rescue JSON::ParserError => e
+    raise RequestError, "TMDB #{path} returned unparseable JSON: #{e.message}"
+  rescue Timeout::Error, SystemCallError, IOError, OpenSSL::SSL::SSLError => e
+    raise RequestError, "TMDB #{path} failed: #{e.class}: #{e.message}"
+  end
+
 end
