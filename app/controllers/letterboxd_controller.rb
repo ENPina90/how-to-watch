@@ -93,36 +93,9 @@ class LetterboxdController < ApplicationController
       redirect_to profile_path and return
     end
 
-    completed_entries = current_user.user_entries.completed.includes(:entry)
-    sync_results = { success: 0, failed: 0, errors: [] }
+    LetterboxdBulkSyncJob.perform_later(current_user.id)
 
-    completed_entries.find_each do |user_entry|
-      result = current_user.sync_entry_to_letterboxd!(user_entry.entry)
-
-      if result[:error]
-        sync_results[:failed] += 1
-        sync_results[:errors] << "#{user_entry.entry.name}: #{result[:message]}"
-      else
-        sync_results[:success] += 1
-      end
-
-      # Add small delay to avoid rate limiting
-      sleep(0.5)
-    end
-
-    if sync_results[:success] > 0
-      flash[:notice] = "Successfully synced #{sync_results[:success]} entries to Letterboxd."
-    end
-
-    if sync_results[:failed] > 0
-      error_msg = "Failed to sync #{sync_results[:failed]} entries."
-      if sync_results[:errors].any?
-        error_msg += " Errors: #{sync_results[:errors].first(3).join(', ')}"
-        error_msg += " and #{sync_results[:errors].count - 3} more..." if sync_results[:errors].count > 3
-      end
-      flash[:alert] = error_msg
-    end
-
+    flash[:notice] = "Syncing your watched entries to Letterboxd in the background."
     redirect_to profile_path
   end
 

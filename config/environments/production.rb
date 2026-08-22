@@ -55,8 +55,11 @@ Rails.application.configure do
   # Prepend all log lines with the following tags.
   config.log_tags = [ :request_id ]
 
-  # Use a different cache store in production.
-  # config.cache_store = :mem_cache_store
+  # TMDB metadata is the only thing cached and it barely changes, so a small per-process
+  # store is enough. Deliberately *not* the Redis instance: that is shared with Sidekiq
+  # under maxmemory-policy noeviction, where cache growth would start failing job
+  # enqueues rather than evicting cache entries.
+  config.cache_store = :memory_store, { size: 32.megabytes }
 
   # Use a real queuing backend for Active Job. Without this the default :async adapter
   # runs jobs on in-process threads, so anything still queued is silently dropped on

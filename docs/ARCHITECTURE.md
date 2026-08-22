@@ -178,7 +178,7 @@ jumps to a random unwatched entry.
 | Path | Entry point | Notes |
 |---|---|---|
 | Search → add to open list | `search_controller.js` (TMDB, client-side) → `POST /lists/:list_id/entries` | `entries#create` re-fetches from OMDB, then `Entry.create_from_source` |
-| Add a whole season | `episodes_controller.js` → `POST /lists/:id/add_season` | → `SeasonImporter`; still synchronous, still dozens of TMDB calls (plan #14) |
+| Add a whole season | `episodes_controller.js` → `POST /lists/:id/add_season` | → `SeasonImporter`; one TMDB call (two for anime past season 1) |
 | Add a single episode | `entries#create` with `season`/`episode`/`tmdb` | → `EpisodeImporter`, creating a standalone `media: "episode"` entry |
 | Global navbar search | `list_search_controller.js` → `POST /lists/add_to_list` (JSON) | |
 | Mobile | `mobile_search_controller.js` → `POST /lists/add_to_favorites` (JSON) | targets the user's `mobile: true` list |
@@ -237,10 +237,13 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
 
 ## 8. Background jobs
 
-Two jobs actually run, both enqueued from `Entry` `after_commit` callbacks:
+`LetterboxdBulkSyncJob` paces a whole-library sync against Letterboxd's rate limit.
+Two more run from `Entry` `after_commit` callbacks:
 `CheckEntrySourceJob` (validates a new entry's URL → `entries.stream`) and
-`AttachPosterFromPicJob` (mirrors `pic` into Cloudinary). `LetterboxdSyncJob` exists but
-nothing enqueues it.
+`AttachPosterFromPicJob` (mirrors `pic` into Cloudinary).
+
+**TMDB responses are cached** for 12 hours in a bounded per-process `:memory_store` — not
+Redis, which is Sidekiq's and runs `noeviction` (cache growth there would fail enqueues).
 
 **Production runs Sidekiq** (`config.active_job.queue_adapter = :sidekiq`) against the
 Railway Redis service, in a **separate `worker` service**. Its start command —
