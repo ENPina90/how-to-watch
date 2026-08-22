@@ -326,7 +326,7 @@ already in `schema.rb`.)
 `lists (user_id, private)`. Plain `add_index` — at this table size each build took under
 60ms, so `algorithm: :concurrently` was not warranted.
 
-### 14. Synchronous third-party HTTP inside requests
+### 14. ✅ Synchronous third-party HTTP inside requests
 - `entries#watch` — a TMDB episode fetch on every play.
 - `lists#add_season` — one TMDB call per episode plus one per previous season for anime;
   a 24-episode season is ~25 sequential round trips in a web request.
@@ -336,6 +336,26 @@ already in `schema.rb`.)
 **Fix:** move `add_season` and `bulk_sync` into jobs (after #11) with a Turbo-stream or
 poll for completion; cache TMDB episode/show lookups (`Rails.cache.fetch`, they never
 change); make the watch-page episode details lazy (`turbo_frame` with `loading: :lazy`).
+
+**Done (2026-08-23), mostly by deleting work rather than moving it:**
+- **`add_season` went from ~26 sequential TMDB calls to one** (two for anime past season 1)
+  and therefore did *not* need a job or a polling UI. The per-episode `external_ids` call
+  filled `subentries.imdb`, which is write-only — playback keys off the entry's id via
+  `Source#entry_variables`. Anime offsets now come from the show payload's per-season
+  `episode_count` instead of a request per preceding season.
+- **TMDB reads are cached** for 12h behind `TmdbService#get_json`, which covers the player
+  page and `watch_now` refetching the same episode on every render. Failures are not
+  cached, and the api key never enters a cache key.
+- **`bulk_sync` is a job** (`LetterboxdBulkSyncJob`). It looped every watched entry with
+  `sleep(0.5)` in-request; the pacing is still there, it just costs worker time now.
+- The older `TmdbService` helpers were routed through `get_json` too, so they finally have
+  a timeout — `fetch_trailer_url` and `fetch_poster_url` used bare `Net::HTTP.get`.
+
+**Cache store note:** production uses a bounded `:memory_store` (32 MB), deliberately not
+Redis. Redis is shared with Sidekiq under `maxmemory-policy noeviction`, where cache growth
+would start failing job enqueues instead of evicting cache entries. Per-process caching is
+enough for immutable metadata; revisit only if you want it shared, and set a maxmemory
+policy you have thought about first.
 
 ### 15. Row-by-row position rewrites
 `List#normalize_entry_positions!` issues one `UPDATE` per entry and is called inside
@@ -478,6 +498,6 @@ tables were confirmed empty in production (0 rows) rather than assumed:
 5. **Then #3 + #12 + #13** together — the read/write split, the N+1s and the indexes are
    what make the list and sidebar pages fast.
 6. ~~**Then P3** — the dead-code sweep.~~ **Done 2026-08-22.**
-7. ~~**#17** (extract importers)~~ **Done 2026-08-22.** Then **#14** (move the slow ones
-   into jobs — the importers are now plain objects, so this is a call-site change) → #20
-   (retire the legacy source columns) → #21 → #28 (dartsass) → #18/#19 (front-end).
+7. ~~**#17** (extract importers)~~ and ~~**#14**~~ **done.** Next: **#20** (retire the
+   legacy source columns) → #21 (integer season/episode) → #28 (dartsass, which also
+   removes the libffi workaround) → #18/#19 (front-end consolidation).
