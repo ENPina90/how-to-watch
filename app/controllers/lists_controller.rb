@@ -244,131 +244,28 @@ class ListsController < ApplicationController
   end
 
   def add_season
-    require 'open-uri'
+    result = SeasonImporter.new(
+      list: @list,
+      tmdb_id: params[:tmdb],
+      series_imdb_id: params[:series_imdb],
+      series_name: params[:series_name],
+      season: params[:season],
+      media_type: params[:media_type]
+    ).call
 
-    tmdb_id = params[:tmdb]
-    series_imdb_id = params[:series_imdb]
-    series_name = params[:series_name]
-    season_number = params[:season].to_i
-    media_type = params[:media_type] || 'series' # Can be 'series' or 'anime'
-
-    # Fetch season details from TMDB
-    tmdb_api_key = TmdbService.api_key
-    season_url = "https://api.themoviedb.org/3/tv/#{tmdb_id}/season/#{season_number}?api_key=#{tmdb_api_key}"
-
-    begin
-      season_response = URI.open(season_url).read
-      season_data = JSON.parse(season_response)
-
-      # Create main entry for the season
-      entry_name = "#{series_name} - Season #{season_number}"
-
-      # Check if this season entry already exists
-      existing_entry = @list.entries.find_by(name: entry_name, series: series_name)
-      if existing_entry
-        render json: { error: "#{entry_name} already exists in this list" }, status: :unprocessable_entity
-        return
-      end
-
-      # Create the main season entry
-      @entry = Entry.create!(
-        list: @list,
-        name: entry_name,
-        series: series_name,
-        media: media_type, # Use the media_type parameter (series or anime)
-        imdb: series_imdb_id,
-        tmdb: tmdb_id,
-        position: @list.entries.count + 1,
-        season: season_number,
-        source: media_type == 'anime' ? "https://vidsrc.cc/v2/embed/anime/#{series_imdb_id}" : "https://vidsrc.cc/v3/embed/tv/#{series_imdb_id}",
-        source_two: "https://v2.vidsrc.me/embed/#{series_imdb_id}",
-        pic: season_data['poster_path'] ? "https://image.tmdb.org/t/p/w500#{season_data['poster_path']}" : nil,
-        plot: season_data['overview'],
-        year: season_data['air_date']&.split('-')&.first&.to_i
-      )
-
-      # Create subentries for all episodes in the season
-      counter = 0
-      failed_episodes = []
-
-      # For anime, calculate the starting absolute episode number
-      absolute_episode_offset = 0
-      if media_type == 'anime' && season_number > 1
-        # Count episodes in all previous seasons
-        (1...season_number).each do |prev_season|
-          prev_season_url = "https://api.themoviedb.org/3/tv/#{tmdb_id}/season/#{prev_season}?api_key=#{tmdb_api_key}"
-          begin
-            prev_season_data = JSON.parse(URI.open(prev_season_url).read)
-            absolute_episode_offset += prev_season_data['episodes'].length
-          rescue => e
-            Rails.logger.warn "Could not fetch season #{prev_season} data: #{e.message}"
-          end
-        end
-      end
-
-      season_data['episodes'].each do |episode_data|
-        begin
-          # Fetch episode IMDB ID (optional - still create subentry if it fails)
-          episode_imdb_id = nil
-          begin
-            episode_url = "https://api.themoviedb.org/3/tv/#{tmdb_id}/season/#{season_number}/episode/#{episode_data['episode_number']}/external_ids?api_key=#{tmdb_api_key}"
-            episode_external_ids = JSON.parse(URI.open(episode_url).read)
-            episode_imdb_id = episode_external_ids['imdb_id']
-          rescue => e
-            Rails.logger.warn "Could not fetch IMDB ID for episode #{episode_data['episode_number']}: #{e.message}"
-            # Continue anyway - we'll use the series IMDB ID
-            episode_imdb_id = series_imdb_id
-          end
-
-          # Use series IMDB ID if episode doesn't have one
-          episode_imdb_id ||= series_imdb_id
-
-          # Generate appropriate source URL based on media type
-          source_url = if media_type == 'anime'
-            # Anime uses absolute episode numbers across all seasons, with /sub at the end
-            absolute_episode = absolute_episode_offset + episode_data['episode_number']
-            "https://vidsrc.cc/v2/embed/anime/#{series_imdb_id}/#{absolute_episode}/sub"
-          else
-            "https://vidsrc.cc/v3/embed/tv/#{series_imdb_id}/#{season_number}/#{episode_data['episode_number']}"
-          end
-
-          Subentry.create!(
-            entry: @entry,
-            season: season_number,
-            episode: episode_data['episode_number'],
-            name: episode_data['name'],
-            plot: episode_data['overview'], # Add plot from TMDB episode data
-            imdb: episode_imdb_id,
-            source: source_url,
-            rating: episode_data['vote_average'],
-            completed: false
-          )
-          counter += 1
-        rescue => e
-          Rails.logger.error "Failed to create subentry for episode #{episode_data['episode_number']}: #{e.message}"
-          failed_episodes << episode_data['episode_number']
-        end
-      end
-
-      # Set the first episode as current
-      first_episode = @entry.subentries.order(:episode).first
-      @entry.update(current: first_episode) if first_episode
-
-      message = "#{entry_name} added with #{counter} episodes"
-      message += " (#{failed_episodes.length} episodes failed)" if failed_episodes.any?
-
+    case result[:status]
+    when :created
       render json: {
         success: true,
-        message: message,
-        entry_id: @entry.id,
-        episodes_added: counter,
-        episodes_failed: failed_episodes
+        message: result[:message],
+        entry_id: result[:entry].id,
+        episodes_added: result[:episodes_added],
+        episodes_failed: result[:episodes_failed]
       }
-
-    rescue => e
-      Rails.logger.error "Error adding season: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-      render json: { error: "Failed to add season: #{e.message}" }, status: :internal_server_error
+    when :duplicate
+      render json: { error: result[:message] }, status: :unprocessable_entity
+    else
+      render json: { error: result[:message] }, status: :internal_server_error
     end
   end
 
