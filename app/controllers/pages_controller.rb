@@ -30,44 +30,29 @@ class PagesController < ApplicationController
 
     # For TV shows, fetch episode data
     if @media_type == 'tv'
+      tmdb = TmdbService.new
+
       begin
-        tmdb_api_key = TmdbService.api_key
-
         # If we don't have a TMDB ID, try to fetch it from IMDB ID
-        if !@tmdb_id.present? && @imdb_id.present?
-          find_url = "https://api.themoviedb.org/3/find/#{@imdb_id}?api_key=#{tmdb_api_key}&external_source=imdb_id"
-          find_response = URI.open(find_url).read
-          find_data = JSON.parse(find_response)
-
-          if find_data['tv_results'] && find_data['tv_results'].length > 0
-            @tmdb_id = find_data['tv_results'][0]['id'].to_s
-            Rails.logger.info "Found TMDB ID #{@tmdb_id} for IMDB ID #{@imdb_id}"
-          end
+        if @tmdb_id.blank? && @imdb_id.present?
+          found = tmdb.find_by_imdb_id(@imdb_id)
+          @tmdb_id = found['tv_results']&.first&.dig('id')&.to_s
+          Rails.logger.info "Found TMDB ID #{@tmdb_id} for IMDB ID #{@imdb_id}" if @tmdb_id
         end
 
-        # Continue only if we have a TMDB ID
         if @tmdb_id.present?
-          # Fetch show details to get number of seasons
-          show_url = "https://api.themoviedb.org/3/tv/#{@tmdb_id}?api_key=#{tmdb_api_key}"
-          show_response = URI.open(show_url).read
-          @show_details = JSON.parse(show_response)
+          @show_details = tmdb.fetch_show(@tmdb_id)
           @number_of_seasons = @show_details['number_of_seasons']
 
-          # Set default season and episode if not provided
           @season ||= 1
           @episode ||= 1
-
-          # Fetch current episode details
-          episode_url = "https://api.themoviedb.org/3/tv/#{@tmdb_id}/season/#{@season}/episode/#{@episode}?api_key=#{tmdb_api_key}"
-          episode_response = URI.open(episode_url).read
-          @current_episode = JSON.parse(episode_response)
+          @current_episode = tmdb.fetch_episode(@tmdb_id, @season, @episode)
         end
-      rescue => e
+      rescue TmdbService::RequestError => e
+        # The page still plays without episode metadata, so degrade rather than error.
         Rails.logger.error "Error fetching TMDB data: #{e.message}"
-        Rails.logger.error e.backtrace.join("\n")
         @show_details = nil
         @current_episode = nil
-        # Set defaults if API fails
         @season ||= 1
         @episode ||= 1
       end

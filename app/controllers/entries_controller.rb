@@ -221,22 +221,17 @@ class EntriesController < ApplicationController
           @episode = @current_subentry.calculate_absolute_episode_number
         end
 
-        # Fetch current episode details from TMDB if available
-        if @entry.tmdb.present? && @season && @episode
-          begin
-            tmdb_api_key = TmdbService.api_key
-            if tmdb_api_key.present?
-              episode_url = "https://api.themoviedb.org/3/tv/#{@entry.tmdb}/season/#{@season}/episode/#{@episode}?api_key=#{tmdb_api_key}"
-              episode_response = Net::HTTP.get(URI(episode_url))
-              @current_episode = JSON.parse(episode_response)
+        # Episode details are decoration on the player page: if TMDB is slow or down the
+        # page still has to render, so a failure just leaves this nil.
+        @current_episode =
+          if @entry.tmdb.present? && @season && @episode
+            begin
+              TmdbService.new.fetch_episode(@entry.tmdb, @season, @episode)
+            rescue TmdbService::RequestError => e
+              Rails.logger.error "Error fetching episode details from TMDB: #{e.message}"
+              nil
             end
-          rescue => e
-            Rails.logger.error "Error fetching episode details from TMDB: #{e.message}"
-            @current_episode = nil
           end
-        else
-          @current_episode = nil
-        end
       end
     end
 
