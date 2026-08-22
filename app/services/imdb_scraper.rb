@@ -47,7 +47,7 @@ class ImdbScraper
 
       filter_episodes(episodes)
     else
-      puts "Failed to fetch the page: #{@url}"
+      Rails.logger.error "Failed to fetch the page: #{@url}"
       []
     end
   end

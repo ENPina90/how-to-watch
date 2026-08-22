@@ -55,9 +55,7 @@ class Entry < ApplicationRecord
   after_commit :attach_poster_from_pic, on: %i[create update], if: -> { saved_change_to_pic? && should_attach_poster? }
 
   def self.create_from_source(entry, list, seen)
-    puts "Normalizing data"
     entry = OmdbApi.normalize_omdb_data(entry) unless entry[:seed]
-    puts "Createing Entry"
     Entry.create!(
       position:     entry[:position] || next_position(list),
       franchise:    entry[:franchise],
