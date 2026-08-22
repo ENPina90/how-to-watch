@@ -269,7 +269,7 @@ neither needs a local Redis.
 | Letterboxd | OAuth flow | `LETTERBOXD_CLIENT_ID/SECRET/REDIRECT_URI` |
 | IMDb | HTML scraping | none |
 
-`ENVIRONMENT_VARIABLES.md` in the repo root lists the full set.
+`docs/guides/ENVIRONMENT_VARIABLES.md` lists the full set.
 
 ---
 
@@ -319,9 +319,8 @@ neither needs a local Redis.
 - Useful rake tasks: `sources:seed`, `sources:backfill`, `entry:check_sources`,
   `images:check` / `images:repair`, `positions:fix_invalid`, `db:backup:full`,
   `db:backup:restore[file]`, `export:entries`.
-- Root-level guides: `RAILWAY_DEPLOYMENT_GUIDE.md`, `PRODUCTION_DEPLOYMENT_GUIDE.md`,
-  `DATABASE_BACKUP_GUIDE.md`, `IMAGE_REPAIR_GUIDE.md`, `POSTER_MIGRATION_GUIDE.md`,
-  `LETTERBOXD_INTEGRATION_GUIDE.md` (written Sept 2025; treat as historical).
+- Task guides live in `docs/guides/` (Railway deploy, backups, image repair, poster
+  migration, Letterboxd). Written Sept 2025 — treat as historical.
 
 ---
 
