@@ -15,11 +15,13 @@ RSpec.describe SeasonImporter do
     }
   end
 
-  let(:tmdb) do
-    instance_double(TmdbService,
-                    fetch_season: season_payload,
-                    fetch_episode_external_ids: { 'imdb_id' => 'tt_ep' })
+  let(:show_payload) do
+    { 'seasons' => [{ 'season_number' => 0, 'episode_count' => 3 },
+                    { 'season_number' => 1, 'episode_count' => 25 },
+                    { 'season_number' => 2, 'episode_count' => 12 }] }
   end
+
+  let(:tmdb) { instance_double(TmdbService, fetch_season: season_payload, fetch_show: show_payload) }
 
   def importer(**overrides)
     described_class.new(**{
@@ -57,27 +59,43 @@ RSpec.describe SeasonImporter do
         .to eq('https://vidsrc.cc/v3/embed/tv/tt1355642/1/1')
     end
 
-    it 'falls back to the series imdb id when an episode lookup fails' do
-      allow(tmdb).to receive(:fetch_episode_external_ids).and_raise(TmdbService::RequestError, 'boom')
-
+    it 'stores the series imdb id on each subentry' do
       entry = importer.call[:entry]
 
       expect(entry.subentries.pluck(:imdb).uniq).to eq(['tt1355642'])
+    end
+
+    it 'makes a single TMDB request for a series season' do
+      importer.call
+
+      expect(tmdb).to have_received(:fetch_season).once
+      expect(tmdb).not_to have_received(:fetch_show)
     end
   end
 
   describe 'an anime season' do
     it 'numbers episodes continuously across seasons' do
-      # Season 2 follows a 25-episode season 1, so its first episode is absolute 26.
-      allow(tmdb).to receive(:fetch_season).with('1429', 1).and_return(
-        season_payload.merge('episodes' => Array.new(25) { |i| { 'episode_number' => i + 1, 'name' => "E#{i + 1}" } })
-      )
-      allow(tmdb).to receive(:fetch_season).with('1429', 2).and_return(season_payload)
-
+      # Season 1 has 25 episodes, so season 2 episode 1 is absolute 26. Specials
+      # (season_number 0) do not count towards absolute numbering.
       entry = importer(season: 2, media_type: 'anime').call[:entry]
 
       expect(entry.subentries.order(:episode).first.source)
         .to eq('https://vidsrc.cc/v2/embed/anime/tt1355642/26/sub')
+    end
+
+    it 'reads the offset from the show payload rather than a call per season' do
+      importer(season: 2, media_type: 'anime').call
+
+      expect(tmdb).to have_received(:fetch_show).once
+      expect(tmdb).to have_received(:fetch_season).once
+    end
+
+    it 'still imports when the offset lookup fails' do
+      allow(tmdb).to receive(:fetch_show).and_raise(TmdbService::RequestError, 'boom')
+
+      result = importer(season: 2, media_type: 'anime').call
+
+      expect(result[:status]).to eq(:created)
     end
 
     it 'starts at episode 1 for the first season' do
