@@ -1,6 +1,6 @@
 require 'rails_helper'
 
-RSpec.describe EntriesController, type: :controller do
+RSpec.describe EntriesController, :needs_provider, type: :controller do
   before do
     @request.env["devise.mapping"] = Devise.mappings[:user]
     @user = FactoryBot.create(:user)

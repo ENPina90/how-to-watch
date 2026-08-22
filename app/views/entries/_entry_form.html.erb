@@ -9,8 +9,9 @@
       <%= f.input :position %>
       <%= f.input :name %>
       <%= f.input :media %>
-      <%= f.input :source %>
-      <%= f.input :source_two, label: "Alternative Source" %>
+      <%= f.input :source_url, label: "Source URL",
+            input_html: { value: entry.current_source_url },
+            hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
       <%= f.association :provider,
             collection: Source.active.order(:position),
             label_method: ->(s) { "#{s.name} (#{s.kind})" },
@@ -47,7 +48,6 @@
           <%= subentry_form.input :plot %>
           <%= subentry_form.input :season %>
           <%= subentry_form.input :episode %>
-          <%= subentry_form.input :source %>
           <%= subentry_form.input :_destroy, as: :boolean, label: 'Remove Subentry' %>
         <% end %>
       <% end %>
