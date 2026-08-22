@@ -68,7 +68,6 @@ and drives nearly every branch in the app: `movie`, `series`, `anime`, `episode`
 - Art: `pic` (remote URL) plus an Active Storage `poster` attachment (Cloudinary).
 - Ordering: `position` (integer, within the list).
 - Playback: `provider_id` → `Source`, `source_key` (opaque id for "direct" providers).
-- Legacy playback: `source`, `source_two`, `preferred_source` — kept as a fallback.
 - `current_id` → `Subentry`: legacy list-level "current episode" pointer.
 
 **`Subentry`** — an episode belonging to a series/anime `Entry`. **`season` and `episode`
@@ -120,7 +119,7 @@ Entry#embed_url(subentry:, autoplay:)
        ├─ if that source is missing/inactive and entry.imdb exists:
        │     first active kind:"imdb" Source by position
        └─ Source#url_for → #build_url → template_for(media) → %{token} substitution
-  └─ if that yields blank → Entry#legacy_embed_url  (old source / source_two columns)
+  └─ blank result means nothing can play it; entries#watch redirects with a notice
 ```
 
 - **Series/anime** pass the user's current `Subentry` so `%{season}/%{episode}` resolve.
@@ -135,10 +134,15 @@ Entry#embed_url(subentry:, autoplay:)
 **To fix a dead provider: edit that one `Source` row's template** (admin pencil icon under
 the player, or `rails console`). No per-entry backfill is needed.
 
-**Nothing constructs a provider URL outside a template.** New entries write no
-`source`/`source_two`; those columns survive only as a read-time fallback for old rows
-(33 in production — `rails sources:audit` tracks it). A template whose tokens cannot all be
-filled yields nil rather than a truncated URL, which is what lets the fallback engage.
+**Nothing constructs a provider URL outside a template.** The legacy `source`,
+`source_two`, `preferred_source` and `subentries.source` columns were dropped on
+2026-08-23; there is no fallback left, so a blank `embed_url` means the entry genuinely
+cannot play. A template whose tokens cannot all be filled yields nil rather than a
+truncated URL. `rails sources:audit` reports anything that stops resolving.
+
+**Manual entries**: the form takes a pasted URL (`Entry#source_url`, virtual) and
+`Source.classify_url` turns Drive/mega/YouTube/archive links into a direct provider plus
+`source_key`; anything unrecognised goes to the catch-all `custom` provider.
 
 **Known limitation:** `Subentry#calculate_absolute_episode_number` counts episodes within
 one entry, but each season is its own entry here, so it returns the plain episode number.
