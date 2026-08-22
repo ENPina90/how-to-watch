@@ -52,14 +52,6 @@ RSpec.describe SeasonImporter do
       expect(entry.current).to eq(entry.subentries.order(:episode).first)
     end
 
-    it 'writes no legacy source columns' do
-      entry = importer.call[:entry]
-
-      expect(entry.source).to be_blank
-      expect(entry.source_two).to be_blank
-      expect(entry.subentries.pluck(:source).compact_blank).to be_empty
-    end
-
     it 'stores the series imdb id on each subentry' do
       entry = importer.call[:entry]
 

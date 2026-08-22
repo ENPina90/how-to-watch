@@ -23,7 +23,6 @@ class List < ApplicationRecord
   has_many :subscribers, through: :subscriptions, source: :user
   has_many :user_list_positions, dependent: :destroy
 
-  validates :preferred_source, inclusion: { in: [1, 2] }, allow_nil: true
 
   # Runs ahead of every dependent callback (prepend) so the whole entry graph is
   # cleared before `entries` is bulk-deleted out from under it.

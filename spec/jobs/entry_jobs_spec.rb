@@ -11,7 +11,7 @@ RSpec.describe 'Entry background jobs', type: :job do
   describe 'enqueueing' do
     it 'checks the source of a newly created entry in the background' do
       expect {
-        create(:entry, list: list, source: 'https://example.com/embed/tt0848228')
+        create(:entry, list: list)
       }.to have_enqueued_job(CheckEntrySourceJob)
     end
 
@@ -21,18 +21,16 @@ RSpec.describe 'Entry background jobs', type: :job do
       }.to have_enqueued_job(AttachPosterFromPicJob)
     end
 
-    it 'checks the source even when the legacy column is empty' do
-      # The URL is computed from the provider template now, so there is no column to
-      # gate the check on; the job no-ops if nothing resolves.
-      expect {
-        create(:entry, list: list, source: nil)
-      }.to have_enqueued_job(CheckEntrySourceJob)
+    it 'checks the source for every new entry' do
+      # The URL is computed from the provider template, so there is nothing to gate the
+      # check on; the job no-ops if nothing resolves.
+      expect { create(:entry, list: list) }.to have_enqueued_job(CheckEntrySourceJob)
     end
   end
 
   describe 'when the entry is deleted before the job runs' do
     it 'discards the job instead of raising' do
-      entry = create(:entry, list: list, source: 'https://example.com/embed/tt0848228')
+      entry = create(:entry, list: list)
       clear_enqueued_jobs
 
       CheckEntrySourceJob.perform_later(entry)

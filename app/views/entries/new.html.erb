@@ -41,7 +41,7 @@
           <%= f.input :name %>
           <%= f.input :pic, label: "Poster URL (or upload below)" %>
           <%= f.input :poster, as: :file, label: "Upload Poster Image" %>
-          <%= f.input :source %>
+          <%= f.input :source_url, label: "Source URL", hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
           <%= f.input :media, collection: ['fanedit', 'movie', 'show', 'episode', 'other']  %>
           <%= f.input :series %>
           <%= f.input :plot %>

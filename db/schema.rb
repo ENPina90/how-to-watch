@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_22_140000) do
+ActiveRecord::Schema[8.0].define(version: 2026_08_23_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -47,7 +47,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_22_140000) do
     t.string "pic"
     t.text "plot"
     t.string "genre"
-    t.string "source"
     t.string "director"
     t.string "writer"
     t.string "actors"
@@ -78,8 +77,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_22_140000) do
     t.string "tmdb"
     t.string "trailer"
     t.string "series_imdb"
-    t.string "source_two"
-    t.integer "preferred_source"
     t.bigint "provider_id"
     t.string "source_key"
     t.index ["current_id"], name: "index_entries_on_current_id"
@@ -125,7 +122,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_22_140000) do
     t.integer "position"
     t.boolean "reviewable", default: false, null: false
     t.boolean "default", default: false, null: false
-    t.integer "preferred_source", default: 1
     t.boolean "auto_play", default: true
     t.boolean "auto_next", default: true
     t.boolean "mobile", default: false, null: false
@@ -166,7 +162,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_22_140000) do
     t.string "rating"
     t.integer "length"
     t.boolean "completed"
-    t.string "source"
     t.integer "year"
     t.index ["entry_id", "season", "episode"], name: "index_subentries_on_entry_id_and_season_and_episode"
     t.index ["entry_id"], name: "index_subentries_on_entry_id"

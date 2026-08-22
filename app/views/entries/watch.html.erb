@@ -122,7 +122,7 @@
   <div class="modal-body">
     <%= simple_form_for(@entry, html: { data: { turbo: false } }) do |f| %>
       <%= f.input :name %>
-      <%= f.input :source %>
+      <%= f.input :source_url, label: "Source URL", hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
       <%= f.association :provider,
             collection: Source.active.order(:position),
             label_method: ->(s) { "#{s.name} (#{s.kind})" },
