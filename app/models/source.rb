@@ -29,11 +29,19 @@ class Source < ApplicationRecord
 
   # Build a URL from a media key + an explicit variables hash, no Entry required.
   # Used by transient pages (e.g. watch_now) that only have raw imdb/season/episode.
+  #
+  # Returns nil when the template needs something we do not have -- an entry with no imdb
+  # id, or a series with no resolved episode. Returning nil matters: Entry#embed_url only
+  # falls back to the legacy source columns when this is blank, so a half-substituted URL
+  # would be served as if it worked.
   def build_url(media, vars, autoplay: false)
     template = template_for(media)
     return nil if template.blank?
 
-    append_autoplay(substitute(template, vars), autoplay)
+    url = substitute(template, vars)
+    return nil if url.nil?
+
+    append_autoplay(url, autoplay)
   end
 
   def template_for(media)
@@ -57,9 +65,18 @@ class Source < ApplicationRecord
 
   # Safe, eval-free substitution: only replaces %{token} placeholders, leaves every
   # other character untouched (mega keys contain '#', drive ids are opaque, etc.).
-  # Unknown tokens render empty rather than raising.
+  # Every token in a template is required, so a blank one yields nil for the whole URL
+  # rather than a string with a hole in it.
   def substitute(template, vars)
-    template.gsub(/%\{(\w+)\}/) { vars[Regexp.last_match(1).to_sym] }
+    missing = false
+
+    result = template.gsub(/%\{(\w+)\}/) do
+      value = vars[Regexp.last_match(1).to_sym]
+      missing = true if value.blank?
+      value.to_s
+    end
+
+    missing ? nil : result
   end
 
   def set_slug_from_name

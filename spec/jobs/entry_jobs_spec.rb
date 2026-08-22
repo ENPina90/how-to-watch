@@ -21,10 +21,12 @@ RSpec.describe 'Entry background jobs', type: :job do
       }.to have_enqueued_job(AttachPosterFromPicJob)
     end
 
-    it 'does not enqueue a source check when the entry has no source' do
+    it 'checks the source even when the legacy column is empty' do
+      # The URL is computed from the provider template now, so there is no column to
+      # gate the check on; the job no-ops if nothing resolves.
       expect {
         create(:entry, list: list, source: nil)
-      }.not_to have_enqueued_job(CheckEntrySourceJob)
+      }.to have_enqueued_job(CheckEntrySourceJob)
     end
   end
 

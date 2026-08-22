@@ -28,8 +28,6 @@ class EpisodeImporter
     existing = find_existing(series_imdb_id)
     return result(:duplicate, existing, 'Episode already added') if existing
 
-    # The source columns are legacy but still the playback fallback, so they are written
-    # for parity until plan item #20 retires them.
     series_imdb_id ||= "tmdb#{@tmdb_id}"
 
     entry = Entry.create!(
@@ -44,8 +42,6 @@ class EpisodeImporter
       episode: @episode,
       plot: episode_data['overview'],
       pic: TmdbService.image_url(episode_data['still_path']),
-      source: "https://vidsrc.cc/v3/embed/tv/#{series_imdb_id}/#{@season}/#{@episode}",
-      source_two: "https://v2.vidsrc.me/embed/#{series_imdb_id}/#{@season}-#{@episode}",
       rating: episode_data['vote_average'],
       year: episode_data['air_date']&.split('-')&.first&.to_i,
       length: episode_data['runtime'] || 0,
