@@ -288,31 +288,50 @@ class Entry < ApplicationRecord
     completed
   end
 
-  # Get user_entry record for a specific user
+  # READ. Returns nil when the user has never touched this entry.
+  #
+  # This is called while rendering -- `entries/_completion_status` runs once per entry on
+  # every list page -- so it must not write. It used to be find_or_create_by, which meant
+  # simply *looking* at a list inserted a user_entries row for every entry on the page.
+  # Use #user_entry_for! on the paths that actually record something.
   def user_entry_for(user)
+    return nil unless user
+
+    # Use the preloaded association when the caller has eager-loaded it (see the
+    # `includes(:user_entries)` in ListsController), otherwise fall back to a lookup.
+    if user_entries.loaded?
+      user_entries.detect { |user_entry| user_entry.user_id == user.id }
+    else
+      user_entries.find_by(user: user)
+    end
+  end
+
+  # WRITE. Creates the tracking row if it does not exist yet.
+  def user_entry_for!(user)
     user_entries.find_or_create_by(user: user)
   end
 
   # Check if a specific user has completed this entry
   def completed_by?(user)
     return completed if user.nil? # Fallback to old system
-    user_entry_for(user).completed?
+    user_entry_for(user)&.completed? || false
   end
 
   # Mark as completed for a specific user
   def mark_completed_by!(user)
-    user_entry_for(user).mark_completed!
+    user_entry_for!(user).mark_completed!
     self.list.watched!(user) if user == self.list.user # Update list current if it's the list owner
   end
 
   # Mark as incomplete for a specific user
   def mark_incomplete_by!(user)
-    user_entry_for(user).mark_incomplete!
+    # No row means nothing has been recorded, which already reads as incomplete.
+    user_entry_for(user)&.mark_incomplete!
   end
 
   # Toggle completion for a specific user
   def toggle_completed_by!(user)
-    user_entry = user_entry_for(user)
+    user_entry = user_entry_for!(user)
     user_entry.toggle_completed!
     self.list.watched!(user) if user == self.list.user && user_entry.completed? # Update list current if it's the list owner
     user_entry.completed?
@@ -320,14 +339,24 @@ class Entry < ApplicationRecord
 
   # Get average review rating
   def average_review
-    reviews = user_entries.where.not(review: nil).pluck(:review)
+    reviews = scored_reviews
     return nil if reviews.empty?
-    reviews.sum.to_f / reviews.count
+    reviews.sum.to_f / reviews.size
   end
 
   # Get review count
   def review_count
-    user_entries.where.not(review: nil).count
+    scored_reviews.size
+  end
+
+  # Both aggregates render once per entry on a list page, so use the preloaded rows when
+  # the caller eager-loaded them instead of two queries per entry.
+  def scored_reviews
+    if user_entries.loaded?
+      user_entries.filter_map(&:review)
+    else
+      user_entries.where.not(review: nil).pluck(:review)
+    end
   end
 
   # Get completion percentage

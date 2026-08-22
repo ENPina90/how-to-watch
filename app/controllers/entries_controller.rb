@@ -202,7 +202,7 @@ class EntriesController < ApplicationController
   def watch
     if current_user
       # Update user's current position to this entry
-      user_position = @entry.list.position_for_user(current_user)
+      user_position = @entry.list.position_for_user!(current_user)
       user_position.update!(current_position: @entry.position)
     end
 
@@ -355,7 +355,7 @@ class EntriesController < ApplicationController
 
     if random_entry
       # Update user's position to the random entry
-      user_position = list.position_for_user(current_user)
+      user_position = list.position_for_user!(current_user)
       user_position.update!(current_position: random_entry.position)
 
       redirect_to watch_entry_path(random_entry)
@@ -412,7 +412,7 @@ class EntriesController < ApplicationController
       # Advance user's position to next entry in the list
       if current_user
         list = @entry.list
-        user_position = list.position_for_user(current_user)
+        user_position = list.position_for_user!(current_user)
 
         # Find next entry by position
         next_entry = list.entries.where('position > ?', @entry.position)
@@ -442,12 +442,12 @@ class EntriesController < ApplicationController
   def review
     # Mark as completed without triggering list navigation
     unless @entry.completed_by?(current_user)
-      user_entry = @entry.user_entry_for(current_user)
+      user_entry = @entry.user_entry_for!(current_user)
       user_entry.mark_completed!
       # Don't call @entry.mark_completed_by! as it triggers watched! which advances the list
     end
 
-    user_entry = @entry.user_entry_for(current_user)
+    user_entry = @entry.user_entry_for!(current_user)
 
     # Update review and comment
     if params[:review].present?
@@ -481,7 +481,7 @@ class EntriesController < ApplicationController
   def complete_without_review
     # Mark as completed without triggering list navigation
     unless @entry.completed_by?(current_user)
-      user_entry = @entry.user_entry_for(current_user)
+      user_entry = @entry.user_entry_for!(current_user)
       user_entry.mark_completed!
       # Don't call @entry.mark_completed_by! as it triggers watched! which advances the list
     end

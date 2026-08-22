@@ -30,26 +30,21 @@ class ListsController < ApplicationController
     end
 
     # Category 1: Your Lists (created by current user)
-    @your_lists = current_user.lists
-                              .order(created_at: :desc)
-                              .includes(:entries, :user)
+    # `includes(:entries)` used to load every entry of every list just so the card could
+    # call .count; the cards only need a count and the user's stored position.
+    @your_lists = with_card_data(current_user.lists).order(created_at: :desc)
 
     # Category 2: Recently Watched (lists with completed entries)
-    @recently_watched_lists = List.joins(entries: :user_entries)
-                                  .where(user_entries: { user: current_user, completed: true })
-                                  .group('lists.id')
-                                  .order('MAX(user_entries.completed_at) DESC')
-                                  .includes(:entries, :user)
-                                  .limit(20)
+    @recently_watched_lists = with_card_data(
+      List.joins(entries: :user_entries).where(user_entries: { user: current_user, completed: true })
+    ).group('lists.id').order('MAX(user_entries.completed_at) DESC').limit(20)
 
     # Category 3: Community Lists (created by other users)
     # Show: public lists OR subscribed lists OR (if admin) all lists
     if current_user.admin?
       # Admins see all lists created by other users (including private)
-      @community_lists = List.where.not(user_id: current_user.id)
-                             .order(created_at: :desc)
-                             .includes(:entries, :user)
-                             .limit(20)
+      @community_lists = with_card_data(List.where.not(user_id: current_user.id))
+                         .order(created_at: :desc).limit(20)
     else
       # Regular users see public lists OR subscribed lists
       community_list_ids = List.where.not(user_id: current_user.id)
@@ -60,10 +55,8 @@ class ListsController < ApplicationController
                                .where(subscriptions: { user_id: current_user.id })
                                .pluck(:id)
 
-      @community_lists = List.where(id: community_list_ids.uniq)
-                             .order(created_at: :desc)
-                             .includes(:entries, :user)
-                             .limit(20)
+      @community_lists = with_card_data(List.where(id: community_list_ids.uniq))
+                         .order(created_at: :desc).limit(20)
     end
   end
 
@@ -130,6 +123,10 @@ class ListsController < ApplicationController
   def show
     # Sidebar starts expanded by default on show page (you can change to true to start collapsed)
     @sidebar_collapsed = false
+
+    # The breadcrumb calls top_level?/parent_lists several times; load it once so those
+    # are array operations rather than a fresh EXISTS/COUNT each time.
+    @list.parent_lists.load
 
     load_entries
     @is_mobile = mobile_request?
@@ -203,7 +200,7 @@ class ListsController < ApplicationController
 
         if fallback_entry
           # Update user's position
-          user_position = @list.position_for_user(current_user)
+          user_position = @list.position_for_user!(current_user)
           user_position.update_to_entry!(fallback_entry)
 
           message = @list.ordered? ?
@@ -583,6 +580,16 @@ class ListsController < ApplicationController
 
   private
 
+  # Everything a list card on the index renders: the owner, the entry count, and the
+  # current user's stored position (read by List#current_entry).
+  def with_card_data(scope)
+    # A correlated subquery rather than COUNT over a join: the recently-watched scope
+    # already inner-joins entries filtered to this user's completed rows, and a joined
+    # COUNT there silently reports completed entries instead of the list's real size.
+    scope.includes(:user, :user_list_positions)
+         .select('lists.*, (SELECT COUNT(*) FROM entries WHERE entries.list_id = lists.id) AS entries_count')
+  end
+
   def mobile_request?
     request.user_agent =~ /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
   end
@@ -592,14 +599,16 @@ class ListsController < ApplicationController
   end
 
   def load_entries
+    # Every entry partial asks for this user's completion and review state, so preload it
+    # rather than issuing a lookup per entry.
     @list_entries = if params[:query].present?
-                      @list.entries.search_by_input(params[:query])
+                      @list.entries.includes(:user_entries).search_by_input(params[:query])
                     else
-                      @list.entries
+                      @list.entries.includes(:user_entries)
                     end
 
     # Load child lists with their positions in this parent context
-    @child_lists = @list.child_relationships.includes(:child_list).order(:position).map do |rel|
+    @child_lists = @list.child_relationships.includes(child_list: :parent_lists).order(:position).map do |rel|
       child = rel.child_list
       child.define_singleton_method(:position) { rel.position }
       child

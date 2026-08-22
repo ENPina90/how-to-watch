@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_21_191500) do
+ActiveRecord::Schema[8.0].define(version: 2026_08_22_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -83,7 +83,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_21_191500) do
     t.bigint "provider_id"
     t.string "source_key"
     t.index ["current_id"], name: "index_entries_on_current_id"
+    t.index ["imdb"], name: "index_entries_on_imdb"
+    t.index ["list_id", "position"], name: "index_entries_on_list_id_and_position"
     t.index ["list_id"], name: "index_entries_on_list_id"
+    t.index ["media"], name: "index_entries_on_media"
     t.index ["provider_id"], name: "index_entries_on_provider_id"
   end
 
@@ -154,6 +157,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_21_191500) do
     t.index ["parent_list_id"], name: "index_lists_on_parent_list_id"
     t.index ["provider_id"], name: "index_lists_on_provider_id"
     t.index ["reviewable"], name: "index_lists_on_reviewable"
+    t.index ["user_id", "private"], name: "index_lists_on_user_id_and_private"
     t.index ["user_id"], name: "index_lists_on_user_id"
   end
 
@@ -185,6 +189,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_21_191500) do
     t.boolean "completed"
     t.string "source"
     t.integer "year"
+    t.index ["entry_id", "season", "episode"], name: "index_subentries_on_entry_id_and_season_and_episode"
     t.index ["entry_id"], name: "index_subentries_on_entry_id"
   end
 
