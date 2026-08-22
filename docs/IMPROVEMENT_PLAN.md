@@ -273,6 +273,15 @@ watched. On a shared or default list, your "next unwatched" quietly skipped entr
 **Done:** both now ask the direct question — entries whose id is not in this user's
 completed set (`completed_entry_ids_for`), kept as a subquery.
 
+### 31. ✅ Entries added from search lost their TMDB id (found 2026-08-22)
+`add_to_list` and `add_to_favorites` both did `omdb_result["tmdb_id"] = tmdb_id`, but
+`OmdbApi.normalize_omdb_data` reads the `"tmdb"` key. The id was silently dropped, so every
+entry added from the navbar or mobile search landed with `tmdb: nil` — which is what
+trailers, poster lookups and episode imports key off later. `entries#create` used the right
+key, so the same action worked from the in-list search and not from the others.
+
+**Done:** fixed while extracting `ImdbEntryImporter`, with a regression spec.
+
 ---
 
 ## P1 — Performance
@@ -343,7 +352,7 @@ what's on disk.
 
 ## P2 — Structural refactors
 
-### 17. Fat controllers
+### 17. ✅ Fat controllers
 `EntriesController` is 911 lines, `ListsController` 682. The heavy blocks are all import
 logic that has nothing to do with HTTP:
 - `entries#handle_episode_from_tmdb` (~120 lines) → `EpisodeImporter`
@@ -353,6 +362,19 @@ logic that has nothing to do with HTTP:
   two thin actions.
 
 Extracting these also makes them testable and reusable from the jobs in #14.
+
+**Done (2026-08-22).** `EntriesController` 894 → 718 lines, `ListsController` 679 → 517.
+- `EpisodeImporter`, `SeasonImporter`, `PosterCandidates`, `ImdbEntryImporter` — each a
+  plain object returning `{ status:, entry:, message: }`, matching the convention the
+  image/poster services already used.
+- `TmdbService` gained typed endpoints (`fetch_show`, `fetch_season`, `fetch_episode`,
+  `fetch_show_external_ids`, `fetch_episode_external_ids`, `find_by_imdb_id`,
+  `fetch_images`) funnelled through one `get_json` **with timeouts** — the controllers
+  used to call `URI.open` with no timeout at all. That single choke point is also where
+  caching goes for #14.
+- Each importer takes its `tmdb:` collaborator, so the specs (31 new examples) inject a
+  double and never touch the network.
+- `add_to_list` / `add_to_favorites` collapsed to one service plus a shared JSON renderer.
 
 ### 18. Three near-identical TMDB search controllers
 `search_controller.js` (272), `list_search_controller.js` (524), `mobile_search_controller.js`
@@ -456,5 +478,6 @@ tables were confirmed empty in production (0 rows) rather than assumed:
 5. **Then #3 + #12 + #13** together — the read/write split, the N+1s and the indexes are
    what make the list and sidebar pages fast.
 6. ~~**Then P3** — the dead-code sweep.~~ **Done 2026-08-22.**
-7. **Then, one at a time:** #17 (extract importers) → #14 (move them to jobs) → #20 (retire
-   the legacy source columns) → #21 → #18/#19 (front-end consolidation).
+7. ~~**#17** (extract importers)~~ **Done 2026-08-22.** Then **#14** (move the slow ones
+   into jobs — the importers are now plain objects, so this is a call-site change) → #20
+   (retire the legacy source columns) → #21 → #28 (dartsass) → #18/#19 (front-end).

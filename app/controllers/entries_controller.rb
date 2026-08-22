@@ -221,22 +221,17 @@ class EntriesController < ApplicationController
           @episode = @current_subentry.calculate_absolute_episode_number
         end
 
-        # Fetch current episode details from TMDB if available
-        if @entry.tmdb.present? && @season && @episode
-          begin
-            tmdb_api_key = TmdbService.api_key
-            if tmdb_api_key.present?
-              episode_url = "https://api.themoviedb.org/3/tv/#{@entry.tmdb}/season/#{@season}/episode/#{@episode}?api_key=#{tmdb_api_key}"
-              episode_response = Net::HTTP.get(URI(episode_url))
-              @current_episode = JSON.parse(episode_response)
+        # Episode details are decoration on the player page: if TMDB is slow or down the
+        # page still has to render, so a failure just leaves this nil.
+        @current_episode =
+          if @entry.tmdb.present? && @season && @episode
+            begin
+              TmdbService.new.fetch_episode(@entry.tmdb, @season, @episode)
+            rescue TmdbService::RequestError => e
+              Rails.logger.error "Error fetching episode details from TMDB: #{e.message}"
+              nil
             end
-          rescue => e
-            Rails.logger.error "Error fetching episode details from TMDB: #{e.message}"
-            @current_episode = nil
           end
-        else
-          @current_episode = nil
-        end
       end
     end
 
@@ -538,116 +533,12 @@ class EntriesController < ApplicationController
   end
 
   def fetch_posters
-    posters = []
-    recent_images = []
-    tmdb_service = TmdbService.new
-
-    # Try TMDB first if we have a TMDB ID
-    if @entry.tmdb.present?
-      media_type = case @entry.media
-                   when 'series', 'anime', 'episode'
-                     'tv'
-                   else
-                     'movie'
-                   end
-
-      tmdb_poster = tmdb_service.fetch_poster_url(@entry.tmdb, media_type)
-      if tmdb_poster
-        posters << { url: tmdb_poster, source: 'TMDB' }
-      end
-
-      # Also fetch additional TMDB images
-      begin
-        tmdb_images_url = "https://api.themoviedb.org/3/#{media_type}/#{@entry.tmdb}/images?api_key=#{TmdbService.api_key}"
-        response = Net::HTTP.get(URI(tmdb_images_url))
-        images_data = JSON.parse(response)
-
-        # Get top 4 posters from TMDB
-        if images_data['posters']
-          images_data['posters'].first(4).each do |poster|
-            poster_url = "https://image.tmdb.org/t/p/w500#{poster['file_path']}"
-            posters << { url: poster_url, source: 'TMDB' }
-          end
-        end
-      rescue => e
-        Rails.logger.error "Error fetching TMDB images: #{e.message}"
-      end
-    end
-
-    # Try TMDB find endpoint with IMDB IDs to get alternative results
-    [@entry.imdb, @entry.series_imdb].compact.uniq.each do |imdb_id|
-      next if imdb_id.blank?
-
-      begin
-        # Use TMDB's find endpoint to search by external IMDB ID
-        tmdb_find_url = "https://api.themoviedb.org/3/find/#{imdb_id}?api_key=#{TmdbService.api_key}&external_source=imdb_id"
-        response = Net::HTTP.get(URI(tmdb_find_url))
-        find_data = JSON.parse(response)
-
-        # Check movie results
-        if find_data['movie_results']&.any?
-          poster_path = find_data['movie_results'].first['poster_path']
-          if poster_path
-            poster_url = "https://image.tmdb.org/t/p/w500#{poster_path}"
-            posters << { url: poster_url, source: 'TMDB (via IMDB)' } unless posters.any? { |p| p[:url] == poster_url }
-          end
-        end
-
-        # Check TV results
-        if find_data['tv_results']&.any?
-          poster_path = find_data['tv_results'].first['poster_path']
-          if poster_path
-            poster_url = "https://image.tmdb.org/t/p/w500#{poster_path}"
-            posters << { url: poster_url, source: 'TMDB (via IMDB)' } unless posters.any? { |p| p[:url] == poster_url }
-          end
-        end
-      rescue => e
-        Rails.logger.error "Error fetching TMDB via IMDB ID #{imdb_id}: #{e.message}"
-      end
-    end
-
-    # Try OMDB for BOTH imdb and series_imdb if they exist
-    [@entry.imdb, @entry.series_imdb].compact.uniq.each do |imdb_id|
-      next if imdb_id.blank?
-
-      omdb_poster = tmdb_service.fetch_omdb_poster_url(imdb_id)
-      if omdb_poster && !posters.any? { |p| p[:url] == omdb_poster }
-        posters << { url: omdb_poster, source: 'OMDB' }
-      end
-    end
-
-    # Get recent images from previous 2 entries in the same list
-    if @entry.list.present?
-      previous_entries = @entry.list.entries
-                               .where('position < ?', @entry.position)
-                               .order(position: :desc)
-                               .limit(2)
-
-      previous_entries.each do |prev_entry|
-        if prev_entry.poster.attached?
-          begin
-            poster_url = if prev_entry.poster.service_name == 'cloudinary'
-                          # Cloudinary URL
-                          prev_entry.poster.url
-                        else
-                          # Local Active Storage URL
-                          Rails.application.routes.url_helpers.rails_blob_url(prev_entry.poster, only_path: false, host: request.base_url)
-                        end
-
-            # Add to the end of the posters array with "Recent" label
-            posters << {
-              url: poster_url,
-              source: "Recent: #{prev_entry.name}"
-            }
-          rescue => e
-            Rails.logger.error "Error fetching poster for entry #{prev_entry.id}: #{e.message}"
-          end
-        end
-      end
-    end
-
-    # Remove duplicates from posters
-    posters.uniq! { |p| p[:url] }
+    posters = PosterCandidates.new(
+      @entry,
+      url_builder: ->(poster) {
+        Rails.application.routes.url_helpers.rails_blob_url(poster, only_path: false, host: request.base_url)
+      }
+    ).call
 
     render json: { posters: posters }
   end
@@ -690,104 +581,32 @@ class EntriesController < ApplicationController
     end
 
     def handle_episode_from_tmdb
-      # This handles adding a standalone episode entry from TMDB data
-      require 'open-uri'
+      importer = EpisodeImporter.new(
+        list: @list,
+        tmdb_id: params[:tmdb],
+        season: params[:season],
+        episode: params[:episode],
+        imdb_id: params[:imdb].presence || params[:series_imdb].presence
+      )
+      result = importer.call
+      partial = importer.dom_key
 
-      series_imdb_id = params[:imdb].presence || params[:series_imdb].presence
-      series_tmdb_id = params[:tmdb]
-      season_num = params[:season].to_i
-      episode_num = params[:episode].to_i
-
-      begin
-        tmdb_api_key = TmdbService.api_key
-
-        # Fetch series details from TMDB to get series name
-        series_url = "https://api.themoviedb.org/3/tv/#{series_tmdb_id}?api_key=#{tmdb_api_key}"
-        series_response = URI.open(series_url).read
-        series_data = JSON.parse(series_response)
-
-        # Try to get IMDB ID from TMDB external IDs if not provided
-        if series_imdb_id.blank?
-          external_ids_url = "https://api.themoviedb.org/3/tv/#{series_tmdb_id}/external_ids?api_key=#{tmdb_api_key}"
-          begin
-            external_ids_response = URI.open(external_ids_url).read
-            external_ids_data = JSON.parse(external_ids_response)
-            series_imdb_id = external_ids_data['imdb_id']
-            Rails.logger.info "Fetched IMDB ID from TMDB: #{series_imdb_id}"
-          rescue => e
-            Rails.logger.warn "Could not fetch IMDB ID: #{e.message}"
-          end
-        end
-
-        # Fetch episode details from TMDB
-        episode_url = "https://api.themoviedb.org/3/tv/#{series_tmdb_id}/season/#{season_num}/episode/#{episode_num}?api_key=#{tmdb_api_key}"
-        episode_response = URI.open(episode_url).read
-        episode_data = JSON.parse(episode_response)
-
-        # Generate a unique identifier for the episode entry
-        episode_identifier = "S#{season_num}E#{episode_num}"
-
-        # Check if this episode already exists in the list
-        # Use a more flexible query since IMDB ID might not always be available
-        existing_entry = if series_imdb_id.present?
-          @list.entries.find_by(imdb: series_imdb_id, season: season_num, episode: episode_num, media: 'episode')
-        else
-          # If no IMDB ID, check by tmdb, season, and episode
-          @list.entries.find_by(tmdb: series_tmdb_id, season: season_num, episode: episode_num, media: 'episode')
-        end
-
-        if existing_entry
-          flash.now[:error] = "Episode already added"
-          partial = episode_identifier
-          render turbo_stream: [
-            turbo_stream.replace('flash', partial: 'shared/flashes'),
-            turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: existing_entry, partial: partial })
-          ]
-          return
-        end
-
-        # Ensure we have an IMDB ID for the source URLs
-        unless series_imdb_id.present?
-          series_imdb_id = "tmdb#{series_tmdb_id}"
-          Rails.logger.warn "Using generated IMDB ID for episode: #{series_imdb_id}"
-        end
-
-        # Generate source URLs
-        source_url = "https://vidsrc.cc/v3/embed/tv/#{series_imdb_id}/#{season_num}/#{episode_num}"
-        source_two_url = "https://v2.vidsrc.me/embed/#{series_imdb_id}/#{season_num}-#{episode_num}"
-
-        # Create the standalone episode entry
-        @entry = Entry.create!(
-          list: @list,
-          position: Entry.next_position(@list),
-          name: "#{series_data['name']} - #{episode_data['name']}",
-          series: series_data['name'],
-          media: 'episode',
-          imdb: series_imdb_id,
-          tmdb: series_tmdb_id,
-          season: season_num,
-          episode: episode_num,
-          plot: episode_data['overview'],
-          pic: episode_data['still_path'] ? "https://image.tmdb.org/t/p/w500#{episode_data['still_path']}" : nil,
-          source: source_url,
-          source_two: source_two_url,
-          rating: episode_data['vote_average'],
-          year: episode_data['air_date']&.split('-')&.first&.to_i,
-          length: episode_data['runtime'] || 0,
-          completed: false
-        )
-
-        flash.now[:notice] = "#{@entry.name} added to #{@list.name}"
-        partial = episode_identifier
+      case result[:status]
+      when :created
+        flash.now[:notice] = result[:message]
         render turbo_stream: [
           turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.entries.count, list: @list }, action: :replace),
           turbo_stream.replace('flash', partial: 'shared/flashes'),
-          turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: @entry, partial: partial })
+          turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: result[:entry], partial: partial })
         ]
-      rescue => e
-        Rails.logger.error "Error adding episode: #{e.message}"
-        Rails.logger.error e.backtrace.join("\n")
-        flash.now[:alert] = "Failed to add episode: #{e.message}"
+      when :duplicate
+        flash.now[:error] = result[:message]
+        render turbo_stream: [
+          turbo_stream.replace('flash', partial: 'shared/flashes'),
+          turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: result[:entry], partial: partial })
+        ]
+      else
+        flash.now[:alert] = result[:message]
         render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
       end
     end
