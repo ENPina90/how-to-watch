@@ -282,6 +282,17 @@ key, so the same action worked from the in-list search and not from the others.
 
 **Done:** fixed while extracting `ImdbEntryImporter`, with a regression spec.
 
+### 32. ✅ A missing id produced a truncated URL instead of a fallback (found 2026-08-23)
+`Source#substitute` replaced unknown or blank tokens with an empty string, so an entry with
+no imdb id yielded `https://provider/embed/movie/` — a *non-blank* string. `Entry#embed_url`
+only falls back to the legacy source columns when the resolver returns blank, so those
+entries served a broken URL while a perfectly good stored one sat unused. In production
+this affected the 17 entries with no imdb id whose list points at an imdb-kind provider.
+
+**Done:** a blank token now voids the whole URL, so the fallback engages. This also had to
+land before #20(a) — without it, "stop writing legacy columns" would have silently made
+those entries unplayable rather than falling back.
+
 ---
 
 ## P1 — Performance
@@ -412,7 +423,7 @@ drifts (mobile has favorites, desktop doesn't).
 collapse the layouts by making the desktop views responsive, starting with
 `lists/index_mobile` (which is mostly the same cards).
 
-### 20. Two eras of playback code coexist
+### 20. 🟡 Two eras of playback code coexist
 The `Source` template system is live, but URL strings are still built by hand in
 `Entry.generate_source`/`generate_source_two`, `Subentry.generate_source`/`fix_source_url!`,
 `OmdbApi.fetch_episodes_from_tmdb`, `lists#add_season`, and `entries#handle_episode_from_tmdb`
@@ -424,6 +435,28 @@ only; (b) keep `legacy_embed_url` as a read-time fallback for existing rows; (c)
 production entries all resolve through a `Source` (a one-off query can confirm), drop
 `entries.source`, `source_two`, `preferred_source`, `lists.preferred_source`,
 `subentries.source`, and the `preferred_source` inclusion validations.
+
+**(a) and (b) done 2026-08-23.** No vidsrc URL is constructed anywhere outside a `Source`
+template: `Entry.generate_source`/`generate_source_two`, `Subentry.generate_source` and
+`Subentry#fix_source_url!` are gone, and neither importer nor `OmdbApi` writes a source
+column. `legacy_embed_url` stays for old rows. `Entry#check_source` now validates the
+*resolved* URL rather than the legacy column, so the streamable flag still works on new
+entries. `spec/models/playback_resolution_spec.rb` proves every media type plays with the
+legacy columns empty.
+
+**(c) not yet — and `rails sources:audit` is how you decide.** Production today:
+
+```
+Entries:                      3480
+Resolve via a Source:         3447
+Fall back to legacy columns:     33
+Resolve to nothing at all:        0
+```
+
+Those 33 are old rows with no imdb id (mostly ripped/custom entries) whose only playable
+URL is the stored one. Dropping the columns would break exactly those. Options when you
+want to finish: give them a `direct` provider plus a `source_key`, or accept the loss.
+Re-run the audit until the legacy count is zero, then drop the columns in one migration.
 
 ### 21. `season`/`episode` stored as strings on `subentries`
 Forces `CAST(NULLIF(season, '') AS INTEGER)` in `UserEntryPosition` (×3), `Entry#set_current`,
@@ -498,6 +531,6 @@ tables were confirmed empty in production (0 rows) rather than assumed:
 5. **Then #3 + #12 + #13** together — the read/write split, the N+1s and the indexes are
    what make the list and sidebar pages fast.
 6. ~~**Then P3** — the dead-code sweep.~~ **Done 2026-08-22.**
-7. ~~**#17** (extract importers)~~ and ~~**#14**~~ **done.** Next: **#20** (retire the
-   legacy source columns) → #21 (integer season/episode) → #28 (dartsass, which also
-   removes the libffi workaround) → #18/#19 (front-end consolidation).
+7. ~~#17, #14~~ done; **#20 is at (a)+(b)** — the final column drop waits on
+   `rails sources:audit` reaching zero. Next: **#21** (integer season/episode) → #28
+   (dartsass, which also removes the libffi workaround) → #18/#19 (front-end).

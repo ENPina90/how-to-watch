@@ -135,6 +135,16 @@ Entry#embed_url(subentry:, autoplay:)
 **To fix a dead provider: edit that one `Source` row's template** (admin pencil icon under
 the player, or `rails console`). No per-entry backfill is needed.
 
+**Nothing constructs a provider URL outside a template.** New entries write no
+`source`/`source_two`; those columns survive only as a read-time fallback for old rows
+(33 in production — `rails sources:audit` tracks it). A template whose tokens cannot all be
+filled yields nil rather than a truncated URL, which is what lets the fallback engage.
+
+**Known limitation:** `Subentry#calculate_absolute_episode_number` counts episodes within
+one entry, but each season is its own entry here, so it returns the plain episode number.
+Nothing active uses `%{absolute_episode}` — only the deactivated vidsrc-cc anime template
+does — but reactivating that provider would need this fixed first.
+
 ---
 
 ## 5. Request flows
