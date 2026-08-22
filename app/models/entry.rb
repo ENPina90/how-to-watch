@@ -49,7 +49,9 @@ class Entry < ApplicationRecord
   # Both of these hit the network, so they run after the transaction commits and
   # off the request thread -- otherwise a slow or dead host holds the connection
   # and the new row's locks open for the duration of the request.
-  after_commit :enqueue_source_check, on: :create, if: -> { source.present? }
+  # Unconditional now: the URL to check is computed, so there is no legacy column to
+  # gate on. The job no-ops when nothing resolves.
+  after_commit :enqueue_source_check, on: :create
   # One registration covering both create and update: two after_commit callbacks
   # naming the same method would dedupe, and only the last one would survive.
   after_commit :attach_poster_from_pic, on: %i[create update], if: -> { saved_change_to_pic? && should_attach_poster? }
@@ -74,8 +76,11 @@ class Entry < ApplicationRecord
       year:         entry[:year],
       plot:         entry[:plot],
       pic:          entry[:pic],
-      source:       entry[:source] || generate_source(entry),
-      source_two:   entry[:source_two] || generate_source_two(entry),
+      # Legacy columns, written only when a caller supplies one (CSV seeds carry direct
+      # URLs). Playback URLs are computed from the provider's template -- see
+      # Entry#embed_url -- so nothing generates vidsrc strings any more.
+      source:       entry[:source],
+      source_two:   entry[:source_two],
       genre:        entry[:genre],
       director:     entry[:director],
       writer:       entry[:writer],
@@ -93,44 +98,6 @@ class Entry < ApplicationRecord
     list.entries.empty? ? 1 : list.entries.maximum(:position) + 1
   end
 
-  def self.generate_source(entry)
-    imdb_id = entry[:imdb]
-    series_imdb_id = entry[:series_imdb] || imdb_id
-
-    case entry[:media]
-    when "movie"
-      "https://vidsrc.cc/v3/embed/movie/#{imdb_id}"
-    when "series"
-      "https://vidsrc.cc/v3/embed/tv/#{imdb_id}"
-    when "episode"
-      "https://vidsrc.cc/v3/embed/tv/#{series_imdb_id}/#{entry[:season]}/#{entry[:episode]}"
-    when "anime"
-      # Anime uses absolute episode numbers, not season/episode, with /sub at the end
-      "https://vidsrc.cc/v2/embed/anime/#{imdb_id}/#{entry[:episode]}/sub"
-    else
-      "https://vidsrc.cc/v2/embed/movie/#{imdb_id}"
-    end
-  end
-
-  def self.generate_source_two(entry)
-    imdb_id = entry[:imdb]
-    series_imdb_id = entry[:series_imdb] || imdb_id
-
-    case entry[:media]
-    when "movie"
-      "https://v2.vidsrc.me/embed/#{imdb_id}"
-    when "series"
-      "https://v2.vidsrc.me/embed/#{imdb_id}"
-    when "episode"
-      "https://v2.vidsrc.me/embed/#{series_imdb_id}/#{entry[:season]}-#{entry[:episode]}"
-    when "anime"
-      # Anime source_two still uses season-episode format
-      "https://v2.vidsrc.me/embed/#{imdb_id}/#{entry[:season]}-#{entry[:episode]}"
-    else
-      "https://v2.vidsrc.me/embed/#{imdb_id}"
-    end
-  end
-
   def self.handle_creation_error(entry, error)
     FailedEntry.create(name: entry[:name] || entry['Title'], year: entry[:year] || entry['Year'])
     message = "Failed to create movie entry: #{error.message}"
@@ -146,8 +113,11 @@ class Entry < ApplicationRecord
     where('name ILIKE ?', "%#{name}%").first
   end
 
+  # Checks the URL the player will actually load, rather than the legacy `source` column
+  # that new entries no longer write.
   def check_source
-    update(stream: UrlCheckerService.new(source).valid_source?)
+    url = embed_url
+    update(stream: url.present? && UrlCheckerService.new(url).valid_source?)
   end
 
   def release_subentry_references
