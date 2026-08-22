@@ -45,6 +45,18 @@ class TmdbService
     get_json("tv/#{tmdb_id}/season/#{season_number}/episode/#{episode_number}/external_ids")
   end
 
+  def search_movie(query, year: nil)
+    params = { query: query }
+    params[:year] = year if year.to_i.positive?
+    get_json('search/movie', **params)
+  end
+
+  def search_tv(query, year: nil)
+    params = { query: query }
+    params[:first_air_date_year] = year if year.to_i.positive?
+    get_json('search/tv', **params)
+  end
+
   def find_by_imdb_id(imdb_id)
     get_json("find/#{imdb_id}", external_source: 'imdb_id')
   end
