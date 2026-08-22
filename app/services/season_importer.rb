@@ -4,8 +4,8 @@
 #
 # Extracted from ListsController#add_season. It used to make one TMDB call per episode
 # (for an imdb id nothing reads) plus one per preceding season for anime — around 26
-# sequential round trips for a normal season. It now makes one, or two for anime past
-# season 1, which is why this no longer needs to be a background job.
+# sequential round trips for a normal season. It now makes exactly one, which is why this
+# does not need to be a background job.
 #
 # Returns { status:, entry:, message:, episodes_added:, episodes_failed: } where status is:
 #   :created   — the season entry and its episodes were inserted
@@ -59,8 +59,6 @@ class SeasonImporter
       tmdb: @tmdb_id,
       position: Entry.next_position(@list),
       season: @season,
-      source: anime? ? "https://vidsrc.cc/v2/embed/anime/#{@series_imdb_id}" : "https://vidsrc.cc/v3/embed/tv/#{@series_imdb_id}",
-      source_two: "https://v2.vidsrc.me/embed/#{@series_imdb_id}",
       pic: TmdbService.image_url(season_data['poster_path']),
       plot: season_data['overview'],
       year: season_data['air_date']&.split('-')&.first&.to_i
@@ -68,7 +66,6 @@ class SeasonImporter
   end
 
   def create_subentries(entry, episodes)
-    offset = anime? ? absolute_episode_offset : 0
     added = 0
     failed = []
 
@@ -85,7 +82,6 @@ class SeasonImporter
           # Playback keys off the entry's imdb id (see Source#entry_variables); a
           # subentry's own id is never read, so it is not worth a request per episode.
           imdb: @series_imdb_id,
-          source: subentry_source(number, offset),
           rating: episode_data['vote_average'],
           completed: false
         )
@@ -97,36 +93,6 @@ class SeasonImporter
     end
 
     [added, failed]
-  end
-
-  def subentry_source(number, offset)
-    if anime?
-      # Anime is numbered continuously across seasons, and the provider wants /sub.
-      "https://vidsrc.cc/v2/embed/anime/#{@series_imdb_id}/#{offset + number}/sub"
-    else
-      "https://vidsrc.cc/v3/embed/tv/#{@series_imdb_id}/#{@season}/#{number}"
-    end
-  end
-
-  # How many episodes precede this season, so anime numbering continues rather than
-  # restarting at 1. The show payload already carries every season's episode_count, so
-  # this is one request rather than one per preceding season.
-  def absolute_episode_offset
-    return 0 if @season <= 1
-
-    seasons = @tmdb.fetch_show(@tmdb_id)['seasons'] || []
-    seasons.sum do |season|
-      number = season['season_number'].to_i
-      # season 0 is Specials, which absolute numbering skips
-      number.positive? && number < @season ? season['episode_count'].to_i : 0
-    end
-  rescue TmdbService::RequestError => e
-    Rails.logger.warn "Could not fetch show #{@tmdb_id} for anime numbering: #{e.message}"
-    0
-  end
-
-  def anime?
-    @media_type == 'anime'
   end
 
   def result(status, entry, message, added = 0, failed = [])

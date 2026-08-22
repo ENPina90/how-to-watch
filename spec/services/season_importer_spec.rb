@@ -52,11 +52,12 @@ RSpec.describe SeasonImporter do
       expect(entry.current).to eq(entry.subentries.order(:episode).first)
     end
 
-    it 'builds season/episode source urls' do
+    it 'writes no legacy source columns' do
       entry = importer.call[:entry]
 
-      expect(entry.subentries.order(:episode).first.source)
-        .to eq('https://vidsrc.cc/v3/embed/tv/tt1355642/1/1')
+      expect(entry.source).to be_blank
+      expect(entry.source_two).to be_blank
+      expect(entry.subentries.pluck(:source).compact_blank).to be_empty
     end
 
     it 'stores the series imdb id on each subentry' do
@@ -74,35 +75,19 @@ RSpec.describe SeasonImporter do
   end
 
   describe 'an anime season' do
-    it 'numbers episodes continuously across seasons' do
-      # Season 1 has 25 episodes, so season 2 episode 1 is absolute 26. Specials
-      # (season_number 0) do not count towards absolute numbering.
-      entry = importer(season: 2, media_type: 'anime').call[:entry]
-
-      expect(entry.subentries.order(:episode).first.source)
-        .to eq('https://vidsrc.cc/v2/embed/anime/tt1355642/26/sub')
-    end
-
-    it 'reads the offset from the show payload rather than a call per season' do
-      importer(season: 2, media_type: 'anime').call
-
-      expect(tmdb).to have_received(:fetch_show).once
-      expect(tmdb).to have_received(:fetch_season).once
-    end
-
-    it 'still imports when the offset lookup fails' do
-      allow(tmdb).to receive(:fetch_show).and_raise(TmdbService::RequestError, 'boom')
-
+    it 'imports with a single TMDB call, like a series' do
+      # Absolute numbering used to be baked into the stored URL, which cost a second call
+      # for the preceding seasons' episode counts. The live providers key anime off
+      # season/episode, so neither the URL nor the offset is computed at import time.
       result = importer(season: 2, media_type: 'anime').call
 
       expect(result[:status]).to eq(:created)
+      expect(tmdb).to have_received(:fetch_season).once
+      expect(tmdb).not_to have_received(:fetch_show)
     end
 
-    it 'starts at episode 1 for the first season' do
-      entry = importer(media_type: 'anime').call[:entry]
-
-      expect(entry.subentries.order(:episode).first.source)
-        .to eq('https://vidsrc.cc/v2/embed/anime/tt1355642/1/sub')
+    it 'records the media type on the parent entry' do
+      expect(importer(media_type: 'anime').call[:entry].media).to eq('anime')
     end
   end
 
