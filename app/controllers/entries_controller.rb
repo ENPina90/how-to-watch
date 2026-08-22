@@ -690,104 +690,32 @@ class EntriesController < ApplicationController
     end
 
     def handle_episode_from_tmdb
-      # This handles adding a standalone episode entry from TMDB data
-      require 'open-uri'
+      importer = EpisodeImporter.new(
+        list: @list,
+        tmdb_id: params[:tmdb],
+        season: params[:season],
+        episode: params[:episode],
+        imdb_id: params[:imdb].presence || params[:series_imdb].presence
+      )
+      result = importer.call
+      partial = importer.dom_key
 
-      series_imdb_id = params[:imdb].presence || params[:series_imdb].presence
-      series_tmdb_id = params[:tmdb]
-      season_num = params[:season].to_i
-      episode_num = params[:episode].to_i
-
-      begin
-        tmdb_api_key = TmdbService.api_key
-
-        # Fetch series details from TMDB to get series name
-        series_url = "https://api.themoviedb.org/3/tv/#{series_tmdb_id}?api_key=#{tmdb_api_key}"
-        series_response = URI.open(series_url).read
-        series_data = JSON.parse(series_response)
-
-        # Try to get IMDB ID from TMDB external IDs if not provided
-        if series_imdb_id.blank?
-          external_ids_url = "https://api.themoviedb.org/3/tv/#{series_tmdb_id}/external_ids?api_key=#{tmdb_api_key}"
-          begin
-            external_ids_response = URI.open(external_ids_url).read
-            external_ids_data = JSON.parse(external_ids_response)
-            series_imdb_id = external_ids_data['imdb_id']
-            Rails.logger.info "Fetched IMDB ID from TMDB: #{series_imdb_id}"
-          rescue => e
-            Rails.logger.warn "Could not fetch IMDB ID: #{e.message}"
-          end
-        end
-
-        # Fetch episode details from TMDB
-        episode_url = "https://api.themoviedb.org/3/tv/#{series_tmdb_id}/season/#{season_num}/episode/#{episode_num}?api_key=#{tmdb_api_key}"
-        episode_response = URI.open(episode_url).read
-        episode_data = JSON.parse(episode_response)
-
-        # Generate a unique identifier for the episode entry
-        episode_identifier = "S#{season_num}E#{episode_num}"
-
-        # Check if this episode already exists in the list
-        # Use a more flexible query since IMDB ID might not always be available
-        existing_entry = if series_imdb_id.present?
-          @list.entries.find_by(imdb: series_imdb_id, season: season_num, episode: episode_num, media: 'episode')
-        else
-          # If no IMDB ID, check by tmdb, season, and episode
-          @list.entries.find_by(tmdb: series_tmdb_id, season: season_num, episode: episode_num, media: 'episode')
-        end
-
-        if existing_entry
-          flash.now[:error] = "Episode already added"
-          partial = episode_identifier
-          render turbo_stream: [
-            turbo_stream.replace('flash', partial: 'shared/flashes'),
-            turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: existing_entry, partial: partial })
-          ]
-          return
-        end
-
-        # Ensure we have an IMDB ID for the source URLs
-        unless series_imdb_id.present?
-          series_imdb_id = "tmdb#{series_tmdb_id}"
-          Rails.logger.warn "Using generated IMDB ID for episode: #{series_imdb_id}"
-        end
-
-        # Generate source URLs
-        source_url = "https://vidsrc.cc/v3/embed/tv/#{series_imdb_id}/#{season_num}/#{episode_num}"
-        source_two_url = "https://v2.vidsrc.me/embed/#{series_imdb_id}/#{season_num}-#{episode_num}"
-
-        # Create the standalone episode entry
-        @entry = Entry.create!(
-          list: @list,
-          position: Entry.next_position(@list),
-          name: "#{series_data['name']} - #{episode_data['name']}",
-          series: series_data['name'],
-          media: 'episode',
-          imdb: series_imdb_id,
-          tmdb: series_tmdb_id,
-          season: season_num,
-          episode: episode_num,
-          plot: episode_data['overview'],
-          pic: episode_data['still_path'] ? "https://image.tmdb.org/t/p/w500#{episode_data['still_path']}" : nil,
-          source: source_url,
-          source_two: source_two_url,
-          rating: episode_data['vote_average'],
-          year: episode_data['air_date']&.split('-')&.first&.to_i,
-          length: episode_data['runtime'] || 0,
-          completed: false
-        )
-
-        flash.now[:notice] = "#{@entry.name} added to #{@list.name}"
-        partial = episode_identifier
+      case result[:status]
+      when :created
+        flash.now[:notice] = result[:message]
         render turbo_stream: [
           turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.entries.count, list: @list }, action: :replace),
           turbo_stream.replace('flash', partial: 'shared/flashes'),
-          turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: @entry, partial: partial })
+          turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: result[:entry], partial: partial })
         ]
-      rescue => e
-        Rails.logger.error "Error adding episode: #{e.message}"
-        Rails.logger.error e.backtrace.join("\n")
-        flash.now[:alert] = "Failed to add episode: #{e.message}"
+      when :duplicate
+        flash.now[:error] = result[:message]
+        render turbo_stream: [
+          turbo_stream.replace('flash', partial: 'shared/flashes'),
+          turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: result[:entry], partial: partial })
+        ]
+      else
+        flash.now[:alert] = result[:message]
         render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
       end
     end
