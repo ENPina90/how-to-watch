@@ -9,7 +9,6 @@ class User < ApplicationRecord
   after_create :create_default_list
 
   has_many :lists
-  has_many :list_user_entries
   has_many :user_entries, dependent: :destroy
   has_many :user_entry_positions, dependent: :destroy
   has_many :subscriptions, dependent: :destroy
