@@ -291,29 +291,6 @@ class EntriesController < ApplicationController
     end
   end
 
-  # Keep the old decrement logic for when we actually want to mark as incomplete
-  def mark_previous_incomplete
-    if @entry.media == 'series'
-      @entry.set_current(-1)
-      if params[:mode] == 'watch'
-        redirect_to watch_entry_path(@entry)
-      else
-        redirect_to list_path(@entry.list, anchor: @entry.imdb)
-      end
-    else
-      if @entry.list.ordered
-        @entry.mark_incomplete_by!(current_user)
-        current = @entry.list.assign_current(:previous, current_user) if @entry.list.user == current_user
-        redirect_to watch_entry_path(current || @entry)
-      else
-        list_positions = @entry.list.entries.map(&:position) - [@entry.list.current]
-        random_entry_position = list_positions.sample
-        current = @entry.list.assign_current(random_entry_position, current_user) if @entry.list.user == current_user
-        redirect_to watch_entry_path(current || @entry)
-      end
-    end
-  end
-
   def increment_current
     return redirect_to watch_entry_path(@entry) unless current_user
 

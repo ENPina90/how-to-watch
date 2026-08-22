@@ -224,68 +224,12 @@ class Entry < ApplicationRecord
     user_position.update_to_subentry!(subentry)
   end
 
-  def set_current(change)
-    # Order by season and episode as integers (they're stored as strings in subentries table)
-    # Handle empty strings by using NULLIF to convert them to NULL before casting
-    subentries = self.subentries.where.not(season: [nil, '']).where.not(episode: [nil, ''])
-                     .order(Arel.sql('CAST(NULLIF(season, \'\') AS INTEGER), CAST(NULLIF(episode, \'\') AS INTEGER)'))
-
-    # If no subentries, do nothing
-    return if subentries.empty?
-
-    # Find current index (default to -1 if no current is set)
-    current_index = self.current ? subentries.index(self.current) : -1
-    current_index ||= -1 # In case index returns nil
-
-    new_index = current_index + change
-
-    # Ensure we stay within bounds
-    if new_index < 0
-      # At beginning, set to first episode
-      new_index = 0
-    elsif new_index >= subentries.length
-      # At end, set to last episode
-      new_index = subentries.length - 1
-    end
-
-    # Update current to new subentry
-    new_current = subentries[new_index]
-    if new_current
-      # Fix the source URL if it's broken
-      new_current.fix_source_url! if new_current.source.blank? || new_current.source.include?('//-')
-
-      self.update(current: new_current)
-      Rails.logger.info "Updated current to: S#{new_current.season}E#{new_current.episode} - #{new_current.name}"
-    else
-      Rails.logger.error "Could not find subentry at index #{new_index}"
-    end
-  end
-
-  # Fix all broken subentry sources for this entry
-  def fix_subentry_sources!
-    fixed_count = 0
-    subentries.each do |subentry|
-      if subentry.source.blank? || subentry.source.include?('//-')
-        subentry.fix_source_url!
-        fixed_count += 1
-      end
-    end
-    Rails.logger.info "Fixed #{fixed_count} subentry sources for #{name}"
-    fixed_count
-  end
-
   def next
     list.entries.where('position > ?', position).order(:position).first
   end
 
   def previous
     list.entries.where('position < ?', position).order(:position).last
-  end
-
-  def complete(boolean)
-    self.update(completed: boolean)
-    self.list.watched!
-    completed
   end
 
   # READ. Returns nil when the user has never touched this entry.
@@ -435,21 +379,5 @@ class Entry < ApplicationRecord
   rescue StandardError => e
     # Log error but don't fail the main operation
     Rails.logger.error "Failed to enqueue poster attachment for Entry #{id}: #{e.message}"
-  end
-
-  # Immediately attach poster (synchronous)
-  def attach_poster_immediately
-    Rails.logger.info "Attaching poster from pic URL for Entry #{id}: #{name}"
-
-    service = PosterMigrationService.new
-    result = service.migrate_entry_poster(self)
-
-    if result[:status] == :migrated
-      Rails.logger.info "Successfully attached poster: #{result[:message]}"
-    else
-      Rails.logger.warn "Failed to attach poster: #{result[:message]}"
-    end
-  rescue StandardError => e
-    Rails.logger.error "Error attaching poster immediately: #{e.message}"
   end
 end

@@ -676,42 +676,4 @@ class ListsController < ApplicationController
       redirect_to lists_path, alert: 'You do not have permission to perform this action.'
     end
   end
-
-  def find_now_playing_entry
-    # Find the most recently watched entry
-    recent_user_entry = current_user.user_entries
-                                  .joins(:entry)
-                                  .where.not(last_watched_at: nil)
-                                  .order(last_watched_at: :desc)
-                                  .first&.entry
-
-    recent_position_entry = current_user.user_list_positions
-                                      .joins(list: :entries)
-                                      .order(updated_at: :desc)
-                                      .first&.current_entry
-
-    # Use the most recent between the two
-    most_recent_entry = nil
-    if recent_user_entry && recent_position_entry
-      user_entry_time = current_user.user_entries.find_by(entry: recent_user_entry)&.last_watched_at || Time.at(0)
-      position_time = current_user.user_list_positions.find_by(list: recent_position_entry.list)&.updated_at || Time.at(0)
-      most_recent_entry = user_entry_time > position_time ? recent_user_entry : recent_position_entry
-    elsif recent_user_entry
-      most_recent_entry = recent_user_entry
-    elsif recent_position_entry
-      most_recent_entry = recent_position_entry
-    end
-
-    return nil unless most_recent_entry
-
-    # Find the next entry in the same list
-    list = most_recent_entry.list
-    if list.ordered?
-      next_entry = list.find_next_incomplete_entry_for_user(current_user, most_recent_entry.position)
-    else
-      next_entry = list.find_random_incomplete_entry_for_user(current_user, most_recent_entry)
-    end
-
-    next_entry || most_recent_entry
-  end
 end
