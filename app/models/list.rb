@@ -19,8 +19,6 @@ class List < ApplicationRecord
   # does everything Entry's destroy callbacks would have done, in a fixed number of
   # statements instead of ~11 per entry.
   has_many :entries, dependent: :delete_all
-  has_many :list_user_entries, dependent: :delete_all
-  has_many :users, through: :list_user_entries
   has_many :subscriptions, dependent: :destroy
   has_many :subscribers, through: :subscriptions, source: :user
   has_many :user_list_positions, dependent: :destroy
@@ -388,7 +386,6 @@ class List < ApplicationRecord
 
     UserEntryPosition.where(current_subentry_id: subentry_ids).update_all(current_subentry_id: nil)
     Entry.where(current_id: subentry_ids).update_all(current_id: nil)
-    ListUserEntry.where(current_entry_id: entry_ids).update_all(current_entry_id: nil)
 
     # has_one_attached :poster purges per record on destroy; delete_all skips that, so
     # detach here and hold the blob ids for the post-commit purge.

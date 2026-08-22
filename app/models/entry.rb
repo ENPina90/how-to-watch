@@ -21,10 +21,6 @@ class Entry < ApplicationRecord
   # subentries, so the has_many above already removes it. Destroying it a second
   # time (after the bulk delete) would just re-run callbacks against a dead row.
   belongs_to :current, class_name: 'Subentry', optional: true
-  # Same FK hazard as Subentry#user_entry_positions: current_entry_id references this
-  # row, so it has to be cleared before the entry can be deleted.
-  has_many :current_list_users, class_name: 'ListUserEntry', foreign_key: 'current_entry_id',
-                                inverse_of: :current_entry, dependent: :nullify
   validates :name, presence: true, uniqueness: { scope: [:list, :series] }
   validates :media, presence: true
   validates :preferred_source, inclusion: { in: [1, 2] }, allow_nil: true
