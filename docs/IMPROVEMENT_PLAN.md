@@ -2,9 +2,9 @@
 
 **Written:** 2026-08-21, against `master` @ `a777d88` + uncommitted working tree.
 **Companion:** [ARCHITECTURE.md](ARCHITECTURE.md) — read that first for how anything works.
-**Supersedes:** `REFACTORING_TODO.md` (Oct 2025). Several of its items are now done
-(indexes on `user_entries`/`subscriptions`, per-user positions, the `Source` provider
-system); the rest are folded in below. Delete it once you're happy with this file.
+**Supersedes:** `REFACTORING_TODO.md` (Oct 2025), now deleted — its live items were folded
+in below and the rest were already done (indexes, per-user positions, the `Source`
+provider system). It is still in git history if you want it.
 
 Everything below was verified by reading the code — no speculative items. Line numbers are
 from the working tree at the time of writing.
@@ -402,9 +402,10 @@ existing `increment_current` vs `shuffle_current` branch) or remove the setting 
 
 ---
 
-## P3 — Dead code and cleanup
+## P3 — ✅ Dead code and cleanup (done 2026-08-22)
 
-Safe to delete (verified: zero references outside their own definition):
+**Done 2026-08-22.** Each item was verified unreferenced before removal, and the two
+tables were confirmed empty in production (0 rows) rather than assumed:
 
 | Item | Location |
 |---|---|
@@ -423,12 +424,15 @@ Safe to delete (verified: zero references outside their own definition):
 | `pid` file, `path/` directory, `.DS_Store` | committed junk |
 | `List::OFFSET`'s commented `random:` key; `Errors::NoResults` concern | |
 
-**Also:**
-- **Docs sprawl:** nine root-level `*_GUIDE.md` files from Sept 2025 plus a stale
-  `REFACTORING_TODO.md`. Move the still-useful ones into `docs/`, delete the rest, and let
-  `docs/ARCHITECTURE.md` be the entry point (README should link to it).
-- **`puts` in production code:** `Entry.create_from_source`, `TmdbService`, `ImdbScraper`,
-  `OmdbApi` — should be `Rails.logger`.
+**Also done:**
+- **Docs sprawl:** the nine root guides moved to `docs/guides/`; `REFACTORING_TODO.md`
+  deleted. `docs/ARCHITECTURE.md` is the entry point and the README links to all three.
+- **`puts` in production code:** converted in `Entry.create_from_source`, `TmdbService` and
+  `ImdbScraper`. Deliberately **not** converted in `ImageRepairService`,
+  `PosterMigrationService` or `DatabaseMigrationHelper` — that output is `show_progress`
+  reporting for rake tasks, where `puts` is the right call.
+- **Left in place:** `.DS_Store` and the empty `path/` directory are untracked, so they
+  affect only the local checkout — removing them is your call, not the repo's.
 - **Migrations:** the `20250110000001..7` "update vidsrc sources" / "fix episode sources"
   data migrations are historical no-ops now; leave them (they've run) but don't add more
   data-fixes as migrations — use rake tasks so they're re-runnable.
@@ -451,6 +455,6 @@ Safe to delete (verified: zero references outside their own definition):
 4. ~~**Then #11** (real queue backend) so #14 has somewhere to go.~~ **Done 2026-08-21.**
 5. **Then #3 + #12 + #13** together — the read/write split, the N+1s and the indexes are
    what make the list and sidebar pages fast.
-6. **Then P3** — the dead-code sweep. Cheap, and it shrinks the surface for everything after.
+6. ~~**Then P3** — the dead-code sweep.~~ **Done 2026-08-22.**
 7. **Then, one at a time:** #17 (extract importers) → #14 (move them to jobs) → #20 (retire
    the legacy source columns) → #21 → #18/#19 (front-end consolidation).

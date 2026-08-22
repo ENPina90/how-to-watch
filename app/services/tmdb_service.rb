@@ -24,7 +24,7 @@ class TmdbService
     parsed_response = JSON.parse(response)
     parsed_response['imdb_id']
   rescue StandardError => e
-    puts "Error fetching IMDb ID: #{e.message}"
+    Rails.logger.error "Error fetching IMDb ID: #{e.message}"
     nil
   end
 
@@ -45,12 +45,12 @@ class TmdbService
         # Return the YouTube link
         "https://www.youtube.com/watch?v=#{trailer['key']}"
       else
-        puts "No trailer found for Entry ##{entry.id}"
+        Rails.logger.info "No trailer found for Entry ##{entry.id}"
         nil
       end
 
     rescue StandardError => e
-      puts "Error fetching trailer for Entry ##{entry.id}: #{e.message}"
+      Rails.logger.error "Error fetching trailer for Entry ##{entry.id}: #{e.message}"
       nil
     end
   end
@@ -76,12 +76,12 @@ class TmdbService
         # TMDB images base URL with w500 size (good quality, not too large)
         "https://image.tmdb.org/t/p/w500#{poster_path}"
       else
-        puts "No poster found for TMDB ID: #{tmdb_id}"
+        Rails.logger.info "No poster found for TMDB ID: #{tmdb_id}"
         nil
       end
 
     rescue StandardError => e
-      puts "Error fetching poster for TMDB ID #{tmdb_id}: #{e.message}"
+      Rails.logger.error "Error fetching poster for TMDB ID #{tmdb_id}: #{e.message}"
       nil
     end
   end
@@ -100,16 +100,16 @@ class TmdbService
         if validate_image_url(poster_url)
           poster_url
         else
-          puts "OMDB poster URL is not accessible for IMDB ID: #{imdb_id}"
+          Rails.logger.info "OMDB poster URL is not accessible for IMDB ID: #{imdb_id}"
           nil
         end
       else
-        puts "No poster found in OMDB for IMDB ID: #{imdb_id}"
+        Rails.logger.info "No poster found in OMDB for IMDB ID: #{imdb_id}"
         nil
       end
 
     rescue StandardError => e
-      puts "Error fetching OMDB poster for IMDB ID #{imdb_id}: #{e.message}"
+      Rails.logger.error "Error fetching OMDB poster for IMDB ID #{imdb_id}: #{e.message}"
       nil
     end
   end
@@ -123,7 +123,7 @@ class TmdbService
       # Only check HTTP/HTTPS URLs
       return false unless %w[http https].include?(uri.scheme)
 
-      puts "     🌐 Testing: #{uri.host}..." if show_debug
+      Rails.logger.info "     🌐 Testing: #{uri.host}..." if show_debug
 
       # Make a HEAD request to check if the image exists without downloading it
       http = Net::HTTP.new(uri.host, uri.port)
@@ -138,15 +138,15 @@ class TmdbService
       is_valid = response.code.to_i == 200 && response['content-type']&.start_with?('image/')
 
       if show_debug
-        puts "     📊 Response: #{response.code} | Content-Type: #{response['content-type']}"
-        puts "     #{is_valid ? '✅' : '❌'} Result: #{is_valid ? 'Valid' : 'Invalid'}"
+        Rails.logger.info "     📊 Response: #{response.code} | Content-Type: #{response['content-type']}"
+        Rails.logger.info "     #{is_valid ? '✅' : '❌'} Result: #{is_valid ? 'Valid' : 'Invalid'}"
       end
 
       is_valid
 
     rescue StandardError => e
-      puts "     💥 Error: #{e.message}" if show_debug
-      puts "Error validating image URL #{url}: #{e.message}" unless show_debug
+      Rails.logger.info "     💥 Error: #{e.message}" if show_debug
+      Rails.logger.error "Error validating image URL #{url}: #{e.message}" unless show_debug
       false
     end
   end

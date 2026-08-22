@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_22_090000) do
+ActiveRecord::Schema[8.0].define(version: 2026_08_22_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -99,15 +99,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_22_090000) do
     t.string "error"
   end
 
-  create_table "follows", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.bigint "list_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["list_id"], name: "index_follows_on_list_id"
-    t.index ["user_id"], name: "index_follows_on_user_id"
-  end
-
   create_table "list_relationships", force: :cascade do |t|
     t.bigint "parent_list_id", null: false
     t.bigint "child_list_id", null: false
@@ -117,18 +108,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_22_090000) do
     t.index ["child_list_id"], name: "idx_list_rel_child"
     t.index ["parent_list_id", "child_list_id"], name: "idx_list_rel_parent_child", unique: true
     t.index ["parent_list_id", "position"], name: "idx_list_rel_parent_position"
-  end
-
-  create_table "list_user_entries", force: :cascade do |t|
-    t.bigint "list_id", null: false
-    t.bigint "user_id", null: false
-    t.bigint "current_entry_id"
-    t.integer "history", default: [], array: true
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["current_entry_id"], name: "index_list_user_entries_on_current_entry_id"
-    t.index ["list_id"], name: "index_list_user_entries_on_list_id"
-    t.index ["user_id"], name: "index_list_user_entries_on_user_id"
   end
 
   create_table "lists", force: :cascade do |t|
@@ -273,13 +252,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_22_090000) do
   add_foreign_key "entries", "lists"
   add_foreign_key "entries", "sources", column: "provider_id"
   add_foreign_key "entries", "subentries", column: "current_id"
-  add_foreign_key "follows", "lists"
-  add_foreign_key "follows", "users"
   add_foreign_key "list_relationships", "lists", column: "child_list_id"
   add_foreign_key "list_relationships", "lists", column: "parent_list_id"
-  add_foreign_key "list_user_entries", "entries", column: "current_entry_id"
-  add_foreign_key "list_user_entries", "lists"
-  add_foreign_key "list_user_entries", "users"
   add_foreign_key "lists", "lists", column: "parent_list_id"
   add_foreign_key "lists", "sources", column: "provider_id"
   add_foreign_key "lists", "users"
