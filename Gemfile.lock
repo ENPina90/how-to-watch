@@ -159,9 +159,6 @@ GEM
       multipart-post (~> 2.0)
     faraday-net_http (3.4.1)
       net-http (>= 0.5.0)
-    ffi (1.15.5)
-    font-awesome-sass (6.4.0)
-      sassc (~> 2.0)
     globalid (1.2.1)
       activesupport (>= 6.1)
     google-protobuf (4.36.0-arm64-darwin)
@@ -367,8 +364,6 @@ GEM
       google-protobuf (~> 4.31)
     sass-embedded (1.103.1-x86_64-linux-gnu)
       google-protobuf (~> 4.31)
-    sassc (2.4.0)
-      ffi (~> 1.9)
     securerandom (0.4.1)
     selenium-webdriver (4.9.0)
       rexml (~> 3.2, >= 3.2.5)
@@ -448,7 +443,6 @@ DEPENDENCIES
   dotenv-rails
   factory_bot_rails
   faker
-  font-awesome-sass (~> 6.1)
   htmlbeautifier
   httparty
   importmap-rails
