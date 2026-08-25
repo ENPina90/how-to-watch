@@ -28,7 +28,7 @@
   <% end %>
 </div>
 
-<script>
+<script nonce="<%= content_security_policy_nonce %>">
   function watchNowSetSource(btn) {
     var frame = document.getElementById('cinema');
     if (frame) frame.src = btn.dataset.src;

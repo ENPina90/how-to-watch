@@ -58,6 +58,8 @@ class ListsController < ApplicationController
       @community_lists = with_card_data(List.where(id: community_list_ids.uniq))
                          .order(created_at: :desc).limit(20)
     end
+
+    @card_entries = resolve_card_entries(@recently_watched_lists, @your_lists, @community_lists)
   end
 
   def search
@@ -420,6 +422,26 @@ class ListsController < ApplicationController
 
   # Everything a list card on the index renders: the owner, the entry count, and the
   # current user's stored position (read by List#current_entry).
+  # Every card shows the entry the user would resume, and its poster. `current_entry` has
+  # to run per list -- unordered lists pick a random incomplete entry -- but resolving it
+  # here means a list appearing in two sections is resolved once, and the posters can be
+  # preloaded in one query instead of one per card.
+  def resolve_card_entries(*collections)
+    lists = collections.flatten.uniq(&:id)
+    by_list_id = lists.each_with_object({}) do |list, acc|
+      acc[list.id] = list.current_entry(current_user)
+    end
+
+    entries = by_list_id.values.compact.uniq(&:id)
+    if entries.any?
+      ActiveRecord::Associations::Preloader.new(
+        records: entries, associations: { poster_attachment: :blob }
+      ).call
+    end
+
+    by_list_id
+  end
+
   def with_card_data(scope)
     # A correlated subquery rather than COUNT over a join: the recently-watched scope
     # already inner-joins entries filtered to this user's completed rows, and a joined
@@ -439,11 +461,10 @@ class ListsController < ApplicationController
   def load_entries
     # Every entry partial asks for this user's completion and review state, so preload it
     # rather than issuing a lookup per entry.
-    @list_entries = if params[:query].present?
-                      @list.entries.includes(:user_entries).search_by_input(params[:query])
-                    else
-                      @list.entries.includes(:user_entries)
-                    end
+    # `with_attached_poster` matters as much as :user_entries -- every card runs
+    # `entry_poster_image_tag`, which touches the attachment.
+    scope = @list.entries.includes(:user_entries).with_attached_poster
+    @list_entries = params[:query].present? ? scope.search_by_input(params[:query]) : scope
 
     # Load child lists with their positions in this parent context
     @child_lists = @list.child_relationships.includes(child_list: :parent_lists).order(:position).map do |rel|
@@ -456,10 +477,15 @@ class ListsController < ApplicationController
     # ordered collection rather than the grouped `@entries`. It has to honour the search
     # too: `?query=` filtered @list_entries and then the view rendered the whole list
     # anyway, so the "Find a movie" box appeared to do nothing.
+    # Built from @list_entries, never from `all_items_by_position` -- that method reloads
+    # `entries` from scratch, throwing away the preloads above. The Position view is the
+    # default, so reading it cost one user_entries lookup and one attachment lookup per
+    # entry, which is exactly what the preloads exist to prevent.
+    ordered_entries = @list_entries.to_a.sort_by { |entry| entry.position || 0 }
     @position_items = if params[:query].present?
-                        @list_entries.to_a.sort_by { |entry| entry.position || 0 }
+                        ordered_entries # child lists cannot match an entry search
                       else
-                        @list.all_items_by_position
+                        (ordered_entries + @list.child_lists.to_a).sort_by { |item| item.position || 0 }
                       end
 
     @entries = {}

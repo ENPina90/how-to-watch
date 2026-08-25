@@ -81,7 +81,7 @@
 </div>
 
 <% if current_user.letterboxd_connected? %>
-  <script>
+  <script nonce="<%= content_security_policy_nonce %>">
     // Auto-refresh token if needed
     document.addEventListener('DOMContentLoaded', function() {
       <% if current_user.letterboxd_token_needs_refresh? %>
