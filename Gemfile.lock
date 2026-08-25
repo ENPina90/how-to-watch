@@ -115,6 +115,9 @@ GEM
       rexml
     crass (1.0.6)
     csv (3.3.0)
+    dartsass-rails (0.5.1)
+      railties (>= 6.0.0)
+      sass-embedded (~> 1.63)
     database_cleaner-active_record (2.1.0)
       activerecord (>= 5.a)
       database_cleaner-core (~> 2.0.0)
@@ -161,6 +164,12 @@ GEM
       sassc (~> 2.0)
     globalid (1.2.1)
       activesupport (>= 6.1)
+    google-protobuf (4.36.0-arm64-darwin)
+      bigdecimal
+      rake (~> 13.3)
+    google-protobuf (4.36.0-x86_64-linux-gnu)
+      bigdecimal
+      rake (~> 13.3)
     hashdiff (1.1.0)
     htmlbeautifier (1.4.2)
     http-accept (1.7.0)
@@ -354,14 +363,12 @@ GEM
       ruby-lsp (>= 0.26.0, < 0.27.0)
     ruby-progressbar (1.13.0)
     rubyzip (2.3.2)
+    sass-embedded (1.103.1-arm64-darwin)
+      google-protobuf (~> 4.31)
+    sass-embedded (1.103.1-x86_64-linux-gnu)
+      google-protobuf (~> 4.31)
     sassc (2.4.0)
       ffi (~> 1.9)
-    sassc-rails (2.1.2)
-      railties (>= 4.0.0)
-      sassc (>= 2.0)
-      sprockets (> 3.0)
-      sprockets-rails
-      tilt
     securerandom (0.4.1)
     selenium-webdriver (4.9.0)
       rexml (~> 3.2, >= 3.2.5)
@@ -386,7 +393,6 @@ GEM
     themoviedb-api (1.4.1)
       rest-client (~> 2.1)
     thor (1.4.0)
-    tilt (2.1.0)
     timeout (0.4.3)
     turbo-rails (1.4.0)
       actionpack (>= 6.0.0)
@@ -435,6 +441,7 @@ DEPENDENCIES
   bootsnap
   capybara
   cloudinary
+  dartsass-rails
   database_cleaner-active_record
   debug (>= 1.9.2)
   devise (~> 4.9.4)
@@ -459,7 +466,6 @@ DEPENDENCIES
   rubocop-rspec
   ruby-lsp (~> 0.26.1)
   ruby-lsp-rails (~> 0.4.8)
-  sassc-rails
   selenium-webdriver
   sidekiq (~> 7.3)
   simple_form!
