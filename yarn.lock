@@ -2,7 +2,12 @@
 # yarn lockfile v1
 
 
-"@popperjs/core@^2.11.7":
+"@fortawesome/fontawesome-free@^6.7.2":
+  version "6.7.2"
+  resolved "https://registry.npmjs.org/@fortawesome/fontawesome-free/-/fontawesome-free-6.7.2.tgz"
+  integrity sha512-JUOtgFW6k9u4Y+xeIaEiLr3+cjoUPiAuLXoyKOJSia6Duzb7pq+A76P9ZdPDoAoxHdHzq6gE9/jKBGXlZT8FbA==
+
+"@popperjs/core@^2.11.6", "@popperjs/core@^2.11.7":
   version "2.11.7"
   resolved "https://registry.npmjs.org/@popperjs/core/-/core-2.11.7.tgz"
   integrity sha512-Cr4OjIkipTtcXKjAsm8agyleBuDHvxzeBoa1v543lbv1YaIwQjESsVcmjiWiPEbC1FIeHOG/Op9kdCmAmiS3Kw==
@@ -14,10 +19,10 @@ bootstrap@^5.2.3:
 
 prettier@^2.8.8:
   version "2.8.8"
-  resolved "https://registry.yarnpkg.com/prettier/-/prettier-2.8.8.tgz#e8c5d7e98a4305ffe3de2e1fc4aca1a71c28b1da"
+  resolved "https://registry.npmjs.org/prettier/-/prettier-2.8.8.tgz"
   integrity sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==
 
 sortablejs@^1.15.3:
-  version "1.15.3"
-  resolved "https://registry.yarnpkg.com/sortablejs/-/sortablejs-1.15.3.tgz#033668db5ebfb11167d1249ab88e748f27959e29"
-  integrity sha512-zdK3/kwwAK1cJgy1rwl1YtNTbRmc8qW/+vgXf75A7NHag5of4pyI6uK86ktmQETyWRH7IGaE73uZOOBcGxgqZg==
+  version "1.15.7"
+  resolved "https://registry.npmjs.org/sortablejs/-/sortablejs-1.15.7.tgz"
+  integrity sha512-Kk8wLQPlS+yi1ZEf48a4+fzHa4yxjC30M/Sr2AnQu+f/MPwvvX9XjZ6OWejiz8crBsLwSq8GHqaxaET7u6ux0A==
