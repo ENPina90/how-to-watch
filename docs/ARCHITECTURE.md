@@ -232,9 +232,10 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
   `services/` because Stimulus eager-loads `controllers/` and would register a mixin as a
   controller. `search_controller` keeps its own copies — its versions differ.
 - **`spec/javascript_modules_spec.rb`** is the only test coverage this JavaScript has. It
-  is static: it fails on an unpinned bare import, a method defined twice in one file, and
-  a `data-action` pointing at a method no controller defines. All three otherwise show up
-  only in the browser console.
+  is static: it fails on an unpinned bare import, a method defined twice in one file, a
+  `data-action` pointing at a method no controller defines, and a `data-*-target` no
+  controller declares. All of those otherwise show up only in the browser console — or
+  not at all, since Stimulus ignores an undeclared target silently.
 - **Font Awesome** is self-hosted from npm (pinned to 6.x; v7 renames icons). Its
   `scss/` and `webfonts/` are vendored under `node_modules`, and `rails font_awesome:copy`
   puts the fonts in `public/webfonts` during `assets:precompile` — `$fa-font-path` points
@@ -411,7 +412,8 @@ Not yet committed, and it matters when reading `git log`:
 | Filtering a list returns everything | `ListsController#load_entries` builds `@position_items`; the default `Position` view renders that rather than the grouped `@entries`, so a filter has to be applied there too. |
 | Adding a series creates no episodes | `OmdbApi.get_series_episodes` → needs `entry.season` and (ideally) `entry.tmdb`. Failures here surface as the misleading flash "This already exists in your list". |
 | Sort/group setting doesn't stick | `ListsController#load_entries` — writes are guarded to explicit params, and `settings` is read back as the default. |
-| Slow list page | check the preloads first: `ListsController#with_card_data` (index) and the `includes(:user_entries)` in `load_entries` (show). Losing either turns `completed_by?` / `current_entry` back into a query per row. `find_now_playing_for_sidebar` also runs on every page. |
+| Slow list page | check the preloads first: `ListsController#with_card_data` + `resolve_card_entries` (index) and the `includes(:user_entries).with_attached_poster` in `load_entries` (show). Losing either turns `completed_by?` / `current_entry` back into a query per row. `find_now_playing_for_sidebar` also runs on every page. **A preload here is easy to defeat without touching it:** anything that reloads the association (`all_items_by_position` did) throws it away silently. `spec/requests/list_show_queries_spec.rb` and `list_index_queries_spec.rb` assert the query counts stay flat. |
+| A write succeeds that shouldn't | `EntriesController#check_edit_permissions` — it guards only the actions named in its `before_action`. Actions writing *shared* entry state belong there; the per-user ones (`complete`, `review`, current-position) deliberately do not. |
 | Worker crashes at boot with `libffi.so.8: cannot open shared object file` | Railpack's runtime image lacks libffi, which `sassc-rails → sassc → ffi` needs at Rails boot. Fixed with `RAILPACK_DEPLOY_APT_PACKAGES=libffi8 libpq5` on the service. `/mise/installs/...` paths in a trace mean Railpack; `/nix/store/...` means Nixpacks. |
 | Job "didn't run" | check `/sidekiq` (admin) for retries/dead jobs, then `railway logs --service worker`. In development jobs run on `:async` in-process, so a dev-only failure is a different animal. |
 | Mobile layout differs from desktop | user-agent sniffing in both controllers → `*_mobile` views + `layouts/mobile`. |

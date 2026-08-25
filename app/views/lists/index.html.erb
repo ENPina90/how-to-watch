@@ -5,7 +5,7 @@
       <h3 class="row-title">Continue Watching</h3>
       <div class="list-carousel pe-5">
         <% @recently_watched_lists.first(10).each do |list| %>
-          <% current_entry = list.current_entry(current_user) %>
+          <% current_entry = @card_entries[list.id] %>
           <div class="list-card">
             <% if current_entry %>
               <%= link_to watch_entry_path(current_entry), class: "text-decoration-none" do %>
@@ -54,7 +54,7 @@
       </div>
       <div class="list-carousel pe-5">
         <% @your_lists.each do |list| %>
-          <% current_entry = list.current_entry(current_user) %>
+          <% current_entry = @card_entries[list.id] %>
           <div class="list-card">
             <% if current_entry %>
               <%= link_to watch_entry_path(current_entry), class: "text-decoration-none" do %>
@@ -97,7 +97,7 @@
       <h3 class="row-title">Community Lists</h3>
       <div class="list-carousel pe-5">
         <% @community_lists.each do |list| %>
-          <% current_entry = list.current_entry(current_user) %>
+          <% current_entry = @card_entries[list.id] %>
           <div class="list-card">
             <% if current_entry %>
               <%= link_to watch_entry_path(current_entry), class: "text-decoration-none" do %>

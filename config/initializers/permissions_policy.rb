@@ -12,10 +12,15 @@
 # attribution-reporting, private-*) are deliberately absent: browsers that do not implement
 # them log "Unrecognized feature" for each one, which is the same console noise the
 # provider's own header already generates. Ours would double it without blocking anything.
+# If you see those names in the console, they are coming from the player's iframe, not here.
+#
+# `ambient-light-sensor` was dropped for the same reason: Chrome does not ship it, so it
+# logged "Unrecognized feature" on every page load. Every name below is one Chrome
+# recognises -- keep it that way, or the header starts costing noise it does not repay.
 DENIED_FEATURES = %w[
   camera microphone geolocation payment usb serial hid midi
   idle-detection display-capture accelerometer gyroscope magnetometer
-  ambient-light-sensor keyboard-map web-share sync-xhr
+  keyboard-map web-share sync-xhr
 ].freeze
 
 # What the player legitimately needs. Left open rather than pinned to a provider list: the

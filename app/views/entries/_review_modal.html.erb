@@ -64,7 +64,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="<%= content_security_policy_nonce %>">
   function selectRating(entryId, rating) {
     const stars = document.querySelectorAll('#stars-' + entryId + ' .star-rating');
     stars.forEach((star, index) => {

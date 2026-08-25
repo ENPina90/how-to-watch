@@ -31,7 +31,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="<%= content_security_policy_nonce %>">
   function manageSourcesShow(id) {
     document.querySelectorAll('#manageSourcesModal .source-edit-block').forEach(function (b) { b.style.display = 'none'; });
     if (id) {
