@@ -58,6 +58,8 @@ class ListsController < ApplicationController
       @community_lists = with_card_data(List.where(id: community_list_ids.uniq))
                          .order(created_at: :desc).limit(20)
     end
+
+    @card_entries = resolve_card_entries(@recently_watched_lists, @your_lists, @community_lists)
   end
 
   def search
@@ -420,6 +422,26 @@ class ListsController < ApplicationController
 
   # Everything a list card on the index renders: the owner, the entry count, and the
   # current user's stored position (read by List#current_entry).
+  # Every card shows the entry the user would resume, and its poster. `current_entry` has
+  # to run per list -- unordered lists pick a random incomplete entry -- but resolving it
+  # here means a list appearing in two sections is resolved once, and the posters can be
+  # preloaded in one query instead of one per card.
+  def resolve_card_entries(*collections)
+    lists = collections.flatten.uniq(&:id)
+    by_list_id = lists.each_with_object({}) do |list, acc|
+      acc[list.id] = list.current_entry(current_user)
+    end
+
+    entries = by_list_id.values.compact.uniq(&:id)
+    if entries.any?
+      ActiveRecord::Associations::Preloader.new(
+        records: entries, associations: { poster_attachment: :blob }
+      ).call
+    end
+
+    by_list_id
+  end
+
   def with_card_data(scope)
     # A correlated subquery rather than COUNT over a join: the recently-watched scope
     # already inner-joins entries filtered to this user's completed rows, and a joined
