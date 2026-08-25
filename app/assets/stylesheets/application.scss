@@ -5,7 +5,14 @@
 
 // External libraries
 @import "bootstrap/scss/bootstrap";
-@import "font-awesome";
+
+// Font Awesome, self-hosted from node_modules. The webfonts are copied to public/webfonts
+// at build time (lib/tasks/font_awesome.rake) because Dart Sass runs outside Sprockets and
+// so cannot emit digested asset paths.
+$fa-font-path: "/webfonts";
+@import "@fortawesome/fontawesome-free/scss/fontawesome";
+@import "@fortawesome/fontawesome-free/scss/solid";
+@import "@fortawesome/fontawesome-free/scss/regular";
 
 // Your CSS partials
 @import "components/index";

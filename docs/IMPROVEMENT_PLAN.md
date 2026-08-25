@@ -240,7 +240,7 @@ settings, mirrored by the `Procfile` (which Railway's builder honours as the fal
 No config-as-code left, so the December cutoff is a no-op and the IaC migration becomes
 optional rather than a deadline.
 
-### 28. ⬜ `sassc-rails` drags a native `ffi` dependency into every process
+### 28. ✅ `sassc-rails` drags a native `ffi` dependency into every process
 `sassc-rails` is deprecated *and* it is the reason the Sidekiq worker loads `ffi` at all:
 `Bundler.require` pulls in `sassc-rails → sassc → ffi`, which needs `libffi.so.8` at
 runtime. That crashed the worker's first deployment on Railpack, whose runtime image is
@@ -251,6 +251,41 @@ has no business loading an SCSS compiler.
 dependency from every process, not just the worker, and clears the deprecated gem out of
 the Gemfile. Check `app/assets/stylesheets` compiles identically — the SCSS here is plain
 nesting/variables plus Bootstrap, so it should port cleanly.
+
+**Done 2026-08-25 — but the FFI half of the premise was wrong.** `dartsass-rails` replaces
+`sassc-rails`, and the output was verified equivalent: both builds emit **5454 selectors**,
+matching vendor prefixes, and `assets:precompile` from a clobbered state reproduces a
+byte-identical digest.
+
+**Then `font-awesome-sass` went too, which is what actually removed `ffi`.** The chain was
+`font-awesome-sass → sassc → ffi`, not `sassc-rails → sassc`. Font Awesome now comes from
+npm (`@fortawesome/fontawesome-free`, pinned to **6.x** — v7 renames icons) alongside
+Bootstrap, with `scss/` and `webfonts/` vendored the same way Bootstrap's subset is. All
+48 icon classes the views use were verified present in the compiled CSS, and the build was
+re-run with the package's other 2,100 files hidden to prove the committed subset suffices.
+
+**This also fixed a live bug.** The compiled CSS asked for `url(/../webfonts/…)` — a
+malformed path nothing served — so desktop Font Awesome webfonts were 404ing. The mobile
+layout had a cdnjs `<link>` as a workaround, which is now removed since all three layouts
+share working self-hosted fonts. `$fa-font-path` points at `/webfonts`, populated from
+node_modules by `rails font_awesome:copy` (hooked to `assets:precompile`); it cannot point
+into the asset pipeline because Dart Sass runs outside Sprockets and cannot emit digested
+filenames.
+
+**Railway follow-up:** `libffi8` can now come out of `RAILPACK_DEPLOY_APT_PACKAGES` on both
+services — but only *after* this branch is deployed, since the currently running code still
+loads `ffi`. Leave `libpq5` and `libjemalloc2`.
+
+Notes for whoever touches this next:
+- Load paths are explicit now — Dart Sass runs outside Sprockets, so
+  `config/initializers/dartsass.rb` points at `node_modules` (Bootstrap) and the
+  font-awesome gem's stylesheet dir. Sprockets asset helpers (`asset-url`, `font-url`)
+  would no longer work; the only uses were inside comments.
+- `autoprefixer-rails` still runs, as a Sprockets **post**processor on the built file.
+  That is why the first diff looked alarming: comparing dart-sass's raw output against a
+  post-Sprockets baseline showed 27 missing `-moz-` prefixes that were never missing.
+- Development needs a watcher: `bin/dev` (added) runs the server plus `dartsass:watch`,
+  since Sprockets no longer compiles SCSS on request.
 
 ### 29. ✅ The watch page crashed when a user had no sibling list (found 2026-08-21)
 `watch.html.erb` called `list_watch_current_path(@entry.list.find_sibling(:previous))`, and
@@ -562,6 +597,6 @@ tables were confirmed empty in production (0 rows) rather than assumed:
 5. **Then #3 + #12 + #13** together — the read/write split, the N+1s and the indexes are
    what make the list and sidebar pages fast.
 6. ~~**Then P3** — the dead-code sweep.~~ **Done 2026-08-22.**
-7. ~~#17, #14, #20, #21~~ all done. Next: **#28** (dartsass, which also removes the
-   libffi workaround on the worker) → **#18/#19** (the three near-identical TMDB search
-   controllers, and the parallel mobile view tree).
+7. ~~#17, #14, #20, #21, #28~~ done (#28 bar the font-awesome-sass swap that would
+   finally drop `ffi`). Next: **#18/#19** — the three near-identical TMDB search
+   controllers, and the parallel mobile view tree.
