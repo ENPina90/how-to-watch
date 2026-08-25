@@ -342,7 +342,11 @@ neither needs a local Redis.
   Railpack's final image is minimal, so gems with native extensions need their shared
   libraries declared: `RAILPACK_DEPLOY_APT_PACKAGES=libffi8 libpq5` is set on both services.
   It is ignored by Nixpacks, so it is safe to carry on a service that has not migrated yet.
-- Health check: `GET /health` (the only unauthenticated action besides `pages#home`).
+- Health check: `GET /health` (the only unauthenticated action).
+- **Security headers**: `Permissions-Policy` is enforced (`config/initializers/permissions_policy.rb`)
+  and denies features the app never uses, which also limits the embedded player.
+  `Content-Security-Policy` is **report-only** — see that initializer for what has to change
+  before it can be enforced.
 - Production forces SSL, allows `*.railway.app` and `RAILS_HOST`.
 - The `worker` service shares the app's env via Railway references; it needs
   `DATABASE_URL`, `REDIS_URL`, `RAILS_MASTER_KEY`, `SECRET_KEY_BASE`, `CLOUDINARY_URL`
