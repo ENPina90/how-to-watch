@@ -371,6 +371,20 @@ cascades fighting, and Bootstrap's JS initialised twice. Removed. The only code 
 on the CDN bundle's `window.bootstrap` global was `completed_controller`'s
 `markCompleteAndShowModal`, which nothing called; it went too.
 
+### 36. ✅ The "Find a movie" box on a list did nothing (found 2026-08-25)
+Both halves of the feature were broken independently. The live filter,
+`search_controller#entries`, was deleted in 8803106 while its eight `data-action`
+attributes stayed in `lists/show` — Stimulus reports a missing action only as a console
+error, so nothing surfaced it. That left the plain `GET ?query=` submit, and
+`lists#load_entries` did filter `@list_entries` through `search_by_input` — but the
+default `Position` view renders `all_items_by_position` directly so it can interleave
+entries with child lists, ignoring the filtered set entirely. A search returned the whole
+list unchanged.
+
+`load_entries` now builds `@position_items` from the filtered entries when a query is
+present, and the partial reads that. Covered by `spec/requests/list_filtering_spec.rb`
+(default view, grouped view, prefix match, no-match, and child-list cards).
+
 ---
 
 ## P1 — Performance
@@ -485,13 +499,40 @@ Extracting these also makes them testable and reusable from the jobs in #14.
   double and never touch the network.
 - `add_to_list` / `add_to_favorites` collapsed to one service plus a shared JSON renderer.
 
-### 18. Three near-identical TMDB search controllers
+### 18. 🟡 Three near-identical TMDB search controllers
 `search_controller.js` (272), `list_search_controller.js` (524), `mobile_search_controller.js`
-(446) — 1,242 lines that all wrap the same `TmdbService`/`TmdbMapper` and differ mainly in
-which Mustache template id they query and where they POST. The matching `<template>` blocks
-are duplicated between `layouts/application.html.erb` and `layouts/mobile.html.erb`.
-**Fix:** one `tmdb_search_controller` with values for `templateId`, `submitUrl`, and mode;
-move templates into a shared partial rendered by both layouts.
+(446) — 1,242 lines that all wrap the same `TmdbService`/`TmdbMapper`.
+
+**Done.** 891 lines now (272 / 335 / 284). Six methods — `tmdbSearch`, `tmdbShow`,
+`showOverlay`, `handleClickOutside`, `hideResults`, `showToast` — were *byte-identical*
+between `list_search` and `mobile_search`; they live once in
+`app/javascript/services/tmdb_search_behavior.js` and are mixed into both prototypes with
+`Object.assign`. The mixin sits under `services/` on purpose: Stimulus eager-loads
+everything under `controllers/` and would try to register it as a controller.
+
+Four bugs surfaced while reading the files, all of them silent:
+
+- `mobile_search`'s `showErrorMessage(title)` error toast was shadowed by a later
+  `showErrorMessage()`, so a failed "add to list" showed **"No results found"** instead of
+  the error. Renamed to `showAddErrorToast(title)`.
+- `list_search` had three more shadowed pairs (`renderMovies`, `renderShows`,
+  `showErrorMessage`) where the first definition was simply dead.
+- Eight `data-action`s in `lists/show` called `search#entries`, deleted back in 8803106.
+- `search#custom` on `entries/new?type=custom` was never implemented at all.
+
+**Not duplication after all:** the Mustache `<template>` blocks in the two layouts render
+genuinely different markup (mobile drops plot/genre/watch-now and uses its own card
+classes and Stimulus actions). Sharing them would mean parameterising two designs into
+one, which costs more than it saves — left alone deliberately.
+
+**Left open:** `search_controller` still has its own `tmdbSearch`/`tmdbShow`. They differ
+behaviourally — no loading state, no `slice(0, 10)`, and they add `isInList`/`entryId`
+flags — and it is the only controller on `entries/new`. Folding it in means changing
+behaviour on a page with no browser test coverage.
+
+**Guards:** `spec/javascript_modules_spec.rb` fails the build on an unpinned bare import,
+a method defined twice in one file, or a `data-action` naming a method no controller
+defines. All three are failure modes that otherwise show up only in the browser console.
 
 ### 19. Mobile as a parallel universe
 User-agent sniffing (duplicated in both controllers) selects `*_mobile` views and a
