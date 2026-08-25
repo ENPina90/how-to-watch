@@ -41,6 +41,47 @@ RSpec.describe 'JavaScript modules' do
     end
   end
 
+  describe 'stimulus actions in the views' do
+    # `search#entries` was deleted from search_controller.js in 8803106, but the eight
+    # data-action attributes pointing at it stayed in lists/show. Stimulus fails those
+    # bindings silently apart from a console error, so nothing surfaced it.
+    let(:controllers) do
+      Rails.root.glob('app/javascript/controllers/*_controller.js').to_h { |file|
+        [file.basename('_controller.js').to_s.tr('_', '-'), file]
+      }
+    end
+
+    let(:mixin_methods) do
+      Rails.root.join('app/javascript/services/tmdb_search_behavior.js').read.scan(/^  (\w+)\(/).flatten
+    end
+
+    # The two controllers that take their shared methods from the mixin at load time.
+    MIXED_IN = %w[list-search mobile-search].freeze
+
+    def methods_on(identifier, file)
+      methods = file.read.scan(/^  (\w+)\(/).flatten
+      methods += mixin_methods if MIXED_IN.include?(identifier)
+      methods
+    end
+
+    it 'only references methods the controllers define' do
+      dangling = Rails.root.glob('app/views/**/*.erb').flat_map { |view|
+        view.read.each_line.with_index(1).flat_map { |line, number|
+          next [] if line.lstrip.start_with?('<%#')
+
+          line.scan(/(?:->|\b)([a-z0-9-]+)#(\w+)/).filter_map { |identifier, method|
+            file = controllers[identifier]
+            next if file.nil? || methods_on(identifier, file).include?(method)
+
+            "#{relative(view)}:#{number} -> #{identifier}##{method}"
+          }
+        }
+      }
+
+      expect(dangling).to be_empty
+    end
+  end
+
   describe 'the shared search behaviour' do
     let(:shared) { Rails.root.join('app/javascript/services/tmdb_search_behavior.js') }
     let(:controllers) do
