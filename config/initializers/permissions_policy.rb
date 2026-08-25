@@ -28,7 +28,16 @@ PERMISSIONS_POLICY = (
   ALLOWED_FEATURES.map { |feature| "#{feature}=*" }
 ).join(", ")
 
+# Both are set on purpose. Rails copies `config.action_dispatch.default_headers` into
+# `ActionDispatch::Response.default_headers` from a railtie initializer, which runs
+# *before* config/initializers/*, so assigning only the config here silently does nothing
+# on Rails 8.1 — the header simply never reaches a response. Assigning the response
+# defaults directly is what actually takes effect; the config is kept in step so anything
+# introspecting it sees the same thing.
 Rails.application.config.action_dispatch.default_headers =
   Rails.application.config.action_dispatch.default_headers.merge(
     "Permissions-Policy" => PERMISSIONS_POLICY
   )
+
+ActionDispatch::Response.default_headers =
+  ActionDispatch::Response.default_headers.merge("Permissions-Policy" => PERMISSIONS_POLICY)
