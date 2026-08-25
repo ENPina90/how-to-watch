@@ -7,8 +7,14 @@ require 'json'
 class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster]
-  before_action :check_edit_permissions, only: %i[edit update destroy update_poster]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position]
+  # Everything here writes state shared by everyone who can see the entry -- its position
+  # in the list, its provider, its poster, the `stream` flag. The per-user actions
+  # (complete, review, shuffle_current and friends) are deliberately absent: they write
+  # this user's own UserEntry/UserEntryPosition row, which a subscriber may do.
+  before_action :check_edit_permissions,
+                only: %i[edit update destroy update_poster
+                         update_position reportlink set_source repair_image migrate_poster]
 
   def new
     @entry = Entry.new
@@ -337,7 +343,6 @@ class EntriesController < ApplicationController
   end
 
   def update_position
-    @entry = Entry.find(params[:id])
     visual_position = params[:position].to_i
     list = @entry.list
 
@@ -687,9 +692,18 @@ class EntriesController < ApplicationController
       end
     end
 
+    # These are driven by `fetch`, not by navigation, and answer with a bare head. A
+    # redirect would be followed by fetch and arrive as a 200, so the caller would read a
+    # refusal as success.
+    FETCH_DRIVEN_ACTIONS = %w[update_position reportlink].freeze
+
     def check_edit_permissions
       # Allow editing if user is authenticated and has permission, OR if entry is in a default list
-      unless (current_user&.can_edit_entry?(@entry)) || @entry.list.default?
+      return if current_user&.can_edit_entry?(@entry) || @entry.list.default?
+
+      if FETCH_DRIVEN_ACTIONS.include?(action_name)
+        head :forbidden
+      else
         redirect_to entry_path(@entry), alert: 'You do not have permission to perform this action.'
       end
     end
