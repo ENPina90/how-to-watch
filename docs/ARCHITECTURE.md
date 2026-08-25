@@ -3,7 +3,7 @@
 **Purpose:** the map of this codebase. Read this before diagnosing anything; the last
 section ("Debugging map") goes from symptom → the file that actually owns the behavior.
 
-**Last verified:** 2026-08-25 against `master` @ `2caaa3b`.
+**Last verified:** 2026-08-26 against `master` @ `0da6db3`.
 
 ---
 
@@ -41,7 +41,7 @@ are generated from provider URL templates.
 ### 3.1 Core content
 
 **`User`** — Devise account. Flags: `admin` (can edit anything, manage `Source`s, set
-default lists), `dark_mode`. Letterboxd OAuth tokens live here. On create it
+default lists, and **view the site as another user** — §5.7), `dark_mode`. Letterboxd OAuth tokens live here. On create it
 auto-subscribes to default lists and **creates a "<Name>'s Favorites" list** with
 `mobile: true, private: true` (`app/models/user.rb:186`).
 
@@ -204,7 +204,29 @@ jumps to a random unwatched entry.
 failure, records a `FailedEntry` and returns an error **string** — callers must check
 `entry.is_a?(Entry)`.
 
-### 5.6 Mobile
+### 5.6 View as another user (admins)
+`app/controllers/concerns/impersonation.rb`, included by `ApplicationController`.
+`current_user` is what every permission check reads (`admin?`, `can_edit_list?`, the four
+per-user tracking tables), so the concern overrides it to return the impersonated user
+and keeps the real account in **`true_user`**. There is no parallel "pretend" code path,
+which is the point: what the admin sees is what that user's own session renders.
+
+- Start/stop: `POST /impersonate/:id` / `DELETE /impersonate` (`ImpersonationsController`).
+  The admin check reads `true_user`, so switching straight from one user to another works.
+- UI: `shared/_impersonation_menu` in both navbars (application + mobile) and
+  `shared/_impersonation_banner` in all three layouts — the watch page's
+  `special_layout` has no navbar, so the banner is the only way out from there.
+- `true_user` is deliberately confined to that concern, the two partials and the
+  controller. Anywhere else it would show the admin something the real user's session
+  would not, which defeats the whole feature.
+- **Writes land on the impersonated user.** Marking something watched, the dark-mode
+  toggle, a Letterboxd sync — all of it hits their rows, because that is the same code
+  path they run. This is for checking what a page looks like, not a read-only preview.
+- `/sidekiq` is mounted through Devise's route-level `authenticate`, which only ever sees
+  the Warden user (still the admin). The extra `constraints` lambda in `config/routes.rb`
+  on the session key is what actually hides it while impersonating.
+
+### 5.7 Mobile
 Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
 `EntriesController#mobile_request?`. Mobile requests render `*_mobile` views with
 `layouts/mobile` (a separate 476-line layout with its own markup and templates).
@@ -417,4 +439,4 @@ Not yet committed, and it matters when reading `git log`:
 | Worker crashes at boot with `libffi.so.8: cannot open shared object file` | Railpack's runtime image lacks libffi, which `sassc-rails → sassc → ffi` needs at Rails boot. Fixed with `RAILPACK_DEPLOY_APT_PACKAGES=libffi8 libpq5` on the service. `/mise/installs/...` paths in a trace mean Railpack; `/nix/store/...` means Nixpacks. |
 | Job "didn't run" | check `/sidekiq` (admin) for retries/dead jobs, then `railway logs --service worker`. In development jobs run on `:async` in-process, so a dev-only failure is a different animal. |
 | Mobile layout differs from desktop | user-agent sniffing in both controllers → `*_mobile` views + `layouts/mobile`. |
-| Admin-only UI missing | `users.admin`; sources CRUD and default-list toggles are admin-gated. |
+| Admin-only UI missing | `users.admin`; sources CRUD and default-list toggles are admin-gated. Check the impersonation banner first — an admin viewing as someone else has no admin powers by design (§5.6). |
