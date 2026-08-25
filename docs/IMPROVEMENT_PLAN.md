@@ -385,6 +385,44 @@ list unchanged.
 present, and the partial reads that. Covered by `spec/requests/list_filtering_spec.rb`
 (default view, grouped view, prefix match, no-match, and child-list cards).
 
+### 37. ✅ Several entry actions wrote shared state with no permission check (found 2026-08-26)
+`check_edit_permissions` guarded `edit/update/destroy/update_poster`. Five more actions
+wrote state shared by everyone who can see the entry and were reachable by any signed-in
+user — verified by driving each one as a second user against another user's entry:
+`update_position` reordered their list (200), `reportlink` flipped the global `stream`
+flag (204), `set_source` changed which provider served the entry, and
+`repair_image`/`migrate_poster` replaced its poster.
+
+`update_position` and `reportlink` answer `fetch` with a bare head, so they refuse with
+**403 rather than a redirect** — `fetch` follows a redirect and reports the resulting 200
+as success, which would read as a refusal that worked. The per-user actions (`complete`,
+`review`, the current-position ones) stay open deliberately: they write the caller's own
+tracking row, which a subscriber may do. Covered by
+`spec/requests/entry_authorization_spec.rb`, both the refusals and the owner's access.
+
+### 38. ✅ The list page's preload was silently doing nothing (found 2026-08-26)
+`load_entries` preloads `:user_entries`, and §13 of ARCHITECTURE.md calls that preload
+load-bearing — but the default `Position` view renders its own collection (so entries and
+child lists can interleave) and built it from `List#all_items_by_position`, which reloads
+the `entries` association from scratch and discards the preload. Measured on 20 entries:
+**42 `user_entries` queries on the default view against 2 on a grouped one.** The page
+cost 4 queries per entry.
+
+`@position_items` now derives from `@list_entries`, with posters preloaded alongside. The
+page is flat: **24 queries at 5 entries and at 20**, where it was 37 and 97.
+
+### 39. ✅ The index resolved every card's entry and poster in the view (found 2026-08-26)
+Each card called `list.current_entry(current_user)` and then rendered its poster, so the
+landing page cost two queries per list — and a list appearing in both Your Lists and
+Recently Watched paid twice. Resolved once per unique list in the controller with the
+posters preloaded in one query: **2 queries per list down to 1** (3 lists 19→16, 12 lists
+37→25).
+
+The remaining one is `current_entry` itself, which cannot collapse into an `includes` —
+an unordered list picks a *random* incomplete entry, so it is genuinely per list. It is a
+lookup on `index_entries_on_list_id_and_position`. Batching the ordered case behind a
+single query is possible but was not worth the complexity here.
+
 ---
 
 ## P1 — Performance
