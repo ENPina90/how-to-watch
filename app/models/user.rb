@@ -18,6 +18,13 @@ class User < ApplicationRecord
   has_many :reviewed_entries, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :entry
   has_many :user_list_positions, dependent: :destroy
 
+  # What to call this user in the UI. Both navbars used to build this inline, with
+  # slightly different rules -- a blank-but-present username rendered as nothing in one
+  # of them.
+  def display_name
+    username.presence || email.split('@').first.capitalize
+  end
+
   # READ. nil when this user has never tracked the entry -- see Entry#user_entry_for for
   # why the read path must not create rows.
   def user_entry_for(entry)

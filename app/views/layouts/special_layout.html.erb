@@ -17,6 +17,7 @@
   </head>
 
   <body class="cinema__mode <%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> has-entries-sidebar <%= user_signed_in? && current_user.dark_mode ? 'dark-mode' : 'light-mode' %>" data-turbo="false">
+    <%= render "shared/impersonation_banner" %>
     <%= render 'shared/flashes' %>
 
     <% if user_signed_in? && !@hide_sidebar %>

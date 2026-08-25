@@ -1,4 +1,6 @@
 class ApplicationController < ActionController::Base
+  include Impersonation
+
   before_action :authenticate_user!, except: [:health]
   before_action :set_sidebar_defaults
 

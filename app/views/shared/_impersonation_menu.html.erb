@@ -1,0 +1,25 @@
+<%# The "view as" section of the account dropdown. Shown to the signed-in admin only --
+    `true_user`, not `current_user`, because while viewing as a non-admin `current_user`
+    is that non-admin and the way back has to stay reachable. %>
+<% if true_user&.admin? %>
+  <div class="dropdown-divider"></div>
+
+  <% if impersonating? %>
+    <h6 class="dropdown-header">Viewing as <%= current_user.display_name %></h6>
+    <%= button_to stop_impersonating_path, method: :delete, class: "dropdown-item", form_class: "impersonation-form" do %>
+      <i class="fa-solid fa-user-shield me-2"></i>Return to admin
+    <% end %>
+  <% else %>
+    <h6 class="dropdown-header">View as</h6>
+    <div class="impersonation-users">
+      <% if impersonatable_users.empty? %>
+        <span class="dropdown-item-text text-muted">No other accounts</span>
+      <% end %>
+      <% impersonatable_users.each do |user| %>
+        <%= button_to impersonate_user_path(user), method: :post, class: "dropdown-item", form_class: "impersonation-form" do %>
+          <i class="fa-solid <%= user.admin? ? 'fa-user-shield' : 'fa-user' %> me-2"></i><%= user.display_name %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
