@@ -302,7 +302,7 @@ export default class extends Controller {
     })
     .catch(error => {
       console.error('Error adding to list:', error);
-      this.showErrorMessage(this.selectedItem.title);
+      this.showAddErrorToast(this.selectedItem.title);
       // Reset button
       button.innerHTML = originalText;
       button.disabled = false;
@@ -372,7 +372,7 @@ export default class extends Controller {
     })
     .catch(error => {
       console.error('Error adding to list:', error);
-      this.showErrorMessage(this.selectedItem.title);
+      this.showAddErrorToast(this.selectedItem.title);
       // Reset button
       button.textContent = originalText;
       button.disabled = false;
@@ -395,7 +395,7 @@ export default class extends Controller {
     this.showToast(toastHtml);
   }
 
-  showErrorMessage(title) {
+  showAddErrorToast(title) {
     const toastHtml = `
       <div class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">

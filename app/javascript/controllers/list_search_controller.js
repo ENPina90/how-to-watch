@@ -227,18 +227,6 @@ export default class extends Controller {
   // RENDERING METHODS
   // -----------------------------
 
-  renderMovies(movies) {
-    const movieData = { movies };
-    const output = Mustache.render(this.movieTemplate.innerHTML, movieData);
-    this.resultsTarget.innerHTML = output;
-  }
-
-  renderShows(shows) {
-    const showData = { movies: shows };
-    const output = Mustache.render(this.showTemplate.innerHTML, showData);
-    this.resultsTarget.innerHTML = output;
-  }
-
   // -----------------------------
   // MODAL METHODS
   // -----------------------------
@@ -380,21 +368,6 @@ export default class extends Controller {
         <div class="d-flex">
           <div class="toast-body">
             Successfully added "${this.selectedMovie.title}" to ${listName}!
-          </div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-      </div>
-    `;
-
-    this.showToast(toastHtml);
-  }
-
-  showErrorMessage() {
-    const toastHtml = `
-      <div class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-          <div class="toast-body">
-            Failed to add "${this.selectedMovie.title}" to list. Please try again.
           </div>
           <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
