@@ -348,14 +348,28 @@ confirmed to still authenticate after it. `spec/requests/authentication_spec.rb`
 the real sign-in/sign-out flow rather than the `sign_in` test helper, which bypasses Warden
 and would have stayed green through a total auth break.
 
-### 34. ⬜ Framework defaults are still on 8.0
+### 34. ✅ Framework defaults are still on 8.0
 The app runs Rails 8.1.3.1 with `config.load_defaults 8.0`, which is the recommended way to
-land a minor upgrade: new gem first, new behaviour later. To finish it, run
-`bin/rails app:update` to generate `config/initializers/new_framework_defaults_8_1.rb` and
-enable the switches one at a time. Note that `app:update` also wants to rewrite
-`config/environments/*.rb` and several initializers, which here carry real customisation
-(cache store, queue adapter, dartsass, CSP, permissions policy) — review that diff rather
-than accepting it wholesale.
+land a minor upgrade: new gem first, new behaviour later. **Done 2026-08-25: `config.load_defaults 8.1`.** `app:update` was *not* run — it wants to
+rewrite `config/environments/*.rb` and several initializers that carry real customisation
+here. Instead the six switches in Rails' `new_framework_defaults_8_1` template were checked
+against the app individually:
+
+| switch | why it is safe here |
+|---|---|
+| `escape_json_responses = false` | JSON goes to `fetch`/Mustache, and no template uses unescaped `{{{ }}}` interpolation |
+| `escape_js_separators_in_json = false` | same path |
+| `raise_on_missing_required_finder_order_columns` | every model has a primary key to fall back on |
+| `action_on_path_relative_redirect = :raise` | every `redirect_to` uses a path helper |
+| `render_tracker = :ruby` | dev/test reloading only |
+| `remove_hidden_field_autocomplete` | markup only |
+
+### 35. ✅ Mobile pages loaded Bootstrap twice (found 2026-08-25)
+`layouts/mobile.html.erb` pulled Bootstrap **5.1.3** CSS and JS from jsdelivr while the
+compiled `application.css` already carries **5.2.3** and the importmap pins its JS — two
+cascades fighting, and Bootstrap's JS initialised twice. Removed. The only code depending
+on the CDN bundle's `window.bootstrap` global was `completed_controller`'s
+`markCompleteAndShowModal`, which nothing called; it went too.
 
 ---
 
