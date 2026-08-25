@@ -76,8 +76,8 @@ class OmdbApi
     end
 
     # Find first episode (season and episode are stored as strings)
-    first_episode = Subentry.find_by(entry: main_entry, season: '1', episode: '1')
-    first_episode ||= main_entry.subentries.order(Arel.sql('CAST(NULLIF(season, \'\') AS INTEGER), CAST(NULLIF(episode, \'\') AS INTEGER)')).first
+    first_episode = Subentry.find_by(entry: main_entry, season: 1, episode: 1)
+    first_episode ||= main_entry.subentries.order(:season, :episode).first
 
     main_entry.update(current: first_episode) if first_episode
   end
@@ -97,8 +97,8 @@ class OmdbApi
         season_data['episodes'].each do |episode_data|
           Subentry.create!(
             entry: main_entry,
-            season: season_number.to_s,
-            episode: episode_data['episode_number'].to_s,
+            season: season_number,
+            episode: episode_data['episode_number'],
             name: episode_data['name'],
             plot: episode_data['overview'], # TMDB provides overview/plot
             imdb: series_imdb,
