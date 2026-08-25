@@ -5,12 +5,21 @@ Rails.application.routes.draw do
 
   # Queue dashboard: what is enqueued, retrying, or dead. Admins only -- Sidekiq::Web
   # exposes job arguments and lets you delete or replay jobs.
+  # `authenticate` only sees the Warden user, which stays the admin while they are
+  # viewing as someone else -- the constraint is what keeps the dashboard out of an
+  # impersonated session.
   authenticate :user, ->(user) { user.admin? } do
-    mount Sidekiq::Web => '/sidekiq'
+    constraints ->(request) { request.session[Impersonation::IMPERSONATION_KEY].blank? } do
+      mount Sidekiq::Web => '/sidekiq'
+    end
   end
 
   # User preferences
   patch '/users/toggle_dark_mode', to: 'users#toggle_dark_mode', as: :toggle_dark_mode
+
+  # Admins viewing the site as another user (see Impersonation)
+  post '/impersonate/:id', to: 'impersonations#create', as: :impersonate_user
+  delete '/impersonate', to: 'impersonations#destroy', as: :stop_impersonating
 
   root to: "lists#index"
   get 'watch_now', to: 'pages#watch_now'
