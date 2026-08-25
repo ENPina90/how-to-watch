@@ -1,0 +1,40 @@
+// "View as another user" (see app/controllers/concerns/impersonation.rb).
+
+// button_to renders a <form>; without this the dropdown items stack with form margins
+// and lose the full-width hit area a dropdown-item normally has.
+.impersonation-form {
+  margin: 0;
+
+  .dropdown-item {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+// The account list is unbounded, so cap it rather than letting the menu run off-screen.
+.impersonation-users {
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.impersonation-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 1080; // above Bootstrap's fixed navbar (1030) and the sidebars (1020)
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  background-color: #b45309;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 0.875rem;
+  white-space: nowrap;
+
+  &__form {
+    margin: 0;
+  }
+}

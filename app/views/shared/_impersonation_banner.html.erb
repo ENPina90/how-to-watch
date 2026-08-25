@@ -1,0 +1,13 @@
+<%# Persistent reminder that this session is not the admin's own. It sits at the bottom
+    because all three layouts already have something fixed to the top. %>
+<% if impersonating? %>
+  <div class="impersonation-banner" role="status">
+    <i class="fa-solid fa-eye"></i>
+    <span>
+      Viewing as <strong><%= current_user.display_name %></strong>
+      (<%= current_user.admin? ? "admin" : "standard user" %>)
+    </span>
+    <%= button_to "Return to admin", stop_impersonating_path, method: :delete,
+                  class: "btn btn-sm btn-light", form_class: "impersonation-banner__form" %>
+  </div>
+<% end %>
