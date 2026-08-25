@@ -174,7 +174,7 @@
       </div>
     </div>
 
-    <script>
+    <script nonce="<%= content_security_policy_nonce %>">
       // Global function to trigger modal from watch_now page
       function openWatchNowModal(imdbId, title, poster) {
         console.log('openWatchNowModal called with:', imdbId, title, poster);

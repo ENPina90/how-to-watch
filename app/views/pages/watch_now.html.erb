@@ -1,6 +1,6 @@
 <% if @media_type == 'tv' && @tmdb_id.present? %>
   <%= render "shared/episodes_sidebar" %>
-  <script>
+  <script nonce="<%= content_security_policy_nonce %>">
     // Add has-episodes-sidebar class to body
     document.body.classList.add('has-episodes-sidebar');
   </script>
@@ -103,7 +103,7 @@
 <% end %>
 
 <% if @media_type == 'tv' && @season && @episode && @show_details %>
-  <script>
+  <script nonce="<%= content_security_policy_nonce %>">
     // Adjust cinema controls position based on sidebar states
     function adjustCinemaControlsPosition() {
       const cinemaControls = document.getElementById('cinemaControls');

@@ -1,5 +1,5 @@
 <%= render "shared/entries_sidebar" %>
-<script>
+<script nonce="<%= content_security_policy_nonce %>">
   // Add has-entries-sidebar class to body
   document.body.classList.add('has-entries-sidebar');
 
