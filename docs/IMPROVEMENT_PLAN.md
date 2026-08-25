@@ -716,12 +716,23 @@ tables were confirmed empty in production (0 rows) rather than assumed:
     `camera 'none'` syntax, which current browsers ignore.
     Privacy Sandbox directives are deliberately omitted — browsers that don't implement
     them log "Unrecognized feature" for each, duplicating noise the provider already makes.
-  - **CSP is report-only.** It cannot be enforced while 12 view files carry inline
-    `<script>` blocks; `script-src` omits `'unsafe-inline'` on purpose so those surface as
-    console violations. `style-src` does allow it — there are 101 inline `style` attributes
-    and that is not realistically changing. To enforce: move the inline scripts into
-    Stimulus controllers (or `javascript_tag nonce: true`), watch the console go quiet,
-    then flip `content_security_policy_report_only`.
+    **`ambient-light-sensor` was dropped 2026-08-26** for that same reason: Chrome doesn't
+    ship it, so it logged an error on every page load and blocked nothing. When those
+    Privacy Sandbox names appear in the console they are the player's iframe, not us —
+    verified against the header the app actually sends.
+  - **CSP: script-src is ready to enforce (2026-08-26).** All 12 inline `<script>` blocks
+    now carry the response nonce, so `script-src` no longer reports violations. The nonce
+    generator was moved off `request.session.id` to a fresh value per response — the
+    session form exists for cached pages (there are none here), otherwise it repeats for
+    every response in a session and is blank before a session exists, which would render
+    `nonce=""` for a signed-out visitor.
+    **What still holds report-only mode is `style-src 'unsafe-inline'`** — 101 inline
+    `style` attributes, and dropping that is the whole protection of style-src. Enforcing
+    is a judgement call: flipping `content_security_policy_report_only` now would harden
+    scripts while style-src stays permissive. Watch the console on the player pages first,
+    since those carry the third-party frames.
+    `spec/requests/content_security_policy_spec.rb` fails if a new inline `<script>` lands
+    without a nonce, or if the nonce stops varying per response.
   - `frame-src` is `https:` rather than an allowlist, because the `custom` Source passes
     arbitrary hosts through; pinning it would break those entries.
 
