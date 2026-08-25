@@ -1,10 +1,15 @@
 # REPORT-ONLY for now: violations are logged to the browser console, nothing is blocked.
 #
-# It cannot be enforced as written because 12 view files carry inline <script> blocks, and
-# `script_src` here deliberately omits :unsafe_inline so those show up as violations. The
-# path to enforcing it is to move those blocks into Stimulus controllers (or give them
-# nonces via `javascript_tag nonce: true`), watch the console go quiet, then flip
-# `content_security_policy_report_only` to false.
+# All 12 inline <script> blocks now carry a nonce, so `script_src` omitting :unsafe_inline
+# no longer produces violations. What still stands between this and enforcement is
+# `style_src :unsafe_inline` (101 inline style attributes across the views) -- that is a
+# real weakening, since it is style-src's whole protection. Flipping
+# `content_security_policy_report_only` to false is safe for scripts today; do it after
+# watching the console stay quiet on the player pages, which are the ones with third-party
+# frames.
+#
+# spec/requests/content_security_policy_spec.rb fails if a new inline <script> lands
+# without a nonce.
 #
 # Sources below were taken from what the app actually loads, not guessed:
 #   scripts  importmap pins (jspm, unpkg, cdnjs) + jsdelivr in the mobile layout
@@ -36,8 +41,13 @@ Rails.application.config.content_security_policy do |policy|
   policy.frame_src   :self, :https
 end
 
-# Nonces are generated for any tag that opts in with `nonce: true`; nothing does yet.
-Rails.application.config.content_security_policy_nonce_generator = ->(request) { request.session.id.to_s }
+# One fresh nonce per response. The Rails scaffold ties this to `request.session.id`,
+# which is the right call only when responses are cached -- a cached page carries a stale
+# nonce, so it has to stay stable for the session. Nothing here is page- or fragment-cached,
+# and a session-derived nonce is both reused across every response for that session and
+# empty before a session exists (a signed-out visitor would get `nonce=""`, which matches
+# nothing once this is enforced).
+Rails.application.config.content_security_policy_nonce_generator = ->(_request) { SecureRandom.base64(16) }
 Rails.application.config.content_security_policy_nonce_directives = %w[script-src]
 
 Rails.application.config.content_security_policy_report_only = true
