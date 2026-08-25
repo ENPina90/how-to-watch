@@ -476,10 +476,23 @@ URL is the stored one. Dropping the columns would break exactly those. Options w
 want to finish: give them a `direct` provider plus a `source_key`, or accept the loss.
 Re-run the audit until the legacy count is zero, then drop the columns in one migration.
 
-### 21. `season`/`episode` stored as strings on `subentries`
+### 21. ✅ `season`/`episode` stored as strings on `subentries`
 Forces `CAST(NULLIF(season, '') AS INTEGER)` in `UserEntryPosition` (×3), `Entry#set_current`,
 `OmdbApi`, and `Subentry#calculate_absolute_episode_number`. **Fix:** a migration casting
 both to integer, then delete the casts.
+
+**Done (2026-08-25).** Both columns are `integer`; all six CAST sites are gone. Production
+was checked first: no non-numeric values, 4 empty strings (now NULL), ranges well inside
+integer. The migration converts with `using: "NULLIF(col, '')::integer"` and reverses.
+
+Two things fell out of it:
+- `spec/models/subentry_ordering_spec.rb` pins the numeric behaviour — the bug a missed
+  cast produces is episode 10 sorting before episode 2, which is invisible until a show
+  has more than nine episodes.
+- `Source#entry_variables` called `calculate_absolute_episode_number` on **every** URL
+  build, a COUNT per playback URL, even though no active template uses
+  `%{absolute_episode}`. It is computed lazily now, only when the template contains the
+  token.
 
 ### 22. Position bookkeeping has three implementations
 `Entry.next_position` (max + 1), `@list.entries.count + 1` (still in `lists#add_season`;
@@ -549,5 +562,6 @@ tables were confirmed empty in production (0 rows) rather than assumed:
 5. **Then #3 + #12 + #13** together — the read/write split, the N+1s and the indexes are
    what make the list and sidebar pages fast.
 6. ~~**Then P3** — the dead-code sweep.~~ **Done 2026-08-22.**
-7. ~~#17, #14, #20~~ all done. Next: **#21** (integer season/episode) → #28 (dartsass,
-   which also removes the libffi workaround) → #18/#19 (front-end consolidation).
+7. ~~#17, #14, #20, #21~~ all done. Next: **#28** (dartsass, which also removes the
+   libffi workaround on the worker) → **#18/#19** (the three near-identical TMDB search
+   controllers, and the parallel mobile view tree).
