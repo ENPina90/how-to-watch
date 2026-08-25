@@ -2,9 +2,9 @@ import { Controller } from "@hotwired/stimulus";
 import Mustache from "mustachejs";
 import * as bootstrap from "bootstrap";
 import TmdbService from "services/tmdb_service";
-import TmdbMapper from "services/tmdb_mapper";
+import { TmdbSearchBehavior } from "services/tmdb_search_behavior";
 
-export default class extends Controller {
+class ListSearchController extends Controller {
   static targets = ["input", "results", "typeButtons", "resultsContent"];
   static values = {
     userLists: Array,
@@ -93,151 +93,9 @@ export default class extends Controller {
     }
   }
 
-  showOverlay() {
-    this.resultsTarget.classList.remove('d-none');
-  }
-
-  tmdbSearch() {
-    const keyword = this.inputTarget.value.trim();
-
-    // Show loading state
-    const loadingHtml = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-    if (this.hasResultsContentTarget) {
-      this.resultsContentTarget.innerHTML = loadingHtml;
-    } else {
-      this.resultsTarget.innerHTML = loadingHtml;
-    }
-    this.resultsTarget.classList.remove('d-none');
-
-    const isImdbId = /^tt\d{4,}$/.test(keyword);
-
-    this.tmdbService.fetchMovies(keyword, isImdbId)
-      .then(data => {
-        // Check if the API returned an error
-        if (!data || data.status_code) {
-          throw new Error(data.status_message || 'API request failed');
-        }
-
-        const movies = isImdbId ? data.movie_results : data.results;
-        if (!movies || !Array.isArray(movies)) {
-          this.showErrorMessage();
-          return;
-        }
-
-        const filteredMovies = movies.filter(movie => movie.vote_count >= 10 && movie.poster_path)
-          .sort((a, b) => b.popularity - a.popularity)
-          .slice(0, 10); // Limit to top 10 results
-
-        if (filteredMovies.length === 0) {
-          this.showErrorMessage();
-          return;
-        }
-
-        const moviePromises = filteredMovies.map(movie =>
-          this.tmdbService.fetchMovieDetails(movie.id)
-            .then(details => TmdbMapper.mapMovieOrShowToTemplate(details))
-            .catch(error => {
-              console.error('Error fetching movie details:', error);
-              return null;
-            })
-        );
-        return Promise.all(moviePromises);
-      })
-      .then(moviesWithImdb => {
-        if (!moviesWithImdb) return; // Handle case where we showed a message above
-
-        const validMovies = moviesWithImdb.filter(movie => movie !== null);
-        if (validMovies.length === 0) {
-          this.showErrorMessage();
-          return;
-        }
-
-        this.renderMovies(validMovies);
-      })
-      .catch(error => {
-        console.error('Error fetching movies:', error);
-        this.showErrorMessage();
-      });
-  }
-
-  tmdbShow() {
-    const keyword = this.inputTarget.value.trim();
-
-    // Show loading state
-    const loadingHtml = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-    if (this.hasResultsContentTarget) {
-      this.resultsContentTarget.innerHTML = loadingHtml;
-    } else {
-      this.resultsTarget.innerHTML = loadingHtml;
-    }
-    this.resultsTarget.classList.remove('d-none');
-
-    const isImdbId = /^tt\d{4,}$/.test(keyword);
-
-    this.tmdbService.fetchShows(keyword, isImdbId)
-      .then(data => {
-        // Check if the API returned an error
-        if (!data || data.status_code) {
-          throw new Error(data.status_message || 'API request failed');
-        }
-
-        const shows = isImdbId ? data.tv_results : data.results;
-        if (!shows || !Array.isArray(shows)) {
-          this.showErrorMessage();
-          return;
-        }
-
-        const filteredShows = shows.filter(show => show.vote_count >= 10 && show.poster_path)
-          .sort((a, b) => b.popularity - a.popularity)
-          .slice(0, 10); // Limit to top 10 results
-
-        if (filteredShows.length === 0) {
-          this.showErrorMessage();
-          return;
-        }
-
-        const showPromises = filteredShows.map(show =>
-          this.tmdbService.fetchShowDetails(show.id)
-            .then(TmdbMapper.mapMovieOrShowToTemplate)
-            .catch(error => {
-              console.error('Error fetching show details:', error);
-              return null;
-            })
-        );
-        return Promise.all(showPromises);
-      })
-      .then(showsWithImdb => {
-        if (!showsWithImdb) return; // Handle case where we showed a message above
-
-        const validShows = showsWithImdb.filter(show => show !== null);
-        if (validShows.length === 0) {
-          this.resultsTarget.innerHTML = '<div class="alert alert-warning">Unable to load show details.</div>';
-          return;
-        }
-
-        this.renderShows(validShows);
-      })
-      .catch(error => {
-        console.error('Error fetching shows:', error);
-        this.resultsTarget.innerHTML = '<div class="alert alert-danger">Error searching for shows. Please try again.</div>';
-      });
-  }
-
   // -----------------------------
   // RENDERING METHODS
   // -----------------------------
-
-  renderMovies(movies) {
-    const movieData = { movies };
-    const output = Mustache.render(this.movieTemplate.innerHTML, movieData);
-    this.resultsTarget.innerHTML = output;
-  }
-
-  renderShows(shows) {
-    const showData = { movies: shows };
-    const output = Mustache.render(this.showTemplate.innerHTML, showData);
-    this.resultsTarget.innerHTML = output;
-  }
 
   // -----------------------------
   // MODAL METHODS
@@ -389,44 +247,6 @@ export default class extends Controller {
     this.showToast(toastHtml);
   }
 
-  showErrorMessage() {
-    const toastHtml = `
-      <div class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-          <div class="toast-body">
-            Failed to add "${this.selectedMovie.title}" to list. Please try again.
-          </div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-      </div>
-    `;
-
-    this.showToast(toastHtml);
-  }
-
-  showToast(toastHtml) {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.querySelector('.toast-container');
-    if (!toastContainer) {
-      toastContainer = document.createElement('div');
-      toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-      document.body.appendChild(toastContainer);
-    }
-
-    // Add toast to container
-    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-
-    // Show the toast
-    const toastElement = toastContainer.lastElementChild;
-    const toast = new bootstrap.Toast(toastElement);
-    toast.show();
-
-    // Remove toast element after it's hidden
-    toastElement.addEventListener('hidden.bs.toast', () => {
-      toastElement.remove();
-    });
-  }
-
 
   // Override rendering methods to show overlay
   renderMovies(movies) {
@@ -451,21 +271,6 @@ export default class extends Controller {
 
     // Add click outside to close
     document.addEventListener('click', this.handleClickOutside.bind(this), { once: true });
-  }
-
-  handleClickOutside(event) {
-    if (!this.element.contains(event.target)) {
-      this.hideResults();
-    }
-  }
-
-  hideResults() {
-    this.resultsTarget.classList.add('d-none');
-    if (this.hasResultsContentTarget) {
-      this.resultsContentTarget.innerHTML = '';
-    } else {
-      this.resultsTarget.innerHTML = '';
-    }
   }
 
   // Clear search results
@@ -522,3 +327,8 @@ export default class extends Controller {
     this.showResultsOverlay(output);
   }
 }
+
+// The search/render pipeline these two controllers share, defined once.
+Object.assign(ListSearchController.prototype, TmdbSearchBehavior);
+
+export default ListSearchController;

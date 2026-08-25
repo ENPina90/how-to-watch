@@ -452,6 +452,16 @@ class ListsController < ApplicationController
       child
     end
 
+    # The default Position view mixes entries with child lists, so it renders its own
+    # ordered collection rather than the grouped `@entries`. It has to honour the search
+    # too: `?query=` filtered @list_entries and then the view rendered the whole list
+    # anyway, so the "Find a movie" box appeared to do nothing.
+    @position_items = if params[:query].present?
+                        @list_entries.to_a.sort_by { |entry| entry.position || 0 }
+                      else
+                        @list.all_items_by_position
+                      end
+
     @entries = {}
     # `settings` is the list's remembered grouping; an explicit param wins over it.
     @criteria = params[:criteria].presence || @list.settings.presence || 'Position'
