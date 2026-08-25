@@ -70,10 +70,11 @@ and drives nearly every branch in the app: `movie`, `series`, `anime`, `episode`
 - Playback: `provider_id` → `Source`, `source_key` (opaque id for "direct" providers).
 - `current_id` → `Subentry`: legacy list-level "current episode" pointer.
 
-**`Subentry`** — an episode belonging to a series/anime `Entry`. **`season` and `episode`
-are `string` columns**, which is why ordering everywhere goes through
-`CAST(NULLIF(season, '') AS INTEGER)`. Anime uses an *absolute* episode number computed by
-`Subentry#calculate_absolute_episode_number`.
+**`Subentry`** — an episode belonging to a series/anime `Entry`. `season` and `episode` are
+integers (they were strings until 2026-08-25, which is why old code sorted with
+`CAST(NULLIF(...))`). Anime can use an *absolute* episode number via
+`Subentry#calculate_absolute_episode_number`, computed only when a template asks for
+`%{absolute_episode}`.
 
 **`Source`** (`app/models/source.rb`) — a streaming provider definition. Owns URL
 **templates** (jsonb, keyed by media type + `"default"`) with `%{imdb}`,
@@ -377,7 +378,7 @@ Not yet committed, and it matters when reading `git log`:
 | List page 500s while grouping | `ListsController#filter_entries` + `sort_sections`; nullable `genre`/`year`/`rating` are the usual cause. |
 | Player is blank / "No video source available" | `Entry#embed_url` → `#resolved_source` → the `Source` row's `templates`; then `Entry#legacy_embed_url`. Check the source is `active` and its template has a key for that `media`. |
 | Wrong episode plays | `UserEntryPosition` for that user+entry; `Entry#current_subentry_for_user`; for anime, `Subentry#calculate_absolute_episode_number`. |
-| Episode numbers off for anime | anime uses absolute numbering; season/episode are **strings**, so compare with casts. |
+| Episode numbers off for anime | anime may use absolute numbering (`%{absolute_episode}`); note `calculate_absolute_episode_number` counts within one entry, and each season is its own entry here. |
 | "Watched" state wrong or resets | `UserEntry` (not `entries.completed`). Note `Entry#user_entry_for` **creates** a row on read. |
 | List starts on the wrong item | `UserListPosition.current_position` vs `entries.position`; `rails positions:fix_invalid`. `lists.current` is legacy and ignored per-user. |
 | Entry order looks scrambled | three competing schemes: `Entry.next_position`, `list.entries.count + 1`, `shift_positions`, `List#normalize_entry_positions!`. |
