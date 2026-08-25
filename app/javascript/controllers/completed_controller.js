@@ -18,44 +18,6 @@ export default class extends Controller {
     this.originalToggle()
   }
 
-  markCompleteAndShowModal() {
-    const completeUrl = `${window.location.origin}/entries/${this.idValue}/complete`
-
-    fetch(completeUrl, {
-      method: 'PATCH',
-      headers: {
-        'Accept': 'text/vnd.turbo-stream.html',
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-Token': this.csrfToken()
-      }
-    }).then(response => {
-      if (response.ok) {
-        return response.text()
-      }
-    }).then(html => {
-      if (html) {
-        // Process the turbo stream response to update the icon
-        Turbo.renderStreamMessage(html)
-
-        // Show the auto-advance modal
-        const modalElement = document.getElementById('autoAdvanceModal')
-        console.log('Modal element:', modalElement)
-
-        if (modalElement) {
-          const modal = new bootstrap.Modal(modalElement)
-          modal.show()
-          console.log('Modal shown')
-        } else {
-          console.error('Modal element not found')
-        }
-      }
-    }).catch(error => {
-      console.error('Error marking complete:', error)
-      // Fallback to original behavior
-      this.originalToggle()
-    })
-  }
-
   originalToggle() {
     const url = `${window.location.origin}/entries/${this.idValue}/complete`
 
