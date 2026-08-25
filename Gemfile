@@ -59,7 +59,7 @@ gem "dartsass-rails"
 # gem "image_processing", "~> 1.2"
 
 gem "devise", "~> 4.9.4"
-gem "simple_form", github: "heartcombo/simple_form"
+gem "simple_form", "~> 5.4"
 gem 'themoviedb-api'
 gem 'httparty'
 
@@ -91,7 +91,6 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
-  gem "webdrivers"
   gem 'database_cleaner-active_record'
   gem 'faker'
   gem 'rails-controller-testing'
