@@ -80,6 +80,26 @@ RSpec.describe 'JavaScript modules' do
 
       expect(dangling).to be_empty
     end
+
+    # sort_controller declares no targets at all, yet a child-list row carried
+    # data-sort-target="item" -- and child lists have no reorder endpoint, so the row was
+    # never draggable in the first place. Stimulus ignores an undeclared target silently.
+    it 'only references targets the controllers declare' do
+      dangling = controllers.flat_map { |identifier, file|
+        declared = file.read[/static targets = \[([^\]]*)\]/, 1].to_s.scan(/"(\w+)"/).flatten
+        attribute = identifier.tr('-', '_')
+
+        Rails.root.glob('app/views/**/*.erb').flat_map { |view|
+          source = view.read
+          used = source.scan(/data-#{identifier}-target=["'](\w+)["']/).flatten
+          used += source.scan(/#{attribute}_target:\s*["'](\w+)["']/).flatten
+
+          (used.uniq - declared).map { |target| "#{relative(view)} -> #{identifier} target '#{target}'" }
+        }
+      }
+
+      expect(dangling).to be_empty
+    end
   end
 
   describe 'the shared search behaviour' do
