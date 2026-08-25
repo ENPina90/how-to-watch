@@ -225,6 +225,16 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
   `completed`, `sort`, `slider`, `view_toggle`, `randomize`, `trailer`, `hover_play`,
   `link`, `button`, `entry_anchor`, `entries_sidebar`, `auto_advance` (**countdown
   disabled in code**). Unused: `cinema`, `frame_loader`, `omdb`, `hello`.
+- **`services/tmdb_search_behavior.js`** holds the six methods `list_search` and
+  `mobile_search` share (`tmdbSearch`, `tmdbShow`, `showOverlay`, `handleClickOutside`,
+  `hideResults`, `showToast`), applied to both prototypes with `Object.assign`. If you are
+  looking for one of those methods, it is not in the controller file. It lives under
+  `services/` because Stimulus eager-loads `controllers/` and would register a mixin as a
+  controller. `search_controller` keeps its own copies — its versions differ.
+- **`spec/javascript_modules_spec.rb`** is the only test coverage this JavaScript has. It
+  is static: it fails on an unpinned bare import, a method defined twice in one file, and
+  a `data-action` pointing at a method no controller defines. All three otherwise show up
+  only in the browser console.
 - **Font Awesome** is self-hosted from npm (pinned to 6.x; v7 renames icons). Its
   `scss/` and `webfonts/` are vendored under `node_modules`, and `rails font_awesome:copy`
   puts the fonts in `public/webfonts` during `assets:precompile` — `$fa-font-path` points
@@ -396,7 +406,9 @@ Not yet committed, and it matters when reading `git log`:
 | List starts on the wrong item | `UserListPosition.current_position` vs `entries.position`; `rails positions:fix_invalid`. `lists.current` is legacy and ignored per-user. |
 | Entry order looks scrambled | three competing schemes: `Entry.next_position`, `list.entries.count + 1`, `shift_positions`, `List#normalize_entry_positions!`. |
 | Poster missing / broken image | `entries.pic` vs the Active Storage `poster`; `AttachPosterFromPicJob` (in-process, easily lost); `ImageRepairService`; `ImageHelper#entry_poster_image_tag` builds Cloudinary URLs by hand. |
-| Search returns nothing | client-side TMDB fetch in the Stimulus controller (check the browser console + the `<template>` id in the layout), not the server. |
+| Search returns nothing | client-side TMDB fetch in the Stimulus controller (check the browser console + the `<template>` id in the layout), not the server. For `list_search`/`mobile_search` the fetch itself is in `services/tmdb_search_behavior.js`. |
+| A button or input does nothing at all | a `data-action` naming a method that no longer exists — Stimulus reports it only in the console. `bundle exec rspec spec/javascript_modules_spec.rb` catches every instance. |
+| Filtering a list returns everything | `ListsController#load_entries` builds `@position_items`; the default `Position` view renders that rather than the grouped `@entries`, so a filter has to be applied there too. |
 | Adding a series creates no episodes | `OmdbApi.get_series_episodes` → needs `entry.season` and (ideally) `entry.tmdb`. Failures here surface as the misleading flash "This already exists in your list". |
 | Sort/group setting doesn't stick | `ListsController#load_entries` — writes are guarded to explicit params, and `settings` is read back as the default. |
 | Slow list page | check the preloads first: `ListsController#with_card_data` (index) and the `includes(:user_entries)` in `load_entries` (show). Losing either turns `completed_by?` / `current_entry` back into a query per row. `find_now_playing_for_sidebar` also runs on every page. |
