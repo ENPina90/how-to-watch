@@ -56,4 +56,34 @@ RSpec.describe 'Forms render', :needs_provider, type: :request do
     expect(response.body).to include('name="user[email]"')
     expect(response.body).to include('name="user[password]"')
   end
+
+  describe 'the add-entry page' do
+    it 'renders a search box for each type the menu links to' do
+      %w[movie show anime].each do |type|
+        get new_list_entry_path(list, type: type)
+
+        expect(response).to be_successful
+        expect(response.body).to include('data-search-target="input"'), "no search box for #{type}"
+      end
+    end
+
+    it 'falls through for a type with no search behind it' do
+      # `custom` used to render a box wired to search#custom, which the controller never
+      # defined. The always-present manual form below is what creates a custom entry.
+      get new_list_entry_path(list, type: 'custom')
+
+      expect(response).to be_successful
+      expect(response.body).to include('Coming soon')
+      expect(response.body).to include('name="entry[name]"')
+    end
+
+    it 'carries the mustache templates the search controller renders into' do
+      get new_list_entry_path(list, type: 'movie')
+
+      %w[movieCardTemplate showCardTemplate episodeCardTemplate].each do |id|
+        expect(response.body).to include(%(<template id="#{id}">))
+      end
+    end
+  end
+
 end
