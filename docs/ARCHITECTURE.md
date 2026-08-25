@@ -3,7 +3,7 @@
 **Purpose:** the map of this codebase. Read this before diagnosing anything; the last
 section ("Debugging map") goes from symptom → the file that actually owns the behavior.
 
-**Last verified:** 2026-08-21 against `master` @ `a777d88` (plus uncommitted working-tree changes noted in §12).
+**Last verified:** 2026-08-25 against `master` @ `2caaa3b`.
 
 ---
 
@@ -24,7 +24,7 @@ are generated from provider URL templates.
 
 | Layer | Choice |
 |---|---|
-| Ruby / Rails | 3.4.5 / Rails 8.0.2.1 (`config.load_defaults 8.0`) |
+| Ruby / Rails | 3.4.5 / Rails 8.1.3.1 (`config.load_defaults` still **8.0** — bumping defaults is a separate, behaviour-changing step; run `bin/rails app:update` to generate `new_framework_defaults_8_1.rb` and work through it) |
 | DB | PostgreSQL (`pg_search` for entry search) |
 | Auth | Devise (`database_authenticatable, registerable, recoverable, rememberable, validatable`) |
 | Views | ERB + Turbo + Stimulus, Bootstrap 5 via importmap, Mustache.js for client-rendered search cards |

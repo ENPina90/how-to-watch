@@ -328,6 +328,29 @@ this affected the 17 entries with no imdb id whose list points at an imdb-kind p
 land before #20(a) — without it, "stop writing legacy columns" would have silently made
 those entries unplayable rather than falling back.
 
+### 33. ⬜ Devise is a major version behind, and warns on every boot (found 2026-08-25)
+Rails 8.1 deprecates hash arguments to `resource`, and `devise_for :users` trips it four
+times at startup:
+
+```
+DEPRECATION WARNING: resource received a hash argument controller. Please use a keyword
+instead. Support to hash argument will be removed in Rails 8.2.
+```
+
+The calls are inside Devise 4.9.4, not in `config/routes.rb`, so there is nothing to fix
+locally. **Rails 8.2 will remove the support**, so this becomes a real break rather than a
+warning. Devise 5.0.4 is out; a major bump on the authentication layer deserves its own
+branch and a careful read of its changelog — getting it wrong locks everyone out.
+
+### 34. ⬜ Framework defaults are still on 8.0
+The app runs Rails 8.1.3.1 with `config.load_defaults 8.0`, which is the recommended way to
+land a minor upgrade: new gem first, new behaviour later. To finish it, run
+`bin/rails app:update` to generate `config/initializers/new_framework_defaults_8_1.rb` and
+enable the switches one at a time. Note that `app:update` also wants to rewrite
+`config/environments/*.rb` and several initializers, which here carry real customisation
+(cache store, queue adapter, dartsass, CSP, permissions policy) — review that diff rather
+than accepting it wholesale.
+
 ---
 
 ## P1 — Performance
