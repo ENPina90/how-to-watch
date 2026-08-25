@@ -29,9 +29,7 @@ class Subentry < ApplicationRecord
     return episode.to_i if season.to_i <= 1
 
     # Count all episodes in previous seasons
-    previous_episodes = entry.subentries
-                             .where('CAST(NULLIF(season, \'\') AS INTEGER) < ?', season.to_i)
-                             .count
+    previous_episodes = entry.subentries.where('season < ?', season).count
 
     previous_episodes + episode.to_i
   end
