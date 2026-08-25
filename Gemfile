@@ -59,7 +59,6 @@ gem "dartsass-rails"
 # gem "image_processing", "~> 1.2"
 
 gem "devise", "~> 4.9.4"
-gem "font-awesome-sass", "~> 6.1"
 gem "simple_form", github: "heartcombo/simple_form"
 gem 'themoviedb-api'
 gem 'httparty'

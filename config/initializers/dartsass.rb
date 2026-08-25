@@ -12,8 +12,6 @@ Rails.application.config.dartsass.build_options = [
   # font-awesome-sass still use it, so silence the noise until those move.
   "--quiet-deps",
   "--silence-deprecation=import",
-  # `@import "bootstrap/scss/bootstrap"`
-  "--load-path=#{Rails.root.join('node_modules')}",
-  # `@import "font-awesome"` ships inside the font-awesome-sass gem
-  "--load-path=#{Gem.loaded_specs['font-awesome-sass'].gem_dir}/assets/stylesheets"
+  # Bootstrap and Font Awesome both come from node_modules
+  "--load-path=#{Rails.root.join('node_modules')}"
 ]
