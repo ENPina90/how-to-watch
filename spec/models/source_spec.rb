@@ -72,13 +72,22 @@ RSpec.describe Source do
     end
   end
 
-  describe 'the entry falling back' do
-    it 'uses the stored legacy source when the provider cannot build a URL' do
-      provider = source({ 'movie' => 'https://p.test/movie/%{imdb}' })
-      entry = create(:entry, list: list, media: 'movie', imdb: nil,
-                             source: 'https://legacy.test/stored', provider: provider)
+  describe 'classifying a pasted URL' do
+    it 'recognises a Drive share link' do
+      expect(described_class.classify_url('https://drive.google.com/file/d/1abc/view')).to eq(['google-drive', '1abc'])
+    end
 
-      expect(entry.embed_url).to eq('https://legacy.test/stored?autoplay=0')
+    it 'recognises both mega forms' do
+      expect(described_class.classify_url('https://mega.nz/embed/KEY#frag')).to eq(['mega', 'KEY#frag'])
+      expect(described_class.classify_url('https://mega.nz/file/KEY#frag')).to eq(['mega', 'KEY#frag'])
+    end
+
+    it 'passes an unknown host through the custom provider' do
+      expect(described_class.classify_url('https://gotaku1.com/x?id=1')).to eq(['custom', 'https://gotaku1.com/x?id=1'])
+    end
+
+    it 'declines imdb-keyed provider URLs, which carry no key of their own' do
+      expect(described_class.classify_url('https://vidsrc.cc/v3/embed/movie/tt1')).to eq([nil, nil])
     end
   end
 end

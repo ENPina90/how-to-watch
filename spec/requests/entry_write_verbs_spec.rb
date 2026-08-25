@@ -3,7 +3,7 @@ require 'rails_helper'
 # CSRF tokens do not protect GET, so an <img src>, a link prefetch or a crawler hitting a
 # GET route that writes could change a user's data. These specs pin the verbs: the write
 # must work, and the GET must not exist.
-RSpec.describe 'Entry write verbs', type: :request do
+RSpec.describe 'Entry write verbs', :needs_provider, type: :request do
   let(:user) { create(:user) }
   let(:list) { create(:list, user: user) }
   let(:entry) { create(:entry, list: list) }
@@ -80,8 +80,15 @@ RSpec.describe 'Entry write verbs', type: :request do
     end
 
     it 'still serves the poster lookup' do
-      get fetch_posters_entry_path(entry)
+      # An entry with no external ids, so this stays a check on the verb rather than on
+      # TMDB/OMDB (PosterCandidates has its own specs).
+      idless = create(:entry, list: list, name: 'No ids', position: 2,
+                              imdb: nil, tmdb: nil, series_imdb: nil)
+
+      get fetch_posters_entry_path(idless)
+
       expect(response).to be_successful
+      expect(response.parsed_body['posters']).to eq([])
     end
   end
 end
