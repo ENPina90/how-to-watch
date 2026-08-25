@@ -60,7 +60,10 @@ class Source < ApplicationRecord
   # Build the playable embed URL for an entry (plus optional subentry for series/anime).
   # Returns nil if no template matches the entry's media type.
   def url_for(entry, subentry: nil, autoplay: false)
-    build_url(entry.media, entry_variables(entry, subentry), autoplay: autoplay)
+    template = template_for(entry.media)
+    return nil if template.blank?
+
+    build_url(entry.media, entry_variables(entry, subentry, template), autoplay: autoplay)
   end
 
   # Build a URL from a media key + an explicit variables hash, no Entry required.
@@ -86,17 +89,22 @@ class Source < ApplicationRecord
 
   private
 
-  def entry_variables(entry, subentry)
-    {
+  def entry_variables(entry, subentry, template)
+    vars = {
       imdb:             entry.imdb,
       series_imdb:      entry.series_imdb.presence || entry.imdb,
       # Series/anime carry season/episode on the subentry; standalone `episode`
       # entries carry them on the entry itself.
       season:           subentry&.season.presence || entry.season,
       episode:          subentry&.episode.presence || entry.episode,
-      absolute_episode: subentry&.calculate_absolute_episode_number,
       source_key:       entry.source_key,
     }
+
+    # Costs a COUNT, so only work it out when the template actually asks for it. No
+    # active provider does; the deactivated vidsrc-cc anime template is the only user.
+    vars[:absolute_episode] = subentry&.calculate_absolute_episode_number if template.include?('%{absolute_episode}')
+
+    vars
   end
 
   # Safe, eval-free substitution: only replaces %{token} placeholders, leaves every
