@@ -7,6 +7,14 @@ RSpec.describe 'Security headers', :needs_provider, type: :request do
   before { sign_in user }
 
   describe 'Permissions-Policy' do
+    it 'reaches the object that actually builds responses' do
+      # Rails copies config.action_dispatch.default_headers into
+      # ActionDispatch::Response.default_headers from a railtie initializer that runs
+      # before config/initializers/*. Setting only the config looks right and sends
+      # nothing, which is how this regressed on the Rails 8.1 upgrade.
+      expect(ActionDispatch::Response.default_headers).to include('Permissions-Policy')
+    end
+
     subject(:policy) do
       get lists_path
       response.headers['Permissions-Policy'].to_s
