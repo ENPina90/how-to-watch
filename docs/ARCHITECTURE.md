@@ -225,6 +225,10 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
   `completed`, `sort`, `slider`, `view_toggle`, `randomize`, `trailer`, `hover_play`,
   `link`, `button`, `entry_anchor`, `entries_sidebar`, `auto_advance` (**countdown
   disabled in code**). Unused: `cinema`, `frame_loader`, `omdb`, `hello`.
+- **Font Awesome** is self-hosted from npm (pinned to 6.x; v7 renames icons). Its
+  `scss/` and `webfonts/` are vendored under `node_modules`, and `rails font_awesome:copy`
+  puts the fonts in `public/webfonts` during `assets:precompile` — `$fa-font-path` points
+  there because Dart Sass cannot emit Sprockets' digested filenames.
 - **SCSS** is compiled by Dart Sass, *not* Sprockets: `application.scss` →
   `app/assets/builds/application.css`. External imports need explicit load paths in
   `config/initializers/dartsass.rb` (Bootstrap from `node_modules`, Font Awesome from its

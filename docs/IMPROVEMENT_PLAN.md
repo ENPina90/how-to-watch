@@ -240,7 +240,7 @@ settings, mirrored by the `Procfile` (which Railway's builder honours as the fal
 No config-as-code left, so the December cutoff is a no-op and the IaC migration becomes
 optional rather than a deadline.
 
-### 28. 🟡 `sassc-rails` drags a native `ffi` dependency into every process
+### 28. ✅ `sassc-rails` drags a native `ffi` dependency into every process
 `sassc-rails` is deprecated *and* it is the reason the Sidekiq worker loads `ffi` at all:
 `Bundler.require` pulls in `sassc-rails → sassc → ffi`, which needs `libffi.so.8` at
 runtime. That crashed the worker's first deployment on Railpack, whose runtime image is
@@ -257,11 +257,24 @@ nesting/variables plus Bootstrap, so it should port cleanly.
 matching vendor prefixes, and `assets:precompile` from a clobbered state reproduces a
 byte-identical digest.
 
-**`ffi` is still in the bundle**, so `libffi8` must stay in
-`RAILPACK_DEPLOY_APT_PACKAGES`. The chain is `font-awesome-sass → sassc → ffi`, not
-`sassc-rails → sassc`. Removing the last native dependency means replacing
-`font-awesome-sass` too (vendor the CSS + webfonts, or take them from npm alongside
-Bootstrap). Worth doing eventually; it is a separate piece of work.
+**Then `font-awesome-sass` went too, which is what actually removed `ffi`.** The chain was
+`font-awesome-sass → sassc → ffi`, not `sassc-rails → sassc`. Font Awesome now comes from
+npm (`@fortawesome/fontawesome-free`, pinned to **6.x** — v7 renames icons) alongside
+Bootstrap, with `scss/` and `webfonts/` vendored the same way Bootstrap's subset is. All
+48 icon classes the views use were verified present in the compiled CSS, and the build was
+re-run with the package's other 2,100 files hidden to prove the committed subset suffices.
+
+**This also fixed a live bug.** The compiled CSS asked for `url(/../webfonts/…)` — a
+malformed path nothing served — so desktop Font Awesome webfonts were 404ing. The mobile
+layout had a cdnjs `<link>` as a workaround, which is now removed since all three layouts
+share working self-hosted fonts. `$fa-font-path` points at `/webfonts`, populated from
+node_modules by `rails font_awesome:copy` (hooked to `assets:precompile`); it cannot point
+into the asset pipeline because Dart Sass runs outside Sprockets and cannot emit digested
+filenames.
+
+**Railway follow-up:** `libffi8` can now come out of `RAILPACK_DEPLOY_APT_PACKAGES` on both
+services — but only *after* this branch is deployed, since the currently running code still
+loads `ffi`. Leave `libpq5` and `libjemalloc2`.
 
 Notes for whoever touches this next:
 - Load paths are explicit now — Dart Sass runs outside Sprockets, so
