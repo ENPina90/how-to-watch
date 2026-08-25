@@ -9,7 +9,7 @@ class UserEntryPosition < ApplicationRecord
   def self.find_or_create_for(user, entry)
     find_or_create_by(user: user, entry: entry) do |position|
       # Start with first subentry
-      first_subentry = entry.subentries.order(Arel.sql('CAST(NULLIF(season, \'\') AS INTEGER), CAST(NULLIF(episode, \'\') AS INTEGER)')).first
+      first_subentry = entry.subentries.order(:season, :episode).first
       position.current_subentry = first_subentry
     end
   end
@@ -18,7 +18,7 @@ class UserEntryPosition < ApplicationRecord
   def advance_to_next!
     return unless current_subentry
 
-    subentries = entry.subentries.order(Arel.sql('CAST(NULLIF(season, \'\') AS INTEGER), CAST(NULLIF(episode, \'\') AS INTEGER)'))
+    subentries = entry.subentries.order(:season, :episode)
     current_index = subentries.index(current_subentry)
 
     if current_index && current_index < subentries.length - 1
@@ -34,7 +34,7 @@ class UserEntryPosition < ApplicationRecord
   def go_to_previous!
     return unless current_subentry
 
-    subentries = entry.subentries.order(Arel.sql('CAST(NULLIF(season, \'\') AS INTEGER), CAST(NULLIF(episode, \'\') AS INTEGER)'))
+    subentries = entry.subentries.order(:season, :episode)
     current_index = subentries.index(current_subentry)
 
     if current_index && current_index > 0
