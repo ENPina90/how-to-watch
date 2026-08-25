@@ -1,7 +1,7 @@
 <%= simple_form_for(@entry) do |f|%>
   <%= f.input :list, collection: List.where(user: current_user), selected: @entry.list.id %>
   <%= f.input :name %>
-  <%= f.input :source %>
+  <%= f.input :source_url, label: "Source URL", hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
   <%= f.input :pic %>
   <%= f.input :category %>
   <%= f.input :note %>

@@ -21,7 +21,7 @@ RSpec.describe 'Playback resolution without legacy columns' do
   let(:list) { create(:list, user: user, provider: provider) }
 
   def bare_entry(**attrs)
-    create(:entry, **{ list: list, source: nil, source_two: nil, preferred_source: nil }.merge(attrs))
+    create(:entry, **{ list: list }.merge(attrs))
   end
 
   it 'resolves a movie' do
@@ -84,16 +84,17 @@ RSpec.describe 'Playback resolution without legacy columns' do
   end
 
   describe 'when no provider can build a URL' do
-    it 'still falls back to a legacy source on an old entry' do
-      Source.update_all(active: false)
-      entry = create(:entry, list: list, media: 'movie', imdb: nil, source: 'https://legacy.test/old')
-
-      expect(entry.embed_url).to eq('https://legacy.test/old?autoplay=0')
-    end
-
-    it 'reports nothing playable for a new entry with no legacy source' do
+    # There is no legacy column to fall back to any more: blank means the watch action
+    # redirects with "No video source available" rather than loading a dead iframe.
+    it 'reports nothing playable' do
       Source.update_all(active: false)
       entry = bare_entry(media: 'movie', imdb: nil)
+
+      expect(entry.embed_url).to be_blank
+    end
+
+    it 'reports nothing playable for a media type no template covers' do
+      entry = bare_entry(media: 'fanedit', imdb: 'tt1', source_key: nil)
 
       expect(entry.embed_url).to be_blank
     end

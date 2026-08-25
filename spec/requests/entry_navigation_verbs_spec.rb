@@ -2,7 +2,7 @@ require 'rails_helper'
 
 # increment/decrement/shuffle move the user's position, so they are writes even though
 # they read like navigation.
-RSpec.describe 'Entry navigation verbs', type: :request do
+RSpec.describe 'Entry navigation verbs', :needs_provider, type: :request do
   let(:user) { create(:user) }
   let(:list) { create(:list, user: user, ordered: true) }
   let!(:first_entry)  { create(:entry, list: list, name: 'First',  position: 1) }

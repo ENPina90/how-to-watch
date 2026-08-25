@@ -23,7 +23,6 @@ class Entry < ApplicationRecord
   belongs_to :current, class_name: 'Subentry', optional: true
   validates :name, presence: true, uniqueness: { scope: [:list, :series] }
   validates :media, presence: true
-  validates :preferred_source, inclusion: { in: [1, 2] }, allow_nil: true
 
   accepts_nested_attributes_for :subentries, allow_destroy: true
 
@@ -40,6 +39,13 @@ class Entry < ApplicationRecord
   # comparison against it -- the provider template lookup, the partial picker, the
   # legacy URL builder -- is case-sensitive, so normalize on the way in.
   before_validation :normalize_media
+
+  # A pasted direct URL (Drive share link, mega link, YouTube, archive.org, or anything
+  # else). It is not a column: it gets classified into provider + source_key so playback
+  # goes through the same template machinery as everything else.
+  attr_accessor :source_url
+
+  before_validation :apply_source_url, if: -> { source_url.present? }
 
   # Runs ahead of every dependent-destroy callback (prepend), so the FKs pointing
   # into this entry's subentries are gone before the bulk delete fires. Scoped by
@@ -76,11 +82,6 @@ class Entry < ApplicationRecord
       year:         entry[:year],
       plot:         entry[:plot],
       pic:          entry[:pic],
-      # Legacy columns, written only when a caller supplies one (CSV seeds carry direct
-      # URLs). Playback URLs are computed from the provider's template -- see
-      # Entry#embed_url -- so nothing generates vidsrc strings any more.
-      source:       entry[:source],
-      source_two:   entry[:source_two],
       genre:        entry[:genre],
       director:     entry[:director],
       writer:       entry[:writer],
@@ -130,6 +131,25 @@ class Entry < ApplicationRecord
     self.media = media.to_s.strip.downcase.presence
   end
 
+  def apply_source_url
+    provider, key = Source.for_url(source_url.strip)
+
+    if provider.nil?
+      errors.add(:source_url, 'is not a URL we recognise, and no provider is configured for it')
+      return
+    end
+
+    self.provider = provider
+    self.source_key = key
+  end
+
+  # The direct URL this entry currently plays from, for pre-filling the edit form.
+  def current_source_url
+    return nil unless provider&.direct?
+
+    embed_url
+  end
+
   def enqueue_source_check
     CheckEntrySourceJob.perform_later(self)
   rescue StandardError => e
@@ -163,12 +183,10 @@ class Entry < ApplicationRecord
 
   # Computed, on-demand embed URL built from the resolved provider's template.
   # Pass the current subentry for series/anime so season/episode resolve correctly.
-  # Falls back to the legacy source columns when the resolver yields nothing (e.g.
-  # before the production backfill has run, or if a Source was deleted) so playback
-  # never breaks while the new provider data is missing.
+  # Blank means nothing can play it -- callers show "no source available" rather than
+  # loading an iframe that cannot work.
   def embed_url(subentry: nil, autoplay: false)
-    resolved_source&.url_for(self, subentry: subentry, autoplay: autoplay).presence ||
-      legacy_embed_url(subentry: subentry, autoplay: autoplay)
+    resolved_source&.url_for(self, subentry: subentry, autoplay: autoplay).presence
   end
 
   # Get user's current episode for this entry
@@ -303,31 +321,6 @@ class Entry < ApplicationRecord
   end
 
   private
-
-  # Reproduces the pre-refactor URL logic from the legacy source/source_two columns.
-  # Used only as a fallback when the provider resolver returns nothing.
-  def legacy_embed_url(subentry: nil, autoplay: false)
-    flag = autoplay ? "1" : "0"
-    pref = preferred_source || list&.preferred_source
-
-    case media
-    when "anime"
-      "#{subentry.source}?autoplay=#{flag}" if subentry&.source.present?
-    when "series"
-      if pref == 2 && source_two.present?
-        "#{source_two}/#{subentry&.season}-#{subentry&.episode}?autoplay=#{flag}"
-      elsif source.present?
-        "#{source}/#{subentry&.season}/#{subentry&.episode}?autoplay=#{flag}"
-      elsif subentry&.source.present?
-        "#{subentry.source}?autoplay=#{flag}"
-      end
-    when "episode", "movie"
-      base = pref == 2 ? source_two : source
-      "#{base}?autoplay=#{flag}" if base.present?
-    else
-      (pref == 2 ? source_two : source).presence
-    end
-  end
 
   # Check if we should attach a poster from pic URL
   def should_attach_poster?

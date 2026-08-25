@@ -15,7 +15,6 @@ RSpec.describe Entry, type: :model do
       year: 2012,
       plot: 'Earth\'s mightiest heroes must come together...',
       pic: 'some_url',
-      source: 'https://v2.vidsrc.me/embed/tt0848228',
       genre: 'Action, Adventure, Sci-Fi',
       director: 'Joss Whedon',
       writer: 'Joss Whedon',

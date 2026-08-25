@@ -18,6 +18,42 @@ class Source < ApplicationRecord
 
   scope :active, -> { where(active: true) }
 
+  # A pasted URL -> [provider slug, source_key]. Both the manual entry form and the
+  # legacy-cleanup resolver need this, so the patterns live in one place.
+  # Returns [nil, nil] for imdb-keyed provider URLs, which carry no key of their own.
+  DIRECT_URL_PATTERNS = [
+    [%r{drive\.google\.com/(?:file/d/|embed/d/)([^/?]+)}i, 'google-drive'],
+    # Accept both the share link and the embed form; the key is everything after it.
+    [%r{mega\.nz/(?:embed|file)/(.+)\z}i,                   'mega'],
+    [%r{youtube\.com/embed/(.+)\z}i,                        'youtube'],
+    [%r{youtu\.be/(.+)\z}i,                                 'youtube'],
+    [%r{archive\.org/embed/(.+)\z}i,                        'archive-org']
+  ].freeze
+
+  def self.classify_url(url)
+    return [nil, nil] if url.blank?
+
+    DIRECT_URL_PATTERNS.each do |pattern, slug|
+      match = url.match(pattern)
+      return [slug, match[1]] if match
+    end
+
+    # vidsrc-style URLs are imdb-keyed: the id comes off the entry, not the URL.
+    return [nil, nil] if url.match?(/vidsrc/i)
+
+    # Anything else is passed through whole by the catch-all provider.
+    ['custom', url]
+  end
+
+  # Same, but resolved to the Source row. [nil, nil] when we cannot place the URL or the
+  # matching provider row does not exist.
+  def self.for_url(url)
+    slug, key = classify_url(url)
+    return [nil, nil] if slug.nil?
+
+    [find_by(slug: slug), key]
+  end
+
   def imdb?   = kind == "imdb"
   def direct? = kind == "direct"
 

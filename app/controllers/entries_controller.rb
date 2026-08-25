@@ -27,7 +27,6 @@ class EntriesController < ApplicationController
   def create
     if params[:custom]
       @entry = Entry.new(entry_params)
-      @entry.source = fix_external_sources(entry_params["source"])
       @entry.list = @list
       @entry.position = @list.entries.count + 1
       @entry.media = 'fanedit' if @entry.media.blank?
@@ -134,7 +133,7 @@ class EntriesController < ApplicationController
       end
     end
 
-    cleaned_params.merge!(list: @entry.list, source: fix_external_sources(cleaned_params["source"]))
+    cleaned_params.merge!(list: @entry.list)
     if @entry.update(cleaned_params)
       if old_position != new_position
         shift_positions(@entry, new_position)
@@ -637,20 +636,6 @@ class EntriesController < ApplicationController
       end
     end
 
-    def fix_external_sources(url)
-      # Entries created from TMDB/OMDB have no hand-entered source, so this is routinely
-      # called with nil -- it used to raise NoMethodError and 500 the edit form.
-      return url if url.blank?
-
-      if url.include?("mega")
-        url.gsub("file", "embed")
-      elsif url.include?("google")
-        url.gsub("/view", "/preview")
-      else
-        return url
-      end
-    end
-
     def entry_params
       params.require(:entry).permit(
         :custom,
@@ -671,8 +656,7 @@ class EntriesController < ApplicationController
         :rating,
         :length,
         :media,
-        :source,
-        :source_two,
+        :source_url,
         :provider_id,
         :source_key,
         :imdb,
@@ -682,7 +666,7 @@ class EntriesController < ApplicationController
         :season,
         :episode,
         :custom,
-        subentries_attributes: [:id, :name, :plot, :imdb, :season, :episode, :rating, :length, :completed, :source, :year, :_destroy]
+        subentries_attributes: [:id, :name, :plot, :imdb, :season, :episode, :rating, :length, :completed, :year, :_destroy]
       )
     end
 
