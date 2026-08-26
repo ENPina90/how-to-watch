@@ -109,7 +109,7 @@ RSpec.describe 'Sorting a list', :needs_provider, type: :request do
   it 'wraps each section with its entries' do
     get list_path(list, criteria: 'Year', sort: 'asc')
 
-    expect(response.body.scan('<section class="entry-section">').count).to eq(2)
+    expect(response.body.scan('<section class="entry-section"').count).to eq(2)
   end
 
   it 'still renders the position view when a direction is remembered' do

@@ -135,7 +135,10 @@ class ListsController < ApplicationController
     @is_mobile = mobile_request?
     @minimal = params[:view] == "minimal" || @is_mobile
     @current = @list.find_entry_by_position(:current) unless @list.entries.empty?
-    @random_selection = @list_entries.sample(3)
+    # Up Next suggests something to watch, so what this user has already seen is not a
+    # candidate. The page narrows it further to whatever the section filter leaves in
+    # range; this is the unfiltered starting point.
+    @random_selection = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sample(3)
 
     if @is_mobile
       # Get all subscribed lists with entry counts for mobile search

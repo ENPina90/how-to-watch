@@ -1,21 +1,26 @@
-<div data-randomize-target='upnext'>
+<div>
   <% if @list.ordered %>
     <strong>Up Next</strong>
-    <div class="layout-box my-3">
+    <div class="layout-box my-3" data-action="click->randomize#scrollTo">
       <a href="#<%= @current.id %>"><%= @current.name %></a>
     </div>
   <% else %>
     <a>Up Next <i class="fa-solid fa-rotate-right" data-action="click->randomize#upnext"></i></a>
-    <div class="layout-box my-3">
-      <% random_selection.each do |entry|%>
+    <%# Each pick scrolls to its card, which is keyed by entry id. The controller repaints
+        this box whenever the pool changes, so these have to be the shape it writes. %>
+    <%# One action on the box rather than one per link: the controller repaints these. %>
+    <div class="layout-box my-3" data-randomize-target="picks" data-action="click->randomize#scrollTo">
+      <% random_selection.each do |entry| %>
         <a href="#<%= entry.id %>"><%= entry.name %></a>
         <br>
       <% end %>
     </div>
     <div class="layout-box-bottom">
-      <% unless random_selection.empty? %>
-        <%= link_to 'Pick for me', watch_entry_path(random_selection.sample)%>
-      <% end %>
+      <small class="text-muted" data-randomize-target="empty" <%= 'hidden' unless random_selection.empty? %>>Nothing unwatched here</small>
+      <%= link_to 'Pick for me',
+                  random_selection.any? ? watch_entry_path(random_selection.sample) : '#',
+                  data: { randomize_target: 'pick' },
+                  hidden: random_selection.empty? %>
     </div>
   <% end %>
 </div>
