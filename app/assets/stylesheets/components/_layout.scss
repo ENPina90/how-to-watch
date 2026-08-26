@@ -103,6 +103,11 @@
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
+  /* Dragging down the rail selects a run of sections, so the drag must not also sweep a
+     text selection along with it, and on touch must not be read as a scroll. The rail is
+     not rendered on mobile, where that would cost the only way to scroll past it. */
+  user-select: none;
+  touch-action: none;
 }
 
 .section-filter:hover {

@@ -46,6 +46,16 @@ RSpec.describe 'Filtering a list by section', :needs_provider, type: :request do
     expect(section_keys).to eq(%w[1970s 2010s])
   end
 
+  # Pressing a section starts a drag and every section the pointer crosses joins the
+  # selection, so the rail needs the pointer pair as well as the click.
+  it 'wires each toggle for a click and for a drag across the rail' do
+    get list_path(list, criteria: 'Year', sort: 'asc')
+
+    expect(response.body.scan('section-filter#toggle').count).to eq(2)
+    expect(response.body.scan('pointerdown->section-filter#start').count).to eq(2)
+    expect(response.body.scan('pointerenter->section-filter#extend').count).to eq(2)
+  end
+
   # Collapsing hides the entries and leaves the heading, so the entries need a wrapper of
   # their own to hide -- the heading cannot be a sibling that goes with them.
   it 'gives each section a collapse toggle over a body of its own' do
