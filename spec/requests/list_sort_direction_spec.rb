@@ -104,6 +104,14 @@ RSpec.describe 'Sorting a list', :needs_provider, type: :request do
     end
   end
 
+  # The sticky section headings need each heading to own its entries: siblings in one
+  # container would park on top of each other instead of taking turns.
+  it 'wraps each section with its entries' do
+    get list_path(list, criteria: 'Year', sort: 'asc')
+
+    expect(response.body.scan('<section class="entry-section">').count).to eq(2)
+  end
+
   it 'still renders the position view when a direction is remembered' do
     get list_path(list, criteria: 'Year', sort: 'desc')
     get list_path(list, criteria: 'Position')

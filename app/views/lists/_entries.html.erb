@@ -39,15 +39,19 @@
             <% else %>
               <!-- Show entries grouped by criteria (child lists not shown in other views) -->
               <%# `sections` is pre-sorted by the controller; keys mix numbers and strings. %>
+              <%# Each section is its own element so that its sticky heading is pushed out
+                  by the next one instead of the two stacking at the same offset. %>
               <% sections.each do |key| %>
-                <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
-                <% entries[key].each do |entry| %>
-                  <% if minimal %>
-                    <%= render "entries/entry_minimal", entry: entry %>
-                  <% else %>
-                    <%= entry_card(entry) %>
+                <section class="entry-section">
+                  <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
+                  <% entries[key].each do |entry| %>
+                    <% if minimal %>
+                      <%= render "entries/entry_minimal", entry: entry %>
+                    <% else %>
+                      <%= entry_card(entry) %>
+                    <% end %>
                   <% end %>
-                <% end %>
+                </section>
               <% end %>
             <% end %>
           </div>

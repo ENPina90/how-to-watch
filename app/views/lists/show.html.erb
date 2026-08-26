@@ -1,5 +1,5 @@
 <div class="container" data-controller="edit search entry-anchor" data-search-id-value="<%= @list.id %>">
-  <div class="row justify-content-center layout-title">
+  <div class="row justify-content-center layout-title" data-controller="sticky-headers">
     <% unless @list.top_level? %>
       <nav aria-label="breadcrumb" class="mb-2">
         <% if @list.parent_lists.size == 1 %>
