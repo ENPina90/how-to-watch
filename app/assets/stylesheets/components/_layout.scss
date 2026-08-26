@@ -90,6 +90,31 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* One row per section, each a filter that is on or off. `.page-container a` used to
+   colour these when they were links; a button is not covered by it. */
+.section-filter {
+  display: block;
+  width: 100%;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #ffffff;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.section-filter:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Reads its own state, so nothing has to be kept in sync with a class. */
+.section-filter[aria-pressed="true"] {
+  background-color: #000000;
+  color: #1a936f;
+}
+
 .layout-title {
   position: sticky;
   top: 60px;

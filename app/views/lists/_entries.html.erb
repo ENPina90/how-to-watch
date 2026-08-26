@@ -1,13 +1,20 @@
 <div id="top"></div>
 <div data-search-target="results">
-  <div class="row justify-content-between list-layout">
+  <div class="row justify-content-between list-layout" data-controller="section-filter">
     <% unless minimal %>
       <div class="col-2 layout text-center">
         <a href="#top"><i class="fa-solid fa-sort-up fa-lg"></i></a>
         <div class="layout-box">
+          <%# Each section is a filter toggle, not a jump link: several can be on at once
+              and the entries are hidden and shown where they already stand. %>
           <% unless @criteria == 'Position' || @current.nil? %>
             <% sections.each do |section|%>
-              <a href="#<%= section %>"><%= section %></a><br>
+              <button type="button"
+                      class="section-filter"
+                      aria-pressed="false"
+                      data-section="<%= section %>"
+                      data-section-filter-target="option"
+                      data-action="section-filter#toggle"><%= section %></button>
             <% end %>
           <% end %>
         </div>
@@ -42,7 +49,9 @@
               <%# Each section is its own element so that its sticky heading is pushed out
                   by the next one instead of the two stacking at the same offset. %>
               <% sections.each do |key| %>
-                <section class="entry-section">
+                <section class="entry-section"
+                         data-section="<%= key %>"
+                         data-section-filter-target="section">
                   <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
                   <% entries[key].each do |entry| %>
                     <% if minimal %>
