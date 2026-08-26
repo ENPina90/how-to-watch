@@ -211,6 +211,22 @@
   background-color: rgba(0, 0, 0, 0.1);
 }
 
+/* A grouped list's section heading rides with its entries and then parks under the page
+   header row, where it stays until the next section's heading pushes it off. The offset is
+   published by the sticky-headers controller: that row's height moves with the list title
+   and the breadcrumb trail, so it cannot be a constant here. The fallback covers the frame
+   before the controller connects. */
+.entry-section h3 {
+  position: sticky;
+  top: var(--section-header-top, 136px);
+  /* Entries scroll behind the heading, so it cannot be transparent. */
+  background-color: #0a0a0a;
+  z-index: 1;
+  /* The section links in the left rail jump to these headings; without this the target
+     lands underneath the header row it parks below. */
+  scroll-margin-top: var(--section-header-top, 136px);
+}
+
 /* Direction arrow on the active grouping, at the label's own size. */
 .menu li .sort-caret {
   font-size: inherit;
