@@ -126,6 +126,11 @@ body.light-mode .list-card-meta {
   color: rgba(0, 0, 0, 0.6) !important;
 }
 
+/* Matches the page behind it, so entries scrolling under a parked heading stay hidden. */
+body.light-mode .entry-section h3 {
+  background-color: #f5f2e8;
+}
+
 /* Light mode menu */
 body.light-mode .menu li.active {
   background-color: #000000;

@@ -1,4 +1,17 @@
 module ApplicationHelper
+  # The grouping menu doubles as a direction toggle: clicking the criteria that is already
+  # active flips it, and anything else starts ascending. The caret shows the direction the
+  # list is currently in, not the one the link would switch to.
+  def sort_menu_link(list, criteria)
+    active = @criteria == criteria
+    label = active ? safe_join([criteria, sort_direction_caret(@direction)], ' ') : criteria
+    link_to label, list_path(list, criteria: criteria, sort: active && @direction == 'asc' ? 'desc' : 'asc')
+  end
+
+  def sort_direction_caret(direction)
+    tag.i(class: "fa-solid fa-caret-#{direction == 'desc' ? 'down' : 'up'} sort-caret")
+  end
+
   def dom_id_for_partial(entry)
     "entry_#{entry.id}_partial"
   end
