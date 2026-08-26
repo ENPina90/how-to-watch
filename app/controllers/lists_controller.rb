@@ -2,9 +2,9 @@
 
 class ListsController < ApplicationController
   # The grouping options offered on the list page. Everything except Position, Genre,
-  # Year and Watched is handled by reading the matching Entry attribute, so this doubles
-  # as the whitelist for that lookup.
-  GROUPING_CRITERIA = %w[Position Genre Year Watched Rating Category Media Length].freeze
+  # Year, Added and Watched is handled by reading the matching Entry attribute, so this
+  # doubles as the whitelist for that lookup.
+  GROUPING_CRITERIA = %w[Position Genre Year Added Watched Rating Category Media Length].freeze
   SORT_DIRECTIONS = %w[asc desc].freeze
 
   before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :add_season, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
@@ -497,9 +497,12 @@ class ListsController < ApplicationController
     # `sort` is the direction the grouping runs in; the menu toggles it by re-clicking
     # the criteria that is already active.
     @direction = sort_direction
+    # Most criteria produce keys that sort on their own; a branch that has to build its
+    # sections in order says so here.
+    @preordered_sections = false
     filter_entries(@criteria)
     @entries = @entries.transform_keys { |key| key.nil? ? 'Other' : key }
-    @sections = sort_sections(@entries.keys, @direction == 'desc')
+    @sections = sort_sections(@entries.keys, @direction == 'desc', @preordered_sections)
 
     return unless @list.user == current_user
     # Only persist an explicit choice. A plain visit carries no params, and writing them
@@ -543,6 +546,16 @@ class ListsController < ApplicationController
         decade_entries = decade_entries.reverse if @direction == 'desc'
         @entries["#{year}s"] = decade_entries
       end
+    when 'Added'
+      # Entries carry no explicit added-on column; created_at is when one landed on the
+      # list. Sections are months, inserted in chronological order -- sorting the keys
+      # would file "August 2026" ahead of "December 2025".
+      @preordered_sections = true
+      months = @list_entries.sort_by(&:created_at).group_by { |entry| entry.created_at.beginning_of_month }
+      months.each do |month, month_entries|
+        month_entries = month_entries.reverse if @direction == 'desc'
+        @entries[month.strftime('%B %Y')] = month_entries
+      end
     when 'Watched'
       @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
       @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
@@ -555,8 +568,13 @@ class ListsController < ApplicationController
 
   # Section keys are a mix of strings ('Action', 'Other') and numbers (Rating, Length,
   # Year), which raises if you just call .sort on them. Numbers first, then strings.
-  def sort_sections(keys, descending)
-    sorted = keys.sort_by { |key| [key.is_a?(Numeric) ? 0 : 1, key.is_a?(Numeric) ? key : key.to_s] }
+  # `preordered` keys arrived in the order they belong in and only need the direction.
+  def sort_sections(keys, descending, preordered = false)
+    sorted = if preordered
+               keys.to_a
+             else
+               keys.sort_by { |key| [key.is_a?(Numeric) ? 0 : 1, key.is_a?(Numeric) ? key : key.to_s] }
+             end
     descending ? sorted.reverse : sorted
   end
 

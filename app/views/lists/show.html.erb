@@ -114,7 +114,7 @@
     </div>
     <% unless @minimal %>
       <ul class="menu">
-        <% %w[Year Rating Genre Category Watched Media Length].each do |criteria| %>
+        <% %w[Year Added Rating Genre Category Watched Media Length].each do |criteria| %>
           <li class="<%= 'active' if @criteria == criteria %>"><%= sort_menu_link(@list, criteria) %></li>
         <% end %>
       </ul>
