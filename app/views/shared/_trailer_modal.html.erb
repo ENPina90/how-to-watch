@@ -1,0 +1,24 @@
+<%# One trailer modal for the whole page. Each card used to carry its own copy -- on a
+    1,200-entry list that was 1,200 modals and 1,200 <iframe>s in the DOM. The card links
+    now open this one and hand it the trailer URL through Bootstrap's relatedTarget. %>
+<div class="modal fade"
+     id="trailerModal"
+     tabindex="-1"
+     aria-labelledby="trailerModalLabel"
+     aria-hidden="true"
+     data-controller="trailer"
+     data-trailer-target="modal">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="trailerModalLabel" data-trailer-target="title">Trailer</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="ratio ratio-16x9">
+          <iframe data-trailer-target="iframe" src="" frameborder="0" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

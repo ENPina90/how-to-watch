@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
 
-// Connects to data-controller="completed"
+// Connects to data-controller="link"
 export default class extends Controller {
   static values = { id: Number };
 
@@ -10,11 +10,11 @@ export default class extends Controller {
 
   toggle() {
     const url = `${window.location.origin}/entries/${this.idValue}/reportlink`;
-    if (this.element.style.color === "red") {
-      this.element.style.color = "grey";
-    } else {
-      this.element.style.color = "red";
-    }
+    // State lives in the class, not an inline style -- the style attribute was rendered
+    // once per card and read back here, which meant the colour had to ship with every
+    // entry for this toggle to know which way to go.
+    const broken = this.element.classList.toggle("link-broken");
+    this.element.classList.toggle("link-ok", !broken);
     fetch(url, {
       method: 'PATCH',
       headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content }

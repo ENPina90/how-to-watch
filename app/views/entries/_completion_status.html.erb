@@ -1,36 +1,34 @@
+<%# Rendered once per card, so everything here is paid ~1,200 times on the big lists:
+    no inline styles, no HTML comments (they ship to the browser), and no attribute that
+    can be derived from the entry id. See §6.1 of docs/ARCHITECTURE.md. %>
 <div id="completed-<%= entry.id %>" data-controller="completed" data-completed-id-value="<%= entry.id %>" class="completion-status">
-  <% completed = entry.completed_by?(user) %>
-  <% if completed %>
-    <!-- If already completed, always use toggle to uncomplete -->
-    <i class="fa-solid fa-2x fa-eye <%= local_assigns[:minimal] ? '' : '' %> text-decoration-none"
-      title="Mark as unwatched"
-      data-action="click->completed#toggle"
-      style="cursor: pointer;"></i>
+  <% if entry.completed_by?(user) %>
+    <%# Already watched: toggle straight back, no review prompt. %>
+    <i class="fa-solid fa-2x fa-eye clickable text-decoration-none"
+       title="Mark as unwatched"
+       data-action="click->completed#toggle"></i>
   <% elsif entry.list.reviewable && (entry.media == 'movie' || entry.media == 'fanedit') %>
-    <!-- If not completed and reviewable movie/fanedit, show modal -->
-    <i class="fa-regular fa-2x fa-eye <%= local_assigns[:minimal] ? '' : '' %> text-decoration-none"
-      title="Mark as watched and review"
-      data-bs-toggle="modal"
-      data-bs-target="#reviewModal<%= entry.id %>"
-      style="cursor: pointer;"></i>
+    <%# Opens the one shared review modal; it builds its own URLs from the entry id. %>
+    <i class="fa-regular fa-2x fa-eye clickable text-decoration-none"
+       title="Mark as watched and review"
+       data-bs-toggle="modal"
+       data-bs-target="#reviewModal"
+       data-entry-id="<%= entry.id %>"
+       data-entry-name="<%= entry.name %>"
+       data-entry-media="<%= entry.media %>"></i>
   <% else %>
-    <!-- All other cases use standard toggle -->
-    <i class="fa-regular fa-2x fa-eye <%= local_assigns[:minimal] ? '' : '' %> text-decoration-none"
-      title="Mark as watched"
-      data-action="click->completed#toggle"
-      style="cursor: pointer;"></i>
+    <i class="fa-regular fa-2x fa-eye clickable text-decoration-none"
+       title="Mark as watched"
+       data-action="click->completed#toggle"></i>
   <% end %>
 
-  <% unless local_assigns[:minimal] %>
-    <% if entry.review_count > 0 %>
-      <div class="mt-1">
-        <small class="text-muted">
-          <i class="fa-solid fa-star text-warning"></i>
-          <%= entry.average_review&.round(1) || "N/A" %>
-          (<%= pluralize(entry.review_count, 'review') %>)
-        </small>
-      </div>
-    <% end %>
-
+  <% if !local_assigns[:minimal] && entry.review_count > 0 %>
+    <div class="mt-1">
+      <small class="text-muted">
+        <i class="fa-solid fa-star text-warning"></i>
+        <%= entry.average_review&.round(1) || "N/A" %>
+        (<%= pluralize(entry.review_count, 'review') %>)
+      </small>
+    </div>
   <% end %>
 </div>

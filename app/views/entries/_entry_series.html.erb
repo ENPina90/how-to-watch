@@ -1,5 +1,5 @@
   <%= turbo_frame_tag dom_id(entry) do %>
-  <div class="card-container" data-controller="trailer">
+  <div class="card-container">
     <%# if entry.note %>
     <%# end %>
     <div class="grid-card" id="<%= entry.id %>">
@@ -28,7 +28,7 @@
             <div class="episode-label mb-1">
               <strong>S<%= current_subentry&.season %>E<%= current_subentry&.episode %></strong>
             </div>
-            <div class="episode-name text-truncate" style="font-size: 0.9rem;">
+            <div class="episode-name text-truncate">
               <%= current_subentry&.name %>
             </div>
           </div>
@@ -48,7 +48,9 @@
         </div>
         <div class="card-menu">
           <% if entry.trailer.present? %>
-            <a href="#" data-action="trailer#show" data-trailer-url="<%= convert_to_embed_url(entry.trailer) %>">
+            <a href="#" data-bs-toggle="modal" data-bs-target="#trailerModal"
+               data-trailer-url="<%= convert_to_embed_url(entry.trailer) %>"
+               data-trailer-name="<%= entry.name %>">
               <i class="fa-solid fa-trailer"></i>
             </a>
           <% end %>
@@ -66,8 +68,7 @@
             <% end %>
 
             <% end %>
-            <i class="fa-solid fa-link-slash"
-        style="color:<%= entry.stream ? "grey" : "red"%>"
+            <i class="fa-solid fa-link-slash <%= entry.stream ? 'link-ok' : 'link-broken' %>"
         title="Report broken link"
         data-controller="link"
         data-link-id-value="<%= entry.id %>"
@@ -79,35 +80,7 @@
         </div>
       </div>
       <% if entry.trailer.present? %>
-        <div
-          class="modal fade"
-          id="trailerModal-<%= entry.id %>"
-          tabindex="-1"
-          aria-labelledby="trailerModalLabel-<%= entry.id %>"
-          aria-hidden="true"
-          data-trailer-target="modal"
-          >
-          <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="trailerModalLabel-<%= entry.id %>"><%= entry.name %> Trailer</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body">
-                <div class="ratio ratio-16x9">
-                  <iframe
-                    data-trailer-target="iframe"
-                    src=""
-                    frameborder="0"
-                    allowfullscreen
-                  ></iframe>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       <% end %>
 
-      <%= render 'shared/poster_selector_modal', entry: entry %>
     </div>
 <% end %>
