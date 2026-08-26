@@ -224,3 +224,27 @@
     object-fit: cover;
   }
 }
+
+// Per-card utilities. These were inline `style=` attributes until they were multiplied
+// by ~1,200 cards on the big lists -- and every inline style is also one more reason
+// config/initializers/content_security_policy.rb still needs `style_src :unsafe_inline`.
+.clickable {
+  cursor: pointer;
+}
+
+// Two classes rather than one, so link_controller.js can flip between them without
+// having to read a colour back out of an inline style. Specificity (0,2,0) beats the
+// `.card-menu i { color: #fff }` rule above.
+.fa-link-slash {
+  &.link-ok {
+    color: grey;
+  }
+
+  &.link-broken {
+    color: red;
+  }
+}
+
+.episode-name {
+  font-size: 0.9rem;
+}

@@ -28,7 +28,7 @@
             <div class="episode-label mb-1">
               <strong>Episode <%= current_subentry&.calculate_absolute_episode_number %></strong>
             </div>
-            <div class="episode-name text-truncate" style="font-size: 0.9rem;">
+            <div class="episode-name text-truncate">
               <%= current_subentry&.name %>
             </div>
           </div>
@@ -68,8 +68,7 @@
             <% end %>
 
             <% end %>
-            <i class="fa-solid fa-link-slash"
-        style="color:<%= entry.stream ? "grey" : "red"%>"
+            <i class="fa-solid fa-link-slash <%= entry.stream ? 'link-ok' : 'link-broken' %>"
         title="Report broken link"
         data-controller="link"
         data-link-id-value="<%= entry.id %>"

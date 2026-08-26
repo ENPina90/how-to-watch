@@ -56,6 +56,44 @@ RSpec.describe 'The list page payload', :needs_provider, type: :request do
     end
   end
 
+  describe 'the card markup' do
+    # entry_card (app/helpers/entry_card_helper.rb) collapses whitespace between tags,
+    # which is only safe while cards hold nothing where whitespace is significant.
+    it 'holds no element whose whitespace matters' do
+      build_entries(3)
+
+      get list_path(list)
+
+      cards = response.body.scan(/<turbo-frame id="entry_\d+">.*?<\/turbo-frame>/m)
+      expect(cards).not_to be_empty
+      cards.each do |card|
+        expect(card).not_to include('<pre')
+        expect(card).not_to include('<textarea')
+        expect(card).not_to include('<script')
+      end
+    end
+
+    it 'ships no inline style attributes' do
+      # Every one of these is multiplied by the entry count, and style-src :unsafe_inline
+      # is the last thing keeping the CSP report-only.
+      build_entries(3)
+
+      get list_path(list)
+
+      cards = response.body.scan(/<turbo-frame id="entry_\d+">.*?<\/turbo-frame>/m)
+      cards.each { |card| expect(card).not_to match(/style="/) }
+    end
+
+    it 'ships no HTML comments, which reach the browser' do
+      build_entries(3)
+
+      get list_path(list)
+
+      cards = response.body.scan(/<turbo-frame id="entry_\d+">.*?<\/turbo-frame>/m)
+      cards.each { |card| expect(card).not_to include('<!--') }
+    end
+  end
+
   describe 'the payload' do
     it 'does not grow with entry count the way a per-card modal does' do
       build_entries(5)
@@ -68,9 +106,9 @@ RSpec.describe 'The list page payload', :needs_provider, type: :request do
 
       # The cards themselves still scale, so this is not flat -- but each extra entry must
       # cost roughly a card, not a card plus three modals and a form. On list 21 in
-      # development that is ~3.0 KB per entry, against ~10.6 KB before this change.
+      # development that is ~2.4 KB per entry, against ~10.6 KB before this change.
       per_entry = (large - small) / 15.0
-      expect(per_entry).to be < 4_000
+      expect(per_entry).to be < 3_000
     end
   end
 
@@ -96,9 +134,22 @@ RSpec.describe 'The list page payload', :needs_provider, type: :request do
       get list_path(list)
 
       expect(response.body).to include(%(data-bs-target="#reviewModal"))
+      expect(response.body).to include(%(data-entry-id="#{entry.id}"))
       expect(response.body).to include(%(data-entry-name="Solaris"))
-      expect(response.body).to include(%(data-review-url="#{review_entry_path(entry)}"))
-      expect(response.body).to include(%(data-skip-url="#{complete_without_review_entry_path(entry)}"))
+      expect(response.body).to include(%(data-entry-media="movie"))
+    end
+
+    it 'ships the id rather than three URLs built from it' do
+      # review_modal_controller.js builds /entries/:id/review and the two
+      # complete_without_review variants. Those were attributes on every card, which is
+      # 147 bytes x 1,203 entries of paths the controller can derive.
+      create(:entry, list: list, position: 1, media: 'movie', name: 'Solaris')
+
+      get list_path(list)
+
+      expect(response.body).not_to include('data-review-url')
+      expect(response.body).not_to include('data-skip-url')
+      expect(response.body).not_to include('data-dont-ask-url')
     end
 
     it 'carry the entry the shared poster picker should load' do
