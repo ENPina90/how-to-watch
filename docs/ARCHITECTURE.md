@@ -247,6 +247,19 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
   `completed`, `sort`, `slider`, `view_toggle`, `randomize`, `trailer`, `hover_play`,
   `link`, `button`, `entry_anchor`, `entries_sidebar`, `auto_advance` (**countdown
   disabled in code**). Unused: `cinema`, `frame_loader`, `omdb`, `hello`.
+- **Modals are page-level, never per card.** The trailer modal, the poster picker and
+  the review modal are rendered **once** per list page (`shared/_trailer_modal`,
+  `shared/_poster_selector_modal`, `entries/_review_modal_list`). Each is opened by a
+  plain Bootstrap trigger on the card, and its controller reads the entry off
+  `event.relatedTarget` in `show.bs.modal` -- so the markup holds nothing entry-specific
+  and one modal serves every card. They used to be rendered inside the card partials:
+  on a 1,203-entry list that was 3,610 modals, 1,203 `<iframe>`s and 1,202 copies of the
+  same script, 12.7 MB of HTML and ~3.8s of view rendering with the query count already
+  flat. **Do not put a modal, a `form_with`, or an inline `<script>` in an entry card
+  partial** (`entries/_entry_movie` and its four siblings) -- each one is paid ~1,200
+  times. `spec/requests/list_show_payload_spec.rb` fails if a per-entry modal comes back.
+  The watch page is the exception: it shows one entry, so it keeps its own
+  `entries/_review_modal` with turbo disabled, answering the same `#reviewModal` id.
 - **`services/tmdb_search_behavior.js`** holds the six methods `list_search` and
   `mobile_search` share (`tmdbSearch`, `tmdbShow`, `showOverlay`, `handleClickOutside`,
   `hideResults`, `showToast`), applied to both prototypes with `Object.assign`. If you are
@@ -434,6 +447,7 @@ Not yet committed, and it matters when reading `git log`:
 | Filtering a list returns everything | `ListsController#load_entries` builds `@position_items`; the default `Position` view renders that rather than the grouped `@entries`, so a filter has to be applied there too. |
 | Adding a series creates no episodes | `OmdbApi.get_series_episodes` → needs `entry.season` and (ideally) `entry.tmdb`. Failures here surface as the misleading flash "This already exists in your list". |
 | Sort/group setting doesn't stick | `ListsController#load_entries` — writes are guarded to explicit params, and `settings` is read back as the default. |
+| Slow list page, but the query count is flat | it is the views, not the DB. See §6.1: anything rendered *per card* is multiplied by the list size, and the big lists run past a thousand entries. |
 | Slow list page | check the preloads first: `ListsController#with_card_data` + `resolve_card_entries` (index) and the `includes(:user_entries).with_attached_poster` in `load_entries` (show). Losing either turns `completed_by?` / `current_entry` back into a query per row. `find_now_playing_for_sidebar` also runs on every page. **A preload here is easy to defeat without touching it:** anything that reloads the association (`all_items_by_position` did) throws it away silently. `spec/requests/list_show_queries_spec.rb` and `list_index_queries_spec.rb` assert the query counts stay flat. |
 | A write succeeds that shouldn't | `EntriesController#check_edit_permissions` — it guards only the actions named in its `before_action`. Actions writing *shared* entry state belong there; the per-user ones (`complete`, `review`, current-position) deliberately do not. |
 | Worker crashes at boot with `libffi.so.8: cannot open shared object file` | Railpack's runtime image lacks libffi, which `sassc-rails → sassc → ffi` needs at Rails boot. Fixed with `RAILPACK_DEPLOY_APT_PACKAGES=libffi8 libpq5` on the service. `/mise/installs/...` paths in a trace mean Railpack; `/nix/store/...` means Nixpacks. |
