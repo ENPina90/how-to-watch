@@ -14,7 +14,9 @@
                       aria-pressed="false"
                       data-section="<%= section %>"
                       data-section-filter-target="option"
-                      data-action="section-filter#toggle"><%= section %></button>
+                      data-action="section-filter#toggle
+                                   pointerdown->section-filter#start
+                                   pointerenter->section-filter#extend"><%= section %></button>
             <% end %>
           <% end %>
         </div>
