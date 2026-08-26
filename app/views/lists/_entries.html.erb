@@ -80,7 +80,7 @@
         <% end %>
     </div>
     <% unless minimal %>
-      <div class="col-2 layout" data-controller="randomize" data-randomize-list-value="<%= @list.id %>">
+      <div class="col-2 layout" data-controller="randomize">
         <%= render 'upnext', random_selection: @random_selection unless @current.nil?%>
       </div>
     <% end %>

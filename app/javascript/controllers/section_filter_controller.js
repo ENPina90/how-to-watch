@@ -12,7 +12,7 @@ export default class extends Controller {
 
   connect() {
     this.selected = new Set(this.selectionFromUrl());
-    this.apply();
+    this.apply({ restoring: true });
   }
 
   toggle(event) {
@@ -28,7 +28,7 @@ export default class extends Controller {
     this.writeUrl();
   }
 
-  apply() {
+  apply({ restoring = false } = {}) {
     // An empty selection is "no filter", not "nothing matches".
     const filtering = this.selected.size > 0;
 
@@ -39,6 +39,11 @@ export default class extends Controller {
     this.optionTargets.forEach((option) => {
       option.setAttribute("aria-pressed", String(this.selected.has(option.dataset.section)));
     });
+
+    // Up Next offers what is in range, and nothing re-renders here for it to notice on
+    // its own. On document because it listens from inside this element, not above it.
+    // `restoring` marks the selection this page loaded with, as opposed to a click.
+    this.dispatch("changed", { target: document, detail: { restoring } });
   }
 
   selectionFromUrl() {

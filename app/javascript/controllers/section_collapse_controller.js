@@ -12,5 +12,9 @@ export default class extends Controller {
 
     heading.setAttribute("aria-expanded", String(!collapsing));
     this.bodyTarget.hidden = collapsing;
+
+    // Up Next suggests entries you can scroll to, and these have just left or rejoined
+    // the page. Same event the filter sends, and a collapse is a change of range too.
+    this.dispatch("changed", { target: document, prefix: "section-filter" });
   }
 }

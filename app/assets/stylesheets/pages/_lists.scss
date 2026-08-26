@@ -211,6 +211,14 @@
   background-color: rgba(0, 0, 0, 0.1);
 }
 
+/* An anchor the browser resolves on its own -- a #id link opened cold -- lands the card
+   at the very top of the viewport, behind the header row and the section heading parked
+   under it. Up Next scrolls by hand and measures the heading; this is the static
+   approximation for everything else. */
+.grid-card {
+  scroll-margin-top: calc(var(--section-header-top, 136px) + 4rem);
+}
+
 /* Held to the width of the cards it heads. The column is sized by its widest child, so
    without this a section whose entries are collapsed away shrinks to the width of its own
    title -- and collapsing every section would narrow the whole list. */
