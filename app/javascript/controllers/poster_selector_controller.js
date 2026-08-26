@@ -2,21 +2,30 @@
 import { Controller } from "@hotwired/stimulus";
 import * as bootstrap from "bootstrap";
 
+// Drives the single shared poster picker (shared/_poster_selector_modal). One modal
+// serves every card on the page: the entry comes from the Bootstrap trigger via
+// `event.relatedTarget`, so nothing about it can be baked into the markup.
 export default class extends Controller {
-  static targets = ["modal", "loading", "results", "error"];
-  static values = {
-    entryId: Number,
-    imdb: String,
-    seriesImdb: String,
-    tmdb: String
-  };
+  static targets = ["modal", "loading", "results", "error", "title"];
 
   connect() {
-    // Listen for modal show event to load images
-    this.modalTarget.addEventListener('show.bs.modal', () => {
-      this.loadPosters();
-    });
+    this.modalTarget.addEventListener('show.bs.modal', this.open);
   }
+
+  disconnect() {
+    this.modalTarget.removeEventListener('show.bs.modal', this.open);
+  }
+
+  open = (event) => {
+    const trigger = event.relatedTarget;
+    if (!trigger) return;
+
+    this.entryId = trigger.dataset.entryId;
+    this.titleTarget.textContent = trigger.dataset.entryName
+      ? `Choose Poster for ${trigger.dataset.entryName}`
+      : 'Choose Poster';
+    this.loadPosters();
+  };
 
   async loadPosters() {
     // Show loading, hide results and error
@@ -25,7 +34,7 @@ export default class extends Controller {
     this.errorTarget.style.display = 'none';
 
     try {
-      const response = await fetch(`/entries/${this.entryIdValue}/fetch_posters`);
+      const response = await fetch(`/entries/${this.entryId}/fetch_posters`);
       const data = await response.json();
 
       if (data.posters && data.posters.length > 0) {
@@ -78,7 +87,7 @@ export default class extends Controller {
 
   async selectPoster(posterUrl) {
     try {
-      const response = await fetch(`/entries/${this.entryIdValue}/update_poster`, {
+      const response = await fetch(`/entries/${this.entryId}/update_poster`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
