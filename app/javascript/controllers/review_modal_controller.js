@@ -18,17 +18,21 @@ export default class extends Controller {
     this.modalTarget.removeEventListener("show.bs.modal", this.open);
   }
 
+  // The three URLs are built here rather than shipped as attributes on every card: the
+  // trigger renders once per entry, so 147 bytes of hrefs is 177 KB on a 1,200-entry
+  // list. The cost is that these paths are duplicated from config/routes.rb -- the same
+  // trade poster_selector_controller.js already makes for fetch_posters/update_poster.
   open = (event) => {
     const trigger = event.relatedTarget;
     if (!trigger) return;
 
-    const { entryName, entryMedia, reviewUrl, skipUrl, dontAskUrl } = trigger.dataset;
+    const { entryId, entryName, entryMedia } = trigger.dataset;
 
     this.titleTarget.innerHTML =
       `<i class="fa-solid fa-star text-warning me-2"></i>How was "${escapeHtml(entryName)}"?`;
-    this.formTarget.action = reviewUrl;
-    this.skipTarget.href = skipUrl;
-    this.dontAskTarget.href = dontAskUrl;
+    this.formTarget.action = `/entries/${entryId}/review`;
+    this.skipTarget.href = `/entries/${entryId}/complete_without_review`;
+    this.dontAskTarget.href = `/entries/${entryId}/complete_without_review?disable_reviews=true`;
     this.commentTarget.placeholder = `Share your thoughts about this ${entryMedia}...`;
 
     this.reset();

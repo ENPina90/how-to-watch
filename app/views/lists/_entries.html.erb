@@ -35,7 +35,7 @@
                   <% if minimal %>
                     <%= render "entries/entry_minimal", entry: entry %>
                   <% else %>
-                    <%= render "entries/entry_#{entry.media.downcase}", entry: entry %>
+                    <%= entry_card(entry) %>
                   <% end %>
                 <% end %>
               <% end %>
@@ -44,7 +44,7 @@
                 <!-- Show mixed entries and child lists in position order -->
                 <% @position_items.each do |item| %>
                   <% if item.is_a?(Entry) %>
-                    <%= render "entries/entry_#{item.media.downcase}", entry: item %>
+                    <%= entry_card(item) %>
                   <% else # List %>
                     <%= render "lists/child_list_card", list: item %>
                   <% end %>
@@ -57,7 +57,7 @@
                     <% if minimal %>
                       <%= render "entries/entry_minimal", entry: entry %>
                     <% else %>
-                      <%= render "entries/entry_#{entry.media.downcase}", entry: entry %>
+                      <%= entry_card(entry) %>
                     <% end %>
                   <% end %>
                 <% end %>

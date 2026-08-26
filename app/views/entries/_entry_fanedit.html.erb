@@ -44,8 +44,7 @@
                 <i class="fa-solid fa-trash"></i>
               <% end %>
             <% end %>
-            <i class="fa-solid fa-link-slash"
-        style="color:<%= entry.stream ? "grey" : "red"%>"
+            <i class="fa-solid fa-link-slash <%= entry.stream ? 'link-ok' : 'link-broken' %>"
         title="Report broken link"
         data-controller="link"
         data-link-id-value="<%= entry.id %>"
