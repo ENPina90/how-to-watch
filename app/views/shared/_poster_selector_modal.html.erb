@@ -1,21 +1,19 @@
-<%# Poster Selection Modal %>
+<%# One poster picker for the whole page. It used to be rendered per entry, which put a
+    copy in the DOM for every card on a list. The entry to work on arrives with the
+    Bootstrap trigger (shared/_poster_selector_button) as `event.relatedTarget`. %>
 <div
   class="modal fade"
-  id="posterModal-<%= entry.id %>"
+  id="posterModal"
   tabindex="-1"
-  aria-labelledby="posterModalLabel-<%= entry.id %>"
+  aria-labelledby="posterModalLabel"
   aria-hidden="true"
   data-controller="poster-selector"
-  data-poster-selector-entry-id-value="<%= entry.id %>"
-  data-poster-selector-imdb-value="<%= entry.imdb %>"
-  data-poster-selector-series-imdb-value="<%= entry.series_imdb %>"
-  data-poster-selector-tmdb-value="<%= entry.tmdb %>"
   data-poster-selector-target="modal"
   >
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="posterModalLabel-<%= entry.id %>">Choose Poster for <%= entry.name %></h5>
+        <h5 class="modal-title" id="posterModalLabel" data-poster-selector-target="title">Choose Poster</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">

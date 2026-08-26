@@ -128,10 +128,10 @@
     <%= render "entries", list: @list, entries: @entries, sections: @sections, random_selection: @random_selection, list_entries: @list_entries, minimal: @minimal%>
   </div>
 
-  <!-- Review Modals for movies and fanedits only -->
-  <% @list_entries.select { |entry| entry.media == 'movie' || entry.media == 'fanedit' }.each do |entry| %>
-    <%= render 'entries/review_modal_list', entry: entry %>
-  <% end %>
+  <%# Three modals for the whole page, not three per card. %>
+  <%= render 'entries/review_modal_list' %>
+  <%= render 'shared/trailer_modal' %>
+  <%= render 'shared/poster_selector_modal' %>
   <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog" data-edit-target="modal">
     </div>
