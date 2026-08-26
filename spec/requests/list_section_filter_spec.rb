@@ -46,6 +46,16 @@ RSpec.describe 'Filtering a list by section', :needs_provider, type: :request do
     expect(section_keys).to eq(%w[1970s 2010s])
   end
 
+  # Collapsing hides the entries and leaves the heading, so the entries need a wrapper of
+  # their own to hide -- the heading cannot be a sibling that goes with them.
+  it 'gives each section a collapse toggle over a body of its own' do
+    get list_path(list, criteria: 'Year', sort: 'asc')
+
+    expect(response.body.scan('data-controller="section-collapse"').count).to eq(2)
+    expect(response.body.scan(/<button[^>]*class="section-toggle"[^>]*aria-expanded="true"/m).count).to eq(2)
+    expect(response.body.scan('data-section-collapse-target="body"').count).to eq(2)
+  end
+
   it 'has no rail in the position view, which has no sections' do
     get list_path(list, criteria: 'Position')
 

@@ -51,15 +51,28 @@
               <% sections.each do |key| %>
                 <section class="entry-section"
                          data-section="<%= key %>"
-                         data-section-filter-target="section">
-                  <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
-                  <% entries[key].each do |entry| %>
-                    <% if minimal %>
-                      <%= render "entries/entry_minimal", entry: entry %>
-                    <% else %>
-                      <%= entry_card(entry) %>
+                         data-section-filter-target="section"
+                         data-controller="section-collapse">
+                  <h3 id="<%= key %>">
+                    <%# A real button rather than a clickable heading, so the section can
+                        be collapsed from the keyboard and reports its own state. %>
+                    <button type="button"
+                            class="section-toggle"
+                            aria-expanded="true"
+                            data-action="section-collapse#toggle">
+                      <span><%= key %> <small>(<%= entries[key].count %>)</small></span>
+                      <i class="fa-solid fa-chevron-down section-caret" aria-hidden="true"></i>
+                    </button>
+                  </h3>
+                  <div data-section-collapse-target="body">
+                    <% entries[key].each do |entry| %>
+                      <% if minimal %>
+                        <%= render "entries/entry_minimal", entry: entry %>
+                      <% else %>
+                        <%= entry_card(entry) %>
+                      <% end %>
                     <% end %>
-                  <% end %>
+                  </div>
                 </section>
               <% end %>
             <% end %>

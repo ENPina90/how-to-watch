@@ -211,6 +211,40 @@
   background-color: rgba(0, 0, 0, 0.1);
 }
 
+/* Held to the width of the cards it heads. The column is sized by its widest child, so
+   without this a section whose entries are collapsed away shrinks to the width of its own
+   title -- and collapsing every section would narrow the whole list. */
+.entry-section {
+  width: 40vw;
+  max-width: 800px;
+}
+
+/* The heading is the section's collapse control: title on the left, caret on the right. */
+.section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.section-caret {
+  font-size: 0.6em;
+  transition: transform 0.2s ease;
+}
+
+/* Points down at an open section and along a closed one. */
+.section-toggle[aria-expanded="false"] .section-caret {
+  transform: rotate(-90deg);
+}
+
 /* A grouped list's section heading rides with its entries and then parks under the page
    header row, where it stays until the next section's heading pushes it off. The offset is
    published by the sticky-headers controller: that row's height moves with the list title
