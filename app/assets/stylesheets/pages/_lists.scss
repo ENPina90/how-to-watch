@@ -161,13 +161,26 @@
   list-style: none;
   padding: 0;
   display: flex;
-  gap: 10px;
+  /* The groupings stay on one line. `_layout.scss` sizes this row to 40vw, which the
+     eight of them outgrew; the row spans its container instead, and a window too narrow
+     even for that scrolls sideways rather than wrapping. */
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 6px;
   justify-content: center;
+  /* `safe` keeps the overflowing end reachable instead of centring it out of the box. */
+  justify-content: safe center;
   margin: 20px 0;
+  font-size: 0.9rem;
 }
 
 .menu li {
-  padding: 8px 20px;
+  /* No shrinking: an item narrower than its own nowrap label spills its text over the
+     neighbouring pill. */
+  flex: 0 0 auto;
+  padding: 6px 12px;
   border-radius: 6px;
   background-color: transparent;
   transition: all 0.2s ease;
