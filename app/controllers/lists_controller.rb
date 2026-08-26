@@ -5,6 +5,7 @@ class ListsController < ApplicationController
   # Year and Watched is handled by reading the matching Entry attribute, so this doubles
   # as the whitelist for that lookup.
   GROUPING_CRITERIA = %w[Position Genre Year Watched Rating Category Media Length].freeze
+  SORT_DIRECTIONS = %w[asc desc].freeze
 
   before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :add_season, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
@@ -493,16 +494,30 @@ class ListsController < ApplicationController
     @criteria = params[:criteria].presence || @list.settings.presence || 'Position'
     # Anything outside this list would reach `public_send` in filter_entries.
     @criteria = 'Position' unless GROUPING_CRITERIA.include?(@criteria)
+    # `sort` is the direction the grouping runs in; the menu toggles it by re-clicking
+    # the criteria that is already active.
+    @direction = sort_direction
     filter_entries(@criteria)
     @entries = @entries.transform_keys { |key| key.nil? ? 'Other' : key }
-    @sections = sort_sections(@entries.keys, params[:sort].present? || @list.sort.present?)
+    @sections = sort_sections(@entries.keys, @direction == 'desc')
 
     return unless @list.user == current_user
     # Only persist an explicit choice. A plain visit carries no params, and writing them
     # blindly used to wipe the list's remembered grouping on every page view.
     return if params[:criteria].blank? && params[:sort].blank?
 
-    @list.update(settings: params[:criteria], sort: params[:sort])
+    # Both values come from the resolved settings, not raw params: a link that carries
+    # only one of them must not blank out the other.
+    @list.update(settings: @criteria, sort: @direction)
+  end
+
+  # An explicit param wins, then the list's remembered direction; anything else (including
+  # the legacy criteria names this column used to hold) falls back to ascending.
+  def sort_direction
+    return params[:sort] if SORT_DIRECTIONS.include?(params[:sort])
+    return @list.sort if SORT_DIRECTIONS.include?(@list.sort)
+
+    'asc'
   end
 
   def filter_entries(criteria)
@@ -519,7 +534,14 @@ class ListsController < ApplicationController
     when 'Year'
       (1900..Date.today.year).step(10) do |year|
         decade_entries = @list_entries.select { |entry| entry.year.present? && entry.year >= year && entry.year < year + 10 }
-        @entries["#{year}s"] = decade_entries unless decade_entries.empty?
+        next if decade_entries.empty?
+
+        # Sections are whole decades, so ordering them alone leaves entries inside a
+        # decade in list order -- sort by year here too or "oldest first" is only true
+        # between decades.
+        decade_entries = decade_entries.sort_by(&:year)
+        decade_entries = decade_entries.reverse if @direction == 'desc'
+        @entries["#{year}s"] = decade_entries
       end
     when 'Watched'
       @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
