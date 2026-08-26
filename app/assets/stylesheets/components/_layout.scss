@@ -94,7 +94,8 @@
   position: sticky;
   top: 60px;
   height: fit-content;
-  z-index: 1;
+  /* Above the sticky section headings that park directly beneath it. */
+  z-index: 2;
   background-color: #0a0a0a;
   margin: auto;
   padding-top: 16px;
