@@ -177,6 +177,13 @@
   color: inherit;
   text-decoration: none;
   font-weight: 500;
+  /* `.menu` is a fixed-width flex row, so the active item is narrow enough that the
+     label and its direction caret wrap onto separate lines. A flex row of its own keeps
+     them side by side and vertically centred on each other. */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .menu li.active {
@@ -189,6 +196,12 @@
 
 .menu li:hover:not(.active) {
   background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Direction arrow on the active grouping, at the label's own size. */
+.menu li .sort-caret {
+  font-size: inherit;
+  line-height: 1;
 }
 
 /* Subscription button states */

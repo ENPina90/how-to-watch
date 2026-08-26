@@ -27,7 +27,17 @@
           </div>
         <% else %>
           <div>
-            <% if @list.sort || params[:sort] %>
+            <% if @criteria == 'Position' %>
+              <!-- Show mixed entries and child lists in position order -->
+              <% @position_items.each do |item| %>
+                <% if item.is_a?(Entry) %>
+                  <%= entry_card(item) %>
+                <% else # List %>
+                  <%= render "lists/child_list_card", list: item %>
+                <% end %>
+              <% end %>
+            <% else %>
+              <!-- Show entries grouped by criteria (child lists not shown in other views) -->
               <%# `sections` is pre-sorted by the controller; keys mix numbers and strings. %>
               <% sections.each do |key| %>
                 <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
@@ -36,29 +46,6 @@
                     <%= render "entries/entry_minimal", entry: entry %>
                   <% else %>
                     <%= entry_card(entry) %>
-                  <% end %>
-                <% end %>
-              <% end %>
-            <% else %>
-              <% if @criteria == 'Position' %>
-                <!-- Show mixed entries and child lists in position order -->
-                <% @position_items.each do |item| %>
-                  <% if item.is_a?(Entry) %>
-                    <%= entry_card(item) %>
-                  <% else # List %>
-                    <%= render "lists/child_list_card", list: item %>
-                  <% end %>
-                <% end %>
-              <% else %>
-                <!-- Show entries grouped by criteria (child lists not shown in other views) -->
-                <% sections.each do |key| %>
-                  <h3 id="<%= key %>"><%= key %> <small>(<%= entries[key].count %>)</small></h3>
-                  <% entries[key].each do |entry| %>
-                    <% if minimal %>
-                      <%= render "entries/entry_minimal", entry: entry %>
-                    <% else %>
-                      <%= entry_card(entry) %>
-                    <% end %>
                   <% end %>
                 <% end %>
               <% end %>
