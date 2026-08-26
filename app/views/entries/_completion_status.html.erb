@@ -8,10 +8,17 @@
       style="cursor: pointer;"></i>
   <% elsif entry.list.reviewable && (entry.media == 'movie' || entry.media == 'fanedit') %>
     <!-- If not completed and reviewable movie/fanedit, show modal -->
+    <%# One shared modal for the whole page -- everything it needs about this entry
+        travels on the trigger (see entries/_review_modal_list). %>
     <i class="fa-regular fa-2x fa-eye <%= local_assigns[:minimal] ? '' : '' %> text-decoration-none"
       title="Mark as watched and review"
       data-bs-toggle="modal"
-      data-bs-target="#reviewModal<%= entry.id %>"
+      data-bs-target="#reviewModal"
+      data-entry-name="<%= entry.name %>"
+      data-entry-media="<%= entry.media %>"
+      data-review-url="<%= review_entry_path(entry) %>"
+      data-skip-url="<%= complete_without_review_entry_path(entry) %>"
+      data-dont-ask-url="<%= complete_without_review_entry_path(entry, disable_reviews: true) %>"
       style="cursor: pointer;"></i>
   <% else %>
     <!-- All other cases use standard toggle -->

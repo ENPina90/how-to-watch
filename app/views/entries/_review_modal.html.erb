@@ -1,8 +1,12 @@
-<div class="modal fade" id="reviewModal<%= @entry.id %>" tabindex="-1" aria-labelledby="reviewModalLabel<%= @entry.id %>" aria-hidden="true">
+<%# The watch page shows exactly one entry, so this modal stays entry-specific and
+    keeps its own turbo-disabled form (the whole page sets data-turbo="false").
+    The list pages use entries/_review_modal_list, which is one shared modal for
+    every card. Both answer to the same #reviewModal trigger in _completion_status. %>
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="reviewModalLabel<%= @entry.id %>">
+        <h5 class="modal-title" id="reviewModalLabel">
           <i class="fa-solid fa-star text-warning me-2"></i>
           How was "<%= @entry.name %>"?
         </h5>
