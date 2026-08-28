@@ -112,8 +112,34 @@
 }
 
 .search-results-overlay {
+  /* Was an inline style on the element; here so a page can move it. */
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80vw;
+  max-width: 800px;
+  max-height: 70vh;
+  overflow-y: auto;
+  z-index: 1050;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* A channel page puts its name in a sticky header the overlay would otherwise cover, so
+   the results open just below the name -- not below the whole header row, which also holds
+   the search box and the grouping menu and would push them halfway down the page.
+   --title-bottom is published by the sticky-headers controller and kept current as the
+   title wraps or a breadcrumb trail appears; the fallback is where it sits with a one-line
+   title. The results are shorter by as much as they are lower, so they still end where
+   they did. */
+body.page-lists-show .search-results-overlay {
+  --overlay-top: var(--title-bottom, 130px);
+
+  top: var(--overlay-top);
+  max-height: calc(70vh - (var(--overlay-top) - 70px));
 }
 
 /* Ensure type buttons are always visible */

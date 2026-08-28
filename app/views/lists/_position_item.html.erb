@@ -1,0 +1,8 @@
+<%# One row of the Order view. The wrapper is what the section filter hides: the entries
+    are not grouped here, so each card is its own section of one -- filtering leaves the
+    rest standing in the order they were already in. %>
+<div class="position-item"
+     data-section="<%= item.category.presence || 'Other' %>"
+     data-section-filter-target="section">
+  <%= entry_card(item) %>
+</div>

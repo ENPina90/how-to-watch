@@ -15,6 +15,12 @@ class ApplicationController < ActionController::Base
 
   private
 
+  # Which half of the app to render: several pages have a phone-shaped view of their own.
+  # Was defined identically in two controllers before a third needed it.
+  def mobile_request?
+    request.user_agent =~ /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+  end
+
   def set_sidebar_defaults
     # Default: sidebar is expanded and visible
     @sidebar_collapsed ||= false

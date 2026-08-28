@@ -90,6 +90,37 @@ body.light-mode .layout-box {
   border-bottom: 2px solid #000000;
 }
 
+/* The star takes the page's own foreground, so "filled" stays legible on the cream page. */
+body.light-mode .page-container .default-toggle i {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+body.light-mode .page-container .default-toggle:hover i,
+body.light-mode .page-container .default-toggle--on i {
+  color: #000000 !important;
+}
+
+/* The subscribed pill takes the page's colour, whichever page that is. */
+body.light-mode .page-container .subscription-pill {
+  background-color: #0a0a0a;
+  color: #f5f2e8 !important;
+}
+
+body.light-mode .page-container .subscription-pill:hover {
+  background-color: #000000;
+}
+
+body.light-mode .page-container .subscription-pill--subscribed {
+  background-color: #f5f2e8;
+  color: rgba(0, 0, 0, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+body.light-mode .page-container .subscription-pill--subscribed:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+  color: #000000 !important;
+}
+
 body.light-mode .section-filter {
   color: #000000;
 }

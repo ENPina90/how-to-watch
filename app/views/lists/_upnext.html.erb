@@ -1,26 +1,36 @@
-<div>
-  <% if @list.ordered %>
-    <strong>Up Next</strong>
-    <div class="layout-box my-3" data-action="click->randomize#scrollTo">
-      <a href="#<%= @current.id %>"><%= @current.name %></a>
-    </div>
-  <% else %>
-    <a>Up Next <i class="fa-solid fa-rotate-right" data-action="click->randomize#upnext"></i></a>
-    <%# Each pick scrolls to its card, which is keyed by entry id. The controller repaints
-        this box whenever the pool changes, so these have to be the shape it writes. %>
-    <%# One action on the box rather than one per link: the controller repaints these. %>
-    <div class="layout-box my-3" data-randomize-target="picks" data-action="click->randomize#scrollTo">
-      <% random_selection.each do |entry| %>
-        <a href="#<%= entry.id %>"><%= entry.name %></a>
-        <br>
-      <% end %>
-    </div>
-    <div class="layout-box-bottom">
-      <small class="text-muted" data-randomize-target="empty" <%= 'hidden' unless random_selection.empty? %>>Nothing unwatched here</small>
-      <%= link_to 'Pick for me',
-                  random_selection.any? ? watch_entry_path(random_selection.sample) : '#',
-                  data: { randomize_target: 'pick' },
-                  hidden: random_selection.empty? %>
-    </div>
+<div class="channel-sidebar__section-head">
+  <h6 class="channel-sidebar__title">Up Next</h6>
+  <% unless @list.ordered %>
+    <button type="button" class="channel-sidebar__control" title="Suggest three others"
+            data-action="click->randomize#upnext">
+      <i class="fa-solid fa-rotate-right"></i>
+    </button>
   <% end %>
 </div>
+
+<% if @list.ordered %>
+  <div class="channel-sidebar__items" data-action="click->randomize#scrollTo">
+    <a class="channel-sidebar__item" href="#<%= @current.id %>"><%= @current.name %></a>
+  </div>
+<% else %>
+  <%# Each pick scrolls to its card, which is keyed by entry id. The controller repaints
+      this box whenever the pool changes, so these have to be the shape it writes -- one
+      action on the box rather than one per link, for the same reason. %>
+  <div class="channel-sidebar__items"
+       data-randomize-target="picks"
+       data-action="click->randomize#scrollTo">
+    <% random_selection.each do |entry| %>
+      <a class="channel-sidebar__item" href="#<%= entry.id %>"><%= entry.name %></a>
+    <% end %>
+  </div>
+
+  <small class="channel-sidebar__empty text-muted"
+         data-randomize-target="empty"
+         <%= 'hidden' unless random_selection.empty? %>>Nothing unwatched here</small>
+
+  <%= link_to 'Pick for me',
+              random_selection.any? ? watch_entry_path(random_selection.sample) : '#',
+              class: 'channel-sidebar__pick',
+              data: { randomize_target: 'pick' },
+              hidden: random_selection.empty? %>
+<% end %>

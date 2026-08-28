@@ -35,13 +35,23 @@ Rails.application.routes.draw do
       get :search
     end
     get :watch_current
+    get :entry_index
     post :top_entries
     post :add_season
+    patch :toggle_default
     patch :move_to_list
     patch :subscribe
     patch :unsubscribe
     patch :mark_all_complete
     patch :mark_all_incomplete
+    # Voting on what to watch: one page a room looks at together, reached by everyone else
+    # from the QR code on it.
+    resource :vote, only: [:show, :create], controller: 'votes' do
+      post :cast
+      post :close
+      delete 'options/:option_id', action: :remove_option, as: :option
+    end
+
     resources :entries, only: [:new, :create]
   end
 
