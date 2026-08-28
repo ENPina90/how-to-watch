@@ -4,7 +4,7 @@
       <i class="fa-solid fa-folder me-2"></i>
       <%= link_to list.name, list_path(list), class: "text-white text-decoration-none" %>
     </h5>
-    <small>List</small>
+    <small>Channel</small>
   </div>
   <div class="card-body">
     <div class="row">
@@ -27,7 +27,7 @@
           <p class="card-text">
             <small class="text-info">
               <i class="fa-solid fa-share-nodes"></i>
-              Appears in <%= pluralize(list.parent_lists.size, 'list') %>
+              Appears in <%= pluralize(list.parent_lists.size, 'channel') %>
             </small>
           </p>
         <% elsif list.min_depth > 1 %>
@@ -37,7 +37,7 @@
         <% end %>
       </div>
       <div class="col-md-4 d-flex flex-column justify-content-center">
-        <%= link_to "View List", list_path(list), class: "btn btn-primary mb-2" %>
+        <%= link_to "View Channel", list_path(list), class: "btn btn-primary mb-2" %>
         <%= link_to "Add Entry", new_list_entry_path(list), class: "btn btn-outline-primary mb-2" %>
         <% if current_user&.can_edit_list?(list) %>
           <%= link_to list_path(list), method: :delete,

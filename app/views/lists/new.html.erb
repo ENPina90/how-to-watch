@@ -1,21 +1,21 @@
 <%= simple_form_for @list do |f| %>
   <%= f.input :name %>
-  <%= f.input :description, as: :text, input_html: { rows: 3 }, hint: 'Optional description of this list' %>
+  <%= f.input :description, as: :text, input_html: { rows: 3 }, hint: 'Optional description of this channel' %>
   <%= f.input :parent_list_id,
       collection: current_user.lists.where(parent_list_id: nil),
       label_method: :name,
       value_method: :id,
-      prompt: 'Select a parent list (optional)',
-      label: 'Add to List',
-      hint: 'Choose an existing list to add this list to, or leave blank to create a standalone list' %>
+      prompt: 'Select a parent channel (optional)',
+      label: 'Add to Channel',
+      hint: 'Choose an existing channel to add this channel to, or leave blank to create a standalone channel' %>
   <%= f.input :ordered, as: :boolean %>
   <%= f.input :private, as: :boolean %>
   <%= f.input :reviewable, as: :boolean, label: 'Enable review prompts', hint: 'Ask for ratings and comments when marking entries as watched' %>
   <% if current_user&.can_set_default? %>
-    <%= f.input :default, as: :boolean, label: 'Set as default list', hint: 'Default lists are visible to all users' %>
+    <%= f.input :default, as: :boolean, label: 'Set as default channel', hint: 'Default channels are visible to all users' %>
   <% end %>
   <%= f.input :sort, collection: ['Year', 'Genre', 'Watched', 'Type', 'Length'], include_blank: true %>
-  <%= f.association :provider, collection: Source.active.order(:position), label_method: ->(s) { "#{s.name} (#{s.kind})" }, include_blank: false, label: 'Default source provider', hint: 'Provider used for entries in this list that don\'t override it' %>
+  <%= f.association :provider, collection: Source.active.order(:position), label_method: ->(s) { "#{s.name} (#{s.kind})" }, include_blank: false, label: 'Default source provider', hint: 'Provider used for entries in this channel that don\'t override it' %>
   <%= f.input :auto_play, as: :boolean, label: 'Auto Play', hint: 'Automatically start playing entries when opened' %>
   <%= f.input :auto_next, as: :boolean, label: 'Auto Next', hint: 'Automatically advance to next entry when current one is completed' %>
   <%= f.button :submit %>

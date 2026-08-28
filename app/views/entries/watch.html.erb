@@ -53,7 +53,7 @@
             class: "border-0 bg-transparent p-0 subscription-icon text-white",
             style: "opacity: 0; transition: opacity 0.2s; cursor: pointer; font-size: 0.8em;",
             form: { style: "display: inline;" } do %>
-          <i class="fa-solid fa-plus" title="Subscribe to list"></i>
+          <i class="fa-solid fa-plus" title="Subscribe to channel"></i>
         <% end %>
       <% end %>
     </h3>
@@ -126,7 +126,7 @@
       <%= f.association :provider,
             collection: Source.active.order(:position),
             label_method: ->(s) { "#{s.name} (#{s.kind})" },
-            include_blank: "— Inherit list default —",
+            include_blank: "— Inherit channel default —",
             label: "Source provider" %>
       <%= f.input :source_key, label: "Source key / URL",
             hint: "Direct providers only (Drive id, mega key#fragment, YouTube id, or full URL)." %>

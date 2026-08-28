@@ -66,9 +66,53 @@ RSpec.describe 'Filtering a list by section', :needs_provider, type: :request do
     expect(response.body.scan('data-section-collapse-target="body"').count).to eq(2)
   end
 
-  it 'has no rail in the position view, which has no sections' do
-    get list_path(list, criteria: 'Position')
+  describe 'when there is nothing to filter' do
+    # The Order view groups nothing, but it still files entries under categories, and the
+    # rail lists those in the order the entries run.
+    it 'lists the categories of the order view, in the order they appear' do
+      list.entries.update_all(category: 'Later')
+      create(:entry, list: list, name: 'Solaris', category: 'Earlier', position: 0)
 
-    expect(rail_keys).to be_empty
+      get list_path(list, criteria: 'Position')
+
+      expect(rail_keys).to eq(%w[Earlier Later])
+    end
+
+    it 'runs them backwards when the order does' do
+      list.entries.update_all(category: 'Later')
+      create(:entry, list: list, name: 'Solaris', category: 'Earlier', position: 0)
+
+      get list_path(list, criteria: 'Position', sort: 'desc')
+
+      expect(rail_keys).to eq(%w[Later Earlier])
+    end
+
+    it 'files an entry with no category of its own under Other' do
+      list.entries.update_all(category: nil)
+
+      get list_path(list, criteria: 'Position')
+
+      expect(rail_keys).to eq(['Other'])
+    end
+
+    it 'leaves the filters out of a channel with no entries at all' do
+      get list_path(create(:list, user: user), criteria: 'Position')
+
+      expect(response.body).not_to include('channel-sidebar__filters')
+    end
+
+    it 'leaves them out of an empty channel, sections or not' do
+      get list_path(create(:list, user: user), criteria: 'Year')
+
+      expect(response.body).not_to include('channel-sidebar__filters')
+    end
+
+    # The sidebar itself stays: Up Next is the other half of it.
+    it 'keeps the filters wherever there are sections' do
+      get list_path(list, criteria: 'Year')
+
+      expect(response.body).to include('channel-sidebar__filters')
+      expect(response.body).to include('id="channelSidebar"')
+    end
   end
 end

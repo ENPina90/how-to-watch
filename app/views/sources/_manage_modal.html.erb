@@ -23,7 +23,7 @@
             <hr>
             <%= button_to "Delete source", source_path(s), method: :delete,
                   class: "btn btn-outline-danger btn-sm",
-                  form: { onsubmit: "return confirm('Delete this source? Entries using it fall back to their list default.');" } %>
+                  form: { onsubmit: "return confirm('Delete this source? Entries using it fall back to their channel default.');" } %>
           </div>
         <% end %>
       </div>

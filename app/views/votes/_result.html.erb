@@ -1,0 +1,25 @@
+<div class="vote-result">
+  <% winner = vote_session.winner %>
+  <% if winner %>
+    <h2 class="vote-result__title">Winner</h2>
+    <div class="vote-result__winner">
+      <%= entry_poster_image_tag(winner.entry, class: 'vote-result__poster') %>
+      <div>
+        <h3><%= winner.entry.name %></h3>
+        <p class="text-muted"><%= pluralize(standings.first.last, 'vote') %></p>
+        <%= link_to watch_entry_path(winner.entry), class: "btn btn-success btn-lg" do %>
+          <i class="fa-solid fa-play me-2"></i>Play it
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <h2 class="vote-result__title">Nobody voted</h2>
+    <p class="text-muted">Draw again to start another round.</p>
+  <% end %>
+
+  <ol class="vote-result__standings">
+    <% standings.each do |option, count| %>
+      <li><span><%= option.entry.name %></span><span><%= count %></span></li>
+    <% end %>
+  </ol>
+</div>

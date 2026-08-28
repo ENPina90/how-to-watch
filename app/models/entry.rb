@@ -35,10 +35,25 @@ class Entry < ApplicationRecord
                     },
                   }
 
+  # A series, a season of one, and an episode of one are all filed under the show they
+  # belong to. `anime` is the same shape as `series`; a season is a `series` row whose name
+  # carries the season number.
+  SERIES_MEDIA = %w[series anime].freeze
+  SHOW_MEDIA = %w[series anime episode].freeze
+
   # `media` is free text in the entry form, so it can arrive as "Movie". Every
   # comparison against it -- the provider template lookup, the partial picker, the
   # legacy URL builder -- is case-sensitive, so normalize on the way in.
   before_validation :normalize_media
+
+  # A show is its own series, and the OMDB import only fills `series` for episodes -- so a
+  # series row arrives with the show's title in `name` and nothing in `series`. Filling it
+  # in makes the two agree, and gives the category below something to read.
+  before_validation :name_after_own_series, on: :create, if: -> { SERIES_MEDIA.include?(media) }
+
+  # Everything under a show is categorised by that show, unless it was given a category of
+  # its own. On create only: a category cleared by hand later is a decision, not a gap.
+  before_validation :categorise_under_show, on: :create, if: -> { SHOW_MEDIA.include?(media) }
 
   # A pasted direct URL (Drive share link, mega link, YouTube, archive.org, or anything
   # else). It is not a column: it gets classified into provider + source_key so playback
@@ -125,6 +140,37 @@ class Entry < ApplicationRecord
     subentry_ids = subentries.select(:id)
     UserEntryPosition.where(current_subentry_id: subentry_ids).update_all(current_subentry_id: nil)
     Entry.where(current_id: subentry_ids).update_all(current_id: nil)
+  end
+
+  # Which section this entry falls in under a given grouping -- the same question
+  # ListsController#filter_entries answers for a whole channel at once, asked about one
+  # entry so a card added without a reload can be put where it belongs. Genre is a list, so
+  # an entry can be in several sections at once; a grouping that reads an attribute has
+  # exactly one, and 'Other' stands in for a blank, as it does on the page.
+  def section_keys(criteria, user: nil)
+    case criteria
+    when 'Position' then []
+    when 'Genre' then genre.to_s.split(',').map(&:strip).reject(&:empty?).presence || ['Other']
+    when 'Year' then year.present? ? ["#{(year / 10) * 10}s"] : []
+    when 'Watched' then [completed_by?(user) ? 'Watched' : 'Unwatched']
+    else [public_send(criteria.downcase).presence || 'Other']
+    end
+  end
+
+  # The show this entry belongs to. A series or a season carries it in `series` once the
+  # callback above has run, and falls back to its own name; an episode always has it.
+  def show_name
+    return series.presence || name if SERIES_MEDIA.include?(media)
+
+    series
+  end
+
+  def name_after_own_series
+    self.series = name if series.blank?
+  end
+
+  def categorise_under_show
+    self.category = show_name if category.blank?
   end
 
   def normalize_media

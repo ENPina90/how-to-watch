@@ -33,6 +33,15 @@
     </iframe>
   <% end %>
   <%= render 'pages/watch_now_source_switcher' %>
+
+  <%# On the switcher's line, pinned to the left edge of the frame. %>
+  <div class="watch-now-add">
+    <button type="button"
+            class="btn btn-primary btn-sm"
+            <%= tag.attributes(add_to_list_data(@imdb_id, @title, @poster, @tmdb_id)) %>>
+      <i class="fas fa-plus me-1"></i>Add to Channel
+    </button>
+  </div>
 </div>
 
 <% if @media_type == 'tv' && @season && @episode && @show_details %>
@@ -62,9 +71,8 @@
       <% end %>
 
       <% # Add to List (Plus Icon) %>
-      <i class="fa-solid fa-plus fa-2x position-absolute bottom-0 end-0 translate-middle-y"
-         style="cursor: pointer;"
-         onclick="openWatchNowModal('<%= @imdb_id %>', '<%= j(@title) %>', '<%= @poster %>')"></i>
+      <i class="fa-solid fa-plus fa-2x position-absolute bottom-0 end-0 translate-middle-y clickable"
+         <%= tag.attributes(add_to_list_data(@imdb_id, @title, @poster, @tmdb_id)) %>></i>
 
       <% # Previous Episode (Left Arrow) %>
       <% if @episode && @episode > 1 %>
@@ -90,15 +98,6 @@
         <i class="fa-solid fa-house fa-2x position-absolute top-50 start-50 translate-middle"></i>
       <% end %>
     </div>
-  </div>
-<% else %>
-  <!-- Simple Add to List Button for Movies -->
-  <div class="text-center mt-3">
-    <button type="button"
-            class="btn btn-primary"
-            onclick="openWatchNowModal('<%= @imdb_id %>', '<%= j(@title) %>', '<%= @poster %>')">
-      <i class="fas fa-plus me-2"></i>Add to List
-    </button>
   </div>
 <% end %>
 

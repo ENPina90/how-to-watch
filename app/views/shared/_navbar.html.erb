@@ -10,25 +10,28 @@
       <!-- Search Bar in Center -->
       <div class="position-absolute start-50 translate-middle-x"
            data-controller="list-search"
+           <%# The channel being viewed, so a + button can add to it outright. Blank
+               anywhere else, which the controller reads as no channel. %>
+           data-list-search-current-list-id-value="<%= @list.id if controller_name == 'lists' && action_name == 'show' %>"
            data-list-search-user-lists-value="<%= user_signed_in? && current_user.lists.any? ? current_user.lists.left_joins(:entries).group('lists.id').select('lists.id, lists.name, COUNT(entries.id) as entries_count').map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>">
 
         <div class="search-container">
           <input type="text"
                  class="form-control search-input"
-                 placeholder="Search movies & shows..."
+                 placeholder="Search movies & series..."
                  id="navbar-search"
                  name="q"
-                 aria-label="Search movies and shows"
+                 aria-label="Search movies and series"
                  autocomplete="off"
                  data-list-search-target="input"
-                 data-action="input->list-search#performSearch"
+                 data-action="input->list-search#performSearch
+                              focus->list-search#openOverlay"
                  style="width: 300px;">
         </div>
 
         <!-- Search Results Overlay -->
         <div data-list-search-target="results"
-             class="search-results-overlay position-fixed d-none"
-             style="top: 70px; left: 50%; transform: translateX(-50%); width: 80vw; max-width: 800px; max-height: 70vh; overflow-y: auto; z-index: 1050; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+             class="search-results-overlay position-fixed d-none">
 
           <!-- Search Type Toggle Buttons at top of overlay -->
           <div class="p-3 border-bottom bg-light rounded-top"
@@ -40,7 +43,7 @@
 
               <input type="radio" class="btn-check" name="searchType" id="navShowType" autocomplete="off"
                      data-action="change->list-search#switchToShowSearch">
-              <label class="btn btn-outline-primary btn-sm" for="navShowType">Shows</label>
+              <label class="btn btn-outline-primary btn-sm" for="navShowType">Series</label>
 
               <input type="radio" class="btn-check" name="searchType" id="navAnimeType" autocomplete="off"
                      data-action="change->list-search#switchToAnimeSearch">
@@ -48,7 +51,7 @@
 
               <input type="radio" class="btn-check" name="searchType" id="navListType" autocomplete="off"
                      data-action="change->list-search#switchToListSearch">
-              <label class="btn btn-outline-primary btn-sm" for="navListType">Lists</label>
+              <label class="btn btn-outline-primary btn-sm" for="navListType">Channels</label>
             </div>
           </div>
 

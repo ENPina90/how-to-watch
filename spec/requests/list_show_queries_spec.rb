@@ -74,9 +74,9 @@ RSpec.describe 'The list page', :needs_provider, type: :request do
 
       get list_path(list)
 
-      # Scoped to the entries container: the child-list nav elsewhere on the page names
-      # the same list earlier in the document.
-      container = response.body[/<div id="entries-container">.*/m]
+      # Scoped to the ordered list itself: the child-list nav and the sidebar's Up Next
+      # both name these elsewhere on the page.
+      container = response.body[/<div id="list-entries">.*/m]
       expect(container.index('First')).to be < container.index('Middle List')
       expect(container.index('Middle List')).to be < container.index('Third')
     end

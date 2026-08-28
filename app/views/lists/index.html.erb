@@ -43,13 +43,13 @@
     </div>
   <% end %>
 
-  <!-- Your Lists Row (SECOND) -->
+  <!-- Your Channels Row (SECOND) -->
   <% if @your_lists.any? %>
     <div class="list-row">
       <div class="d-flex align-items-center">
-        <h3 class="row-title">Your Lists</h3>
+        <h3 class="row-title">Your Channels</h3>
         <%= link_to new_list_path do %>
-          <i class="fa-solid fa-plus ms-2" title="Create New List"></i>
+          <i class="fa-solid fa-plus ms-2" title="Create New Channel"></i>
         <% end %>
       </div>
       <div class="list-carousel pe-5">
@@ -91,10 +91,10 @@
   <% end %>
 
 
-  <!-- Community Lists Row -->
+  <!-- Community Channels Row -->
   <% if @community_lists.any? %>
     <div class="list-row">
-      <h3 class="row-title">Community Lists</h3>
+      <h3 class="row-title">Community Channels</h3>
       <div class="list-carousel pe-5">
         <% @community_lists.each do |list| %>
           <% current_entry = @card_entries[list.id] %>

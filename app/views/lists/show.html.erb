@@ -15,7 +15,7 @@
         <% else %>
           <!-- Multiple parent paths -->
           <div class="text-center">
-            <small class="text-muted">This list appears in:</small>
+            <small class="text-muted">This channel appears in:</small>
             <div class="d-flex flex-wrap justify-content-center gap-2 mt-1">
               <% @list.parent_lists.each do |parent| %>
                 <span class="badge bg-secondary">
@@ -32,6 +32,32 @@
       - <%= link_to @list.name, list_path(@list) %>
     </h1>
     <div class="list-input">
+      <%# Everything you do *to* the channel is on the right; subscribing to it and putting
+          things in it are on the left, where the search can grow without moving them. %>
+      <div class="list-actions">
+        <%= render 'lists/subscription_button', list: @list, user: current_user %>
+        <%= link_to new_list_entry_path(@list), class: "list-action", title: "Add an entry" do %>
+          <i class="fa-solid fa-circle-plus"></i>
+        <% end %>
+
+        <%= link_to list_vote_path(@list), class: "list-action", title: "Put some up for a vote" do %>
+          <i class="fa-solid fa-check-to-slot"></i>
+        <% end %>
+
+        <%= form_with url: list_path(@list), method: :get,
+                      class: "expanding-search",
+                      data: { controller: "expanding-search" } do %>
+          <button type="button" class="list-action" title="Search this channel"
+                  data-action="click->expanding-search#open">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+          <%= text_field_tag :query,
+                             params[:query],
+                             class: "form-control expanding-search__field",
+                             data: { search_target: "input", expanding_search_target: "field" },
+                             placeholder: "Find a movie" %>
+        <% end %>
+      </div>
       <div class="list-options">
         <div data-controller="view-toggle" data-view-toggle-url-value="<%= request.path %>">
           <% if params[:view] == "minimal" %>
@@ -51,14 +77,14 @@
               <i class="fa-solid fa-arrows-up-down-left-right"></i>
             </button>
             <div class="dropdown-menu" style="min-width: 250px;">
-              <h6 class="dropdown-header">Add to another list:</h6>
+              <h6 class="dropdown-header">Add to another channel:</h6>
               <%= form_with url: list_move_to_list_path(@list), method: :patch, class: "px-3 mb-2" do |f| %>
                 <%= f.select :target_list_id,
                     options_from_collection_for_select(
                       current_user.lists.where.not(id: @list.id).select { |list| @list.can_be_added_to?(list) },
                       :id, :name
                     ),
-                    { prompt: 'Select a list...' },
+                    { prompt: 'Select a channel...' },
                     { class: 'form-select form-select-sm mb-2', onchange: 'this.form.submit()' } %>
               <% end %>
 
@@ -78,7 +104,7 @@
                 <%= link_to list_move_to_list_path(@list),
                     method: :patch,
                     class: "dropdown-item text-danger",
-                    data: { turbo_confirm: "Remove '#{@list.name}' from all parent lists?" } do %>
+                    data: { turbo_confirm: "Remove '#{@list.name}' from all parent channels?" } do %>
                   <i class="fa-solid fa-trash"></i> Remove from all parents
                 <% end %>
               <% end %>
@@ -89,33 +115,18 @@
           <% end %>
         <% end %>
 
-        <% if @list.default? %>
-          <span class="badge bg-success ms-2">
-            <i class="fa-solid fa-star me-1"></i>Default List
-          </span>
-        <% end %>
+        <%= render 'lists/default_toggle', list: @list, user: current_user %>
 
-      </div>
-      <div class="col-8 border-top">
-        <%= form_with url: list_path(@list), method: :get, class: "d-flex" do %>
-          <%= text_field_tag :query,
-            params[:query],
-            class: "form-control",
-            data: { search_target: "input" },
-            placeholder: "Find a movie"
-          %>
-          <%# <%= submit_tag "Search", class: "btn btn-primary" %>
-        <% end %>
-      </div>
-      <div class="list-options">
-        <span class="btn-action"><%= link_to '+ Entry', new_list_entry_path(@list)%></span>
-        <%= render 'lists/subscription_button', list: @list, user: current_user %>
       </div>
     </div>
     <% unless @minimal %>
       <ul class="menu">
-        <% %w[Year Added Rating Genre Category Watched Media Length].each do |criteria| %>
-          <li class="<%= 'active' if @criteria == criteria %>"><%= sort_menu_link(@list, criteria) %></li>
+        <%# Label first, then the criteria behind it: the list's own order is stored as
+            Position, which is also the default view, and reads as Order in the menu. %>
+        <% { 'Order' => 'Position', 'Year' => 'Year', 'Rating' => 'Rating', 'Genre' => 'Genre',
+             'Category' => 'Category', 'Watched' => 'Watched', 'Media' => 'Media',
+             'Length' => 'Length' }.each do |label, criteria| %>
+          <li class="<%= 'active' if @criteria == criteria %>"><%= sort_menu_link(@list, criteria, label) %></li>
         <% end %>
       </ul>
     <% end %>
