@@ -1,0 +1,22 @@
+<div class="vote-options" data-vote-board-target="board">
+  <% standings.each do |option, count| %>
+    <div class="vote-option">
+      <%= entry_poster_image_tag(option.entry, class: 'vote-option__poster') %>
+      <div class="vote-option__body">
+        <h5 class="vote-option__name"><%= option.entry.name %></h5>
+        <p class="vote-option__meta">
+          <%= option.entry.year %><%= " • #{option.entry.length} min" if option.entry.length.present? %>
+        </p>
+      </div>
+      <span class="vote-option__count" title="<%= pluralize(count, 'vote') %>"><%= count %></span>
+      <%# Taking one off the ballot takes its votes with it. %>
+      <%= button_to option_list_vote_path(@list, option_id: option.id),
+                    method: :delete,
+                    class: "vote-option__remove",
+                    form: { data: { turbo_confirm: "Take #{option.entry.name} off the ballot?" } },
+                    title: "Remove from the ballot" do %>
+        <i class="fa-solid fa-xmark"></i>
+      <% end %>
+    </div>
+  <% end %>
+</div>

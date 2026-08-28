@@ -1,0 +1,34 @@
+<div class="vote-ballot">
+  <h1 class="vote-ballot__title"><%= @list.name %></h1>
+
+  <% if @vote_session.nil? || @vote_session.vote_options.empty? %>
+    <p class="vote-ballot__note">Nothing is up for a vote yet.</p>
+  <% elsif @vote_session.open? %>
+    <p class="vote-ballot__note">
+      <%= @voted_option_id ? 'Tap another to change your vote.' : 'Tap the one you want to watch.' %>
+    </p>
+
+    <% @vote_session.vote_options.includes(:entry).each do |option| %>
+      <%# One button per film, and the whole row is the button: nothing to read, nothing to
+          fill in, no account. %>
+      <%= button_to cast_list_vote_path(@list, option_id: option.id),
+                    class: "vote-ballot__option#{' vote-ballot__option--mine' if option.id == @voted_option_id}" do %>
+        <%= entry_poster_image_tag(option.entry, class: 'vote-ballot__poster') %>
+        <span class="vote-ballot__name"><%= option.entry.name %></span>
+        <% if option.id == @voted_option_id %>
+          <i class="fa-solid fa-check vote-ballot__check"></i>
+        <% end %>
+      <% end %>
+    <% end %>
+  <% else %>
+    <% winner = @vote_session.winner %>
+    <p class="vote-ballot__note">Voting has closed.</p>
+    <% if winner %>
+      <div class="vote-ballot__winner">
+        <%= entry_poster_image_tag(winner.entry, class: 'vote-ballot__poster') %>
+        <h2><%= winner.entry.name %></h2>
+        <p class="vote-ballot__note">won the vote</p>
+      </div>
+    <% end %>
+  <% end %>
+</div>
