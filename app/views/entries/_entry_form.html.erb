@@ -15,7 +15,7 @@
       <%= f.association :provider,
             collection: Source.active.order(:position),
             label_method: ->(s) { "#{s.name} (#{s.kind})" },
-            include_blank: "— Inherit list default —",
+            include_blank: "— Inherit channel default —",
             label: "Source provider" %>
       <%= f.input :source_key,
             label: "Source key / URL",

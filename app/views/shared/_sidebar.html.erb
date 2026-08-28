@@ -25,9 +25,9 @@
     <% end %>
   </div>
 
-  <!-- Lists Section (Scrollable) -->
+  <!-- Channels Section (Scrollable) -->
   <div class="p-3" style="flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;">
-    <h6 class="text-muted mb-3" style="font-size: 0.75rem; text-transform: uppercase;">Lists</h6>
+    <h6 class="text-muted mb-3" style="font-size: 0.75rem; text-transform: uppercase;">Channels</h6>
     <div class="list-group list-group-flush">
       <% current_user.subscribed_lists.order(:name).each do |list| %>
         <%
