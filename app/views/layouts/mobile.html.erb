@@ -60,7 +60,7 @@
         </div>
         <div class="mobile-movie-info">
           <h6 class="mobile-movie-title">{{Title}}</h6>
-          <p class="mobile-movie-meta">{{Year}} • {{Rating}}/10</p>
+          <p class="mobile-movie-meta">{{Year}}{{#Rating}} • {{.}}/10{{/Rating}}</p>
           <button type="button"
                   class="btn btn-primary mobile-add-btn"
                   data-action="click->mobile-search#showListSelectionModal"
@@ -68,7 +68,7 @@
                   data-tmdb-id="{{tmdbID}}"
                   data-title="{{Title}}"
                   data-poster="{{Poster}}">
-            <i class="fa-solid fa-plus me-1"></i>Add to List
+            <i class="fa-solid fa-plus me-1"></i>Add to Channel
           </button>
         </div>
       </div>
@@ -91,19 +91,19 @@
                   data-tmdb-id="{{tmdbID}}"
                   data-title="{{Title}}"
                   data-poster="{{Poster}}">
-            <i class="fa-solid fa-plus me-1"></i>Add to List
+            <i class="fa-solid fa-plus me-1"></i>Add to Channel
           </button>
         </div>
       </div>
       {{/movies}}
     </template>
 
-    <!-- Mobile List Selection Modal -->
+    <!-- Mobile Channel Selection Modal -->
     <div class="modal fade" id="mobileListSelectionModal" tabindex="-1" aria-labelledby="mobileListSelectionModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content mobile-modal-content">
           <div class="modal-header mobile-modal-header">
-            <h5 class="modal-title" id="mobileListSelectionModalLabel">Add to List</h5>
+            <h5 class="modal-title" id="mobileListSelectionModalLabel">Add to Channel</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body mobile-modal-body">
@@ -112,9 +112,9 @@
               <p id="mobileModalMovieYear" class="mobile-modal-year"></p>
             </div>
             <div class="mobile-modal-lists">
-              <h6 class="mobile-modal-subtitle">Select a list:</h6>
+              <h6 class="mobile-modal-subtitle">Select a channel:</h6>
               <div id="mobileListSelectionContainer">
-                <!-- List options will be populated by JavaScript -->
+                <!-- Channel options will be populated by JavaScript -->
               </div>
             </div>
           </div>

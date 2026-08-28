@@ -13,7 +13,7 @@
     </button>
   </div>
 
-  <!-- Entries/Episodes List (Scrollable) -->
+  <!-- Entries/Episodes Channel (Scrollable) -->
   <div class="p-3"
        style="flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;"
        data-entries-sidebar-target="entriesList">
@@ -24,11 +24,11 @@
                 class="btn btn-sm btn-outline-secondary"
                 style="font-size: 0.7rem; padding: 2px 8px;"
                 onclick="toggleEntriesEpisodesView()">
-          List
+          Channel
         </button>
       </div>
 
-      <!-- Episodes List View -->
+      <!-- Episodes Channel View -->
       <div id="episodesListView" class="list-group list-group-flush">
         <% current_user_subentry = @entry.current_subentry_for_user(current_user) %>
         <% @entry.subentries.order(:season, :episode).each do |subentry| %>
@@ -61,7 +61,7 @@
         <% end %>
       </div>
 
-      <!-- Entries List View (Hidden by default) -->
+      <!-- Entries Channel View (Hidden by default) -->
       <div id="entriesListView" class="list-group list-group-flush d-none">
         <% @entry.list.entries.order(:position).each do |entry| %>
           <% is_current = entry.id == @entry.id %>
