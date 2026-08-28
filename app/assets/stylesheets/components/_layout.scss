@@ -173,8 +173,11 @@
 
 .list-input {
   display: flex;
-  justify-content: space-around;
+  /* Subscribe at one end, add and find at the other, what you can do to the channel in
+     between. space-around would float them all towards the middle instead. */
+  justify-content: space-between;
   align-items: center;
+  gap: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 16px 0px;
@@ -186,6 +189,117 @@
     display: flex;
     justify-content: space-around;
   }
+}
+
+.list-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Adding and searching read as the icons they are, not as buttons with chrome. */
+.list-action {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.list-action:hover {
+  opacity: 1;
+}
+
+/* The field costs nothing until it is asked for. */
+.expanding-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expanding-search .expanding-search__field {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border-width: 0;
+  opacity: 0;
+  transition: width 0.2s ease, opacity 0.2s ease, padding 0.2s ease;
+}
+
+.expanding-search.expanded .expanding-search__field {
+  width: 220px;
+  padding: 0.375rem 0.75rem;
+  border-width: 1px;
+  opacity: 1;
+}
+
+/* Subscribe reads as the one call to action here; once subscribed it settles back into
+   the page, keeping only its outline -- the way a subscribed button does elsewhere.
+   Scoped under .page-container to outrank its `a { color: #fff !important }`: among
+   !important declarations the more specific selector wins, and an unscoped .subscription-
+   pill loses to .page-container a -- which left white text on a cream pill. */
+.page-container .subscription-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background-color: #f5f2e8;
+  color: #0a0a0a !important;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.page-container .subscription-pill:hover {
+  background-color: #ffffff;
+}
+
+.page-container .subscription-pill--subscribed {
+  background-color: #0a0a0a;
+  color: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.3);
+  font-weight: 500;
+}
+
+.page-container .subscription-pill--subscribed:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff !important;
+}
+
+/* The default-channel star. Scoped under .page-container for the same reason the pill is:
+   otherwise `.page-container i` paints it white whatever state it is in. */
+.page-container .default-toggle {
+  margin-left: 8px;
+  text-decoration: none;
+}
+
+.page-container .default-toggle i {
+  color: rgba(255, 255, 255, 0.4) !important;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.page-container .default-toggle:hover i {
+  color: #ffffff !important;
+  transform: scale(1.1);
+}
+
+/* Filled and white: this is the channel every new account is subscribed to. */
+.page-container .default-toggle--on i {
+  color: #ffffff !important;
+}
+
+/* The check goes with the label rather than with every other icon on the page. */
+.page-container .subscription-pill i {
+  color: inherit !important;
 }
 
 .border-top-bottom {

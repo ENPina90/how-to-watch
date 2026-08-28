@@ -123,7 +123,7 @@ export const TmdbSearchBehavior = {
 
         const validShows = showsWithImdb.filter(show => show !== null);
         if (validShows.length === 0) {
-          this.resultsTarget.innerHTML = '<div class="alert alert-warning">Unable to load show details.</div>';
+          this.resultsTarget.innerHTML = '<div class="alert alert-warning">Unable to load series details.</div>';
           return;
         }
 
@@ -131,7 +131,7 @@ export const TmdbSearchBehavior = {
       })
       .catch(error => {
         console.error('Error fetching shows:', error);
-        this.resultsTarget.innerHTML = '<div class="alert alert-danger">Error searching for shows. Please try again.</div>';
+        this.resultsTarget.innerHTML = '<div class="alert alert-danger">Error searching for series. Please try again.</div>';
       });
   },
 
@@ -145,13 +145,13 @@ export const TmdbSearchBehavior = {
     }
   },
 
+  // Hides, and only hides. Emptying the overlay here meant that clicking away threw the
+  // results out from under a query still sitting in the box, so coming back to it -- which
+  // is now as easy as focusing the box -- showed nothing. What is on screen when it closes
+  // is what is there when it opens again; the search itself clears them when the query
+  // changes, and clearResults() empties them when that is what is actually meant.
   hideResults() {
     this.resultsTarget.classList.add('d-none');
-    if (this.hasResultsContentTarget) {
-      this.resultsContentTarget.innerHTML = '';
-    } else {
-      this.resultsTarget.innerHTML = '';
-    }
   },
 
   showToast(toastHtml) {

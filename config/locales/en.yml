@@ -31,3 +31,18 @@
 
 en:
   hello: "Hello world"
+
+  # The model is still List everywhere in the code -- table, class, routes, params. Only
+  # the word the reader sees is Channel, and this is where Rails derives it: the submit
+  # buttons simple_form builds ("Create Channel"), the attribute labels on the list form,
+  # and the heading on a validation error page.
+  activerecord:
+    models:
+      list:
+        one: Channel
+        other: Channels
+    attributes:
+      list:
+        parent_list_id: Parent channel
+      entry:
+        list: Channel

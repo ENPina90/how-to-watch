@@ -1,0 +1,203 @@
+/* The channel page's right sidebar. Shaped after the watch page's entries sidebar -- same
+   width, same fixed panel below the navbar, same header-with-collapse -- so the two read
+   as the same piece of furniture. */
+.channel-sidebar-mount {
+  /* Neither the panel nor its expand button is in the flow; the mount should not be
+     either, or the row would centre the entries around an empty column. */
+  display: contents;
+}
+
+.channel-sidebar {
+  position: fixed;
+  top: 60px;
+  right: 0;
+  width: 350px;
+  height: calc(100vh - 60px);
+  z-index: 1020;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #191414 0%, #2d2d2d 100%);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+}
+
+body.channel-sidebar-collapsed .channel-sidebar {
+  display: none;
+}
+
+.channel-sidebar__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.channel-sidebar__name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The two icon buttons in here: the collapse control and Up Next's reshuffle. */
+.page-container .channel-sidebar__control {
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  background: none;
+  color: #ffffff;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.page-container .channel-sidebar__control:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.page-container .channel-sidebar__control i {
+  color: inherit !important;
+}
+
+/* The panel does not scroll as a whole: each section holds its own place, so Up Next
+   cannot be pushed off the bottom by a channel with forty genres in it. */
+.channel-sidebar__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Filters take whatever height is left over and scroll inside it. */
+.channel-sidebar__section--filters {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Up Next keeps its own height at the bottom and is always in view. */
+.channel-sidebar__section--upnext {
+  flex: 0 0 auto;
+}
+
+.channel-sidebar__section {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.channel-sidebar__section-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.channel-sidebar__title {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* One row per suggestion, the same shape as an entry row in the watch sidebar. */
+.channel-sidebar__items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.page-container .channel-sidebar__item {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.page-container .channel-sidebar__item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(-4px);
+}
+
+.channel-sidebar__empty {
+  display: block;
+  padding: 4px 12px;
+}
+
+.page-container .channel-sidebar__pick {
+  display: block;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  color: #ffffff !important;
+  text-align: center;
+  text-decoration: none !important;
+  transition: background-color 0.2s ease;
+}
+
+.page-container .channel-sidebar__pick:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* The section filters, as rows rather than the centred rail they used to be. Their
+   selected state still comes from aria-pressed. */
+.channel-sidebar__filters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  min-height: 0;
+  /* Hidden, the way the watch sidebar hides its own. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.channel-sidebar__filters::-webkit-scrollbar {
+  display: none;
+}
+
+.channel-sidebar__filters .section-filter {
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+/* The button that brings the panel back, where the panel's own collapse control was. */
+.page-container .channel-sidebar__expand {
+  position: fixed;
+  top: 76px;
+  right: 16px;
+  z-index: 1050;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  background-color: #191414;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.page-container .channel-sidebar__expand i {
+  color: inherit !important;
+}
+
+/* Room for the panel, the way the watch page makes room for its own. */
+body.has-channel-sidebar .page-container {
+  padding-right: 350px;
+  transition: padding-right 0.3s ease;
+}
+
+body.has-channel-sidebar.channel-sidebar-collapsed .page-container {
+  padding-right: 0;
+}

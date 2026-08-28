@@ -6,10 +6,10 @@
     <div class="search-container">
       <input type="text"
              class="form-control search-input"
-             placeholder="Search movies & shows..."
+             placeholder="Search movies & series..."
              id="mobile-entry-search"
                  name="q"
-                 aria-label="Search movies and shows"
+                 aria-label="Search movies and series"
                  autocomplete="off"
                  data-mobile-search-target="input"
              data-action="input->mobile-search#performSearch"
@@ -31,7 +31,7 @@
 
           <input type="radio" class="btn-check" name="searchType" id="mobileShowType" autocomplete="off"
                  data-action="change->mobile-search#switchToShowSearch">
-          <label class="btn btn-outline-primary btn-sm" for="mobileShowType">Shows</label>
+          <label class="btn btn-outline-primary btn-sm" for="mobileShowType">Series</label>
         </div>
       </div>
 
@@ -40,7 +40,7 @@
     </div>
   </div>
 
-  <!-- Mobile List Header -->
+  <!-- Mobile Channel Header -->
   <div class="mobile-list-header">
     <% unless @list.top_level? %>
       <nav aria-label="breadcrumb" class="mb-2">
@@ -57,7 +57,7 @@
         <% else %>
           <!-- Multiple parent paths -->
           <div class="text-center">
-            <small class="text-muted">This list appears in:</small>
+            <small class="text-muted">This channel appears in:</small>
             <div class="d-flex flex-wrap justify-content-center gap-2 mt-1">
               <% @list.parent_lists.each do |parent| %>
                 <span class="badge bg-secondary">
@@ -75,15 +75,14 @@
       - <%= link_to @list.name, list_path(@list) %>
     </h1>
 
-    <!-- Mobile List Info -->
+    <!-- Mobile Channel Info -->
     <div class="mobile-list-info text-center mb-3">
-      <% if @list.default? %>
-        <span class="badge bg-success me-2">
-          <i class="fa-solid fa-star me-1"></i>Default List
-        </span>
+      <%= render 'lists/default_toggle', list: @list, user: current_user %>
+      <%= link_to list_vote_path(@list), class: "mobile-action", title: "Vote" do %>
+        <i class="fa-solid fa-check-to-slot"></i>
       <% end %>
 
-      <!-- Mobile List Actions - Only essential actions for mobile -->
+      <!-- Mobile Channel Actions - Only essential actions for mobile -->
       <% if current_user&.can_edit_list?(@list) %>
         <div class="mobile-list-actions">
           <%= link_to edit_list_path(@list), class: "btn btn-outline-primary btn-sm me-2" do %>

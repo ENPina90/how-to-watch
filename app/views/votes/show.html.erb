@@ -1,0 +1,50 @@
+<div class="container vote-room">
+  <div class="row justify-content-center layout-title">
+    <h1 class="text-center">
+      Vote — <%= link_to @list.name, list_path(@list) %>
+    </h1>
+  </div>
+
+  <div class="row justify-content-center vote-room__body">
+    <div class="col-md-4 vote-room__aside">
+      <div class="vote-qr">
+        <%# The code points at this same page: a phone that scans it gets the ballot view
+            of what the room is looking at. %>
+        <%= @qr %>
+        <p class="vote-qr__hint">Scan to vote</p>
+        <p class="vote-qr__url"><%= list_vote_url(@list) %></p>
+      </div>
+
+      <%= form_with url: list_vote_path(@list), method: :post, class: "vote-setup" do %>
+        <label class="vote-setup__label" for="count">How many to put up</label>
+        <div class="vote-setup__row">
+          <%= number_field_tag :count, @vote_session&.vote_options&.count || 5,
+                               min: 2, max: 12, class: "form-control", id: "count" %>
+          <%= submit_tag @vote_session ? 'Draw again' : 'Start voting', class: "btn btn-primary" %>
+        </div>
+        <small class="text-muted">Drawn at random from the channel.</small>
+      <% end %>
+
+      <% if @vote_session&.open? && @vote_session.vote_options.any? %>
+        <%= button_to 'End voting', close_list_vote_path(@list),
+                      class: "btn btn-outline-light w-100 mt-3" %>
+      <% end %>
+    </div>
+
+    <div class="col-md-8">
+      <% if @vote_session.nil? || @vote_session.vote_options.empty? %>
+        <p class="text-muted">Nothing is up for a vote yet. Pick a number and start.</p>
+      <% elsif @vote_session.open? %>
+        <%# Refreshed in place while the round is open, so votes appear as phones cast
+            them without anyone touching the keyboard. %>
+        <div class="vote-board"
+             data-controller="vote-board"
+             data-vote-board-url-value="<%= list_vote_path(@list) %>">
+          <%= render 'standings', standings: @standings, vote_session: @vote_session, list: @list %>
+        </div>
+      <% else %>
+        <%= render 'result', vote_session: @vote_session, standings: @standings %>
+      <% end %>
+    </div>
+  </div>
+</div>

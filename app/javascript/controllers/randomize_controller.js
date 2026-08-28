@@ -113,8 +113,9 @@ export default class extends Controller {
       const link = document.createElement("a");
       // A card is keyed by its entry id, and a pick scrolls to it.
       link.href = `#${card.id}`;
+      link.className = "channel-sidebar__item";
       link.textContent = this.title(card);
-      this.picksTarget.append(link, document.createElement("br"));
+      this.picksTarget.append(link);
     });
 
     // Nothing to offer is a real state: a filter can select sections this user has

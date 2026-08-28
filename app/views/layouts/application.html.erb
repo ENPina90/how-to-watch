@@ -10,7 +10,9 @@
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
-  <body class="<%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> <%= user_signed_in? && current_user.dark_mode ? 'dark-mode' : 'light-mode' %>">
+  <%# `page-<controller>-<action>` alongside the sidebar and theme classes already here,
+      so a style can be scoped to one page without a flag being threaded through to it. %>
+  <body class="page-<%= controller_name.dasherize %>-<%= action_name.dasherize %> <%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> <%= user_signed_in? && current_user.dark_mode ? 'dark-mode' : 'light-mode' %>">
     <%= render "shared/navbar" %>
     <%= render "shared/impersonation_banner" %>
     <%= render 'shared/flashes' %>
@@ -21,7 +23,6 @@
       <div class="content-container"><%= yield %></div>
       <div class="footer-container"><%= render "shared/footer" %></div>
     </div>
-    <%= render "shared/flashes" %>
 
     <!-- Global Search Templates -->
     <template id="listSearchMovieTemplate">
@@ -35,7 +36,7 @@
             <div class="card-body">
               <h6 class="card-title">{{Title}}</h6>
               <p class="card-text">
-                <small class="text-muted">{{Year}} • {{Rating}}/10</small><br>
+                <small class="text-muted">{{Year}}{{#Rating}} • {{.}}/10{{/Rating}}</small><br>
                 <small class="text-muted">{{Genre}}</small>
               </p>
               <p class="card-text">{{Plot}}</p>
@@ -44,15 +45,27 @@
                    class="btn btn-success btn-sm">
                   <i class="fa-solid fa-play me-1"></i>Watch Now
                 </a>
+                {{#entryId}}
+                <%# Already on this channel: the same button takes it back out, the way the
+                    /entries/new results do. %>
+                <button type="button"
+                        class="btn btn-danger btn-sm"
+                        data-action="click->list-search#remove"
+                        data-entry-id="{{entryId}}">
+                  <i class="fa-solid fa-trash me-1"></i>Remove
+                </button>
+                {{/entryId}}
+                {{^entryId}}
                 <button type="button"
                         class="btn btn-primary btn-sm"
-                        data-action="click->list-search#openListModal"
+                        data-action="click->list-search#add"
                         data-imdb-id="{{imdbID}}"
                         data-tmdb-id="{{tmdbID}}"
                         data-title="{{Title}}"
                         data-poster="{{Poster}}">
-                  <i class="fas fa-plus me-1"></i>Add to List
+                  <i class="fas fa-plus me-1"></i>{{addLabel}}
                 </button>
+                {{/entryId}}
               </div>
             </div>
           </div>
@@ -72,7 +85,7 @@
             <div class="card-body">
               <h6 class="card-title">{{Title}}</h6>
               <p class="card-text">
-                <small class="text-muted">{{Year}} • {{Rating}}/10</small><br>
+                <small class="text-muted">{{Year}}{{#Rating}} • {{.}}/10{{/Rating}}</small><br>
                 <small class="text-muted">{{totalSeasons}} seasons</small>
               </p>
               <p class="card-text">{{Plot}}</p>
@@ -81,14 +94,47 @@
                    class="btn btn-success btn-sm">
                   <i class="fa-solid fa-play me-1"></i>Watch Now
                 </a>
+                {{#entryId}}
+                <%# Already on this channel: the same button takes it back out, the way the
+                    /entries/new results do. %>
+                <button type="button"
+                        class="btn btn-danger btn-sm"
+                        data-action="click->list-search#remove"
+                        data-entry-id="{{entryId}}">
+                  <i class="fa-solid fa-trash me-1"></i>Remove
+                </button>
+                {{/entryId}}
+                {{^entryId}}
                 <button type="button"
                         class="btn btn-primary btn-sm"
-                        data-action="click->list-search#openListModal"
+                        data-action="click->list-search#add"
                         data-imdb-id="{{imdbID}}"
                         data-tmdb-id="{{tmdbID}}"
                         data-title="{{Title}}"
-                        data-poster="{{Poster}}">
-                  <i class="fas fa-plus me-1"></i>Add to List
+                        data-poster="{{Poster}}"
+                        data-type="{{#anime}}anime{{/anime}}">
+                  <i class="fas fa-plus me-1"></i>{{addLabel}}
+                </button>
+                {{/entryId}}
+                <button type="button"
+                        class="btn btn-outline-primary btn-sm"
+                        data-action="click->list-search#seeEpisodes"
+                        data-imdb-id="{{imdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-title="{{Title}}"
+                        data-poster="{{Poster}}"
+                        data-seasons="{{totalSeasons}}">
+                  <i class="fa-solid fa-list-ol me-1"></i>See Episodes
+                </button>
+                <button type="button"
+                        class="btn btn-outline-primary btn-sm"
+                        data-action="click->list-search#topEpisodes"
+                        data-imdb-id="{{imdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-title="{{Title}}"
+                        data-poster="{{Poster}}"
+                        data-seasons="{{totalSeasons}}">
+                  <i class="fa-solid fa-star me-1"></i>Top Rated Episodes
                 </button>
               </div>
             </div>
@@ -96,6 +142,114 @@
         </div>
       </div>
       {{/movies}}
+    </template>
+
+    <%# One season of a show, reached from a result's See Episodes. Same card shape as the
+        results it replaces, and the same + buttons: whichever channel the search was made
+        from takes them, or the picker asks. %>
+    <template id="listSearchEpisodeTemplate">
+      <div class="d-flex align-items-center gap-2 flex-wrap p-3 border-bottom bg-light">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-action="click->list-search#backToResults">
+          <i class="fa-solid fa-arrow-left me-1"></i>Results
+        </button>
+        <strong class="me-auto">{{series.title}}{{#top}} — top rated{{/top}}</strong>
+
+        {{^top}}
+        <button type="button"
+                class="btn btn-outline-primary btn-sm"
+                data-action="click->list-search#topEpisodes"
+                data-imdb-id="{{series.imdbID}}"
+                data-tmdb-id="{{series.tmdbID}}"
+                data-title="{{series.title}}"
+                data-poster="{{series.poster}}"
+                data-seasons="{{seasonCount}}">
+          <i class="fa-solid fa-star me-1"></i>Top Rated Episodes
+        </button>
+        <%# Which season is current is set on the element after rendering, not marked up
+            here: a mustache section in attribute-name position does not survive the parse.
+            The browser reads <template> content as HTML before mustache ever sees it, and
+            an unquoted `/` there is taken for a self-closing marker and dropped -- which
+            turns {{/selected}} into an unclosed section. %>
+        <select class="form-select form-select-sm w-auto season-picker"
+                data-action="change->list-search#changeSeason">
+          {{#seasons}}
+          <option value="{{number}}">Season {{number}}</option>
+          {{/seasons}}
+        </select>
+        <button type="button"
+                class="btn btn-primary btn-sm"
+                data-action="click->list-search#add"
+                data-kind="season"
+                data-imdb-id="{{series.imdbID}}"
+                data-series-imdb-id="{{series.seriesImdbID}}"
+                data-tmdb-id="{{series.tmdbID}}"
+                data-title="{{series.title}}"
+                data-poster="{{series.poster}}"
+                data-season="{{season}}"
+                data-type="{{type}}">
+          <i class="fas fa-plus me-1"></i>Season
+        </button>
+        {{/top}}
+
+        {{#top}}
+        <%# The same slot the season controls occupy: back to them, and the bulk add. %>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-action="click->list-search#bySeason">
+          <i class="fa-solid fa-list-ol me-1"></i>By Season
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" data-action="click->list-search#openTopModal">
+          <i class="fas fa-plus me-1"></i>Top Episodes
+        </button>
+        {{/top}}
+      </div>
+
+      {{#episodes}}
+      <div class="card mb-3">
+        <div class="row g-0">
+          <div class="col-md-3">
+            <img src="{{Poster}}" class="img-fluid rounded-start h-100" alt="{{Title}} still" style="object-fit: cover;">
+          </div>
+          <div class="col-md-9">
+            <div class="card-body">
+              <h6 class="card-title">{{Title}}</h6>
+              <p class="card-text">
+                <small class="text-muted">S{{Season}}E{{Episode}}{{#Rating}} • {{.}}/10{{/Rating}}</small>
+              </p>
+              {{#Plot}}<p class="card-text">{{Plot}}</p>{{/Plot}}
+              <div class="d-flex gap-2">
+                <a href="/watch_now?imdb={{seriesImdbID}}&title={{Title}}&type=tv&tmdb={{tmdbID}}&season={{Season}}&episode={{Episode}}&poster={{Poster}}"
+                   class="btn btn-success btn-sm">
+                  <i class="fa-solid fa-play me-1"></i>Watch Now
+                </a>
+                {{#entryId}}
+                <%# Already on this channel: the same button takes it back out, the way the
+                    /entries/new results do. %>
+                <button type="button"
+                        class="btn btn-danger btn-sm"
+                        data-action="click->list-search#remove"
+                        data-entry-id="{{entryId}}">
+                  <i class="fa-solid fa-trash me-1"></i>Remove
+                </button>
+                {{/entryId}}
+                {{^entryId}}
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        data-action="click->list-search#add"
+                        data-imdb-id="{{seriesImdbID}}"
+                        data-series-imdb-id="{{seriesImdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-title="{{Title}}"
+                        data-poster="{{Poster}}"
+                        data-season="{{Season}}"
+                        data-episode="{{Episode}}">
+                  <i class="fas fa-plus me-1"></i>Episode
+                </button>
+                {{/entryId}}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{/episodes}}
     </template>
 
     <template id="listSearchListTemplate">
@@ -129,7 +283,7 @@
               {{/description}}
               <div class="d-flex gap-2">
                 <a href="/lists/{{id}}" class="btn btn-primary btn-sm">
-                  <i class="fa-solid fa-eye me-1"></i>View List
+                  <i class="fa-solid fa-eye me-1"></i>View Channel
                 </a>
                 {{#canSubscribe}}
                 <form action="/lists/{{id}}/subscribe" method="post" style="display: inline;">
@@ -147,12 +301,35 @@
       {{/lists}}
     </template>
 
-    <!-- Global List Selection Modal -->
+    <%# The Top Entries prompt from /entries/new, for the overlay's top-rated view. Its
+        buttons are wired when it opens rather than by data-action: it sits at the end of
+        the body, outside the element the search controller is mounted on. %>
+    <div class="modal fade" id="topEpisodesModal" tabindex="-1" aria-labelledby="topEpisodesModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="topEpisodesModalLabel">
+              Add Top <span class="fw-bold text-nowrap" id="topEpisodesCount">10</span> Episodes
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <label for="topEpisodesSlider" class="form-label">Select number of episodes to add:</label>
+            <input type="range" class="form-range" min="1" max="20" value="10" id="topEpisodesSlider">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="topEpisodesConfirm">Add Episodes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Channel Selection Modal -->
     <div class="modal fade" id="listSelectionModal" tabindex="-1" aria-labelledby="listSelectionModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="listSelectionModalLabel">Add to List</h5>
+            <h5 class="modal-title" id="listSelectionModalLabel">Add to Channel</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -163,7 +340,7 @@
               <div class="col-8">
                 <h6>Select a list to add this item to:</h6>
                 <div id="listSelectionContainer">
-                  <!-- List options will be populated by JavaScript -->
+                  <!-- Channel options will be populated by JavaScript -->
                 </div>
               </div>
             </div>
@@ -175,51 +352,5 @@
       </div>
     </div>
 
-    <script nonce="<%= content_security_policy_nonce %>">
-      // Global function to trigger modal from watch_now page
-      function openWatchNowModal(imdbId, title, poster) {
-        console.log('openWatchNowModal called with:', imdbId, title, poster);
-
-        // Try to find the navbar controller directly
-        const navbarSearchElement = document.querySelector('[data-controller*="list-search"]');
-        console.log('Found navbar element:', navbarSearchElement);
-
-        if (navbarSearchElement) {
-          // Trigger the modal opening directly
-          const fakeEvent = {
-            preventDefault: () => {},
-            currentTarget: {
-              dataset: {
-                imdbId: imdbId,
-                tmdbId: '',
-                title: title,
-                poster: poster
-              }
-            }
-          };
-
-          // Try to get the controller instance
-          const controller = navbarSearchElement.listSearchController;
-          if (controller) {
-            console.log('Found controller, calling openListModal');
-            controller.openListModal(fakeEvent);
-          } else {
-            console.log('Controller not found, trying alternative approach');
-            // Fallback: dispatch the custom event
-            const event = new CustomEvent('openListModal', {
-              detail: {
-                imdbID: imdbId,
-                tmdbID: '',
-                title: title,
-                poster: poster
-              }
-            });
-            document.dispatchEvent(event);
-          }
-        } else {
-          console.error('Navbar search element not found');
-        }
-      }
-    </script>
   </body>
 </html>

@@ -98,3 +98,5 @@ group :test do
 end
 
 gem "autoprefixer-rails", "~> 10.4"
+
+gem "rqrcode", "~> 3.2"

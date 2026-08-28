@@ -19,6 +19,14 @@ class MobileSearchController extends Controller {
     this.movieTemplate = document.querySelector("#mobileSearchMovieTemplate");
     this.showTemplate = document.querySelector("#mobileSearchShowTemplate");
     this.currentSearchType = 'movie'; // Default to movie search
+
+    // See showResultsOverlay: one reference, so it can be re-registered harmlessly and
+    // removed again.
+    this.boundClickOutside = this.handleClickOutside.bind(this);
+  }
+
+  disconnect() {
+    document.removeEventListener('click', this.boundClickOutside);
   }
 
   // -----------------------------
@@ -78,8 +86,10 @@ class MobileSearchController extends Controller {
     }
     this.resultsTarget.classList.remove('d-none');
 
-    // Add click outside to close
-    document.addEventListener('click', this.handleClickOutside.bind(this), { once: true });
+    // Not `{ once: true }`: it fires on the first click anywhere, inside the overlay
+    // included, and is spent either way -- so tapping a result disarmed the only thing
+    // able to dismiss it. Re-registering one reference is a no-op after the first.
+    document.addEventListener('click', this.boundClickOutside);
   }
 
   // -----------------------------
@@ -145,7 +155,7 @@ class MobileSearchController extends Controller {
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        this.showSuccessMessage(this.selectedItem.title, 'this list');
+        this.showSuccessMessage(this.selectedItem.title, 'this channel');
         // Hide search results
         this.hideResults();
         this.inputTarget.value = '';
@@ -172,7 +182,7 @@ class MobileSearchController extends Controller {
     const userLists = this.userListsValue || [];
 
     if (userLists.length === 0) {
-      container.innerHTML = '<p class="text-muted text-center">No lists available</p>';
+      container.innerHTML = '<p class="text-muted text-center">No channels available</p>';
       return;
     }
 

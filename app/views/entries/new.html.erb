@@ -24,7 +24,7 @@
         <%= link_to 'Movie', new_list_entry_path(@list, type: 'movie') %>
       </li>
       <li class="<%= 'active' if params['type'] == 'show' %>">
-        <%= link_to 'Show', new_list_entry_path(@list, type: 'show') %>
+        <%= link_to 'Series', new_list_entry_path(@list, type: 'show') %>
       </li>
       <li class="<%= 'active' if params['type'] == 'anime' %>">
         <%= link_to 'Anime', new_list_entry_path(@list, type: 'anime') %>
@@ -40,7 +40,7 @@
           <%= f.input :pic, label: "Poster URL (or upload below)" %>
           <%= f.input :poster, as: :file, label: "Upload Poster Image" %>
           <%= f.input :source_url, label: "Source URL", hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
-          <%= f.input :media, collection: ['fanedit', 'movie', 'show', 'episode', 'other']  %>
+          <%= f.input :media, collection: [['Fanedit', 'fanedit'], ['Movie', 'movie'], ['Series', 'show'], ['Episode', 'episode'], ['Other', 'other']]  %>
           <%= f.input :series %>
           <%= f.input :plot %>
           <%= f.input :category %>
@@ -127,7 +127,7 @@
               <input class='d-none' name='tmdb' value='{{tmdbID}}'>
               <input class='d-none' name='type' value='<%= params[:type] || "show" %>'>
               <button type='submit' name='create' value='create' class="btn btn-primary">
-                + <%= params[:type] == 'anime' ? 'Anime' : 'Show' %>
+                + <%= params[:type] == 'anime' ? 'Anime' : 'Series' %>
               </button>
             </form>
           </turbo-frame>

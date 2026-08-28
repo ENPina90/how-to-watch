@@ -77,30 +77,33 @@ RSpec.describe 'Sorting a list', :needs_provider, type: :request do
     expect(section_order).to eq(%w[1970s 2010s])
   end
 
-  describe 'grouping by date added' do
-    before do
-      list.entries.find_by(name: 'Alien').update_column(:created_at, Time.zone.parse('2024-12-02'))
-      list.entries.find_by(name: 'Arrival').update_column(:created_at, Time.zone.parse('2025-08-14'))
-    end
+  # Order is the list's own sequence, stored as Position and the default view. It is the
+  # one grouping that groups nothing: a section per position is a section per entry.
+  describe 'the list order' do
+    it 'runs down the positions, and back up them on the second click' do
+      get list_path(list, criteria: 'Position', sort: 'asc')
 
-    def month_order
-      response.body.scan(/<h3 id="([A-Z][a-z]+ \d{4})">/).flatten
-    end
+      expect(section_order).to be_empty
+      expect(entry_order).to eq(%w[Arrival Alien])
 
-    it 'groups into months, oldest first' do
-      get list_path(list, criteria: 'Added', sort: 'asc')
+      get list_path(list, criteria: 'Position', sort: 'desc')
 
-      expect(month_order).to eq(['December 2024', 'August 2025'])
       expect(entry_order).to eq(%w[Alien Arrival])
     end
 
-    it 'reverses on the second click, months and entries alike' do
-      create(:entry, list: list, name: 'Aliens', year: 1986, position: 3).update_column(:created_at, Time.zone.parse('2024-12-20'))
+    it 'reverses the child lists mixed in with the entries too' do
+      list.child_relationships.create!(child_list: create(:list, user: user, name: 'Sequels'), position: 3)
 
-      get list_path(list, criteria: 'Added', sort: 'desc')
+      get list_path(list, criteria: 'Position', sort: 'desc')
 
-      expect(month_order).to eq(['August 2025', 'December 2024'])
-      expect(entry_order).to eq(%w[Arrival Aliens Alien])
+      expect(response.body.index('Sequels')).to be < response.body.index('<bold>Alien</bold>')
+    end
+
+    it 'is the label the menu carries, over the criteria the list stores' do
+      get list_path(list, criteria: 'Position', sort: 'asc')
+
+      expect(response.body).to include(CGI.escapeHTML(list_path(list, criteria: 'Position', sort: 'desc')))
+      expect(response.body).to match(/<li class="active"><a[^>]*>\s*Order/)
     end
   end
 
@@ -116,7 +119,9 @@ RSpec.describe 'Sorting a list', :needs_provider, type: :request do
     get list_path(list, criteria: 'Year', sort: 'desc')
     get list_path(list, criteria: 'Position')
 
+    # No headings, and the remembered direction still applies -- Position is a direction
+    # of its own now rather than a view that ignores one.
     expect(section_order).to be_empty
-    expect(entry_order).to eq(%w[Arrival Alien])
+    expect(entry_order).to eq(%w[Alien Arrival])
   end
 end

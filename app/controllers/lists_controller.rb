@@ -2,12 +2,12 @@
 
 class ListsController < ApplicationController
   # The grouping options offered on the list page. Everything except Position, Genre,
-  # Year, Added and Watched is handled by reading the matching Entry attribute, so this
-  # doubles as the whitelist for that lookup.
-  GROUPING_CRITERIA = %w[Position Genre Year Added Watched Rating Category Media Length].freeze
+  # Year and Watched is handled by reading the matching Entry attribute, so this doubles
+  # as the whitelist for that lookup.
+  GROUPING_CRITERIA = %w[Position Genre Year Watched Rating Category Media Length].freeze
   SORT_DIRECTIONS = %w[asc desc].freeze
 
-  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :top_entries, :add_season, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
+  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :entry_index, :top_entries, :add_season, :toggle_default, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
 
   def index
@@ -111,12 +111,12 @@ class ListsController < ApplicationController
       if params[:list][:parent_list_id].present?
         parent_list = List.find(params[:list][:parent_list_id])
         if @list.add_to_parent(parent_list)
-          redirect_to list_path(parent_list), notice: "List '#{@list.name}' was successfully created and added to #{parent_list.name}."
+          redirect_to list_path(parent_list), notice: "Channel '#{@list.name}' was successfully created and added to #{parent_list.name}."
         else
-          redirect_to lists_path, notice: "List '#{@list.name}' was successfully created but could not be added to the parent list."
+          redirect_to lists_path, notice: "Channel '#{@list.name}' was successfully created but could not be added to the parent channel."
         end
       else
-        redirect_to lists_path, notice: 'List was successfully created.'
+        redirect_to lists_path, notice: 'Channel was successfully created.'
       end
     else
       render :new
@@ -171,7 +171,7 @@ class ListsController < ApplicationController
 
   def update
     if @list.update(list_params)
-      redirect_to list_path(@list), notice: 'List was successfully updated.'
+      redirect_to list_path(@list), notice: 'Channel was successfully updated.'
     else
       render :edit
     end
@@ -184,7 +184,7 @@ class ListsController < ApplicationController
 
   def watch_current
     if @list.entries.empty?
-      redirect_to list_path(@list), notice: "This list has no entries to watch. Add some entries first!"
+      redirect_to list_path(@list), notice: "This channel has no entries to watch. Add some entries first!"
       return
     end
 
@@ -214,7 +214,7 @@ class ListsController < ApplicationController
             "Here's something you haven't watched yet!"
           redirect_to watch_entry_path(fallback_entry), notice: message
         else
-          redirect_to list_path(@list), notice: "You've completed all entries in this list!"
+          redirect_to list_path(@list), notice: "You've completed all entries in this channel!"
         end
       end
     else
@@ -249,6 +249,16 @@ class ListsController < ApplicationController
     redirect_to list_path(@list)
   end
 
+  # What this channel already holds, in the terms a search result can be matched on. The
+  # search overlay asks for it the first time you search from a channel page, rather than
+  # every page shipping it: a thousand-entry channel is a large attribute to carry around
+  # for the visits where nobody searches.
+  def entry_index
+    render json: @list.entries.pluck(:id, :imdb, :series_imdb, :season, :episode).map { |id, imdb, series_imdb, season, episode|
+      { id: id, imdb: imdb, series_imdb: series_imdb, season: season, episode: episode }
+    }
+  end
+
   def add_season
     result = SeasonImporter.new(
       list: @list,
@@ -275,6 +285,29 @@ class ListsController < ApplicationController
     end
   end
 
+  # The star beside the channel's name. Making a channel default subscribes everyone to it
+  # (List#handle_default_subscription_changes), which is why only an admin may touch it --
+  # the same rule `default` has always been permitted under in list_params.
+  def toggle_default
+    unless current_user&.can_set_default?
+      return redirect_back(fallback_location: list_path(@list),
+                           alert: 'Only an admin can set the default channel.')
+    end
+
+    @list.update(default: !@list.default?)
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "default-#{@list.id}",
+          partial: 'lists/default_toggle',
+          locals: { list: @list, user: current_user }
+        )
+      end
+      format.html { redirect_to list_path(@list) }
+    end
+  end
+
   def move_to_list
     target_list_id = params[:target_list_id]
     remove_from_id = params[:remove_from]
@@ -288,7 +321,7 @@ class ListsController < ApplicationController
     elsif target_list_id.blank?
       # Remove from all parent lists (make it a top-level list)
       @list.remove_from_all_parents
-      flash[:notice] = "#{@list.name} has been removed from all parent lists"
+      flash[:notice] = "#{@list.name} has been removed from all parent channels"
       redirect_to list_path(@list)
     else
       target_list = List.find(target_list_id)
@@ -301,7 +334,7 @@ class ListsController < ApplicationController
 
       # Ensure user owns the target list
       unless target_list.user == current_user
-        flash[:alert] = "You don't have permission to add lists to #{target_list.name}"
+        flash[:alert] = "You don't have permission to add channels to #{target_list.name}"
         redirect_to list_path(@list) and return
       end
 
@@ -348,7 +381,7 @@ class ListsController < ApplicationController
         redirect_to list_watch_current_path(next_list)
       else
         # No other subscribed lists, go to main lists page
-        flash[:notice] = "You have unsubscribed from #{list_name}. No other subscribed lists with unwatched content."
+        flash[:notice] = "You have unsubscribed from #{list_name}. No other subscribed channels with unwatched content."
         redirect_to lists_path
       end
     else
@@ -391,17 +424,17 @@ class ListsController < ApplicationController
 
   def add_to_favorites
     favorites_list = current_user.lists.find_by(mobile: true)
-    return render json: { error: 'Favorites list not found' }, status: :not_found unless favorites_list
+    return render json: { error: 'Favorites channel not found' }, status: :not_found unless favorites_list
 
     render_import(ImdbEntryImporter.new(list: favorites_list, imdb_id: params[:imdb], tmdb_id: params[:tmdb]).call)
   end
 
   def add_to_list
     list = current_user.lists.find_by(id: params[:list_id])
-    return render json: { error: 'List not found' }, status: :not_found unless list
+    return render json: { error: 'Channel not found' }, status: :not_found unless list
 
     unless current_user.can_edit_list?(list)
-      return render json: { error: 'You do not have permission to add to this list' }, status: :forbidden
+      return render json: { error: 'You do not have permission to add to this channel' }, status: :forbidden
     end
 
     render_import(ImdbEntryImporter.new(list: list, imdb_id: params[:imdb], tmdb_id: params[:tmdb]).call)
@@ -454,10 +487,6 @@ class ListsController < ApplicationController
          .select('lists.*, (SELECT COUNT(*) FROM entries WHERE entries.list_id = lists.id) AS entries_count')
   end
 
-  def mobile_request?
-    request.user_agent =~ /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
-  end
-
   def set_list
     @list = List.find(params[:id] || params[:list_id])
   end
@@ -477,21 +506,6 @@ class ListsController < ApplicationController
       child
     end
 
-    # The default Position view mixes entries with child lists, so it renders its own
-    # ordered collection rather than the grouped `@entries`. It has to honour the search
-    # too: `?query=` filtered @list_entries and then the view rendered the whole list
-    # anyway, so the "Find a movie" box appeared to do nothing.
-    # Built from @list_entries, never from `all_items_by_position` -- that method reloads
-    # `entries` from scratch, throwing away the preloads above. The Position view is the
-    # default, so reading it cost one user_entries lookup and one attachment lookup per
-    # entry, which is exactly what the preloads exist to prevent.
-    ordered_entries = @list_entries.to_a.sort_by { |entry| entry.position || 0 }
-    @position_items = if params[:query].present?
-                        ordered_entries # child lists cannot match an entry search
-                      else
-                        (ordered_entries + @list.child_lists.to_a).sort_by { |item| item.position || 0 }
-                      end
-
     @entries = {}
     # `settings` is the list's remembered grouping; an explicit param wins over it.
     @criteria = params[:criteria].presence || @list.settings.presence || 'Position'
@@ -500,13 +514,52 @@ class ListsController < ApplicationController
     # `sort` is the direction the grouping runs in; the menu toggles it by re-clicking
     # the criteria that is already active.
     @direction = sort_direction
-    # Most criteria produce keys that sort on their own; a branch that has to build its
-    # sections in order says so here.
-    @preordered_sections = false
+
+    load_position_items
+    # Position is the list's own order end to end, so it has nothing to group by: it
+    # renders @position_items directly. Grouping it would build one section per entry.
+    if @criteria == 'Position'
+      @sections = position_sections
+      return remember_view
+    end
+
     filter_entries(@criteria)
     @entries = @entries.transform_keys { |key| key.nil? ? 'Other' : key }
-    @sections = sort_sections(@entries.keys, @direction == 'desc', @preordered_sections)
+    @sections = sort_sections(@entries.keys, @direction == 'desc')
 
+    remember_view
+  end
+
+  # The Position view mixes entries with child lists, so it renders its own ordered
+  # collection rather than the grouped `@entries`. It has to honour the search too:
+  # `?query=` filtered @list_entries and then the view rendered the whole list anyway, so
+  # the "Find a movie" box appeared to do nothing.
+  # Built from @list_entries, never from `all_items_by_position` -- that method reloads
+  # `entries` from scratch, throwing away the preloads above. The Position view is the
+  # default, so reading it cost one user_entries lookup and one attachment lookup per
+  # entry, which is exactly what the preloads exist to prevent.
+  def load_position_items
+    ordered_entries = @list_entries.to_a.sort_by { |entry| entry.position || 0 }
+    @position_items = if params[:query].present?
+                        ordered_entries # child lists cannot match an entry search
+                      else
+                        (ordered_entries + @list.child_lists.to_a).sort_by { |item| item.position || 0 }
+                      end
+
+    # The menu calls this one Order, and its second click runs the list backwards.
+    @position_items = @position_items.reverse if @direction == 'desc'
+  end
+
+  # The Order view groups nothing, but its filters still list the categories -- in the
+  # order the entries run, not alphabetically, so the rail reads down the channel the way
+  # the page does. Reversing the order reverses these with it, since they are read off the
+  # items after the direction has been applied.
+  def position_sections
+    @position_items.filter_map { |item| item.category.presence || 'Other' if item.is_a?(Entry) }.uniq
+  end
+
+  # Remembers the view for next time.
+  def remember_view
     return unless @list.user == current_user
     # Only persist an explicit choice. A plain visit carries no params, and writing them
     # blindly used to wipe the list's remembered grouping on every page view.
@@ -549,16 +602,6 @@ class ListsController < ApplicationController
         decade_entries = decade_entries.reverse if @direction == 'desc'
         @entries["#{year}s"] = decade_entries
       end
-    when 'Added'
-      # Entries carry no explicit added-on column; created_at is when one landed on the
-      # list. Sections are months, inserted in chronological order -- sorting the keys
-      # would file "August 2026" ahead of "December 2025".
-      @preordered_sections = true
-      months = @list_entries.sort_by(&:created_at).group_by { |entry| entry.created_at.beginning_of_month }
-      months.each do |month, month_entries|
-        month_entries = month_entries.reverse if @direction == 'desc'
-        @entries[month.strftime('%B %Y')] = month_entries
-      end
     when 'Watched'
       @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
       @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
@@ -571,13 +614,8 @@ class ListsController < ApplicationController
 
   # Section keys are a mix of strings ('Action', 'Other') and numbers (Rating, Length,
   # Year), which raises if you just call .sort on them. Numbers first, then strings.
-  # `preordered` keys arrived in the order they belong in and only need the direction.
-  def sort_sections(keys, descending, preordered = false)
-    sorted = if preordered
-               keys.to_a
-             else
-               keys.sort_by { |key| [key.is_a?(Numeric) ? 0 : 1, key.is_a?(Numeric) ? key : key.to_s] }
-             end
+  def sort_sections(keys, descending)
+    sorted = keys.sort_by { |key| [key.is_a?(Numeric) ? 0 : 1, key.is_a?(Numeric) ? key : key.to_s] }
     descending ? sorted.reverse : sorted
   end
 

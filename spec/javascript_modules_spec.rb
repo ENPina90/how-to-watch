@@ -92,13 +92,78 @@ RSpec.describe 'JavaScript modules' do
         Rails.root.glob('app/views/**/*.erb').flat_map { |view|
           source = view.read
           used = source.scan(/data-#{identifier}-target=["'](\w+)["']/).flatten
-          used += source.scan(/#{attribute}_target:\s*["'](\w+)["']/).flatten
+          # Anchored: without it `expanding_search_target:` reads as a `search` target, and
+          # every controller whose name ends in another's collects its targets.
+          used += source.scan(/(?<![\w-])#{attribute}_target:\s*["'](\w+)["']/).flatten
 
           (used.uniq - declared).map { |target| "#{relative(view)} -> #{identifier} target '#{target}'" }
         }
       }
 
       expect(dangling).to be_empty
+    end
+  end
+
+  # `{{#selected}}selected{{/selected}}` sat in attribute-name position on an <option>.
+  # The browser parses <template> content as HTML long before mustache sees it, and an
+  # unquoted `/` in a tag is taken for a self-closing marker and dropped -- so what
+  # innerHTML handed mustache was `selected}}`, and it failed with "Unclosed section".
+  # A mustache tag inside a tag is only safe inside a quoted attribute value.
+  describe 'mustache templates' do
+    TEMPLATE = /<template\b.*?<\/template>/m
+    TAG = /<[a-zA-Z][^<>]*>/m
+    QUOTED = /"[^"]*"|'[^']*'/
+
+    it 'keeps every tag either an element of its own or a quoted attribute value' do
+      exposed = Rails.root.glob('app/views/**/*.erb').flat_map { |view|
+        source = view.read
+
+        source.scan(TEMPLATE).flat_map { |template|
+          template.scan(TAG).filter_map { |tag|
+            next unless tag.gsub(QUOTED, '""').include?('{{')
+
+            "#{relative(view)} -> #{tag.strip[0, 80]}"
+          }
+        }
+      }
+
+      expect(exposed).to be_empty
+    end
+  end
+
+  # Clicking away used to empty the overlay as well as hide it, so returning to a query
+  # still sitting in the search box showed nothing. Hiding and discarding are separate.
+  describe 'dismissing the search overlay' do
+    it 'hides without emptying' do
+      behaviour = Rails.root.join('app/javascript/services/tmdb_search_behavior.js').read
+      body = behaviour[/hideResults\(\) \{.*?\n  \},/m]
+
+      expect(body).to include("classList.add('d-none')")
+      expect(body).not_to include('innerHTML')
+    end
+  end
+
+  # The overlay was left stuck open twice: once by a `{ once: true }` listener that a click
+  # inside it spent, and once after a turbo stream render. Dismissal is armed for the
+  # controller's whole life now rather than by whatever last drew the results.
+  describe 'dismissing the search overlay' do
+    let(:controller) { Rails.root.join('app/javascript/controllers/list_search_controller.js').read }
+
+    it 'arms the outside click in connect, not only in a render' do
+      connect = controller[/  connect\(\) \{.*?\n  \}/m]
+
+      expect(connect).to include("document.addEventListener('click', this.boundClickOutside)")
+    end
+
+    it 'never arms it for a single click' do
+      expect(controller).not_to match(/addEventListener\('click', this\.boundClickOutside, \{ once: true \}\)/)
+    end
+
+    it 'survives a stale element and an exception' do
+      handler = controller[/  dismissOnOutsideClick\(event\) \{.*?\n  \}/m]
+
+      expect(handler).to include('document.contains(this.element)')
+      expect(handler).to include('catch')
     end
   end
 
