@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class List < ApplicationRecord
+  has_many :vote_sessions, dependent: :destroy
 
   belongs_to :user
   belongs_to :provider, class_name: 'Source', optional: true

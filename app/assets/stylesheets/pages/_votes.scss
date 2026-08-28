@@ -1,0 +1,197 @@
+/* The vote room: one screen the room looks at, and the ballot everyone else gets on their
+   phone after scanning the code on it. */
+.vote-room__body {
+  gap: 24px 0;
+}
+
+.vote-room__aside {
+  max-width: 320px;
+}
+
+.vote-qr {
+  padding: 16px;
+  border-radius: 12px;
+  /* The code is read by a camera across a room: white behind it, whatever the theme. */
+  background-color: #ffffff;
+  text-align: center;
+}
+
+.vote-qr svg {
+  width: 100%;
+  height: auto;
+}
+
+.vote-qr__hint {
+  margin: 12px 0 0;
+  color: #0a0a0a;
+  font-weight: 600;
+}
+
+.vote-qr__url {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+
+.vote-setup {
+  margin-top: 24px;
+}
+
+.vote-setup__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.vote-setup__row {
+  display: flex;
+  gap: 8px;
+}
+
+.vote-setup__row .form-control {
+  width: 90px;
+}
+
+.vote-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vote-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.vote-option__poster {
+  width: 56px;
+  border-radius: 6px;
+}
+
+.vote-option__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.vote-option__name {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.vote-option__meta {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+}
+
+/* The tally, big enough to read from the far side of the room. */
+.vote-option__count {
+  min-width: 48px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.page-container .vote-option__remove {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+}
+
+.page-container .vote-option__remove:hover {
+  color: #dc3545;
+}
+
+.page-container .vote-option__remove i {
+  color: inherit !important;
+}
+
+.vote-result__winner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.vote-result__poster {
+  width: 140px;
+  border-radius: 8px;
+}
+
+.vote-result__standings {
+  padding-left: 20px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.vote-result__standings li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 420px;
+  padding: 4px 0;
+}
+
+/* The phone half: rows big enough to hit without reading anything. */
+.vote-ballot {
+  padding: 16px;
+}
+
+.vote-ballot__title {
+  font-size: 1.4rem;
+  text-align: center;
+}
+
+.vote-ballot__note {
+  margin-bottom: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+
+.vote-ballot__option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  text-align: left;
+}
+
+.vote-ballot__option--mine {
+  border-color: #1a936f;
+  background-color: rgba(26, 147, 111, 0.18);
+}
+
+.vote-ballot__poster {
+  width: 52px;
+  border-radius: 6px;
+}
+
+.vote-ballot__name {
+  flex: 1 1 auto;
+  font-size: 1.05rem;
+}
+
+.vote-ballot__check {
+  color: #1a936f;
+}
+
+.vote-ballot__winner {
+  text-align: center;
+}
