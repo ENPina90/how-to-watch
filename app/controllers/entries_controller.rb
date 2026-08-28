@@ -102,7 +102,7 @@ class EntriesController < ApplicationController
           turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.entries.count, list: @list }, action: :replace),
           turbo_stream.replace('flash', partial: 'shared/flashes'),
           turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: @entry, partial: partial })
-        ]
+        ] + card_streams(@entry)
       else
         flash.now[:alert] = 'There was a problem'
         render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
@@ -437,7 +437,7 @@ class EntriesController < ApplicationController
     # Handle "do not show again" option
     if params[:disable_reviews] == "true"
       @entry.list.update(reviewable: false)
-      flash[:notice] = "Review prompts disabled for this list"
+      flash[:notice] = "Review prompts disabled for this channel"
     else
       flash[:notice] = "Thank you for your review!"
     end
@@ -465,7 +465,7 @@ class EntriesController < ApplicationController
     # Handle "do not show again" option
     if params[:disable_reviews] == "true"
       @entry.list.update(reviewable: false)
-      flash[:notice] = "Review prompts disabled for this list"
+      flash[:notice] = "Review prompts disabled for this channel"
     end
 
     respond_to do |format|
@@ -580,8 +580,37 @@ class EntriesController < ApplicationController
 
   private
 
-    def mobile_request?
-      request.user_agent =~ /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+    # Puts the new card on a channel page that is already open, so a search made from the
+    # channel does not need a reload to show what it just added. Which container it belongs
+    # in depends on how that page is grouped, which only the browser knows -- it posts
+    # `criteria` along with the entry. Turbo drops a stream whose target is not on the
+    # page, so an unopened channel and /entries/new both ignore these.
+    def card_streams(entry)
+      return [] unless entry.is_a?(Entry)
+
+      criteria = params[:criteria].presence_in(ListsController::GROUPING_CRITERIA) || 'Position'
+      card = helpers.entry_card(entry)
+
+      if criteria == 'Position'
+        # Wrapped the way the page wraps them, or the new card would be the one row the
+        # category filters cannot hide.
+        return [turbo_stream.append('list-entries',
+                                    helpers.render('lists/position_item', item: entry))]
+      end
+
+      entry.section_keys(criteria, user: current_user).flat_map do |key|
+        [turbo_stream.append(helpers.section_body_id(key), card), section_count_stream(key, criteria)]
+      end
+    end
+
+    # The heading counts what is under it, and has just been made wrong.
+    def section_count_stream(key, criteria)
+      in_section = @list.entries.count do |entry|
+        entry.section_keys(criteria, user: current_user).include?(key)
+      end
+
+      turbo_stream.replace(helpers.section_count_id(key),
+                           helpers.tag.small("(#{in_section})", id: helpers.section_count_id(key)))
     end
 
     def handle_episode_from_tmdb
@@ -602,7 +631,7 @@ class EntriesController < ApplicationController
           turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.entries.count, list: @list }, action: :replace),
           turbo_stream.replace('flash', partial: 'shared/flashes'),
           turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: result[:entry], partial: partial })
-        ]
+        ] + card_streams(result[:entry])
       when :duplicate
         flash.now[:error] = result[:message]
         render turbo_stream: [
@@ -618,7 +647,7 @@ class EntriesController < ApplicationController
     def set_list
       @list = List.find(params[:list_id])
     rescue ActiveRecord::RecordNotFound
-      flash[:error] = 'List not found.'
+      flash[:error] = 'Channel not found.'
       redirect_back(fallback_location: root_path)
     end
 
