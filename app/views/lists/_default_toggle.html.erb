@@ -1,0 +1,12 @@
+<%# Admin-only, and the id is what the toggle's turbo stream replaces. A filled star is
+    the default channel, an outlined one is not. %>
+<span id="default-<%= list.id %>">
+  <% if user&.can_set_default? %>
+    <%= link_to list_toggle_default_path(list),
+        class: "default-toggle#{' default-toggle--on' if list.default?}",
+        title: list.default? ? 'Default channel — click to unset' : 'Set as the default channel',
+        data: { turbo_method: :patch } do %>
+      <i class="<%= list.default? ? 'fa-solid' : 'fa-regular' %> fa-star"></i>
+    <% end %>
+  <% end %>
+</span>

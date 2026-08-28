@@ -2,14 +2,48 @@ module ApplicationHelper
   # The grouping menu doubles as a direction toggle: clicking the criteria that is already
   # active flips it, and anything else starts ascending. The caret shows the direction the
   # list is currently in, not the one the link would switch to.
-  def sort_menu_link(list, criteria)
+  def sort_menu_link(list, criteria, label = criteria)
     active = @criteria == criteria
-    label = active ? safe_join([criteria, sort_direction_caret(@direction)], ' ') : criteria
-    link_to label, list_path(list, criteria: criteria, sort: active && @direction == 'asc' ? 'desc' : 'asc')
+    text = active ? safe_join([label, sort_direction_caret(@direction)], ' ') : label
+    link_to text, list_path(list, criteria: criteria, sort: active && @direction == 'asc' ? 'desc' : 'asc')
   end
 
   def sort_direction_caret(direction)
     tag.i(class: "fa-solid fa-caret-#{direction == 'desc' ? 'down' : 'up'} sort-caret")
+  end
+
+  # Wires an element to the same Add to List modal the search results overlay opens. The
+  # values go through the controller rather than straight onto data-imdb-id, because
+  # list-search reads that dataset off the element the click was bound to -- and it can
+  # only bind inside the navbar, which is where it lives.
+  def add_to_list_data(imdb, title, poster, tmdb = nil)
+    {
+      data: {
+        controller: 'add-to-list',
+        action: 'add-to-list#open',
+        add_to_list_imdb_value: imdb,
+        add_to_list_tmdb_value: tmdb,
+        add_to_list_title_value: title,
+        add_to_list_poster_value: poster
+      }
+    }
+  end
+
+  # A section is named by its key -- "Science Fiction", "1970s", 8.1 -- which is not a dom
+  # id. These two turn a key into the ids the grouped view labels its section with, so a
+  # card added without a reload can be put in the right one.
+  def section_body_id(key)
+    "section-body-#{section_slug(key)}"
+  end
+
+  def section_count_id(key)
+    "section-count-#{section_slug(key)}"
+  end
+
+  def section_slug(key)
+    # A key of punctuation alone parameterizes to nothing; hash those rather than have
+    # every one of them share an id.
+    key.to_s.parameterize.presence || Digest::MD5.hexdigest(key.to_s)[0, 8]
   end
 
   def dom_id_for_partial(entry)

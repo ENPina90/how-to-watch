@@ -1,18 +1,16 @@
-<span id="subscription-<%= list.id %>" class="btn-action">
+<%# The id is what the subscribe/unsubscribe turbo stream replaces, so it stays on the
+    outer element whichever state is rendered. %>
+<span id="subscription-<%= list.id %>">
   <% if user&.subscribed_to?(list) %>
     <%= link_to list_unsubscribe_path(list),
-        method: :patch,
-        class: "subscription-subscribed text-decoration-none",
-        data: { turbo_method: :patch },
-        remote: true do %>
-      Subscribed
+        class: "subscription-pill subscription-pill--subscribed",
+        data: { turbo_method: :patch } do %>
+      <i class="fa-solid fa-check"></i>Subscribed
     <% end %>
   <% else %>
     <%= link_to list_subscribe_path(list),
-        method: :patch,
-        class: "subscription-unsubscribed text-decoration-none",
-        data: { turbo_method: :patch },
-        remote: true do %>
+        class: "subscription-pill",
+        data: { turbo_method: :patch } do %>
       Subscribe
     <% end %>
   <% end %>

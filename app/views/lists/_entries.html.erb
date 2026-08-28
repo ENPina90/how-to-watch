@@ -1,27 +1,13 @@
 <div id="top"></div>
 <div data-search-target="results">
-  <div class="row justify-content-between list-layout" data-controller="section-filter">
+  <div class="row justify-content-center list-layout"
+       data-controller="section-filter"
+       data-channel-criteria="<%= @criteria %>">
+    <%# Up Next and the section filters share one panel now. It is fixed to the right edge
+        rather than being a column, so the entries keep the middle of the page. %>
     <% unless minimal %>
-      <div class="col-2 layout text-center">
-        <a href="#top"><i class="fa-solid fa-sort-up fa-lg"></i></a>
-        <div class="layout-box">
-          <%# Each section is a filter toggle, not a jump link: several can be on at once
-              and the entries are hidden and shown where they already stand. %>
-          <% unless @criteria == 'Position' || @current.nil? %>
-            <% sections.each do |section|%>
-              <button type="button"
-                      class="section-filter"
-                      aria-pressed="false"
-                      data-section="<%= section %>"
-                      data-section-filter-target="option"
-                      data-action="section-filter#toggle
-                                   pointerdown->section-filter#start
-                                   pointerenter->section-filter#extend"><%= section %></button>
-            <% end %>
-          <% end %>
-        </div>
-        <a href="#footer"><i class="fa-solid fa-sort-down fa-lg"></i></a>
-      </div>
+      <%= render 'shared/channel_sidebar', list: @list, sections: sections,
+                                           random_selection: random_selection %>
     <% end %>
     <div class="<%= minimal ? 'col-12 px-4' : 'col-8' %>  d-flex justify-content-center">
         <% if minimal %>
@@ -37,16 +23,22 @@
         <% else %>
           <div>
             <% if @criteria == 'Position' %>
-              <!-- Show mixed entries and child lists in position order -->
-              <% @position_items.each do |item| %>
-                <% if item.is_a?(Entry) %>
-                  <%= entry_card(item) %>
-                <% else # List %>
-                  <%= render "lists/child_list_card", list: item %>
+              <!-- Show mixed entries and child channels in position order -->
+              <%# Named so a newly added entry can be appended here without a reload. Only
+                  this view has an end that a new entry belongs at: a grouped one would
+                  have to be told which section to put it in. %>
+              <div id="list-entries">
+                <% @position_items.each do |item| %>
+                  <% if item.is_a?(Entry) %>
+                    <%= render 'lists/position_item', item: item %>
+                  <% else # List %>
+                    <%# A child channel belongs to no category, so no filter hides it. %>
+                    <%= render "lists/child_list_card", list: item %>
+                  <% end %>
                 <% end %>
-              <% end %>
+              </div>
             <% else %>
-              <!-- Show entries grouped by criteria (child lists not shown in other views) -->
+              <!-- Show entries grouped by criteria (child channels not shown in other views) -->
               <%# `sections` is pre-sorted by the controller; keys mix numbers and strings. %>
               <%# Each section is its own element so that its sticky heading is pushed out
                   by the next one instead of the two stacking at the same offset. %>
@@ -62,11 +54,11 @@
                             class="section-toggle"
                             aria-expanded="true"
                             data-action="section-collapse#toggle">
-                      <span><%= key %> <small>(<%= entries[key].count %>)</small></span>
+                      <span><%= key %> <small id="<%= section_count_id(key) %>">(<%= entries[key].count %>)</small></span>
                       <i class="fa-solid fa-chevron-down section-caret" aria-hidden="true"></i>
                     </button>
                   </h3>
-                  <div data-section-collapse-target="body">
+                  <div id="<%= section_body_id(key) %>" data-section-collapse-target="body">
                     <% entries[key].each do |entry| %>
                       <% if minimal %>
                         <%= render "entries/entry_minimal", entry: entry %>
@@ -81,10 +73,5 @@
           </div>
         <% end %>
     </div>
-    <% unless minimal %>
-      <div class="col-2 layout" data-controller="randomize">
-        <%= render 'upnext', random_selection: @random_selection unless @current.nil?%>
-      </div>
-    <% end %>
   </div>
 </div>

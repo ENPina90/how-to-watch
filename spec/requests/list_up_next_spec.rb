@@ -11,7 +11,7 @@ RSpec.describe 'Up Next on a list', :needs_provider, type: :request do
 
   def suggested_names
     box = response.body[/data-randomize-target="picks".*?<\/div>/m]
-    box.to_s.scan(%r{<a href="#\d+">([^<]+)</a>}).flatten.map(&:strip)
+    box.to_s.scan(%r{<a[^>]*href="#\d+"[^>]*>([^<]+)</a>}m).flatten.map(&:strip)
   end
 
   it 'suggests only entries the user has not watched' do
@@ -41,7 +41,7 @@ RSpec.describe 'Up Next on a list', :needs_provider, type: :request do
 
     get list_path(list)
 
-    expect(response.body).to include(%(<a href="##{entry.id}">Arrival</a>))
+    expect(response.body).to match(%r{<a[^>]*href="##{entry.id}"[^>]*>\s*Arrival\s*</a>}m)
     expect(response.body).to include(%(<div class="grid-card" id="#{entry.id}">))
   end
 

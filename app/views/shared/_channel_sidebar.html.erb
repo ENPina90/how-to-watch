@@ -1,0 +1,60 @@
+<%# The channel's own right sidebar, in the shape the watch page's uses: a titled panel
+    fixed to the right edge, a scrolling body, and a collapse control that hands back a
+    small button to reopen it.
+
+    Rendered inside the row that carries data-controller="section-filter" even though it is
+    positioned out of the flow, because the section buttons below are that controller's
+    targets -- moving them out of its element would break the filter. %>
+<%# Both the panel and the button that brings it back live inside the controller's
+    element: an action only binds within the controller it names, and the button has to
+    outlive the panel being hidden. The mount is display:contents, so wrapping them costs
+    the row nothing. %>
+<div class="channel-sidebar-mount" data-controller="channel-sidebar">
+<aside id="channelSidebar" class="channel-sidebar">
+  <div class="channel-sidebar__header">
+    <h5 class="channel-sidebar__name"><%= list.name %></h5>
+    <button type="button" class="channel-sidebar__control" title="Hide the sidebar"
+            data-action="click->channel-sidebar#collapse">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+
+  <div class="channel-sidebar__body">
+    <%# Filters take the room that is left and scroll inside it; Up Next below them is
+        always in view, however many sections there are. %>
+    <% if sections.any? %>
+      <section class="channel-sidebar__section channel-sidebar__section--filters">
+        <div class="channel-sidebar__section-head">
+          <h6 class="channel-sidebar__title">Filters</h6>
+        </div>
+        <%# Each section is a filter toggle, not a jump link: several can be on at once and
+            the entries are hidden and shown where they already stand. %>
+        <div class="channel-sidebar__filters">
+          <% sections.each do |section| %>
+            <button type="button"
+                    class="section-filter"
+                    aria-pressed="false"
+                    data-section="<%= section %>"
+                    data-section-filter-target="option"
+                    data-action="section-filter#toggle
+                                 pointerdown->section-filter#start
+                                 pointerenter->section-filter#extend"><%= section %></button>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <% unless @current.nil? %>
+      <section class="channel-sidebar__section channel-sidebar__section--upnext"
+               data-controller="randomize">
+        <%= render 'lists/upnext', random_selection: random_selection %>
+      </section>
+    <% end %>
+  </div>
+</aside>
+
+  <button type="button" id="channelSidebarExpand" class="channel-sidebar__expand d-none"
+          title="Show the sidebar" data-action="click->channel-sidebar#expand">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+</div>
