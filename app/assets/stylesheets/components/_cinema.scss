@@ -14,6 +14,10 @@
   background-color: black;
   height: 100vh;
   width: 100%;
+  /* The iframe is 75vh (h-75) inside a 100vh screen. Everything that sits on the line
+     just below it shares this, so the switcher and the Add to List button cannot drift
+     onto separate lines. */
+  --below-frame: calc(75vh + 10px);
 }
 
 /* Ensure page container doesn't constrain cinema screen */
@@ -104,8 +108,22 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
    switcher just below the iframe's bottom edge (not overlapping the video, not at
    the bottom of the screen) so it sits right under it and stays above the fold. */
 .source-switcher--watch-now {
-  top: calc(75vh + 10px);
+  top: var(--below-frame, calc(75vh + 10px));
   bottom: auto;
+}
+
+/* Add to List rides the switcher's line at the left edge of the frame, rather than
+   under the video where it was the only thing below the fold. Its own element, not one
+   more button in the switcher: that pill sits at 0.35 opacity until hovered, which is
+   no place for the page's one real action. */
+.watch-now-add {
+  position: absolute;
+  top: var(--below-frame, calc(75vh + 10px));
+  left: 16px;
+  z-index: 20;
+  /* The switcher's pill pads its buttons down by this much; matching it puts the two
+     rows of labels on the same line rather than the two containers. */
+  padding: 6px 0;
 }
 
 .source-switcher .btn {
