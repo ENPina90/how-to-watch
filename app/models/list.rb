@@ -180,12 +180,30 @@ class List < ApplicationRecord
 
   # Normalize entry positions to be sequential (1, 2, 3, 4...)
   def normalize_entry_positions!
-    entries.order(:position).each_with_index do |entry, index|
+    # `id` breaks the ties: a bulk import can leave a dozen entries sharing one position,
+    # and without a second key the order they come back in -- and so the numbers they are
+    # given -- changes between runs.
+    ordered = entries.order(:position, :id).to_a
+    # `current` is a position, not an id, so it means something different once the numbers
+    # move. Remember which entry it pointed at and put it back on that one.
+    current_entry = ordered.find { |entry| entry.position == current }
+
+    ordered.each_with_index do |entry, index|
       new_position = index + 1
-      if entry.position != new_position
-        entry.update_column(:position, new_position)
-      end
+      entry.update_column(:position, new_position) if entry.position != new_position
     end
+
+    update_column(:current, current_entry&.position || ordered.first&.position || 0)
+  end
+
+  # Whether the positions run 1..N with nothing shared and nothing skipped.
+  def positions_normalized?
+    count = entries.count
+    return true if count.zero?
+
+    entries.distinct.count(:position) == count &&
+      entries.minimum(:position) == 1 &&
+      entries.maximum(:position) == count
   end
 
   # READ. nil when this user has never opened the list. Rendering the index page calls

@@ -1,8 +1,13 @@
-<%# One row of the Order view. The wrapper is what the section filter hides: the entries
-    are not grouped here, so each card is its own section of one -- filtering leaves the
-    rest standing in the order they were already in. %>
+<%# One row of a channel page. The wrapper is what the section filter hides: entries are
+    not grouped here, so each card is its own section of one -- filtering leaves the rest
+    standing in the order they were already in. A channel inside this one is filed under
+    Channels, since none of the groupings have anything to read off it. %>
 <div class="position-item"
-     data-section="<%= item.category.presence || 'Other' %>"
+     data-section="<%= item.is_a?(Entry) ? (item.category.presence || 'Other') : 'Channels' %>"
      data-section-filter-target="section">
-  <%= entry_card(item) %>
+  <% if item.is_a?(Entry) %>
+    <%= entry_card(item) %>
+  <% else %>
+    <%= render 'lists/child_list_card', list: item, parent: @list %>
+  <% end %>
 </div>
