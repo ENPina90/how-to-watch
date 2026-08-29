@@ -90,8 +90,12 @@ export default class extends Controller {
       // not showing.
       if (card.closest("[hidden]")) return false;
 
-      // The signal a card already carries: a hollow eye is unwatched, a solid one is
-      // watched. Nothing extra has to be stamped on every card to read it.
+      // A channel inside this one is never "watched" -- there is no such record for a
+      // channel -- so it is always something you could go and watch.
+      if (card.classList.contains("channel-card")) return true;
+
+      // The signal an entry card already carries: a hollow eye is unwatched, a solid one
+      // is watched. Nothing extra has to be stamped on every card to read it.
       return card.querySelector(".completion-status .fa-regular.fa-eye") !== null;
     });
   }

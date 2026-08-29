@@ -59,6 +59,46 @@ RSpec.describe 'The channel sidebar', :needs_provider, type: :request do
     expect(section).to include('click->randomize#upnext')
   end
 
+  # "Watched" is this user's own record where there is a user. The legacy flag on the entry
+  # is somebody else's, and reading it turned one person finishing a channel's last entry
+  # into no current entry for everybody.
+  it 'reads the viewer''s own completion, not the entry''s legacy flag' do
+    list.update!(ordered: true, current: 1)
+    list.entries.first.update!(position: 1, completed: true)
+
+    get list_path(list)
+
+    expect(assigns(:current)).to eq(list.entries.first)
+  end
+
+  # A channel remembers a `current` position, and find_entry_by_position walks *forward*
+  # from it looking for something unwatched -- so a channel whose current sits on its last
+  # entry, with that entry's legacy `completed` flag set, has no @current at all. Up Next
+  # on an unordered channel never reads @current: it suggests from what is unwatched.
+  it 'suggests on an unordered channel with no current entry' do
+    list.update!(ordered: false, current: 1)
+    list.entries.first.update!(position: 1)
+    list.entries.first.mark_completed_by!(user)
+
+    get list_path(list)
+
+    expect(assigns(:current)).to be_nil
+    expect(response.body).to include('Up Next')
+    expect(response.body).to include('data-randomize-target="picks"')
+  end
+
+  # An ordered channel's Up Next is that entry, so without one there is nothing to show.
+  it 'leaves it out of an ordered channel with no current entry' do
+    list.update!(ordered: true, current: 1)
+    list.entries.first.update!(position: 1)
+    list.entries.first.mark_completed_by!(user)
+
+    get list_path(list)
+
+    expect(assigns(:current)).to be_nil
+    expect(response.body).not_to include('channel-sidebar__section--upnext')
+  end
+
   it 'is left out of the mobile view, which has no room for it' do
     get list_path(list, view: 'minimal')
 

@@ -6,8 +6,11 @@ class ListsController < ApplicationController
   # as the whitelist for that lookup.
   GROUPING_CRITERIA = %w[Position Genre Year Watched Rating Category Media Length].freeze
   SORT_DIRECTIONS = %w[asc desc].freeze
+  # Channels inside this one are filed under this in the rail, whatever the grouping: they
+  # have none of the attributes the groupings read.
+  CHILD_SECTION = 'Channels'
 
-  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :entry_index, :top_entries, :add_season, :toggle_default, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
+  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :entry_index, :top_entries, :add_season, :toggle_default, :next_entry, :previous_entry, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
 
   def index
@@ -134,7 +137,10 @@ class ListsController < ApplicationController
     load_entries
     @is_mobile = mobile_request?
     @minimal = params[:view] == "minimal" || @is_mobile
-    @current = @list.find_entry_by_position(:current) unless @list.entries.empty?
+    # With a user, "watched" means this user's own record; without one it falls back to the
+    # entry's legacy flag, which is somebody else's opinion. Called without one, a channel
+    # whose last entry carried that flag reported no current entry to anybody.
+    @current = @list.find_entry_by_position(:current, current_user) unless @list.entries.empty?
     # Up Next suggests something to watch, so what this user has already seen is not a
     # candidate. The page narrows it further to whatever the section filter leaves in
     # range; this is the unfiltered starting point.
@@ -285,6 +291,54 @@ class ListsController < ApplicationController
     end
   end
 
+  def step_current(direction)
+    return head :forbidden unless current_user
+
+    position = @list.position_for_user!(current_user)
+    neighbour = neighbouring_entry(position.current_position, direction)
+    position.update!(current_position: neighbour.position) if neighbour
+
+    # Back to the page the card is on: the arrow lives in a turbo frame, so Turbo takes
+    # this card out of the response and leaves the rest of the page alone.
+    redirect_back(fallback_location: list_path(@list))
+  end
+
+  # The entry either side of where this user is standing. Ordered by position rather than
+  # stepping the number itself, because positions are not always a contiguous run.
+  def neighbouring_entry(from, direction)
+    if direction == :next
+      @list.entries.where('position > ?', from).order(:position).first
+    else
+      @list.entries.where('position < ?', from).order(position: :desc).first
+    end
+  end
+
+  # A refused move says why. The overlay needs a failure status to report on the button it
+  # was clicked from, where the page just carries a flash back.
+  def refuse_move(message, status = :unprocessable_entity)
+    respond_to do |format|
+      format.html do
+        flash[:alert] = message
+        redirect_to list_path(@list)
+      end
+      format.turbo_stream do
+        flash.now[:alert] = message
+        render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes'), status: status
+      end
+    end
+  end
+
+  # The arrows on a channel's card inside another channel. They step this user's own place
+  # in that channel one entry at a time -- the card is a window onto it, so moving the
+  # window is a per-user thing and writes nothing anyone else can see.
+  def next_entry
+    step_current(:next)
+  end
+
+  def previous_entry
+    step_current(:previous)
+  end
+
   # The star beside the channel's name. Making a channel default subscribes everyone to it
   # (List#handle_default_subscription_changes), which is why only an admin may touch it --
   # the same rule `default` has always been permitted under in list_params.
@@ -326,25 +380,52 @@ class ListsController < ApplicationController
     else
       target_list = List.find(target_list_id)
 
-      # Validate the move
+      # Validate the move. Three different refusals, said three different ways: one message
+      # covering all of them read as a cycle even when the channel was simply already
+      # there, which is the common case and the only one with an obvious next step.
       unless @list.can_be_added_to?(target_list)
-        flash[:alert] = "Cannot add #{@list.name} to #{target_list.name}. This would create a circular reference or it's already added."
-        redirect_to list_path(@list) and return
+        message = if target_list == @list
+                    "A channel cannot be added to itself."
+                  elsif @list.parent_lists.include?(target_list)
+                    "#{@list.name} is already in #{target_list.name}."
+                  else
+                    "#{target_list.name} is already inside #{@list.name}, so #{@list.name} cannot also contain it."
+                  end
+
+        return refuse_move(message)
       end
 
       # Ensure user owns the target list
       unless target_list.user == current_user
-        flash[:alert] = "You don't have permission to add channels to #{target_list.name}"
-        redirect_to list_path(@list) and return
+        return refuse_move("You don't have permission to add channels to #{target_list.name}", :forbidden)
       end
 
       # Add the list to the new parent (this creates a new relationship, doesn't remove existing ones)
-      if @list.add_to_parent(target_list)
-        flash[:notice] = "#{@list.name} has been added to #{target_list.name}"
-        redirect_to list_path(target_list)
-      else
-        flash[:alert] = "Failed to add #{@list.name} to #{target_list.name}"
-        redirect_to list_path(@list)
+      unless @list.add_to_parent(target_list)
+        return refuse_move("Failed to add #{@list.name} to #{target_list.name}")
+      end
+
+      flash[:notice] = "#{@list.name} has been added to #{target_list.name}"
+
+      respond_to do |format|
+        format.html { redirect_to list_path(target_list) }
+        # For the search overlay, which files a channel into the one behind it without
+        # leaving the page. A child channel is only shown in the Order view, so that is
+        # the only place its card has to appear; Turbo drops the rest.
+        format.turbo_stream do
+          flash.discard
+          flash.now[:notice] = "#{@list.name} has been added to #{target_list.name}"
+
+          render turbo_stream: [
+            turbo_stream.replace('flash', partial: 'shared/flashes'),
+            turbo_stream.replace("header-count-#{target_list.id}",
+                                 partial: 'lists/header_count',
+                                 locals: { count: target_list.entries.count + target_list.child_lists.count,
+                                           list: target_list }),
+            turbo_stream.append('list-entries',
+                                helpers.render('lists/child_list_card', list: @list, parent: target_list))
+          ]
+        end
       end
     end
   end
@@ -520,12 +601,17 @@ class ListsController < ApplicationController
     # renders @position_items directly. Grouping it would build one section per entry.
     if @criteria == 'Position'
       @sections = position_sections
+      @filters = @sections
       return remember_view
     end
 
     filter_entries(@criteria)
     @entries = @entries.transform_keys { |key| key.nil? ? 'Other' : key }
     @sections = sort_sections(@entries.keys, @direction == 'desc')
+    # The rail filters everything on the page, and a channel inside this one is on the page
+    # without belonging to any of the groupings -- it has no year, genre or category. It
+    # gets a section of its own rather than being the one thing a filter cannot touch.
+    @filters = @child_lists.any? ? [CHILD_SECTION] + @sections : @sections
 
     remember_view
   end
@@ -555,7 +641,15 @@ class ListsController < ApplicationController
   # the page does. Reversing the order reverses these with it, since they are read off the
   # items after the direction has been applied.
   def position_sections
-    @position_items.filter_map { |item| item.category.presence || 'Other' if item.is_a?(Entry) }.uniq
+    @position_items.map { |item| section_for(item) }.uniq
+  end
+
+  # What the rail files an item under in the Order view: an entry by its category, a
+  # channel as a channel.
+  def section_for(item)
+    return CHILD_SECTION unless item.is_a?(Entry)
+
+    item.category.presence || 'Other'
   end
 
   # Remembers the view for next time.
