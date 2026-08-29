@@ -167,6 +167,31 @@ RSpec.describe 'JavaScript modules' do
     end
   end
 
+  # A refusal from the add endpoints comes back as a flash stream. Checking the status and
+  # throwing before reading it left the button saying "Failed" with the reason unread.
+  describe 'reporting an add that was refused' do
+    it 'renders the response before deciding it failed' do
+      controller = Rails.root.join('app/javascript/controllers/list_search_controller.js').read
+      applied = controller[/  applyStream\(response\) \{.*?\n  \}/m]
+
+      expect(applied).to include('renderStreamMessage')
+      expect(controller).to include('.then(response => this.applyStream(response))')
+    end
+  end
+
+  # Up Next reads the cards on the page. A channel inside another channel is one of them,
+  # and has no completion record to read -- excluding it made a channel of channels suggest
+  # nothing at all.
+  describe 'what Up Next will suggest' do
+    it 'counts a channel card as something to watch' do
+      controller = Rails.root.join('app/javascript/controllers/randomize_controller.js').read
+      eligible = controller[/  eligible\(\) \{.*?\n  \}/m]
+
+      expect(eligible).to include('channel-card')
+      expect(eligible).to include('.completion-status .fa-regular.fa-eye')
+    end
+  end
+
   describe 'the shared search behaviour' do
     let(:shared) { Rails.root.join('app/javascript/services/tmdb_search_behavior.js') }
     let(:controllers) do

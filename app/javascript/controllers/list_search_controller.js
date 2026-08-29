@@ -189,8 +189,10 @@ class ListSearchController extends Controller {
       seriesImdbID: data.seriesImdbId,
       season: data.season,
       episode: data.episode,
-      // 'entry' posts to the entries endpoint; 'season' imports a whole season.
+      // 'entry' posts to the entries endpoint; 'season' imports a whole season; 'channel'
+      // files one channel inside another.
       kind: data.kind || 'entry',
+      listID: data.listId,
       type: data.type
     };
   }
@@ -354,6 +356,8 @@ class ListSearchController extends Controller {
   // same endpoints the /entries/new page posts its forms to.
   submit(listId) {
     const item = this.selectedMovie;
+    if (item.kind === 'channel') return this.fileChannel(item, listId);
+
     const season = item.kind === 'season';
     const body = new FormData();
 
@@ -385,14 +389,46 @@ class ListSearchController extends Controller {
         // the updated count; a season import answers with json.
         'Accept': season ? 'application/json' : 'text/vnd.turbo-stream.html'
       }
-    }).then(response => {
-      if (!response.ok) throw new Error('Failed to add entry');
-      if (season) return;
+    })
+      .then(response => (season ? response : this.applyStream(response)))
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to add entry');
+      });
+  }
 
-      // Applying it puts the entry in the channel behind the overlay -- at the end of the
-      // list, where it was just given its position -- instead of waiting for a reload.
-      return response.text().then(stream => Turbo.renderStreamMessage(stream));
+  // Renders whatever the endpoint answered with, refusal included. Applying it on success
+  // puts the new card in the channel behind the overlay; applying it on a refusal is what
+  // says *why* -- already there, a cycle, someone else's channel. Checking `ok` first and
+  // throwing left the button saying "Failed" and the reason unread on the floor.
+  applyStream(response) {
+    return response.text().then(stream => {
+      if (stream.includes('<turbo-stream')) Turbo.renderStreamMessage(stream);
+
+      return response;
     });
+  }
+
+  // A channel inside a channel is a parent/child relationship rather than an entry, so it
+  // goes through the endpoint the channel page's own "Add to another channel" menu uses --
+  // which is also where the checks live: no cycles, no adding one twice, and the parent
+  // has to be yours.
+  fileChannel(item, parentId) {
+    const body = new FormData();
+    body.append('target_list_id', parentId);
+    body.append('_method', 'patch');
+
+    return fetch(`/lists/${item.listID}/move_to_list`, {
+      method: 'POST',
+      body: body,
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        'Accept': 'text/vnd.turbo-stream.html'
+      }
+    })
+      .then(response => this.applyStream(response))
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to add channel');
+      });
   }
 
   closeModal() {

@@ -1,59 +1,100 @@
-<div class="card mb-4 border-primary">
-  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-    <h5 class="mb-0">
-      <i class="fa-solid fa-folder me-2"></i>
-      <%= link_to list.name, list_path(list), class: "text-white text-decoration-none" %>
-    </h5>
-    <small>Channel</small>
-  </div>
-  <div class="card-body">
-    <div class="row">
-      <div class="col-md-8">
-        <p class="card-text">
-          <strong><%= pluralize(list.entries.count, 'entry') %></strong>
-          <% if list.child_lists.any? %>
-            • <strong><%= pluralize(list.child_lists.count, 'sublist') %></strong>
+<%# A channel sitting inside another channel, in the shape of a series card: the poster of
+    wherever you are up to, arrows to step through it, and the same menu. What a series
+    card does with its episodes, this does with the channel's entries. %>
+<% current = list.position_for_user(current_user)&.current_entry ||
+             list.find_entry_by_position(:current, current_user) %>
+<% total = list.entries.count %>
+<% standing = current ? list.entries.where('position <= ?', current.position).count : 0 %>
+
+<%= turbo_frame_tag dom_id(list) do %>
+  <div class="card-container">
+    <div class="grid-card channel-card" id="<%= dom_id(list) %>">
+      <div class="card-picture">
+        <%= link_to list_watch_current_path(list), data: { turbo: false } do %>
+          <% if current %>
+            <%= entry_poster_image_tag(current) %>
+          <% else %>
+            <%= image_tag '/images/please_stand_by.png', class: 'entry-picture', alt: list.name %>
           <% end %>
-        </p>
-        <% if list.entries.any? %>
-          <p class="card-text">
-            <small class="text-muted">
-              Recent entries:
-              <%= list.entries.order(created_at: :desc).limit(3).pluck(:name).join(', ') %>
-            </small>
-          </p>
+          <span class="fa-stack fa-4x play-button">
+            <i class="fa-solid fa-circle fa-stack-2x icon-background"></i>
+            <i class="fa-solid fa-play fa-stack-1x icon-foreground"></i>
+          </span>
         <% end %>
-        <% if list.parent_lists.size > 1 %>
-          <p class="card-text">
-            <small class="text-info">
-              <i class="fa-solid fa-share-nodes"></i>
-              Appears in <%= pluralize(list.parent_lists.size, 'channel') %>
-            </small>
-          </p>
-        <% elsif list.min_depth > 1 %>
-          <p class="card-text">
-            <small class="text-info">📁 Nested <%= list.min_depth %> level<%= 's' if list.min_depth > 1 %> deep</small>
-          </p>
-        <% end %>
+        <%# What tells this apart from an entry at a glance. %>
+        <span class="channel-card__badge" title="A channel inside this one">
+          <i class="fa-solid fa-folder me-1"></i>Channel
+        </span>
       </div>
-      <div class="col-md-4 d-flex flex-column justify-content-center">
-        <%= link_to "View Channel", list_path(list), class: "btn btn-primary mb-2" %>
-        <%= link_to "Add Entry", new_list_entry_path(list), class: "btn btn-outline-primary mb-2" %>
-        <% if current_user&.can_edit_list?(list) %>
-          <%= link_to list_path(list), method: :delete,
-              data: {turbo_method: :delete, turbo_confirm: 'Are you sure?'},
-              class: "btn btn-outline-danger btn-sm" do %>
-            <i class="fa-solid fa-trash"></i> Delete
+
+      <div class="card-stuff">
+        <div class="card-title">
+          <h5 class="card-header">
+            <%# With a block, link_to's first argument is the url -- passing the name as
+                well makes it read the path as html options. %>
+            <%= link_to list_path(list), class: 'text-decoration-none' do %>
+              <bold><%= list.name %></bold>
+            <% end %>
+          </h5>
+        </div>
+
+        <%# The same navigation the series card gives its episodes, over this channel's
+            entries. It moves your own place in the channel and nobody else's. %>
+        <div class="episode-navigation d-flex align-items-center justify-content-between border-top border-bottom py-3">
+          <%= link_to list_previous_entry_path(list), class: 'text-decoration-none episode-nav-btn',
+                      data: { turbo_method: :patch } do %>
+            <i class="fa-solid fa-2x fa-chevron-left"></i>
           <% end %>
-        <% end %>
-        <% if list.default? %>
-          <div class="mt-1">
-            <span class="badge bg-success">
-              <i class="fa-solid fa-star me-1"></i>Default
-            </span>
+
+          <div class="current-episode-info text-center flex-grow-1 mx-3">
+            <div class="episode-label mb-1">
+              <strong><%= total.zero? ? 'Empty' : "#{standing} of #{total}" %></strong>
+            </div>
+            <div class="episode-name text-truncate">
+              <%= current&.name || 'Nothing in here yet' %>
+            </div>
           </div>
-        <% end %>
+
+          <%= link_to list_next_entry_path(list), class: 'text-decoration-none episode-nav-btn',
+                      data: { turbo_method: :patch } do %>
+            <i class="fa-solid fa-2x fa-chevron-right"></i>
+          <% end %>
+        </div>
+
+        <div class="card-details">
+          <div class="d-flex justify-content-between">
+            <p><%= current&.year %></p>
+            <p><%= current&.rating %></p>
+          </div>
+          <p class="mb-4">
+            <small>
+              <%= pluralize(total, 'entry') %><%= " • #{pluralize(list.child_lists.count, 'channel')} inside" if list.child_lists.any? %>
+            </small>
+          </p>
+          <p class="card-plot"><%= current&.plot.presence || list.description %></p>
+        </div>
+
+        <div class="card-menu">
+          <%= link_to list_path(list), title: 'Open this channel' do %>
+            <i class="fa-solid fa-folder-open"></i>
+          <% end %>
+          <%= link_to new_list_entry_path(list), title: 'Add an entry' do %>
+            <i class="fa-solid fa-circle-plus"></i>
+          <% end %>
+          <% if current_user&.can_edit_list?(list) %>
+            <%= link_to edit_list_path(list), title: 'Edit this channel' do %>
+              <i class="fa-solid fa-pen"></i>
+            <% end %>
+            <%# Takes it out of this channel rather than deleting it. %>
+            <%= link_to list_move_to_list_path(list, remove_from: local_assigns[:parent]&.id),
+                        data: { turbo_method: :patch,
+                                turbo_confirm: "Remove #{list.name} from this channel?" },
+                        title: 'Remove from this channel' do %>
+              <i class="fa-solid fa-link-slash"></i>
+            <% end %>
+          <% end %>
+        </div>
       </div>
     </div>
   </div>
-</div>
+<% end %>
