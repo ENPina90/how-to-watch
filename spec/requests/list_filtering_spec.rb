@@ -53,17 +53,17 @@ RSpec.describe 'Filtering a list', :needs_provider, type: :request do
     expect(rendered_names('Arrival', 'Dune')).to be_empty
   end
 
-  it 'leaves child list cards out of a search' do
-    # The child-list nav elsewhere on the page still lists them; this is about the cards
-    # the position view mixes in with the entries.
+  it 'leaves child channel cards out of a search' do
+    # The child-channel nav elsewhere on the page still lists them; this is about the cards
+    # the order view mixes in with the entries.
     child = create(:list, user: user, name: 'Sequels')
     list.child_relationships.create!(child_list: child, position: 3)
 
     get list_path(list)
-    expect(response.body).to include('card mb-4 border-primary')
+    expect(response.body).to include('grid-card channel-card')
 
     get list_path(list, query: 'Arrival')
-    expect(response.body).not_to include('card mb-4 border-primary')
+    expect(response.body).not_to include('grid-card channel-card')
   end
 
   it 'keeps the criteria links as ordinary navigation' do

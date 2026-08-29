@@ -59,7 +59,9 @@ RSpec.describe 'What a channel already holds', :needs_provider, type: :request d
 
     it 'keeps the add button for one it does not' do
       expect(response.body.scan('{{^entryId}}').count).to eq(3)
-      expect(response.body.scan('click->list-search#add"').count).to eq(4)
+      # The three media results, plus the season, plus a channel added to a channel --
+      # which the channel already holds nothing to compare against.
+      expect(response.body.scan('click->list-search#add"').count).to eq(5)
     end
   end
 end

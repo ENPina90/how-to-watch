@@ -6,7 +6,7 @@
     <%# Up Next and the section filters share one panel now. It is fixed to the right edge
         rather than being a column, so the entries keep the middle of the page. %>
     <% unless minimal %>
-      <%= render 'shared/channel_sidebar', list: @list, sections: sections,
+      <%= render 'shared/channel_sidebar', list: @list, filters: @filters,
                                            random_selection: random_selection %>
     <% end %>
     <div class="<%= minimal ? 'col-12 px-4' : 'col-8' %>  d-flex justify-content-center">
@@ -32,13 +32,24 @@
                   <% if item.is_a?(Entry) %>
                     <%= render 'lists/position_item', item: item %>
                   <% else # List %>
-                    <%# A child channel belongs to no category, so no filter hides it. %>
-                    <%= render "lists/child_list_card", list: item %>
+                    <%= render 'lists/position_item', item: item %>
                   <% end %>
                 <% end %>
               </div>
             <% else %>
-              <!-- Show entries grouped by criteria (child channels not shown in other views) -->
+              <%# A child channel has no year, genre or category to be filed under, so a
+                  grouped view has no section for it -- and used to leave it off the page
+                  entirely, which made adding one look like nothing had happened. They sit
+                  above the sections instead, where the grouping does not apply to them. %>
+              <% if params[:query].blank? && @child_lists.any? %>
+                <div class="child-channels">
+                  <% @child_lists.each do |child| %>
+                    <%= render 'lists/position_item', item: child %>
+                  <% end %>
+                </div>
+              <% end %>
+
+              <!-- Show entries grouped by criteria -->
               <%# `sections` is pre-sorted by the controller; keys mix numbers and strings. %>
               <%# Each section is its own element so that its sticky heading is pushed out
                   by the next one instead of the two stacking at the same offset. %>

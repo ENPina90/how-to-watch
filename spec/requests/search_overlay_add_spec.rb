@@ -34,12 +34,19 @@ RSpec.describe 'Adding from the search overlay', :needs_provider, type: :request
 
     it 'labels the add button by media type rather than destination' do
       expect(response.body.scan('{{addLabel}}').count).to eq(2)
-      # The picker modal keeps its heading; it is the buttons that stopped naming it.
-      expect(response.body).not_to include('</i>Add to Channel')
+
+      # A movie or series names what it is. The one button that still names a channel is
+      # on a channel result, where the channel *is* what is being added.
+      %w[listSearchMovieTemplate listSearchShowTemplate].each do |template|
+        markup = response.body[/<template id="#{template}">.*?<\/template>/m]
+
+        expect(markup).not_to include('</i>Add to Channel')
+      end
     end
 
+    # Movie, series, episode, season -- and a channel filed inside another channel.
     it 'routes every add through one action' do
-      expect(response.body.scan('click->list-search#add"').count).to eq(4)
+      expect(response.body.scan('click->list-search#add"').count).to eq(5)
     end
 
     it 'offers a show its episodes' do

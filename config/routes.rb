@@ -38,6 +38,10 @@ Rails.application.routes.draw do
     get :entry_index
     post :top_entries
     post :add_season
+    # Stepping through a channel's entries from its card inside another channel, the way
+    # the arrows on a series card step through its episodes.
+    patch :next_entry
+    patch :previous_entry
     patch :toggle_default
     patch :move_to_list
     patch :subscribe

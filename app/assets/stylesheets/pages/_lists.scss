@@ -237,6 +237,25 @@ body.page-lists-show .search-results-overlay {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
+/* A channel's card inside another channel wears the same grid-card shape as an entry, so
+   it needs one mark to say it is not one. */
+.channel-card .card-picture {
+  position: relative;
+}
+
+.channel-card__badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
 /* An anchor the browser resolves on its own -- a #id link opened cold -- lands the card
    at the very top of the viewport, behind the header row and the section heading parked
    under it. Up Next scrolls by hand and measures the heading; this is the static

@@ -22,7 +22,7 @@
   <div class="channel-sidebar__body">
     <%# Filters take the room that is left and scroll inside it; Up Next below them is
         always in view, however many sections there are. %>
-    <% if sections.any? %>
+    <% if filters.any? %>
       <section class="channel-sidebar__section channel-sidebar__section--filters">
         <div class="channel-sidebar__section-head">
           <h6 class="channel-sidebar__title">Filters</h6>
@@ -30,7 +30,7 @@
         <%# Each section is a filter toggle, not a jump link: several can be on at once and
             the entries are hidden and shown where they already stand. %>
         <div class="channel-sidebar__filters">
-          <% sections.each do |section| %>
+          <% filters.each do |section| %>
             <button type="button"
                     class="section-filter"
                     aria-pressed="false"
@@ -44,7 +44,11 @@
       </section>
     <% end %>
 
-    <% unless @current.nil? %>
+    <%# An ordered channel's Up Next *is* @current, so it needs one. An unordered one
+        suggests from what is unwatched and never reads @current at all -- gating both on
+        it hid the whole section on any channel whose `current` had walked off the end of
+        its own positions. %>
+    <% if @list.ordered ? @current.present? : (list.entries.any? || @child_lists.any?) %>
       <section class="channel-sidebar__section channel-sidebar__section--upnext"
                data-controller="randomize">
         <%= render 'lists/upnext', random_selection: random_selection %>
