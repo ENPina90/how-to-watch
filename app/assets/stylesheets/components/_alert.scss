@@ -2,5 +2,32 @@
   position: fixed;
   bottom: 16px;
   right: 16px;
-  z-index: 1000;
+  /* Above the sidebars, which sit at 1020 -- a message about what just happened is worth
+     more than the panel it would otherwise slide under. */
+  z-index: 1030;
+}
+
+/* A page with a right sidebar has 350px of panel in the bottom-right corner, which is
+   where these appear. Clear it, so the message is not read half at a time. Both sidebars
+   are the same width, and a collapsed one gives the corner back. */
+body.has-channel-sidebar .alert,
+body.has-entries-sidebar .alert {
+  right: 366px;
+}
+
+body.channel-sidebar-collapsed .alert,
+body.entries-sidebar-collapsed .alert {
+  right: 16px;
+}
+
+/* The toasts are positioned by bootstrap's `end-0`, which is `right: 0 !important` -- the
+   only way past it is in kind. */
+body.has-channel-sidebar .toast-container,
+body.has-entries-sidebar .toast-container {
+  right: 366px !important;
+}
+
+body.channel-sidebar-collapsed .toast-container,
+body.entries-sidebar-collapsed .toast-container {
+  right: 16px !important;
 }
