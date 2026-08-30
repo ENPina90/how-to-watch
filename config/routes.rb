@@ -27,6 +27,10 @@ Rails.application.routes.draw do
   # User preferences
   patch '/users/toggle_dark_mode', to: 'users#toggle_dark_mode', as: :toggle_dark_mode
 
+  # The account page behind the name in the navbar: what the user has, and the settings
+  # that need no password to change. Email and password stay with Devise.
+  resource :profile, only: %i[show update], controller: 'users'
+
   # Admins viewing the site as another user (see Impersonation)
   post '/impersonate/:id', to: 'impersonations#create', as: :impersonate_user
   delete '/impersonate', to: 'impersonations#destroy', as: :stop_impersonating
