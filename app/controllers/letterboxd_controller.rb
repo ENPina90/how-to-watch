@@ -43,21 +43,42 @@ class LetterboxdController < ApplicationController
     end
   end
 
-  # Called when somebody opens the review prompt for a film. Their review will not be in
-  # the feed yet, so the refresh is booked for later rather than run now.
-  def reviewed
-    return head :no_content unless current_user&.letterboxd_ready?
+  # Opens a film's review prompt on Letterboxd.
+  #
+  # Goes through here rather than linking straight out because the prompt only exists at
+  # the canonical /film/<slug>/review/, and most entries know the film by an IMDb or TMDB
+  # id instead. Resolving the slug costs a request, which is fine once per click and
+  # impossible per card on a page of several hundred.
+  def review
+    entry = Entry.find(params[:entry_id])
+    book_refresh
 
-    # One pending refresh is enough. Someone working through a few films would otherwise
-    # book a full diary read per click, and the first one to land covers all of them.
-    if Rails.cache.write(refresh_key, true, expires_in: REVIEW_DELAY, unless_exist: true)
-      LetterboxdSyncJob.set(wait: REVIEW_DELAY).perform_later(current_user.id)
-    end
-
-    head :accepted
+    redirect_to LetterboxdFilm.best_url(slug: slug_for(entry), imdb: entry.imdb, tmdb: entry.tmdb),
+                allow_other_host: true
   end
 
   private
+
+  # A diary import already carries its slug. Anything else resolves one now and keeps it,
+  # so this is paid once per film rather than once per click.
+  def slug_for(entry)
+    return entry.letterboxd_slug if entry.letterboxd_slug.present?
+
+    slug = LetterboxdFilm.resolve_slug(imdb: entry.imdb, tmdb: entry.tmdb)
+    entry.update_column(:letterboxd_slug, slug) if slug.present?
+    slug
+  end
+
+  # The review is written on Letterboxd, so it reaches the app only when the diary is next
+  # read -- and it will not be in the feed for a few minutes yet. One pending refresh is
+  # enough: someone working through several films would otherwise book a whole diary read
+  # per click, and the first to land covers all of them.
+  def book_refresh
+    return unless current_user&.letterboxd_ready?
+    return unless Rails.cache.write(refresh_key, true, expires_in: REVIEW_DELAY, unless_exist: true)
+
+    LetterboxdSyncJob.set(wait: REVIEW_DELAY).perform_later(current_user.id)
+  end
 
   def refresh_key
     ['letterboxd-refresh-pending', current_user.id]
