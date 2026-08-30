@@ -732,9 +732,10 @@ class ListsController < ApplicationController
     item.category.presence || 'Other'
   end
 
-  # Remembers the view for next time.
+  # Remembers the view for next time. An admin edits every channel, so an admin's choice
+  # sticks the same way the owner's does; anyone else's lives in the URL and nowhere else.
   def remember_view
-    return unless @list.user == current_user
+    return unless @list.user == current_user || current_user.admin?
     # Only persist an explicit choice. A plain visit carries no params, and writing them
     # blindly used to wipe the list's remembered grouping on every page view.
     return if params[:criteria].blank? && params[:sort].blank?
