@@ -12,3 +12,12 @@ if ENV["REDIS_URL"].present?
   Sidekiq.configure_server { |config| config.redis = redis_config }
   Sidekiq.configure_client { |config| config.redis = redis_config }
 end
+
+# Periodic jobs live in config/schedule.yml. Loaded on the server only -- a web process
+# registering them too would have several dynos racing to own the same schedule.
+Sidekiq.configure_server do |config|
+  config.on(:startup) do
+    schedule = Rails.root.join("config/schedule.yml")
+    Sidekiq::Cron::Job.load_from_hash!(YAML.load_file(schedule)) if schedule.exist?
+  end
+end

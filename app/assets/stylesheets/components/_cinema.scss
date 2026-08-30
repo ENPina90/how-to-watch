@@ -170,3 +170,17 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
 [id^="editSourceModal-"] {
   z-index: 1100;
 }
+
+/* The Letterboxd link rides the switcher's line at the left edge, the same place
+   watch_now puts Add to Channel. The watch page's iframe is full height, so the
+   switcher sits at bottom:16px rather than watch_now's below-the-frame offset. */
+.watch-letterboxd {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 20;
+  /* Matches the switcher pill's vertical padding so the two sit on one line. */
+  padding: 6px 0;
+  font-size: 1.75rem;
+  line-height: 1;
+}

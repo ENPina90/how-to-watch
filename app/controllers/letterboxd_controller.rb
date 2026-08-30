@@ -1,113 +1,71 @@
+# frozen_string_literal: true
+
 class LetterboxdController < ApplicationController
-  before_action :authenticate_user!
+  # The sign-up form checks a handle before the account exists, so this cannot sit behind
+  # authentication whatever the site's access mode is. It is a GET that reveals only
+  # whether a public Letterboxd profile exists, which is already public.
+  skip_before_action :authenticate_user_unless_guest_allowed!, only: :check
 
-  # Initiate Letterboxd OAuth flow
-  def connect
-    service = LetterboxdService.new
-    state = SecureRandom.hex(16)
-    session[:letterboxd_state] = state
+  # Each check is an outbound request to Letterboxd, so an open endpoint is throttled
+  # rather than left as a way to make this server hammer theirs.
+  rate_limit to: 20, within: 1.minute, only: :check
 
-    authorization_url = service.authorization_url(state)
-    redirect_to authorization_url, allow_other_host: true
-  end
+  # How long a verdict about a handle is trusted. Long enough that typing in the form
+  # does not re-fetch on every keystroke, short enough that a member who fixes a private
+  # profile is not told it is wrong for the rest of the day.
+  CHECK_TTL = 10.minutes
 
-  # Handle OAuth callback from Letterboxd
-  def callback
-    # Verify state parameter to prevent CSRF attacks
-    unless params[:state] == session[:letterboxd_state]
-      flash[:alert] = "Invalid state parameter. Please try connecting again."
-      redirect_to profile_path and return
+  # How long to wait after somebody opens Letterboxd's review prompt before re-reading
+  # their diary. Long enough to write and post a review, short enough that the entry shows
+  # up in the app while they still remember doing it.
+  REVIEW_DELAY = 10.minutes
+
+  # Is this a Letterboxd handle with a readable diary? Answers the tick or the warning
+  # next to the username field on sign-up and on the profile page.
+  def check
+    username = params[:username].to_s.strip
+
+    unless LetterboxdFeed.valid_username?(username)
+      return render json: {
+        status: 'invalid',
+        message: "A Letterboxd username is letters, numbers and underscores."
+      }
     end
 
-    session.delete(:letterboxd_state)
-
-    if params[:error]
-      flash[:alert] = "Letterboxd connection failed: #{params[:error_description] || params[:error]}"
-      redirect_to profile_path and return
-    end
-
-    unless params[:code]
-      flash[:alert] = "No authorization code received from Letterboxd."
-      redirect_to profile_path and return
-    end
-
-    service = LetterboxdService.new
-    token_response = service.exchange_code_for_token(params[:code])
-
-    if token_response && token_response['access_token']
-      # Get user profile from Letterboxd
-      profile = service.get_user_profile(token_response['access_token'])
-
-      current_user.update!(
-        letterboxd_access_token: token_response['access_token'],
-        letterboxd_refresh_token: token_response['refresh_token'],
-        letterboxd_token_expires_at: Time.current + token_response['expires_in'].seconds,
-        letterboxd_user_id: profile&.dig('id'),
-        letterboxd_username: profile&.dig('username')
-      )
-
-      flash[:notice] = "Successfully connected to Letterboxd!"
-      redirect_to profile_path
+    if readable?(username)
+      render json: { status: 'ok', message: "Found @#{username} on Letterboxd." }
     else
-      flash[:alert] = "Failed to connect to Letterboxd. Please try again."
-      redirect_to profile_path
+      render json: {
+        status: 'not_found',
+        message: "No public Letterboxd diary for @#{username}.",
+        hint: 'Use your Letterboxd username, not your display name. A private profile cannot be read either.'
+      }
     end
-  rescue StandardError => e
-    Rails.logger.error("Letterboxd callback error: #{e.message}")
-    flash[:alert] = "An error occurred while connecting to Letterboxd."
-    redirect_to profile_path
   end
 
-  # Disconnect from Letterboxd
-  def disconnect
-    current_user.disconnect_letterboxd!
-    flash[:notice] = "Disconnected from Letterboxd."
-    redirect_to profile_path
-  end
+  # Called when somebody opens the review prompt for a film. Their review will not be in
+  # the feed yet, so the refresh is booked for later rather than run now.
+  def reviewed
+    return head :no_content unless current_user&.letterboxd_ready?
 
-  # Sync a specific entry to Letterboxd
-  def sync_entry
-    @entry = Entry.find(params[:entry_id])
-
-    # Check if user has access to this entry (through list ownership or collaboration)
-    unless can_access_entry?(@entry)
-      flash[:alert] = "You don't have permission to sync this entry."
-      redirect_back(fallback_location: root_path) and return
+    # One pending refresh is enough. Someone working through a few films would otherwise
+    # book a full diary read per click, and the first one to land covers all of them.
+    if Rails.cache.write(refresh_key, true, expires_in: REVIEW_DELAY, unless_exist: true)
+      LetterboxdSyncJob.set(wait: REVIEW_DELAY).perform_later(current_user.id)
     end
 
-    result = current_user.sync_entry_to_letterboxd!(@entry)
-
-    if result[:error]
-      flash[:alert] = result[:message]
-    else
-      flash[:notice] = result[:message]
-    end
-
-    redirect_back(fallback_location: entry_path(@entry))
-  end
-
-  # Bulk sync completed entries to Letterboxd
-  def bulk_sync
-    unless current_user.letterboxd_connected?
-      flash[:alert] = "Please connect to Letterboxd first."
-      redirect_to profile_path and return
-    end
-
-    LetterboxdBulkSyncJob.perform_later(current_user.id)
-
-    flash[:notice] = "Syncing your watched entries to Letterboxd in the background."
-    redirect_to profile_path
+    head :accepted
   end
 
   private
 
-  def can_access_entry?(entry)
-    # User can access if they own the list or if it's a public/shared list
-    entry.list.user == current_user || !entry.list.private?
+  def refresh_key
+    ['letterboxd-refresh-pending', current_user.id]
   end
 
-  def profile_path
-    # Adjust this to match your actual profile/settings path
-    edit_user_registration_path
+  def readable?(username)
+    Rails.cache.fetch(['letterboxd-check', username.downcase], expires_in: CHECK_TTL) do
+      LetterboxdFeed.new(username).readable?
+    end
   end
 end
