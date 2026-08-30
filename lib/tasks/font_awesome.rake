@@ -13,9 +13,9 @@ namespace :font_awesome do
     end
 
     FileUtils.mkdir_p(DESTINATION)
-    # Only the two styles application.scss imports, plus the v4 compatibility face the
+    # Only the styles application.scss imports, plus the v4 compatibility face the
     # core stylesheet declares.
-    %w[fa-solid-900 fa-regular-400 fa-v4compatibility].each do |face|
+    %w[fa-solid-900 fa-regular-400 fa-brands-400 fa-v4compatibility].each do |face|
       Dir.glob("#{SOURCE}/#{face}.*").each { |file| FileUtils.cp(file, DESTINATION) }
     end
 

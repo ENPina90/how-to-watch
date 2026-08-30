@@ -8,9 +8,7 @@
                   required: true,
                   autofocus: true,
                   input_html: { autocomplete: "email" }%>
-      <%= f.input :username,
-                  required: false,
-                  input_html: { autocomplete: "username" }%>
+      <%= render 'shared/letterboxd_field', f: f %>
       <%= f.input :password,
                   required: true,
                   hint: ("#{@minimum_password_length} characters minimum" if @minimum_password_length),

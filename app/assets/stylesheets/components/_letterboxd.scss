@@ -1,0 +1,85 @@
+// Letterboxd's brand green. The selector carries the `.card-menu` prefix because that
+// container paints every icon and link inside it white, the same reason `.fa-link-slash`
+// has to state its colours explicitly.
+$letterboxd-green: #00e054;
+
+.letterboxd-link,
+.card-menu a.letterboxd-link {
+  color: $letterboxd-green;
+  transition: transform 0.15s ease, filter 0.15s ease;
+
+  i {
+    color: $letterboxd-green;
+  }
+
+  &:hover,
+  &:hover i {
+    color: $letterboxd-green;
+    filter: brightness(1.25);
+  }
+
+  &:hover {
+    transform: scale(1.12);
+  }
+}
+
+// The member's own half-star rating, shown on a card only when the entry has one.
+.letterboxd-score {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: $letterboxd-green;
+
+  i {
+    font-size: 0.75rem;
+  }
+
+  .letterboxd-score__value {
+    margin-left: 2px;
+    opacity: 0.85;
+  }
+}
+
+// The opt-in beside the username field on sign-up and the profile page.
+.letterboxd-optin {
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid $letterboxd-green;
+  border-radius: 4px;
+  background: rgba(0, 224, 84, 0.06);
+
+  .form-check-label,
+  label {
+    font-weight: 500;
+  }
+
+  .form-text,
+  .hint {
+    display: block;
+    font-size: 0.8rem;
+    opacity: 0.75;
+  }
+}
+
+// The verdict on a typed handle. Hidden until the controller has something to say, so
+// it must not be given a layout that reserves space while empty.
+.letterboxd-status {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+
+  &--ok {
+    color: $letterboxd-green;
+  }
+
+  &--not_found,
+  &--invalid {
+    color: #ffb020;
+  }
+
+  &--pending {
+    opacity: 0.7;
+  }
+}

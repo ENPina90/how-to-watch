@@ -1,0 +1,21 @@
+<%# Movies only, and only when the entry carries an id Letterboxd can resolve -- both
+    conditions live in the helper, which returns nil otherwise. %>
+<% url = letterboxd_review_url(entry) %>
+<% if url %>
+  <%# The review happens on Letterboxd, so the click also tells the server to re-read the
+      diary once the feed has had time to catch up. Signed-out or unlinked visitors get
+      the plain link; there is no diary to refresh. %>
+  <a href="<%= url %>"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="letterboxd-link"
+     <% if current_user&.letterboxd_ready? %>
+       data-controller="letterboxd-review"
+       data-letterboxd-review-url-value="<%= letterboxd_reviewed_path %>"
+       data-action="click->letterboxd-review#ping"
+     <% end %>
+     title="Review <%= entry.name %> on Letterboxd"
+     aria-label="Review <%= entry.name %> on Letterboxd">
+    <i class="fa-brands fa-square-letterboxd"></i>
+  </a>
+<% end %>

@@ -678,7 +678,6 @@ tables were confirmed empty in production (0 rows) rather than assumed:
 | `Entry#complete(boolean)`, `Entry#fix_subentry_sources!` | `entry.rb:265,245` |
 | `Entry#set_current` (only caller is the dead action above) | `entry.rb:207` |
 | `ListUserEntry` + `Follow` models and their tables | superseded by `Subscription` / `UserListPosition` |
-| `LetterboxdSyncJob` (nothing enqueues it; verified 2026-08-21) | `app/jobs/letterboxd_sync_job.rb` |
 | `hello_controller.js`, `cinema`, `frame_loader`, `omdb` controllers | no `data-controller` reference |
 | `app/javascript/test.js` (`let idk = 23`) | |
 | `pages#test` + `views/pages/test.html.erb`, `pages/home.html.erb` (scaffold placeholder that is the only public page) | routes + views |

@@ -67,6 +67,10 @@
               <%= current_user.display_name %>
             </a>
             <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+              <%= link_to profile_path, class: "dropdown-item" do %>
+                <i class="fa-solid fa-user me-2"></i>Profile
+              <% end %>
+              <div class="dropdown-divider"></div>
               <%= link_to toggle_dark_mode_path, method: :patch, class: "dropdown-item", data: { turbo_method: :patch } do %>
                 <i class="fa-solid <%= current_user.dark_mode ? 'fa-sun' : 'fa-moon' %> me-2"></i>
                 <%= current_user.dark_mode ? 'Light Mode' : 'Dark Mode' %>

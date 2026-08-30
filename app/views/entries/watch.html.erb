@@ -35,6 +35,13 @@
   </iframe>
   <%= render 'entries/source_switcher' %>
 
+  <%# On the switcher's line, pinned to the left edge of the frame -- the same place
+      watch_now puts Add to Channel, and out of the switcher's own pill, which sits at
+      0.35 opacity until hovered. %>
+  <div class="watch-letterboxd">
+    <%= render 'entries/letterboxd_button', entry: @entry %>
+  </div>
+
   <div class="cinema__title">
     <h3 class="d-flex align-items-center list-name-container" onmouseover="this.querySelector('.subscription-icon').style.opacity='1'" onmouseout="this.querySelector('.subscription-icon').style.opacity='0'">
       <%= link_to @channel.name, list_path(@channel), class: 'text-white text-decoration-none me-2' %>

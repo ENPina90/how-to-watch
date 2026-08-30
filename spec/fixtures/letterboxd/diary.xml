@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:letterboxd="https://letterboxd.com" xmlns:tmdb="https://themoviedb.org">
+  <channel>
+    <title>Letterboxd - Test Member</title>
+    <link>https://letterboxd.com/testmember/</link>
+    <item>
+      <title>Crime 101, 2026 - ★★★½</title>
+      <link>https://letterboxd.com/testmember/film/crime-101/</link>
+      <guid isPermaLink="false">letterboxd-watch-1472485778</guid>
+      <letterboxd:watchedDate>2026-08-28</letterboxd:watchedDate>
+      <letterboxd:rewatch>No</letterboxd:rewatch>
+      <letterboxd:filmTitle>Crime 101</letterboxd:filmTitle>
+      <letterboxd:filmYear>2026</letterboxd:filmYear>
+      <letterboxd:memberRating>3.5</letterboxd:memberRating>
+      <tmdb:movieId>1171145</tmdb:movieId>
+      <description><![CDATA[ <p><img src="https://a.ltrbxd.com/poster/crime-101.jpg"/></p> <p>Lean and mean.</p> <p>Second paragraph.</p> <p>Watched on Friday August 28, 2026.</p> ]]></description>
+    </item>
+    <item>
+      <title>The Odyssey, 2026</title>
+      <link>https://letterboxd.com/testmember/film/the-odyssey-2026/</link>
+      <guid isPermaLink="false">letterboxd-watch-1447297802</guid>
+      <letterboxd:watchedDate>2026-08-12</letterboxd:watchedDate>
+      <letterboxd:rewatch>Yes</letterboxd:rewatch>
+      <letterboxd:filmTitle>The Odyssey</letterboxd:filmTitle>
+      <letterboxd:filmYear>2026</letterboxd:filmYear>
+      <tmdb:movieId>12345</tmdb:movieId>
+      <description><![CDATA[ <p><img src="https://a.ltrbxd.com/poster/odyssey.jpg"/></p> <p>Watched on Wednesday August 12, 2026.</p> ]]></description>
+    </item>
+    <item>
+      <title>My favourite noirs</title>
+      <link>https://letterboxd.com/testmember/list/my-favourite-noirs/</link>
+      <guid isPermaLink="false">letterboxd-list-30591000</guid>
+      <description><![CDATA[ <p>A list, not a diary entry.</p> ]]></description>
+    </item>
+    <item>
+      <title>Some Obscure Short, 1974</title>
+      <link>https://letterboxd.com/testmember/film/some-obscure-short/</link>
+      <guid isPermaLink="false">letterboxd-watch-999</guid>
+      <letterboxd:watchedDate>2026-07-01</letterboxd:watchedDate>
+      <letterboxd:filmTitle>Some Obscure Short</letterboxd:filmTitle>
+      <letterboxd:filmYear>1974</letterboxd:filmYear>
+      <letterboxd:memberRating>5.0</letterboxd:memberRating>
+      <description><![CDATA[ <p>Watched on Wednesday July 1, 2026.</p> ]]></description>
+    </item>
+  </channel>
+</rss>

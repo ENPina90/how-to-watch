@@ -7,6 +7,10 @@ class User < ApplicationRecord
   # Auto-subscription callback
   after_create :setup_initial_subscriptions
   after_create :create_default_list
+  # after_commit, not after_save: the job reads the user back from the database and
+  # would find nothing if the transaction had not landed yet.
+  after_commit :sync_letterboxd_channel, on: :create, if: :letterboxd_ready?
+  after_commit :apply_letterboxd_change, on: :update, if: :letterboxd_settings_changed?
 
   has_many :lists
   has_many :user_entries, dependent: :destroy
@@ -17,6 +21,10 @@ class User < ApplicationRecord
   has_many :unwatched_entries, -> { where(user_entries: { completed: false }) }, through: :user_entries, source: :entry
   has_many :reviewed_entries, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :entry
   has_many :user_list_positions, dependent: :destroy
+
+  # The username is the Letterboxd handle, so there is nothing to link without one.
+  validates :username, presence: { message: 'is needed to link a Letterboxd account' },
+                       if: :letterboxd_enabled?
 
   # What to call this user in the UI. Both navbars used to build this inline, with
   # slightly different rules -- a blank-but-present username rendered as nothing in one
@@ -124,75 +132,41 @@ class User < ApplicationRecord
     end
   end
 
-  # Letterboxd integration methods
-  def letterboxd_connected?
-    letterboxd_access_token.present? && letterboxd_token_valid?
+  # --- Letterboxd -------------------------------------------------------------------
+  # Linking is a username and an opt-in: the diary is read from the public RSS feed at
+  # /<username>/rss/, which needs no credentials. See LetterboxdFeed.
+
+  # Enough to attempt a sync. The username doubles as the Letterboxd handle, so opting in
+  # without one leaves nothing to fetch.
+  def letterboxd_ready?
+    letterboxd_enabled? && LetterboxdFeed.valid_username?(username)
   end
 
-  def letterboxd_token_valid?
-    return false unless letterboxd_token_expires_at
-    letterboxd_token_expires_at > Time.current
-  end
-
-  def letterboxd_token_needs_refresh?
-    return true unless letterboxd_token_expires_at
-    letterboxd_token_expires_at <= 1.hour.from_now
-  end
-
-  def refresh_letterboxd_token!
-    return false unless letterboxd_refresh_token.present?
-
-    service = LetterboxdService.new
-    response = service.refresh_token(letterboxd_refresh_token)
-
-    if response && response['access_token']
-      update!(
-        letterboxd_access_token: response['access_token'],
-        letterboxd_refresh_token: response['refresh_token'] || letterboxd_refresh_token,
-        letterboxd_token_expires_at: Time.current + response['expires_in'].seconds
-      )
-      true
-    else
-      Rails.logger.error("Failed to refresh Letterboxd token for user #{id}")
-      false
-    end
-  end
-
-  def valid_letterboxd_token
-    return nil unless letterboxd_connected?
-
-    if letterboxd_token_needs_refresh?
-      return letterboxd_access_token if refresh_letterboxd_token!
-      return nil
-    end
-
-    letterboxd_access_token
-  end
-
-  def sync_entry_to_letterboxd!(entry)
-    return { error: true, message: "Not connected to Letterboxd" } unless letterboxd_connected?
-
-    user_entry = user_entry_for(entry)
-    return { error: true, message: "Entry not completed" } unless user_entry&.completed?
-
-    token = valid_letterboxd_token
-    return { error: true, message: "Invalid Letterboxd token" } unless token
-
-    service = LetterboxdService.new
-    service.sync_user_entry_to_letterboxd(user_entry, token)
-  end
-
-  def disconnect_letterboxd!
-    update!(
-      letterboxd_access_token: nil,
-      letterboxd_refresh_token: nil,
-      letterboxd_token_expires_at: nil,
-      letterboxd_user_id: nil,
-      letterboxd_username: nil
-    )
+  def letterboxd_list
+    LetterboxdList.new(self).list
   end
 
   private
+
+  def letterboxd_settings_changed?
+    saved_change_to_letterboxd_enabled? || (letterboxd_enabled? && saved_change_to_username?)
+  end
+
+  # Turning it off deletes the channel outright, which is quick enough to do in the
+  # request. Turning it on -- or pointing it at a different Letterboxd handle -- means
+  # reading a feed and resolving ids, so that goes to a job.
+  def apply_letterboxd_change
+    if letterboxd_enabled?
+      letterboxd_list&.update(name: LetterboxdList.name_for(self)) if saved_change_to_username?
+      sync_letterboxd_channel
+    else
+      LetterboxdList.new(self).remove!
+    end
+  end
+
+  def sync_letterboxd_channel
+    LetterboxdSyncJob.perform_later(id)
+  end
 
   def setup_initial_subscriptions
     Subscription.auto_subscribe_user(self)

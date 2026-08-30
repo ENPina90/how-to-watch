@@ -41,7 +41,7 @@ are generated from provider URL templates.
 ### 3.1 Core content
 
 **`User`** — Devise account. Flags: `admin` (can edit anything, manage `Source`s, set
-default lists, and **view the site as another user** — §5.7), `dark_mode`. Letterboxd OAuth tokens live here. On create it
+default lists, and **view the site as another user** — §5.7), `dark_mode`, `letterboxd_enabled`. On create it
 auto-subscribes to default lists and **creates a "<Name>'s Favorites" list** with
 `mobile: true, private: true` (`app/models/user.rb:186`).
 
@@ -301,13 +301,15 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
 | `ImageRepairService` / `PosterMigrationService` | fix broken `pic` URLs; copy `pic` → Active Storage/Cloudinary. Return `{status: :migrated|:repaired|:valid|:failed|:skipped|:error, message:}` — **status values are symbols** |
 | `CsvImporterService` / `CsvExporterService` | seed/export via `db/seed_data/*.csv` |
 | `DatabaseBackupService` / `DatabaseMigrationHelper` | `rake db:backup:*`, pg_dump + Active Storage manifest |
-| `LetterboxdService` | OAuth + diary sync |
+| `LetterboxdFeed` | Reads a member's public Letterboxd diary (RSS) |
+| `LetterboxdList` | Reconciles that diary into a channel |
+| `LetterboxdFilm` | Builds links to a film on Letterboxd |
 
 ---
 
 ## 8. Background jobs
 
-`LetterboxdBulkSyncJob` paces a whole-library sync against Letterboxd's rate limit.
+`LetterboxdSyncJob` refreshes one member's Letterboxd channel from their public diary.
 Two more run from `Entry` `after_commit` callbacks:
 `CheckEntrySourceJob` (validates a new entry's URL → `entries.stream`) and
 `AttachPosterFromPicJob` (mirrors `pic` into Cloudinary).
@@ -343,7 +345,7 @@ neither needs a local Redis.
 | TMDB | server (`OmdbApi`, `TmdbService`, 3 controllers) **and** browser (4 Stimulus controllers) | `TMDB_API_KEY` — server code goes through `TmdbService.api_key` (`ENV.fetch`, fails loudly); the browser reads `<meta name="tmdb-key">`, emitted by all three layouts |
 | OMDB | server only | `OMDB_API_KEY_1..3` |
 | Cloudinary | Active Storage | `CLOUDINARY_URL` |
-| Letterboxd | OAuth flow | `LETTERBOXD_CLIENT_ID/SECRET/REDIRECT_URI` |
+| Letterboxd | Public RSS diary (no auth) | — |
 | IMDb | HTML scraping | none |
 
 `docs/guides/ENVIRONMENT_VARIABLES.md` lists the full set.

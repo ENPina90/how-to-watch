@@ -1,7 +1,7 @@
 require 'sidekiq/web'
 
 Rails.application.routes.draw do
-  devise_for :users
+  devise_for :users, controllers: { registrations: 'users/registrations' }
 
   # Queue dashboard: what is enqueued, retrying, or dead. Admins only -- Sidekiq::Web
   # exposes job arguments and lets you delete or replay jobs.
@@ -20,8 +20,20 @@ Rails.application.routes.draw do
     resource :dashboard, only: %i[show update], controller: 'dashboard'
   end
 
+  # Does this Letterboxd handle have a readable diary? Reachable signed out: the sign-up
+  # form asks before the account exists.
+  get '/letterboxd/check', to: 'letterboxd#check', as: :letterboxd_check
+
+  # Pinged when somebody opens Letterboxd's review prompt, so their diary can be re-read
+  # once the review has had time to appear in the feed.
+  post '/letterboxd/reviewed', to: 'letterboxd#reviewed', as: :letterboxd_reviewed
+
   # User preferences
   patch '/users/toggle_dark_mode', to: 'users#toggle_dark_mode', as: :toggle_dark_mode
+
+  # The account page behind the name in the navbar: what the user has, and the settings
+  # that need no password to change. Email and password stay with Devise.
+  resource :profile, only: %i[show update], controller: 'users'
 
   # Admins viewing the site as another user (see Impersonation)
   post '/impersonate/:id', to: 'impersonations#create', as: :impersonate_user
@@ -98,10 +110,4 @@ Rails.application.routes.draw do
   # Streaming source/provider definitions (managed via modals on the watch page)
   resources :sources, only: [:index, :create, :update, :destroy]
 
-  # Letterboxd integration routes
-  get '/letterboxd/connect', to: 'letterboxd#connect', as: :connect_letterboxd
-  get '/letterboxd/callback', to: 'letterboxd#callback', as: :letterboxd_callback
-  delete '/letterboxd/disconnect', to: 'letterboxd#disconnect', as: :disconnect_letterboxd
-  post '/letterboxd/sync/:entry_id', to: 'letterboxd#sync_entry', as: :sync_entry_to_letterboxd
-  post '/letterboxd/bulk_sync', to: 'letterboxd#bulk_sync', as: :bulk_sync_to_letterboxd
 end
