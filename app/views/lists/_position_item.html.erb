@@ -3,11 +3,23 @@
     standing in the order they were already in. A channel inside this one is filed under
     Channels, since none of the groupings have anything to read off it. %>
 <div class="position-item"
+     id="row-<%= dom_id(item) %>"
      data-section="<%= item.is_a?(Entry) ? (item.category.presence || 'Other') : 'Channels' %>"
-     data-section-filter-target="section">
+     data-section-filter-target="section"
+     <%= 'data-controller=section-collapse' unless item.is_a?(Entry) %>>
   <% if item.is_a?(Entry) %>
     <%= entry_card(item) %>
   <% else %>
     <%= render 'lists/child_list_card', list: item, parent: @list %>
+
+    <%# Closed to begin with, and empty until it is opened: the frame inside only loads
+        once it is visible, which is what keeps a 215-entry channel off this page. %>
+    <div class="nested-entries" hidden data-section-collapse-target="body">
+      <%= turbo_frame_tag "channel-entries-#{item.id}",
+                          src: list_nested_entries_path(item, channel: @viewing&.id),
+                          loading: :lazy do %>
+        <p class="nested-entries__empty text-muted">Opening <%= item.name %>…</p>
+      <% end %>
+    </div>
   <% end %>
 </div>

@@ -103,7 +103,7 @@ RSpec.describe 'Sorting a list', :needs_provider, type: :request do
       get list_path(list, criteria: 'Position', sort: 'asc')
 
       expect(response.body).to include(CGI.escapeHTML(list_path(list, criteria: 'Position', sort: 'desc')))
-      expect(response.body).to match(/<li class="active"><a[^>]*>\s*Order/)
+      expect(response.body).to match(/<li class="active">\s*<a[^>]*>\s*Order/m)
     end
   end
 

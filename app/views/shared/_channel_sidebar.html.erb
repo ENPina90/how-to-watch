@@ -20,25 +20,47 @@
   </div>
 
   <div class="channel-sidebar__body">
+    <%# Which channel an entry came from, on a page that borrows from the channels inside
+        it. Its own axis, ANDed with the sections above: the seventies *and* from School
+        Night In. Only where there is something to tell apart. %>
+    <% if sources.size > 1 %>
+      <section class="channel-sidebar__section channel-sidebar__section--sources">
+        <div class="channel-sidebar__section-head">
+          <h6 class="channel-sidebar__title">From</h6>
+        </div>
+        <div class="channel-sidebar__filters">
+          <% sources.each do |source| %>
+            <button type="button"
+                    class="section-filter"
+                    aria-pressed="false"
+                    data-source="<%= source.id %>"
+                    data-section-filter-target="source"
+                    data-action="click->section-filter#toggleSource"><%= source.name %></button>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
     <%# Filters take the room that is left and scroll inside it; Up Next below them is
         always in view, however many sections there are. %>
     <% if filters.any? %>
       <section class="channel-sidebar__section channel-sidebar__section--filters">
         <div class="channel-sidebar__section-head">
-          <h6 class="channel-sidebar__title">Filters</h6>
+          <h6 class="channel-sidebar__title">Filter by <%= criteria_label(@criteria) %></h6>
         </div>
         <%# Each section is a filter toggle, not a jump link: several can be on at once and
             the entries are hidden and shown where they already stand. %>
         <div class="channel-sidebar__filters">
           <% filters.each do |section| %>
             <button type="button"
+                    id="<%= section_filter_id(section) %>"
                     class="section-filter"
                     aria-pressed="false"
                     data-section="<%= section %>"
                     data-section-filter-target="option"
                     data-action="section-filter#toggle
                                  pointerdown->section-filter#start
-                                 pointerenter->section-filter#extend"><%= section %></button>
+                                 pointerenter->section-filter#extend"><%= section_label(@criteria, section) %></button>
           <% end %>
         </div>
       </section>

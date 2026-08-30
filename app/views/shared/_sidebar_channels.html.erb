@@ -1,0 +1,32 @@
+<%# The subscribed channels in the left sidebar. Its own partial so that subscribing or
+    unsubscribing can stream the list back without a reload, and so the page and that
+    stream cannot render it two different ways. %>
+<%# Read once and rendered from that: asking the association again for the empty case let
+    the message disagree with the rows above it. %>
+<% channels = user.subscribed_lists.order(:name).to_a %>
+<div id="sidebarChannels" class="list-group list-group-flush">
+  <% channels.each do |list| %>
+    <%
+      # Check if this is the current entry's list (for watch page)
+      is_current = if defined?(@entry) && @entry && @entry.list
+        @entry.list.id == list.id
+      elsif @list && @list.persisted?
+        @list.id == list.id
+      else
+        false
+      end
+      # Link to watch_current if on watch page, otherwise to list show
+      link_path = defined?(@entry) && @entry && @entry.persisted? ? list_watch_current_path(list) : list_path(list)
+    %>
+    <%= link_to link_path, class: "list-group-item list-group-item-action bg-transparent text-white border-0 py-2 px-0 mb-1 #{'active-list' if is_current}", style: "border-radius: 6px; #{is_current ? 'background-color: rgba(255, 255, 255, 0.15) !important;' : ''}" do %>
+      <div class="d-flex align-items-center">
+        <i class="fa-solid fa-list me-3 text-muted"></i>
+        <span class="text-truncate"><%= list.name %></span>
+      </div>
+    <% end %>
+  <% end %>
+
+  <% if channels.empty? %>
+    <p class="text-muted small mb-0">Nothing subscribed yet.</p>
+  <% end %>
+</div>

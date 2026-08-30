@@ -178,6 +178,61 @@ class List < ApplicationRecord
     [max_entry_position, max_list_position].max + 1
   end
 
+  # How deep a channel's contents are gathered from. Cycles are refused when a channel is
+  # added to another, but a read should not depend on that having always held -- `seen`
+  # makes this safe against whatever is already in the database, and against a channel that
+  # appears twice in the tree, whose entries should still only be gathered once.
+  MAX_NESTING = 3
+
+  def descendant_lists(depth: MAX_NESTING, seen: nil)
+    seen ||= Set.new([id])
+    return [] if depth.zero?
+
+    child_lists.reject { |child| seen.include?(child.id) }.flat_map do |child|
+      seen << child.id
+      [child] + child.descendant_lists(depth: depth - 1, seen: seen)
+    end
+  end
+
+  # The entries a channel's page is about: its own, plus everything held by the channels
+  # inside it. An entry keeps one home -- `entries.list_id` -- and is borrowed here by the
+  # query rather than copied, which is why taking a channel back out is a matter of one
+  # relationship row and touches no entry at all.
+  def entries_with_descendants
+    Entry.where(list_id: [id] + descendant_lists.map(&:id))
+  end
+
+  # Every entry under this channel, in the order the Order view lays them out: this
+  # channel's own by position, with each nested channel's entries inserted where that
+  # channel sits. It is what "the next thing on this channel" means when the channel
+  # borrows from others -- one sequence rather than several.
+  def watch_sequence(depth: MAX_NESTING, seen: nil)
+    seen ||= Set.new([id])
+    return entries.order(:position).to_a if depth.zero?
+
+    items = entries.order(:position).to_a.map { |entry| [entry.position || 0, [entry]] }
+    items += child_relationships.includes(:child_list).map do |relationship|
+      child = relationship.child_list
+      next [relationship.position || 0, []] if seen.include?(child.id)
+
+      seen << child.id
+      [relationship.position || 0, child.watch_sequence(depth: depth - 1, seen: seen)]
+    end
+
+    items.sort_by(&:first).flat_map(&:last)
+  end
+
+  # Whether this channel is where the entry can be watched from: its own, or held by one of
+  # the channels inside it.
+  def contains_entry?(entry)
+    entry.list_id == id || descendant_lists.any? { |channel| channel.id == entry.list_id }
+  end
+
+  # What the channel's name is counted with: everything under it, however deep.
+  def total_entry_count
+    entries_with_descendants.count
+  end
+
   # Normalize entry positions to be sequential (1, 2, 3, 4...)
   def normalize_entry_positions!
     # `id` breaks the ties: a bulk import can leave a dozen entries sharing one position,

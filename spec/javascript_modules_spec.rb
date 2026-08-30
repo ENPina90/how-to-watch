@@ -192,6 +192,31 @@ RSpec.describe 'JavaScript modules' do
     end
   end
 
+  # Two filter axes on one page: what an entry is, and which channel it came from. They are
+  # ANDed, which means the section axis can no longer decide visibility on its own -- a
+  # section whose every card was hidden by the source axis has to go too.
+  describe 'the two filter axes' do
+    let(:controller) { Rails.root.join('app/javascript/controllers/section_filter_controller.js').read }
+
+    it 'hides cards by source and sections by section' do
+      paint = controller[/  paint\(\) \{.*?\n  \}/m]
+
+      expect(paint).to include('this.sources.has(card.dataset.source)')
+      expect(paint).to include('this.selected.has(section.dataset.section)')
+    end
+
+    it 'drops a section the source axis emptied' do
+      expect(controller).to include('this.emptied(section)')
+    end
+
+    it 'carries both in the url' do
+      written = controller[/  writeUrl\(\) \{.*?\n  \}/m]
+
+      expect(written).to include('PARAM')
+      expect(written).to include('SOURCE_PARAM')
+    end
+  end
+
   describe 'the shared search behaviour' do
     let(:shared) { Rails.root.join('app/javascript/services/tmdb_search_behavior.js') }
     let(:controllers) do

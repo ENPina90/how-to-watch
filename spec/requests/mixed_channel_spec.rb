@@ -47,7 +47,8 @@ RSpec.describe 'A channel of channels', :needs_provider, type: :request do
   it 'gives a channel card the same wrapper an entry card gets' do
     get list_path(list, criteria: 'Position')
 
-    wrapper = response.body[/<div class="position-item"\s+data-section="Channels".*?<\/div>/m]
+    # The row carries an id of its own now, so a delete can take the wrapper with the card.
+    wrapper = response.body[/<div class="position-item"\s+id="[^"]*"\s+data-section="Channels".*?<\/div>/m]
 
     expect(wrapper).to be_present
     expect(wrapper).to include('data-section-filter-target="section"')

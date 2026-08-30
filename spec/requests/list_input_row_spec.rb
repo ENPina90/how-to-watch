@@ -40,6 +40,8 @@ RSpec.describe 'The channel action row', :needs_provider, type: :request do
     expect(row).to include('data-controller="expanding-search"')
     expect(row).to include('click->expanding-search#open')
     expect(row).to include('name="query"')
+    # It searches the channel it is on; the navbar's searches everything.
+    expect(row).to include('placeholder="Search this channel"')
   end
 
   # The subscribe/unsubscribe turbo stream replaces this id, so it has to survive the

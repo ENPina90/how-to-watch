@@ -1,6 +1,10 @@
 import { Controller } from "@hotwired/stimulus";
 
 const PARAM = "section";
+// The second axis: which channel an entry came from. A page that borrows entries from the
+// channels inside it groups them all together, and this is the only thing left that says
+// where each one lives.
+const SOURCE_PARAM = "source";
 
 // The section list in the left rail filters the entries rather than jumping to an anchor.
 // Nothing is fetched and nothing re-renders: every section is already on the page, so a
@@ -9,10 +13,11 @@ const PARAM = "section";
 // selection means no filter, and the choice is written to the URL so a reload or a shared
 // link comes back to the same view.
 export default class extends Controller {
-  static targets = ["option", "section"];
+  static targets = ["option", "section", "source", "card"];
 
   connect() {
-    this.selected = new Set(this.selectionFromUrl());
+    this.selected = new Set(this.selectionFromUrl(PARAM, this.optionTargets, "section"));
+    this.sources = new Set(this.selectionFromUrl(SOURCE_PARAM, this.sourceTargets, "source"));
     this.apply({ restoring: true });
   }
 
@@ -24,6 +29,15 @@ export default class extends Controller {
 
     const key = event.currentTarget.dataset.section;
     this.set(key, !this.selected.has(key));
+    this.commit();
+  }
+
+  // The source toggles. No drag on these: there are a handful of channels rather than forty
+  // decades, and a run of them is not a thing anyone reaches for.
+  toggleSource(event) {
+    const id = event.currentTarget.dataset.source;
+
+    if (this.sources.has(id)) this.sources.delete(id); else this.sources.add(id);
     this.commit();
   }
 
@@ -89,24 +103,43 @@ export default class extends Controller {
   // The selection made visible. Cheap enough to run at every step of a drag: one pass
   // over the sections, whatever is behind them.
   paint() {
-    // An empty selection is "no filter", not "nothing matches".
-    const filtering = this.selected.size > 0;
+    // An empty selection on either axis is "no filter", not "nothing matches". The two are
+    // ANDed: the seventies *and* from School Night In.
+    const bySection = this.selected.size > 0;
+    const bySource = this.sources.size > 0;
+
+    this.cardTargets.forEach((card) => {
+      card.hidden = bySource && !this.sources.has(card.dataset.source);
+    });
 
     this.sectionTargets.forEach((section) => {
-      section.hidden = filtering && !this.selected.has(section.dataset.section);
+      const wrongSection = bySection && !this.selected.has(section.dataset.section);
+      // A section whose every card was hidden by the source axis is a heading over
+      // nothing, so it goes too.
+      section.hidden = wrongSection || this.emptied(section);
     });
 
     this.optionTargets.forEach((option) => {
       option.setAttribute("aria-pressed", String(this.selected.has(option.dataset.section)));
     });
+
+    this.sourceTargets.forEach((source) => {
+      source.setAttribute("aria-pressed", String(this.sources.has(source.dataset.source)));
+    });
   }
 
-  selectionFromUrl() {
+  emptied(section) {
+    const cards = section.querySelectorAll('[data-section-filter-target="card"]');
+
+    return cards.length > 0 && Array.from(cards).every((card) => card.hidden);
+  }
+
+  selectionFromUrl(param, buttons, attribute) {
     // Only keys this page actually renders: the grouping in the menu above may have
     // changed since the link was made, and its sections are named differently.
-    const known = new Set(this.optionTargets.map((option) => option.dataset.section));
+    const known = new Set(buttons.map((button) => button.dataset[attribute]));
 
-    return new URLSearchParams(window.location.search).getAll(PARAM).filter((key) => known.has(key));
+    return new URLSearchParams(window.location.search).getAll(param).filter((key) => known.has(key));
   }
 
   writeUrl() {
@@ -116,6 +149,8 @@ export default class extends Controller {
     // genres, month names -- and there is no separator they are guaranteed not to hold.
     url.searchParams.delete(PARAM);
     this.selected.forEach((key) => url.searchParams.append(PARAM, key));
+    url.searchParams.delete(SOURCE_PARAM);
+    this.sources.forEach((id) => url.searchParams.append(SOURCE_PARAM, id));
 
     // replaceState, not pushState: this is a view of the page you are on, not a new one
     // to walk back through one click at a time.

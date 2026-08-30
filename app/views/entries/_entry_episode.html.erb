@@ -4,7 +4,7 @@
     <%# end %>
     <div class="grid-card" id="<%= entry.id %>">
       <div class="card-picture">
-        <%= link_to watch_entry_path(entry), data: { turbo: false } do %>
+        <%= link_to watch_path_for(entry, viewing: @viewing), data: { turbo: false } do %>
           <%= entry_poster_image_tag(entry) %>
           <span class="fa-stack fa-4x play-button">
             <i class="fa-solid fa-circle fa-stack-2x icon-background"></i>
@@ -14,6 +14,7 @@
       </div>
       <div class="card-stuff">
         <div class="card-title">
+          <%= entry_source_badge(entry, viewing: @viewing) %>
           <h5 class="card-header mb-0"><bold><%= entry.name %></bold></h5>
         </div>
         <div class="card-details">
