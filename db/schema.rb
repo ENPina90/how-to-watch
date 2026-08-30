@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_30_200650) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_30_201201) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -122,6 +122,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_30_200650) do
     t.boolean "default", default: false, null: false
     t.text "description"
     t.datetime "last_watched_at"
+    t.boolean "letterboxd", default: false, null: false
     t.boolean "mobile", default: false, null: false
     t.string "name"
     t.boolean "ordered"
@@ -139,6 +140,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_30_200650) do
     t.index ["parent_list_id"], name: "index_lists_on_parent_list_id"
     t.index ["provider_id"], name: "index_lists_on_provider_id"
     t.index ["reviewable"], name: "index_lists_on_reviewable"
+    t.index ["user_id", "letterboxd"], name: "index_lists_on_user_id_and_letterboxd", where: "letterboxd"
     t.index ["user_id", "private"], name: "index_lists_on_user_id_and_private"
     t.index ["user_id"], name: "index_lists_on_user_id"
   end
