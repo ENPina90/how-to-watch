@@ -72,6 +72,16 @@ RSpec.describe 'The profile page', type: :request do
       expect(response.body).to include('needed to link a Letterboxd account')
     end
 
+    # Devise's default lands at the site root, which reads as having been logged out.
+    it 'comes back to the profile after changing the password' do
+      put user_registration_path, params: {
+        user: { email: user.email, password: '', password_confirmation: '',
+                current_password: 'password', username: 'nic' }
+      }
+
+      expect(response).to redirect_to(profile_path)
+    end
+
     # Email and password are Devise's, and it asks for the current password.
     it 'does not let the profile form change the email' do
       patch profile_path, params: { user: { username: 'nic', email: 'attacker@example.com' } }
