@@ -25,6 +25,14 @@
           </div>
           <p class="mb-4"><small><%= entry.genre %></small></p>
           <p class="mb-4"><small><%= entry.language&.split(',')&.first %></small></p>
+          <%# Only for entries that came from a linked Letterboxd diary; everything
+              else has no score and shows no row. %>
+          <% if entry.letterboxd_score.present? %>
+            <p class="letterboxd-score mb-4">
+              <%= letterboxd_stars(entry.letterboxd_score) %>
+              <span class="letterboxd-score__value"><%= entry.letterboxd_score %></span>
+            </p>
+          <% end %>
           <p class="card-plot"><%= entry.plot %></p>
         </div>
         <div class="card-menu">
@@ -36,6 +44,7 @@
             </a>
           <% end %>
           <%= render 'entries/completion_status', entry: entry, user: current_user %>
+          <%= render 'entries/letterboxd_button', entry: entry %>
           <% if current_user&.can_edit_entry?(entry) %>
             <%= render 'shared/poster_selector_button', entry: entry %>
             <i class="fa-solid fa-pen" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= entry.id %>" data-action="click->edit#toggle"></i>
