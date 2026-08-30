@@ -36,6 +36,9 @@ Rails.application.routes.draw do
     end
     get :watch_current
     get :entry_index
+    # The entries of a channel nested in another, fetched when its row is opened rather
+    # than shipped collapsed: one of these holds 215 cards.
+    get :nested_entries
     post :top_entries
     post :add_season
     # Stepping through a channel's entries from its card inside another channel, the way

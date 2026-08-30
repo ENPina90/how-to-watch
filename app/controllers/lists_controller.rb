@@ -10,7 +10,7 @@ class ListsController < ApplicationController
   # have none of the attributes the groupings read.
   CHILD_SECTION = 'Channels'
 
-  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :entry_index, :top_entries, :add_season, :toggle_default, :next_entry, :previous_entry, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
+  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :entry_index, :nested_entries, :top_entries, :add_season, :toggle_default, :next_entry, :previous_entry, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
 
   def index
@@ -189,45 +189,44 @@ class ListsController < ApplicationController
   end
 
   def watch_current
-    if @list.entries.empty?
+    # Whichever channel this was reached from stays the channel being watched: from a
+    # channel of channels, playing one of them should not drop you into it.
+    viewing = viewing_channel_for(@list)
+
+    if @list.total_entry_count.zero?
       redirect_to list_path(@list), notice: "This channel has no entries to watch. Add some entries first!"
       return
     end
 
-    if current_user
-      # Use user-specific position
-      current_entry = @list.current_entry(current_user)
-
-      if current_entry
-        redirect_to watch_entry_path(current_entry)
-      else
-        # No current entry set for this user - find appropriate starting point
-        fallback_entry = if @list.ordered?
-          # For ordered lists, find the first incomplete entry
-          @list.find_next_incomplete_entry_for_user(current_user, 0)
-        else
-          # For unordered lists, find a random incomplete entry
-          @list.find_random_incomplete_entry_for_user(current_user)
-        end
-
-        if fallback_entry
-          # Update user's position
-          user_position = @list.position_for_user!(current_user)
-          user_position.update_to_entry!(fallback_entry)
-
-          message = @list.ordered? ?
-            "Starting from your next unwatched entry." :
-            "Here's something you haven't watched yet!"
-          redirect_to watch_entry_path(fallback_entry), notice: message
-        else
-          redirect_to list_path(@list), notice: "You've completed all entries in this channel!"
-        end
-      end
-    else
+    unless current_user
       # For guest users, just pick the first entry
-      first_entry = @list.entries.order(:position).first
-      redirect_to watch_entry_path(first_entry)
+      redirect_to watch_entry_path(next_for_guest, channel: viewing.id)
+      return
     end
+
+    # Use user-specific position
+    current_entry = @list.current_entry(current_user)
+
+    if current_entry
+      return redirect_to watch_entry_path(current_entry, channel: viewing.id)
+    end
+
+    fallback_entry = next_unwatched_for(current_user)
+
+    if fallback_entry.nil?
+      return redirect_to list_path(@list), notice: "You've completed all entries in this channel!"
+    end
+
+    # Position is a number within the channel that owns the entry, so it is only recorded
+    # when this channel is that one.
+    if fallback_entry.list_id == @list.id
+      @list.position_for_user!(current_user).update_to_entry!(fallback_entry)
+    end
+
+    message = @list.ordered? ?
+      "Starting from your next unwatched entry." :
+      "Here's something you haven't watched yet!"
+    redirect_to watch_entry_path(fallback_entry, channel: viewing.id), notice: message
   end
 
   def top_entries
@@ -253,6 +252,18 @@ class ListsController < ApplicationController
     end
     flash[:notice] = "#{ActionController::Base.helpers.pluralize(counter, 'episode')} of #{@list.entries.last&.series} added"
     redirect_to list_path(@list)
+  end
+
+  # The entries of a channel opened inside another one. Its own, in its own order -- the
+  # row it sits in is that channel, so nothing here is borrowed from anywhere.
+  def nested_entries
+    # Opened from a page of its own or from inside another channel's. The links in here
+    # keep whichever it was, so clicking an entry does not drop you a level.
+    @viewing = viewing_channel_for(@list)
+    @entries_in_channel = @list.entries.includes(:user_entries).with_attached_poster
+                               .to_a.sort_by { |entry| entry.position || 0 }
+
+    render layout: false
   end
 
   # What this channel already holds, in the terms a search result can be matched on. The
@@ -311,6 +322,31 @@ class ListsController < ApplicationController
     else
       @list.entries.where('position < ?', from).order(position: :desc).first
     end
+  end
+
+  def redirect_with_flash(key, message, path)
+    flash[key] = message
+    redirect_to path
+  end
+
+  # Everything a subscription changing touches: the button that was clicked, the sidebar
+  # list of what this user is subscribed to, and the message saying which just happened.
+  #
+  # `flash.now` and rendered into this response. Set for the next request instead -- which
+  # is what a plain `flash[...]` does -- the message said nothing at the time and then
+  # turned up on whatever page was opened next, long after the click it belonged to.
+  def subscription_streams(key, message)
+    flash.now[key] = message
+
+    [
+      turbo_stream.replace("subscription-#{@list.id}",
+                           partial: 'lists/subscription_button',
+                           locals: { list: @list, user: current_user }),
+      turbo_stream.replace('sidebarChannels',
+                           partial: 'shared/sidebar_channels',
+                           locals: { user: current_user }),
+      turbo_stream.replace('flash', partial: 'shared/flashes')
+    ]
   end
 
   # A refused move says why. The overlay needs a failure status to report on the button it
@@ -420,8 +456,7 @@ class ListsController < ApplicationController
             turbo_stream.replace('flash', partial: 'shared/flashes'),
             turbo_stream.replace("header-count-#{target_list.id}",
                                  partial: 'lists/header_count',
-                                 locals: { count: target_list.entries.count + target_list.child_lists.count,
-                                           list: target_list }),
+                                 locals: { count: target_list.total_entry_count, list: target_list }),
             turbo_stream.append('list-entries',
                                 helpers.render('lists/child_list_card', list: @list, parent: target_list))
           ]
@@ -431,21 +466,13 @@ class ListsController < ApplicationController
   end
 
   def subscribe
-    if current_user.subscribe_to!(@list)
-      flash[:notice] = "Subscribed to #{@list.name}"
-    else
-      flash[:alert] = "Already subscribed to #{@list.name}"
-    end
+    subscribed = current_user.subscribe_to!(@list)
+    key = subscribed ? :notice : :alert
+    message = subscribed ? "Subscribed to #{@list.name}" : "Already subscribed to #{@list.name}"
 
     respond_to do |format|
-      format.html { redirect_to list_path(@list) }
-      format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          "subscription-#{@list.id}",
-          partial: 'lists/subscription_button',
-          locals: { list: @list, user: current_user }
-        )
-      end
+      format.html { redirect_with_flash(key, message, list_path(@list)) }
+      format.turbo_stream { render turbo_stream: subscription_streams(key, message) }
     end
   end
 
@@ -466,17 +493,11 @@ class ListsController < ApplicationController
         redirect_to lists_path
       end
     else
-      flash[:notice] = "Unsubscribed from #{list_name}"
+      message = "Unsubscribed from #{list_name}"
 
       respond_to do |format|
-        format.html { redirect_to list_path(@list) }
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            "subscription-#{@list.id}",
-            partial: 'lists/subscription_button',
-            locals: { list: @list, user: current_user }
-          )
-        end
+        format.html { redirect_with_flash(:notice, message, list_path(@list)) }
+        format.turbo_stream { render turbo_stream: subscription_streams(:notice, message) }
       end
     end
   end
@@ -577,8 +598,31 @@ class ListsController < ApplicationController
     # rather than issuing a lookup per entry.
     # `with_attached_poster` matters as much as :user_entries -- every card runs
     # `entry_poster_image_tag`, which touches the attachment.
-    scope = @list.entries.includes(:user_entries).with_attached_poster
+    # `settings` is the channel's remembered grouping; an explicit param wins over it.
+    @criteria = params[:criteria].presence || @list.settings.presence || 'Position'
+    # Anything outside this list would reach `public_send` in filter_entries.
+    @criteria = 'Position' unless GROUPING_CRITERIA.include?(@criteria)
+
+    # A grouped view is about attributes -- a 1979 film belongs in the seventies whichever
+    # channel holds it -- so it reads this channel and the channels inside it as one set. A
+    # search does too: you are looking for something on this page, not in one drawer of it.
+    # The Order view is the exception: it is a sequence of *this* channel's own positions,
+    # and a borrowed entry carries numbering from somewhere else. It gets this channel's
+    # own entries, and a row per channel inside it.
+    borrowing = params[:query].present? || @criteria != 'Position'
+    base = borrowing ? @list.entries_with_descendants : @list.entries
+
+    # `list: :user` only matters when borrowing. Read through `@list.entries` an entry
+    # already knows its channel; read through a plain `where(list_id: ...)` it does not, and
+    # every card asking `can_edit_entry?` -- which reads the channel and its owner -- was a
+    # query apiece.
+    scope = borrowing ? base.includes(:user_entries, list: :user).with_attached_poster
+                      : base.includes(:user_entries).with_attached_poster
     @list_entries = params[:query].present? ? scope.search_by_input(params[:query]) : scope
+    # The Order view works from this channel's own entries. Only a second scope when the
+    # page is actually borrowing: preloading the same set twice is two more queries per
+    # page for nothing.
+    @own_entries = borrowing ? @list.entries.includes(:user_entries).with_attached_poster : @list_entries
 
     # Load child lists with their positions in this parent context
     @child_lists = @list.child_relationships.includes(child_list: :parent_lists).order(:position).map do |rel|
@@ -588,10 +632,6 @@ class ListsController < ApplicationController
     end
 
     @entries = {}
-    # `settings` is the list's remembered grouping; an explicit param wins over it.
-    @criteria = params[:criteria].presence || @list.settings.presence || 'Position'
-    # Anything outside this list would reach `public_send` in filter_entries.
-    @criteria = 'Position' unless GROUPING_CRITERIA.include?(@criteria)
     # `sort` is the direction the grouping runs in; the menu toggles it by re-clicking
     # the criteria that is already active.
     @direction = sort_direction
@@ -602,6 +642,10 @@ class ListsController < ApplicationController
     if @criteria == 'Position'
       @sections = position_sections
       @filters = @sections
+      # Nothing is borrowed in this view -- a channel inside this one is a row that opens
+      # rather than entries mixed in -- so there is nothing to tell apart by source.
+      @sources = []
+      @viewing = @list
       return remember_view
     end
 
@@ -612,8 +656,44 @@ class ListsController < ApplicationController
     # without belonging to any of the groupings -- it has no year, genre or category. It
     # gets a section of its own rather than being the one thing a filter cannot touch.
     @filters = @child_lists.any? ? [CHILD_SECTION] + @sections : @sections
+    # Which channels the entries on this page actually came from -- this one included, and
+    # only the ones that lent something.
+    @sources = sources_on_page
+    # The channel these cards are being shown on, which is what their links carry.
+    @viewing = @list
 
     remember_view
+  end
+
+  # Where to start. A channel with nothing of its own -- one that only holds other
+  # channels -- has to look through what it borrows, or its own play button reports an
+  # empty channel. One that has its own entries keeps the query it always used.
+  def next_unwatched_for(user)
+    own = @list.ordered? ? @list.find_next_incomplete_entry_for_user(user, 0)
+                         : @list.find_random_incomplete_entry_for_user(user)
+    return own if own || @list.child_lists.empty?
+
+    borrowed = @list.watch_sequence.reject { |entry| entry.completed_by?(user) }
+
+    @list.ordered? ? borrowed.first : borrowed.sample
+  end
+
+  def next_for_guest
+    @list.entries.order(:position).first || @list.watch_sequence.first
+  end
+
+  # `?channel=` on a nested frame: honoured only if that channel really holds this one,
+  # so it cannot be pointed at an unrelated page.
+  def viewing_channel_for(channel)
+    asked = List.find_by(id: params[:channel])
+
+    asked && asked.descendant_lists.include?(channel) ? asked : channel
+  end
+
+  def sources_on_page
+    lending = @list_entries.map(&:list_id).uniq
+
+    ([@list] + @list.descendant_lists).select { |channel| lending.include?(channel.id) }
   end
 
   # The Position view mixes entries with child lists, so it renders its own ordered
@@ -625,7 +705,7 @@ class ListsController < ApplicationController
   # default, so reading it cost one user_entries lookup and one attachment lookup per
   # entry, which is exactly what the preloads exist to prevent.
   def load_position_items
-    ordered_entries = @list_entries.to_a.sort_by { |entry| entry.position || 0 }
+    ordered_entries = (params[:query].present? ? @list_entries : @own_entries).to_a.sort_by { |entry| entry.position || 0 }
     @position_items = if params[:query].present?
                         ordered_entries # child lists cannot match an entry search
                       else
@@ -696,6 +776,12 @@ class ListsController < ApplicationController
         decade_entries = decade_entries.reverse if @direction == 'desc'
         @entries["#{year}s"] = decade_entries
       end
+    when 'Rating'
+      # The same buckets Entry#section_keys reports, so a card streamed onto the page lands
+      # in the section the page would have put it in.
+      @entries = @list_entries.group_by(&:rating_section)
+    when 'Length'
+      @entries = @list_entries.group_by(&:length_section)
     when 'Watched'
       @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
       @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
