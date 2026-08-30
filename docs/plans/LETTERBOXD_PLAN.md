@@ -25,16 +25,16 @@ So: **linking is just a username**. No OAuth, no token, no handshake.
 
 ## Steps
 
-- [ ] 1. Add `brands` to the Font Awesome imports so `fa-square-letterboxd` renders
-- [ ] 2. `letterboxd_enabled:boolean` on users; `letterboxd_score:float` on entries
-- [ ] 3. `LetterboxdFeed` service — fetch + parse the RSS feed
-- [ ] 4. Letterboxd button on movie cards and the watch view
-- [ ] 5. Username validation endpoint + Stimulus controller (green tick / warning)
-- [ ] 6. Signup callout and checkbox
-- [ ] 7. Profile page (edit account, toggle Letterboxd, stats)
-- [ ] 8. List sync: build/refresh/destroy `[Username]'s Letterbox`
-- [ ] 9. Jobs: weekly refresh + 10-minutes-after-review-click
-- [ ] 10. Remove the dead OAuth implementation
+- [x] 1. Add `brands` to the Font Awesome imports so `fa-square-letterboxd` renders
+- [x] 2. `letterboxd_enabled:boolean` on users; `letterboxd_score:float` on entries
+- [x] 3. `LetterboxdFeed` service — fetch + parse the RSS feed
+- [x] 4. Letterboxd button on movie cards and the watch view
+- [x] 5. Username validation endpoint + Stimulus controller (green tick / warning)
+- [x] 6. Signup callout and checkbox
+- [x] 7. Profile page (edit account, toggle Letterboxd, stats)
+- [x] 8. List sync: build/refresh/destroy `[Username]'s Letterbox`
+- [x] 9. Jobs: weekly refresh + 10-minutes-after-review-click
+- [x] 10. Remove the dead OAuth implementation
 
 ## Decisions worth knowing
 
@@ -62,10 +62,24 @@ imported; `letterboxd-list-*` are skipped.
 **Unrated watches are normal.** `memberRating` is absent for them, so `letterboxd_score`
 stays `nil` and the card simply shows no score.
 
+## Things found along the way
+
+**Devise was dropping `username` on sign-up.** It permits only the keys it is told about,
+and no sanitizer had ever been configured, so the field on the sign-up form had been
+discarded since the day it was added. Fixed in `ApplicationController`; without it none of
+this could work, as the username is the handle.
+
+**`lists.letterboxd`** was added so disabling can find exactly the right channel. Matching
+on the name would strand a channel the member had renamed.
+
 ## Open questions for Nic
 
-1. The list name — you wrote "[Username]'s Letterbox", not "Letterboxd". Following you
+1. The list name — you wrote "[Username]'s Letterbox", not "Letterboxd". Followed
    literally; say the word and it becomes "Letterboxd".
-2. Weekly scheduling needs a scheduler; Sidekiq OSS has no periodic jobs. Adding
-   `sidekiq-cron`, which is the standard pairing. Shout if you would rather drive it from
-   an external scheduler instead.
+2. `letterboxd_score` is on `Entry` as requested, so it is "whoever imported this film's
+   score", not per-user. Fine while the channel is private and per-user; it would read
+   wrong if one of these entries were copied into a shared channel.
+3. The `/review/` suffix is unverified from outside a logged-in session — worth a check in
+   your own browser. It is `LetterboxdFilm::REVIEW_SUFFIX` if it needs changing.
+4. Reviews are parsed out of the feed but not stored anywhere. `user_entries.comment`
+   would be the obvious home if you want them.
