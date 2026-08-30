@@ -1,7 +1,9 @@
 <%# The id is what the subscribe/unsubscribe turbo stream replaces, so it stays on the
     outer element whichever state is rendered. %>
 <span id="subscription-<%= list.id %>">
-  <% if user&.subscribed_to?(list) %>
+  <%# Nobody signed in: subscribing is not on offer, so neither is the pill. %>
+  <% if user.nil? %>
+  <% elsif user.subscribed_to?(list) %>
     <%= link_to list_unsubscribe_path(list),
         class: "subscription-pill subscription-pill--subscribed",
         data: { turbo_method: :patch } do %>

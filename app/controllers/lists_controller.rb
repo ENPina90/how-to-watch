@@ -12,6 +12,10 @@ class ListsController < ApplicationController
 
   before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :entry_index, :nested_entries, :top_entries, :add_season, :toggle_default, :next_entry, :previous_entry, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
+  # Under an access mode that lets strangers browse, a private channel still is not theirs
+  # to read -- including the pieces of it that load on their own.
+  before_action -> { refuse_guest_on_private!(@list) },
+                only: %i[show entry_index nested_entries watch_current]
 
   def index
     # Sidebar starts expanded by default on index page
@@ -20,7 +24,10 @@ class ListsController < ApplicationController
     # Check if this is a mobile request
     @is_mobile = mobile_request?
 
-    if @is_mobile
+    # The phone view is the viewer's own channels -- their favourites and what they
+    # subscribe to -- so a signed-out visitor gets the browsing view instead of an empty
+    # one built for somebody who is not there.
+    if @is_mobile && current_user
       # For mobile, find the user's favorites list (mobile: true)
       @favorites_list = current_user.lists.find_by(mobile: true)
       # Get all subscribed lists with entry counts
@@ -30,6 +37,18 @@ class ListsController < ApplicationController
                                     .select('lists.*, COUNT(entries.id) as entries_count')
                                     .order('lists.name ASC')
       render :index_mobile, layout: 'mobile'
+      return
+    end
+
+    # A signed-out visitor, where the access mode allows one: no channels of their own and
+    # nothing half-watched, so the page is the public shelf and nothing else. The rows the
+    # view draws are each guarded by `.any?`, so the empty ones simply do not appear.
+    if current_user.nil?
+      @your_lists = List.none
+      @recently_watched_lists = List.none
+      @community_lists = with_card_data(List.where(private: [false, nil]))
+                         .order(created_at: :desc).limit(20)
+      @card_entries = resolve_card_entries(@community_lists)
       return
     end
 
@@ -72,7 +91,8 @@ class ListsController < ApplicationController
     if query.present?
       # Search lists by name (public lists OR user's own lists)
       public_lists = List.where('name ILIKE ?', "%#{query}%").where(private: [false, nil])
-      own_lists = List.where('name ILIKE ?', "%#{query}%").where(user_id: current_user.id)
+      # A signed-out visitor has no own lists to add to the public ones.
+      own_lists = current_user ? List.where('name ILIKE ?', "%#{query}%").where(user_id: current_user.id) : List.none
       list_ids = (public_lists.pluck(:id) + own_lists.pluck(:id)).uniq
 
       lists = List.where(id: list_ids).limit(20)
@@ -735,7 +755,7 @@ class ListsController < ApplicationController
   # Remembers the view for next time. An admin edits every channel, so an admin's choice
   # sticks the same way the owner's does; anyone else's lives in the URL and nowhere else.
   def remember_view
-    return unless @list.user == current_user || current_user.admin?
+    return unless @list.user == current_user || current_user&.admin?
     # Only persist an explicit choice. A plain visit carries no params, and writing them
     # blindly used to wipe the list's remembered grouping on every page view.
     return if params[:criteria].blank? && params[:sort].blank?
