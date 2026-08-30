@@ -1,4 +1,15 @@
 module ApplicationHelper
+  # Which theme the page renders in. A signed-in user has said which they want; a signed-out
+  # one has not, and users.dark_mode defaults to true, so the sign-in screens read dark like
+  # the app they are the front door to -- rather than the cream fallback, which made them
+  # look like a different site. The other page a signed-out visitor can reach, a vote room
+  # on a TV, keeps the light fallback it was built against.
+  def theme_class
+    return current_user.dark_mode ? 'dark-mode' : 'light-mode' if user_signed_in?
+
+    devise_controller? ? 'dark-mode' : 'light-mode'
+  end
+
   # The grouping menu doubles as a direction toggle: clicking the criteria that is already
   # active flips it, and anything else starts ascending. The caret shows the direction the
   # list is currently in, not the one the link would switch to.

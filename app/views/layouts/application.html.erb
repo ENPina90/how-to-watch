@@ -12,7 +12,7 @@
   </head>
   <%# `page-<controller>-<action>` alongside the sidebar and theme classes already here,
       so a style can be scoped to one page without a flag being threaded through to it. %>
-  <body class="page-<%= controller_name.dasherize %>-<%= action_name.dasherize %> <%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> <%= user_signed_in? && current_user.dark_mode ? 'dark-mode' : 'light-mode' %>">
+  <body class="page-<%= controller_name.dasherize %>-<%= action_name.dasherize %> <%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> <%= theme_class %>">
     <%= render "shared/navbar" %>
     <%= render "shared/impersonation_banner" %>
     <%= render 'shared/flashes' %>

@@ -184,3 +184,69 @@ body.light-mode .menu li.active {
 body.light-mode .menu li.active a {
   color: #1a936f !important;
 }
+
+/* Light mode auth screens. The card lifts off the cream page instead of sinking into it,
+   and the quiet text that is white-on-dark goes black-on-white. */
+body.light-mode .auth-card {
+  background-color: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .auth-card .auth-card__subtitle {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+body.light-mode .auth-card .form-label,
+body.light-mode .auth-card label {
+  color: rgba(0, 0, 0, 0.55) !important;
+}
+
+body.light-mode .auth-card .form-text,
+body.light-mode .auth-card .auth-card__note {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+body.light-mode .auth-card .form-check-input {
+  background-color: #ffffff;
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+body.light-mode .auth-card .form-check-input:checked {
+  background-color: #1a936f;
+  border-color: #1a936f;
+}
+
+body.light-mode .page-container .auth-submit {
+  background-color: #1a936f;
+  color: #ffffff !important;
+}
+
+body.light-mode .page-container .auth-submit:hover,
+body.light-mode .page-container .auth-submit:focus {
+  background-color: #157a5c;
+  color: #ffffff !important;
+}
+
+body.light-mode .auth-card__links,
+body.light-mode .auth-card__danger {
+  border-top-color: rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .auth-card .auth-card__links a {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+body.light-mode .auth-card .auth-card__links a:hover {
+  color: #1a936f !important;
+}
+
+body.light-mode .page-container .auth-danger {
+  border-color: rgba(200, 12, 16, 0.45);
+  color: #c80c10;
+}
+
+body.light-mode .page-container .auth-danger:hover {
+  background-color: rgba(200, 12, 16, 0.08);
+  color: #c80c10;
+}
