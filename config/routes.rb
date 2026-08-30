@@ -14,6 +14,12 @@ Rails.application.routes.draw do
     end
   end
 
+  # The admin dashboard: site statistics, and the switches that change how the site
+  # behaves. Admins only -- Admin::BaseController turns everyone else away.
+  namespace :admin do
+    resource :dashboard, only: %i[show update], controller: 'dashboard'
+  end
+
   # User preferences
   patch '/users/toggle_dark_mode', to: 'users#toggle_dark_mode', as: :toggle_dark_mode
 
