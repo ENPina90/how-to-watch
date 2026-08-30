@@ -143,19 +143,31 @@
   padding: 4px 0;
 }
 
-/* The phone half: rows big enough to hit without reading anything. */
+/* The phone half: rows big enough to hit without reading anything.
+
+   It brings its own surface. The mobile layout is a light page (#f8f9fa), and this screen
+   was written in the app's own dark colours -- white on near-white, which is no colour
+   scheme at all. Painting it here rather than restyling for the light layout keeps it
+   looking like the room screen it mirrors, whichever layout ends up hosting it. */
 .vote-ballot {
-  padding: 16px;
+  min-height: 100vh;
+  margin: -20px 0;
+  padding: 36px 16px;
+  background-color: #0a0a0a;
+  color: #ffffff;
 }
 
 .vote-ballot__title {
+  margin-bottom: 8px;
+  color: #ffffff;
   font-size: 1.4rem;
   text-align: center;
 }
 
 .vote-ballot__note {
-  margin-bottom: 20px;
-  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 24px;
+  /* Readable rather than decorative: this is the line telling a room what to do. */
+  color: rgba(255, 255, 255, 0.75);
   text-align: center;
 }
 
@@ -166,16 +178,22 @@
   width: 100%;
   margin-bottom: 12px;
   padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff !important;
   text-align: left;
+}
+
+/* button_to wraps each row in a form of its own; without this the rows are spaced by the
+   form's margin rather than their own. */
+.vote-ballot form {
+  margin: 0;
 }
 
 .vote-ballot__option--mine {
   border-color: #1a936f;
-  background-color: rgba(26, 147, 111, 0.18);
+  background-color: rgba(26, 147, 111, 0.28);
 }
 
 .vote-ballot__poster {
@@ -193,5 +211,6 @@
 }
 
 .vote-ballot__winner {
+  color: #ffffff;
   text-align: center;
 }

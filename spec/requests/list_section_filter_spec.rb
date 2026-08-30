@@ -18,7 +18,8 @@ RSpec.describe 'Filtering a list by section', :needs_provider, type: :request do
   end
 
   def section_keys
-    response.body.scan(/<section class="entry-section"\s+data-section="([^"]*)"/m).flatten
+    # The section carries an id of its own now, between the class and the key.
+    response.body.scan(/<section class="entry-section"\s+id="[^"]*"\s+data-section="([^"]*)"/m).flatten
   end
 
   it 'offers one toggle per section' do

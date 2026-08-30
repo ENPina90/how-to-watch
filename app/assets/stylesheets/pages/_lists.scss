@@ -237,6 +237,42 @@ body.page-lists-show .search-results-overlay {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
+/* A channel's entries, opened underneath its row. Indented so the hierarchy is visible
+   without a second card shape. */
+.nested-entries {
+  margin: 0 0 16px 32px;
+  border-left: 2px solid rgba(255, 255, 255, 0.12);
+  padding-left: 16px;
+}
+
+.nested-entries__empty {
+  padding: 12px 0;
+}
+
+/* The caret sits with the row's other controls rather than filling the heading, so it does
+   not take the section-toggle's full width. */
+.page-container .channel-card__expand {
+  width: auto;
+  font-size: 1rem;
+}
+
+/* Says which channel an entry actually lives in, on a page that borrowed it from one of
+   the channels inside it. */
+.entry-source {
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.75) !important;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.entry-source i {
+  color: inherit !important;
+}
+
 /* A channel's card inside another channel wears the same grid-card shape as an entry, so
    it needs one mark to say it is not one. */
 .channel-card .card-picture {

@@ -142,6 +142,25 @@ class Entry < ApplicationRecord
     Entry.where(current_id: subentry_ids).update_all(current_id: nil)
   end
 
+  # Ratings and runtimes are near enough unique per entry -- 7.023, 143 -- so grouping by
+  # the value itself made a section per entry. They are bucketed the way years are bucketed
+  # into decades: half a point, and ten minutes. The bucket floor is the key, so it sorts
+  # as a number rather than as text, where "10.0" would come before "8.0".
+  RATING_STEP = 0.5
+  LENGTH_STEP = 10
+
+  def rating_section
+    return nil if rating.blank? || rating.to_f.zero?
+
+    ((rating.to_f / RATING_STEP).floor * RATING_STEP).round(1)
+  end
+
+  def length_section
+    return nil if length.blank? || length.to_i.zero?
+
+    (length.to_i / LENGTH_STEP) * LENGTH_STEP
+  end
+
   # Which section this entry falls in under a given grouping -- the same question
   # ListsController#filter_entries answers for a whole channel at once, asked about one
   # entry so a card added without a reload can be put where it belongs. Genre is a list, so
@@ -153,6 +172,8 @@ class Entry < ApplicationRecord
     when 'Genre' then genre.to_s.split(',').map(&:strip).reject(&:empty?).presence || ['Other']
     when 'Year' then year.present? ? ["#{(year / 10) * 10}s"] : []
     when 'Watched' then [completed_by?(user) ? 'Watched' : 'Unwatched']
+    when 'Rating' then [rating_section || 'Other']
+    when 'Length' then [length_section || 'Other']
     else [public_send(criteria.downcase).presence || 'Other']
     end
   end

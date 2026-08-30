@@ -1,0 +1,14 @@
+<%# The frame the row on the parent page opens into. Turbo fetches this the moment the row
+    is expanded and the frame becomes visible, so a channel of 215 entries costs the parent
+    page nothing until somebody asks for it. %>
+<%= turbo_frame_tag "channel-entries-#{@list.id}" do %>
+  <% if @entries_in_channel.empty? %>
+    <p class="nested-entries__empty text-muted">Nothing in this channel yet.</p>
+  <% else %>
+    <%# @list is this channel here, so its own entries carry no source badge: the row above
+        them already says whose they are. %>
+    <% @entries_in_channel.each do |entry| %>
+      <%= entry_card(entry) %>
+    <% end %>
+  <% end %>
+<% end %>
