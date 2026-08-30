@@ -1,0 +1,24 @@
+<%# The shell every Devise screen sits in: brand, title, the screen's own form, and the
+    links out of it. `links: false` for the account form a signed-in user opens -- the
+    stock links offer it a way to log in, which it does not need. %>
+<div class="auth-page">
+  <div class="auth-card">
+    <%= link_to root_path, class: "auth-card__brand" do %>
+      <img src="/images/logo.svg" alt="" class="auth-card__logo">
+      <span class="auth-card__wordmark">HowToWatch</span>
+    <% end %>
+
+    <h1 class="auth-card__title"><%= title %></h1>
+    <% if local_assigns[:subtitle].present? %>
+      <p class="auth-card__subtitle"><%= subtitle %></p>
+    <% end %>
+
+    <%= yield %>
+
+    <% unless local_assigns[:links] == false %>
+      <div class="auth-card__links">
+        <%= render "devise/shared/links" %>
+      </div>
+    <% end %>
+  </div>
+</div>
