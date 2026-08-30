@@ -15,6 +15,11 @@ class LetterboxdController < ApplicationController
   # profile is not told it is wrong for the rest of the day.
   CHECK_TTL = 10.minutes
 
+  # How long to wait after somebody opens Letterboxd's review prompt before re-reading
+  # their diary. Long enough to write and post a review, short enough that the entry shows
+  # up in the app while they still remember doing it.
+  REVIEW_DELAY = 10.minutes
+
   # Is this a Letterboxd handle with a readable diary? Answers the tick or the warning
   # next to the username field on sign-up and on the profile page.
   def check
@@ -38,7 +43,25 @@ class LetterboxdController < ApplicationController
     end
   end
 
+  # Called when somebody opens the review prompt for a film. Their review will not be in
+  # the feed yet, so the refresh is booked for later rather than run now.
+  def reviewed
+    return head :no_content unless current_user&.letterboxd_ready?
+
+    # One pending refresh is enough. Someone working through a few films would otherwise
+    # book a full diary read per click, and the first one to land covers all of them.
+    if Rails.cache.write(refresh_key, true, expires_in: REVIEW_DELAY, unless_exist: true)
+      LetterboxdSyncJob.set(wait: REVIEW_DELAY).perform_later(current_user.id)
+    end
+
+    head :accepted
+  end
+
   private
+
+  def refresh_key
+    ['letterboxd-refresh-pending', current_user.id]
+  end
 
   def readable?(username)
     Rails.cache.fetch(['letterboxd-check', username.downcase], expires_in: CHECK_TTL) do
