@@ -3,6 +3,10 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 ruby "3.4.5"
 
+# Parses the Letterboxd RSS feed. Already present transitively via Rails, declared
+# here because LetterboxdFeed uses it directly.
+gem "nokogiri"
+
 gem "pg_search"
 gem 'htmlbeautifier'
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
