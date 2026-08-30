@@ -38,7 +38,9 @@
   <div class="cinema__title">
     <h3 class="d-flex align-items-center list-name-container" onmouseover="this.querySelector('.subscription-icon').style.opacity='1'" onmouseout="this.querySelector('.subscription-icon').style.opacity='0'">
       <%= link_to @channel.name, list_path(@channel), class: 'text-white text-decoration-none me-2' %>
-      <% if current_user.subscribed_to?(@channel) %>
+      <%# Signed out under an open access mode: there is no account to subscribe with, so
+          the whole control is left out rather than shown and refused. %>
+      <% if user_signed_in? && current_user.subscribed_to?(@channel) %>
         <%= button_to list_unsubscribe_path(@channel, redirect_to_sibling: true),
             method: :patch,
             class: "border-0 bg-transparent p-0 subscription-icon text-white",
@@ -47,7 +49,7 @@
             form: { style: "display: inline;" } do %>
           <i class="fa-solid fa-xmark"></i>
         <% end %>
-      <% else %>
+      <% elsif user_signed_in? %>
         <%= button_to list_subscribe_path(@channel),
             method: :patch,
             class: "border-0 bg-transparent p-0 subscription-icon text-white",
@@ -84,24 +86,31 @@
       <%= link_to list_watch_current_path(@channel.find_sibling(:previous) || @channel) do %>
         <i class="fa-solid fa-3x fa-caret-up position-absolute top-0 start-50 translate-middle-x"></i>
       <% end %>
-      <%= button_to increment_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
-            class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
-        <i class="fa-solid fa-3x fa-caret-right position-absolute top-50 end-0 translate-middle-y"></i>
+      <%# Everything in the ring except the channel arrows and the way home writes
+          something -- a position, a completion, an edit -- so a signed-out visitor gets
+          the ring without them rather than buttons that bounce off the sign-in page. %>
+      <% if user_signed_in? %>
+        <%= button_to increment_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
+              class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
+          <i class="fa-solid fa-3x fa-caret-right position-absolute top-50 end-0 translate-middle-y"></i>
+        <% end %>
+        <%= button_to shuffle_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
+              class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
+          <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y" title="Shuffle channel"></i>
+        <% end %>
+        <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
+        <div class="position-absolute top-0 start-0 translate-middle-y">
+          <%= render 'entries/completion_status', entry: @entry, user: current_user %>
+        </div>
       <% end %>
-      <%= button_to shuffle_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
-            class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
-        <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y" title="Shuffle channel"></i>
-      <% end %>
-      <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
-      <div class="position-absolute top-0 start-0 translate-middle-y">
-        <%= render 'entries/completion_status', entry: @entry, user: current_user %>
-      </div>
       <%= link_to list_watch_current_path(@channel.find_sibling(:next) || @channel) do %>
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
-      <%= button_to decrement_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
-            class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
-        <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
+      <% if user_signed_in? %>
+        <%= button_to decrement_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
+              class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
+          <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
+        <% end %>
       <% end %>
       <%= link_to root_path, class: 'text-decoration-none' do %>
         <i class="fa-solid fa-house fa-2x position-absolute top-50 start-50 translate-middle"></i>

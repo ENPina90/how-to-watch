@@ -8,7 +8,9 @@ class VotesController < ApplicationController
   # Whoever scans the code is a guest: reading the ballot and voting on it are the two
   # things this app lets you do without an account. Putting the shortlist up, editing it
   # and closing the round still need someone who can edit the channel.
-  skip_before_action :authenticate_user!, only: %i[show cast]
+  # Skips the check AccessControl installs, so the ballot stays open whatever the site's
+  # access mode is: a room scanning a code is not the same question as who may browse.
+  skip_before_action :authenticate_user_unless_guest_allowed!, only: %i[show cast]
 
   before_action :set_list
   before_action :set_session, only: %i[cast close remove_option]

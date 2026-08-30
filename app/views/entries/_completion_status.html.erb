@@ -1,6 +1,10 @@
 <%# Rendered once per card, so everything here is paid ~1,200 times on the big lists:
     no inline styles, no HTML comments (they ship to the browser), and no attribute that
     can be derived from the entry id. See §6.1 of docs/ARCHITECTURE.md. %>
+<%# Marking something watched is a write against an account. Signed out there is nothing
+    to mark, and `completed_by?(nil)` falls back to the entry's legacy flag -- somebody
+    else's opinion -- so the control is left out entirely rather than shown wrong. %>
+<% if user %>
 <div id="completed-<%= entry.id %>" data-controller="completed" data-completed-id-value="<%= entry.id %>" class="completion-status">
   <% if entry.completed_by?(user) %>
     <%# Already watched: toggle straight back, no review prompt. %>
@@ -32,3 +36,4 @@
     </div>
   <% end %>
 </div>
+<% end %>

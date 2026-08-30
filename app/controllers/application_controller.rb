@@ -1,7 +1,10 @@
 class ApplicationController < ActionController::Base
   include Impersonation
+  # Declares the before_action that replaces a blanket authenticate_user!: who gets in
+  # without an account depends on AppSetting#access_mode.
+  include AccessControl
+  include VisitTracking
 
-  before_action :authenticate_user!, except: [:health]
   before_action :set_sidebar_defaults
 
   # Health check endpoint for Railway

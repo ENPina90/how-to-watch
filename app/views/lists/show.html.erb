@@ -36,12 +36,16 @@
           things in it are on the left, where the search can grow without moving them. %>
       <div class="list-actions">
         <%= render 'lists/subscription_button', list: @list, user: current_user %>
-        <%= link_to new_list_entry_path(@list), class: "list-action", title: "Add an entry" do %>
-          <i class="fa-solid fa-circle-plus"></i>
-        <% end %>
+        <%# Adding an entry and running a vote both need an account, so a signed-out
+            visitor browsing under an open access mode does not get the buttons. %>
+        <% if user_signed_in? %>
+          <%= link_to new_list_entry_path(@list), class: "list-action", title: "Add an entry" do %>
+            <i class="fa-solid fa-circle-plus"></i>
+          <% end %>
 
-        <%= link_to list_vote_path(@list), class: "list-action", title: "Put some up for a vote" do %>
-          <i class="fa-solid fa-check-to-slot"></i>
+          <%= link_to list_vote_path(@list), class: "list-action", title: "Put some up for a vote" do %>
+            <i class="fa-solid fa-check-to-slot"></i>
+          <% end %>
         <% end %>
 
         <%= form_with url: list_path(@list), method: :get,
