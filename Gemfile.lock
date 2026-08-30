@@ -109,6 +109,9 @@ GEM
       bigdecimal
       rexml
     crass (1.0.7)
+    cronex (0.15.0)
+      tzinfo
+      unicode (>= 0.4.4.5)
     csv (3.3.6)
     dartsass-rails (0.5.1)
       railties (>= 6.0.0)
@@ -136,6 +139,8 @@ GEM
     drb (2.2.3)
     erb (6.0.7)
     erubi (1.13.1)
+    et-orbi (1.4.1)
+      tzinfo
     execjs (2.10.2)
       json (>= 2)
     factory_bot (6.6.0)
@@ -155,6 +160,9 @@ GEM
       multipart-post (~> 2.0)
     faraday-net_http (3.4.4)
       net-http (~> 0.5)
+    fugit (1.13.0)
+      et-orbi (~> 1.4)
+      raabro (~> 1.4)
     globalid (1.4.0)
       activesupport (>= 6.1)
     google-protobuf (4.36.0-arm64-darwin)
@@ -255,6 +263,7 @@ GEM
     public_suffix (7.0.5)
     puma (8.0.2)
       nio4r (~> 2.0)
+    raabro (1.5.0)
     racc (1.8.1)
     rack (3.2.7)
     rack-session (2.1.2)
@@ -389,6 +398,11 @@ GEM
       logger (>= 1.7.0)
       rack (>= 3.2.0)
       redis-client (>= 0.29.0)
+    sidekiq-cron (2.4.0)
+      cronex (>= 0.13.0)
+      fugit (~> 1.8, >= 1.11.1)
+      globalid (>= 1.0.1)
+      sidekiq (>= 6.5.0)
     simple_form (5.4.1)
       actionpack (>= 7.0)
       activemodel (>= 7.0)
@@ -412,6 +426,7 @@ GEM
       railties (>= 7.1.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
+    unicode (0.4.4.5)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
     unicode-emoji (4.2.0)
@@ -476,6 +491,7 @@ DEPENDENCIES
   ruby-lsp-rails (~> 0.4.8)
   selenium-webdriver
   sidekiq (~> 8.1)
+  sidekiq-cron (~> 2.3)
   simple_form (~> 5.4)
   sprockets-rails
   stimulus-rails

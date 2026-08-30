@@ -41,6 +41,8 @@ gem "redis", "~> 6.0"
 
 # Background job processing (Active Job adapter in production)
 gem "sidekiq", "~> 8.1"
+# Sidekiq OSS has no periodic jobs; this is what runs the weekly Letterboxd refresh.
+gem "sidekiq-cron", "~> 2.3"
 
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem "kredis"

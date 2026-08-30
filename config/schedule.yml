@@ -1,0 +1,8 @@
+# Periodic jobs, loaded by config/initializers/sidekiq.rb on the Sidekiq server only.
+# Times are UTC (config.time_zone is left at Rails' default).
+
+letterboxd_weekly_refresh:
+  cron: "0 4 * * 1"   # Mondays at 04:00 UTC
+  class: "LetterboxdWeeklyRefreshJob"
+  queue: default
+  description: "Re-read every linked member's Letterboxd diary and add what is new."
