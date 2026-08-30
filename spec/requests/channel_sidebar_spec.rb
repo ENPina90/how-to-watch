@@ -17,7 +17,8 @@ RSpec.describe 'The channel sidebar', :needs_provider, type: :request do
 
     sidebar = response.body[/<aside id="channelSidebar".*?<\/aside>/m]
 
-    expect(sidebar).to include('>Filters</h6>')
+    # The heading names what is being filtered, so it reads differently per grouping.
+    expect(sidebar).to include('Filter by Year</h6>')
     expect(sidebar.index('channel-sidebar__filters')).to be < sidebar.index('Up Next')
   end
 

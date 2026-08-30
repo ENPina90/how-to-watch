@@ -10,7 +10,7 @@
   <div class="card-container">
     <div class="grid-card channel-card" id="<%= dom_id(list) %>">
       <div class="card-picture">
-        <%= link_to list_watch_current_path(list), data: { turbo: false } do %>
+        <%= link_to list_watch_current_path(list, channel: @viewing&.id), data: { turbo: false } do %>
           <% if current %>
             <%= entry_poster_image_tag(current) %>
           <% else %>
@@ -75,6 +75,15 @@
         </div>
 
         <div class="card-menu">
+          <%# Opens the channel's entries underneath this row, in place. The collapse
+              controller is on the row, so the caret and the frame below it agree. %>
+          <button type="button"
+                  class="channel-card__expand section-toggle"
+                  aria-expanded="false"
+                  title="Show what is in this channel"
+                  data-action="section-collapse#toggle">
+            <i class="fa-solid fa-chevron-down section-caret" aria-hidden="true"></i>
+          </button>
           <%= link_to list_path(list), title: 'Open this channel' do %>
             <i class="fa-solid fa-folder-open"></i>
           <% end %>

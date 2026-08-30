@@ -99,7 +99,7 @@ class EntriesController < ApplicationController
         flash.now[:notice] = "#{@entry.name} added to #{@list.name}"
         partial = @entry.media == 'episode' ? "S#{@entry.season}E#{@entry.episode}" : @entry.imdb
         render turbo_stream: [
-          turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.entries.count, list: @list }, action: :replace),
+          turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.total_entry_count, list: @list }, action: :replace),
           turbo_stream.replace('flash', partial: 'shared/flashes'),
           turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: @entry, partial: partial })
         ] + card_streams(@entry)
@@ -178,13 +178,16 @@ class EntriesController < ApplicationController
     partial = @entry.media == 'episode' ? "S#{@entry.season}E#{@entry.episode}" : @entry.imdb
 
     flash.now[:notice] = "#{name} removed from #{@list.name}"
+    # Read before it goes: which sections the page has it under, and what a completion
+    # record says, are both gone a line later.
+    memberships = section_memberships(@entry)
     @entry.destroy
 
     if source == 'show'
       # Use turbo_stream to replace the entry frame with the 'add_button' partial
       render turbo_stream: [
         turbo_stream.replace('flash', partial: 'shared/flashes'),
-        turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.entries.count, list: @list }),
+        turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.total_entry_count, list: @list }),
         turbo_stream.replace("entry-#{partial}-partial", partial: 'entries/add_button', locals: { list: @list, imdb_id: imdb, partial: partial })
       ]
     else
@@ -196,23 +199,42 @@ class EntriesController < ApplicationController
         format.turbo_stream do
           render turbo_stream: [
             turbo_stream.replace('flash', partial: 'shared/flashes'),
-            turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.entries.count, list: @list }),
-            turbo_stream.remove(dom_id(@entry))
-          ]
+            turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.total_entry_count, list: @list }),
+            turbo_stream.remove(dom_id(@entry)),
+            # The order view wraps each card in a row of its own, which would otherwise
+            # stay behind as an empty one.
+            turbo_stream.remove("row-#{dom_id(@entry)}")
+          ] + emptied_section_streams(memberships)
         end
       end
     end
   end
 
   def watch
+    # The channel this is being watched *from*, which is not always the channel the entry
+    # lives in: a channel that holds other channels lends their entries to its own page, and
+    # clicking one there should keep you on that channel rather than dropping you into the
+    # one it came from. The entry's own list stays its home -- editing, deleting and its
+    # place in that channel all belong to it.
+    @channel = watching_channel
+
     if current_user
-      # Update user's current position to this entry
+      # Position is a number within the channel that owns the entry, so it is recorded
+      # there. A borrowed entry has no position in the channel borrowing it.
       user_position = @entry.list.position_for_user!(current_user)
       user_position.update!(current_position: @entry.position)
     end
 
     # For series/anime, resolve the user's current episode (drives season/episode in the URL)
     if @entry.media == 'series' || @entry.media == 'anime'
+      # Picking an episode from the sidebar asks for it by id. Recording it first means the
+      # rest of this -- the embed url, the season and episode in the sidebar -- follows
+      # from the same place a normal visit reads, rather than being patched in afterwards.
+      if params[:subentry].present?
+        chosen = @entry.subentries.find_by(id: params[:subentry])
+        @entry.update_user_subentry!(current_user, chosen) if chosen
+      end
+
       # Use user's current episode position instead of global entry.current
       @current_subentry = @entry.current_subentry_for_user(current_user)
 
@@ -241,7 +263,7 @@ class EntriesController < ApplicationController
     end
 
     # Computed embed URL, built on-demand from the resolved provider's template.
-    @embed_url = @entry.embed_url(subentry: @current_subentry, autoplay: @entry.list.auto_play?)
+    @embed_url = @entry.embed_url(subentry: @current_subentry, autoplay: @channel.auto_play?)
     if @embed_url.blank?
       flash[:alert] = "No video source available for this entry"
       redirect_to list_path(@entry.list) and return
@@ -269,25 +291,12 @@ class EntriesController < ApplicationController
       user_position.go_to_previous!
 
       if params[:mode] == 'watch'
-        redirect_to watch_entry_path(@entry)
+        redirect_to watch_entry_path(@entry, channel: watching_channel.id)
       else
-        redirect_to list_path(@entry.list, anchor: @entry.imdb)
+        redirect_to list_path(watching_channel, anchor: @entry.imdb)
       end
     else
-      list = @entry.list
-
-      # Find previous entry by position (relative to current entry, not user's position)
-      previous_entry = list.entries.where('position < ?', @entry.position)
-                                  .order(position: :desc)
-                                  .first
-
-      if previous_entry
-        # Navigate to previous entry - watch action will set position
-        redirect_to watch_entry_path(previous_entry)
-      else
-        # No previous entry, stay on current
-        redirect_to watch_entry_path(@entry)
-      end
+      step_to(neighbour_in_channel(:previous))
     end
   end
 
@@ -300,46 +309,33 @@ class EntriesController < ApplicationController
       user_position.advance_to_next!
 
       if params[:mode] == 'watch'
-        redirect_to watch_entry_path(@entry)
+        redirect_to watch_entry_path(@entry, channel: watching_channel.id)
       else
-        redirect_to list_path(@entry.list, anchor: @entry.imdb)
+        redirect_to list_path(watching_channel, anchor: @entry.imdb)
       end
     else
-      list = @entry.list
-
-      # Find next entry by position (relative to current entry, not user's position)
-      next_entry = list.entries.where('position > ?', @entry.position)
-                              .order(:position)
-                              .first
-
-      if next_entry
-        # Navigate to next entry - watch action will set position
-        redirect_to watch_entry_path(next_entry)
-      else
-        # No next entry, stay on current
-        redirect_to watch_entry_path(@entry)
-      end
+      step_to(neighbour_in_channel(:next))
     end
   end
 
   def shuffle_current
     return redirect_to watch_entry_path(@entry) unless current_user
 
-    list = @entry.list
+    channel = watching_channel
+    random_entry = shuffled_from(channel)
 
-    # Get a random incomplete entry for this user, excluding the current entry
-    random_entry = list.find_random_incomplete_entry_for_user(current_user, @entry)
-
-    if random_entry
-      # Update user's position to the random entry
-      user_position = list.position_for_user!(current_user)
-      user_position.update!(current_position: random_entry.position)
-
-      redirect_to watch_entry_path(random_entry)
-    else
+    if random_entry.nil?
       # No incomplete entries available, stay on current
-      redirect_to watch_entry_path(@entry)
+      return redirect_to watch_entry_path(@entry, channel: channel.id)
     end
+
+    # Position is a number within the channel that owns the entry, so it is only recorded
+    # when the channel being shuffled is that one.
+    if random_entry.list_id == channel.id
+      channel.position_for_user!(current_user).update!(current_position: random_entry.position)
+    end
+
+    redirect_to watch_entry_path(random_entry, channel: channel.id)
   end
 
   def update_position
@@ -580,6 +576,82 @@ class EntriesController < ApplicationController
 
   private
 
+    # Which section this entry sits in under each grouping. A delete is a plain link on the
+    # card, so unlike an add it carries no word about how the page is grouped -- this
+    # answers for all of them and lets Turbo drop the ones that are not on the page.
+    # `?channel=` says which channel the click came from. It is honoured only if that
+    # channel really holds this entry -- directly or through the channels inside it --
+    # so a hand-edited id cannot make one channel wear another's contents.
+    def watching_channel
+      asked = List.find_by(id: params[:channel])
+
+      asked&.contains_entry?(@entry) ? asked : @entry.list
+    end
+
+    # The entry either side of this one on the channel being watched. On a channel that
+    # borrows from the channels inside it that is one sequence across all of them -- which
+    # is the whole point of the arrows saying "next on this channel" rather than "next in
+    # whichever channel this entry happens to live in".
+    def neighbour_in_channel(direction)
+      channel = watching_channel
+
+      # A channel that borrows nothing is its own positions, and asking the database for
+      # one neighbour beats loading a thousand entries to look either side of one.
+      if channel.child_lists.empty?
+        return direction == :next ? @entry.next : @entry.previous
+      end
+
+      sequence = channel.watch_sequence
+      at = sequence.index { |entry| entry.id == @entry.id }
+      return nil if at.nil?
+
+      direction == :next ? sequence[at + 1] : (at.positive? ? sequence[at - 1] : nil)
+    end
+
+    # Something else on this channel. A channel that borrows draws from everything under
+    # it, so shuffling a channel of channels does not keep handing back the same one.
+    def shuffled_from(channel)
+      if channel.child_lists.empty?
+        return channel.find_random_incomplete_entry_for_user(current_user, @entry)
+      end
+
+      channel.watch_sequence
+             .reject { |entry| entry.id == @entry.id || entry.completed_by?(current_user) }
+             .sample
+    end
+
+    # Onto the neighbour, or nowhere: an end of the channel leaves you where you are.
+    def step_to(entry)
+      redirect_to watch_entry_path(entry || @entry, channel: watching_channel.id)
+    end
+
+    def section_memberships(entry)
+      ListsController::GROUPING_CRITERIA.to_h do |criteria|
+        [criteria, entry.section_keys(criteria, user: current_user)]
+      end
+    end
+
+    # After a delete, a section is either one shorter or gone. A heading over nothing and a
+    # filter that finds nothing are both worse than no section at all.
+    def emptied_section_streams(memberships)
+      memberships.flat_map do |criteria, keys|
+        keys.flat_map { |key| section_stream(criteria, key) }
+      end
+    end
+
+    def section_stream(criteria, key)
+      remaining = @list.entries.count do |entry|
+        entry.section_keys(criteria, user: current_user).include?(key)
+      end
+
+      if remaining.zero?
+        [turbo_stream.remove(helpers.section_id(key)), turbo_stream.remove(helpers.section_filter_id(key))]
+      else
+        [turbo_stream.replace(helpers.section_count_id(key),
+                              helpers.tag.small("(#{remaining})", id: helpers.section_count_id(key)))]
+      end
+    end
+
     # Puts the new card on a channel page that is already open, so a search made from the
     # channel does not need a reload to show what it just added. Which container it belongs
     # in depends on how that page is grouped, which only the browser knows -- it posts
@@ -628,7 +700,7 @@ class EntriesController < ApplicationController
       when :created
         flash.now[:notice] = result[:message]
         render turbo_stream: [
-          turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.entries.count, list: @list }, action: :replace),
+          turbo_stream.replace("header-count-#{@list.id}", partial: 'lists/header_count', locals: { count: @list.total_entry_count, list: @list }, action: :replace),
           turbo_stream.replace('flash', partial: 'shared/flashes'),
           turbo_stream.replace("entry_#{partial}_partial", partial: 'entries/remove_button', locals: { entry: result[:entry], partial: partial })
         ] + card_streams(result[:entry])

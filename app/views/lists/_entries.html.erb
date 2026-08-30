@@ -7,6 +7,7 @@
         rather than being a column, so the entries keep the middle of the page. %>
     <% unless minimal %>
       <%= render 'shared/channel_sidebar', list: @list, filters: @filters,
+                                           sources: @sources || [],
                                            random_selection: random_selection %>
     <% end %>
     <div class="<%= minimal ? 'col-12 px-4' : 'col-8' %>  d-flex justify-content-center">
@@ -55,6 +56,7 @@
                   by the next one instead of the two stacking at the same offset. %>
               <% sections.each do |key| %>
                 <section class="entry-section"
+                         id="<%= section_id(key) %>"
                          data-section="<%= key %>"
                          data-section-filter-target="section"
                          data-controller="section-collapse">
@@ -65,17 +67,22 @@
                             class="section-toggle"
                             aria-expanded="true"
                             data-action="section-collapse#toggle">
-                      <span><%= key %> <small id="<%= section_count_id(key) %>">(<%= entries[key].count %>)</small></span>
+                      <span><%= section_label(@criteria, key) %> <small id="<%= section_count_id(key) %>">(<%= entries[key].count %>)</small></span>
                       <i class="fa-solid fa-chevron-down section-caret" aria-hidden="true"></i>
                     </button>
                   </h3>
                   <div id="<%= section_body_id(key) %>" data-section-collapse-target="body">
                     <% entries[key].each do |entry| %>
-                      <% if minimal %>
-                        <%= render "entries/entry_minimal", entry: entry %>
-                      <% else %>
-                        <%= entry_card(entry) %>
-                      <% end %>
+                      <%# One wrapper per card so the source filter can hide a single
+                          entry: the section around them holds entries from several
+                          channels at once. %>
+                      <div data-source="<%= entry.list_id %>" data-section-filter-target="card">
+                        <% if minimal %>
+                          <%= render "entries/entry_minimal", entry: entry %>
+                        <% else %>
+                          <%= entry_card(entry) %>
+                        <% end %>
+                      </div>
                     <% end %>
                   </div>
                 </section>

@@ -28,7 +28,7 @@
       </nav>
     <% end %>
     <h1 class="text-center">
-      <%= render 'lists/header_count', count: @list.entries.count + @list.child_lists.count, list: @list %>
+      <%= render 'lists/header_count', count: @list.total_entry_count, list: @list %>
       - <%= link_to @list.name, list_path(@list) %>
     </h1>
     <div class="list-input">
@@ -55,7 +55,7 @@
                              params[:query],
                              class: "form-control expanding-search__field",
                              data: { search_target: "input", expanding_search_target: "field" },
-                             placeholder: "Find a movie" %>
+                             placeholder: "Search this channel" %>
         <% end %>
       </div>
       <div class="list-options">
@@ -121,12 +121,12 @@
     </div>
     <% unless @minimal %>
       <ul class="menu">
-        <%# Label first, then the criteria behind it: the list's own order is stored as
-            Position, which is also the default view, and reads as Order in the menu. %>
-        <% { 'Order' => 'Position', 'Year' => 'Year', 'Rating' => 'Rating', 'Genre' => 'Genre',
-             'Category' => 'Category', 'Watched' => 'Watched', 'Media' => 'Media',
-             'Length' => 'Length' }.each do |label, criteria| %>
-          <li class="<%= 'active' if @criteria == criteria %>"><%= sort_menu_link(@list, criteria, label) %></li>
+        <%# criteria_label is the one place a grouping's stored name and its word differ:
+            the channel's own order is stored as Position and reads as Order. %>
+        <% %w[Position Year Rating Genre Category Watched Media Length].each do |criteria| %>
+          <li class="<%= 'active' if @criteria == criteria %>">
+            <%= sort_menu_link(@list, criteria, criteria_label(criteria)) %>
+          </li>
         <% end %>
       </ul>
     <% end %>

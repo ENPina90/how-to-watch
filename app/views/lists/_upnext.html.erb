@@ -29,7 +29,7 @@
          <%= 'hidden' unless random_selection.empty? %>>Nothing unwatched here</small>
 
   <%= link_to 'Pick for me',
-              random_selection.any? ? watch_entry_path(random_selection.sample) : '#',
+              random_selection.any? ? watch_path_for(random_selection.sample, viewing: @viewing) : '#',
               class: 'channel-sidebar__pick',
               data: { randomize_target: 'pick' },
               hidden: random_selection.empty? %>

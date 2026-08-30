@@ -19,6 +19,29 @@ module EntryCardHelper
   # Only card partials go through here. They contain no <pre>, <textarea> or <script>,
   # where whitespace would be significant -- `spec/requests/list_show_payload_spec.rb`
   # fails if one appears.
+  # Where a card's play link goes. A page that borrows entries from the channels inside it
+  # sends the channel along, so the watch page stays on the channel you were looking at
+  # rather than dropping you into the one the entry happens to live in. Nothing is added
+  # when the entry is already at home: the plain path is the common one.
+  def watch_path_for(entry, viewing: nil)
+    return watch_entry_path(entry) if viewing.nil? || entry.list_id == viewing.id
+
+    watch_entry_path(entry, channel: viewing.id)
+  end
+
+  # A card for an entry the page borrowed from a channel inside this one wears the name of
+  # the channel it actually lives in. In the Order view the hierarchy is on screen and this
+  # is unnecessary; in a grouped view an entry sits next to entries from anywhere, and
+  # without it there is nothing to say why it is here.
+  def entry_source_badge(entry, viewing:)
+    return if viewing.nil? || entry.list_id == viewing.id
+
+    tag.span(class: 'entry-source') do
+      concat tag.i(class: 'fa-solid fa-folder me-1')
+      concat entry.list.name
+    end
+  end
+
   def entry_card(entry, **locals)
     render("entries/entry_#{entry.media.downcase}", entry: entry, **locals)
       .to_str

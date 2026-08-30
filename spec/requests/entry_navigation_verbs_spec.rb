@@ -14,7 +14,9 @@ RSpec.describe 'Entry navigation verbs', :needs_provider, type: :request do
     it 'advances the user position over PATCH' do
       patch increment_current_entry_path(first_entry, mode: 'watch')
 
-      expect(response).to redirect_to(watch_entry_path(second_entry))
+      # The channel rides along: the arrows step through the channel you are watching
+      # from, which is not always the one the entry lives in.
+      expect(response).to redirect_to(watch_entry_path(second_entry, channel: list.id))
     end
 
     it 'is not reachable over GET' do
@@ -30,7 +32,7 @@ RSpec.describe 'Entry navigation verbs', :needs_provider, type: :request do
     it 'goes back over PATCH' do
       patch decrement_current_entry_path(second_entry, mode: 'watch')
 
-      expect(response).to redirect_to(watch_entry_path(first_entry))
+      expect(response).to redirect_to(watch_entry_path(first_entry, channel: list.id))
     end
 
     it 'is not reachable over GET' do
@@ -57,7 +59,10 @@ RSpec.describe 'Entry navigation verbs', :needs_provider, type: :request do
       get watch_entry_path(first_entry)
 
       expect(response).to be_successful
-      expect(response.body).to include(increment_current_entry_path(first_entry, mode: 'watch'))
+      # Escaped: the `&` between the two params is `&amp;` in the rendered form action.
+      expect(response.body).to include(
+        CGI.escapeHTML(increment_current_entry_path(first_entry, mode: 'watch', channel: list.id))
+      )
       # button_to emits a real form with a method override and an authenticity token
       expect(response.body).to include('name="_method" value="patch"')
     end
