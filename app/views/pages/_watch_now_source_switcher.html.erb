@@ -1,5 +1,6 @@
 <%# Source switcher for the transient watch_now page. No Entry exists here, so buttons
-    swap the iframe src client-side. All providers are treated as imdb-kind. %>
+    swap the iframe src client-side. All providers are treated as imdb-kind. Buttons are
+    numbered rather than named -- the provider's name is the tooltip. %>
 <% imdb_sources = Source.active.where(kind: 'imdb').order(:position) %>
 
 <div class="source-switcher source-switcher--watch-now d-flex align-items-center gap-2 flex-wrap justify-content-center">
@@ -7,11 +8,14 @@
   <% imdb_sources.each do |source| %>
     <% url = source.build_url(@source_media_key, @source_vars, autoplay: true) %>
     <% next if url.blank? %>
+    <%# `rendered` and not the loop index: a provider with no URL for this title is
+        skipped, and the numbering has to stay unbroken on the page. %>
     <button type="button"
             class="btn btn-sm source-switcher__btn <%= 'source-switcher__btn--active' if rendered.zero? %>"
             data-src="<%= url %>"
+            title="<%= source.name %>"
             onclick="watchNowSetSource(this)">
-      <%= source.name %>
+      Source <%= rendered + 1 %>
     </button>
     <% rendered += 1 %>
   <% end %>
