@@ -1,3 +1,13 @@
+<%# Where this viewer is up to. `@entry.current` is the entry's own pointer, shared by
+    everyone who opens it -- the list highlighted this while the panel at the bottom read
+    that one, so the two disagreed about which episode was playing. %>
+<% current_user_subentry = @entry.current_subentry_for_user(current_user) %>
+<%# The channel this is being watched from, which for a channel of channels is not the one
+    the entry lives in. Falls back to the entry's own for anything that renders this
+    without a channel in mind. %>
+<% channel = @channel || @entry.list %>
+<% channel_entries = channel.watch_sequence %>
+
 <!-- Right Entries Sidebar -->
 <div id="entriesSidebar"
      class="entries-sidebar-right bg-dark text-white <%= 'd-none' if @entries_sidebar_collapsed %>"
@@ -7,7 +17,7 @@
 
   <!-- Sidebar Header -->
   <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center" style="flex: 0 0 auto;">
-    <h5 class="mb-0"><%= @entry.list.name %></h5>
+    <h5 class="mb-0"><%= channel.name %></h5>
     <button class="unified-collapse-btn btn btn-sm btn-outline-light">
       <i class="fa-solid fa-bars"></i>
     </button>
@@ -30,16 +40,17 @@
 
       <!-- Episodes Channel View -->
       <div id="episodesListView" class="list-group list-group-flush">
-        <% current_user_subentry = @entry.current_subentry_for_user(current_user) %>
         <% @entry.subentries.order(:season, :episode).each do |subentry| %>
           <% is_current = current_user_subentry&.id == subentry.id %>
           <%
             active_styles = is_current ? 'background-color: rgba(255, 255, 255, 0.15) !important; font-weight: 600 !important;' : ''
           %>
-          <%= link_to watch_entry_path(@entry),
+          <%# An ordinary link asking for this episode. It used to be an inline onclick that
+              navigated and then set the iframe's src from `subentry.source` -- a column
+              subentries no longer have, which is what made every series page 500. %>
+          <%= link_to watch_entry_path(@entry, subentry: subentry.id),
                       class: "entry-item #{is_current ? 'active' : ''}",
                       style: "color: #ffffff !important; text-decoration: none !important; #{active_styles}",
-                      onclick: "event.preventDefault(); window.location.href = '#{watch_entry_path(@entry)}'; document.getElementById('cinema').src = '#{subentry.source}';",
                       data: {
                         'entries-sidebar-target': 'entryItem',
                         'subentry-id': subentry.id,
@@ -63,12 +74,12 @@
 
       <!-- Entries Channel View (Hidden by default) -->
       <div id="entriesListView" class="list-group list-group-flush d-none">
-        <% @entry.list.entries.order(:position).each do |entry| %>
+        <% channel_entries.each do |entry| %>
           <% is_current = entry.id == @entry.id %>
           <%
             active_styles = is_current ? 'background-color: rgba(255, 255, 255, 0.15) !important; font-weight: 600 !important;' : ''
           %>
-          <%= link_to watch_entry_path(entry),
+          <%= link_to watch_path_for(entry, viewing: channel),
                       class: "entry-item #{is_current ? 'active' : ''}",
                       style: "color: #ffffff !important; text-decoration: none !important; #{active_styles}",
                       data: {
@@ -90,12 +101,12 @@
     <% else %>
       <h6 class="text-muted mb-3" style="font-size: 0.75rem; text-transform: uppercase;">Entries</h6>
       <div class="list-group list-group-flush">
-        <% @entry.list.entries.order(:position).each do |entry| %>
+        <% channel_entries.each do |entry| %>
           <% is_current = entry.id == @entry.id %>
           <%
             active_styles = is_current ? 'background-color: rgba(255, 255, 255, 0.15) !important; font-weight: 600 !important;' : ''
           %>
-          <%= link_to watch_entry_path(entry),
+          <%= link_to watch_path_for(entry, viewing: channel),
                       class: "entry-item #{is_current ? 'active' : ''}",
                       style: "color: #ffffff !important; text-decoration: none !important; #{active_styles}",
                       data: {
@@ -125,16 +136,21 @@
     </h6>
 
     <div>
-      <% if (@entry.media == 'series' || @entry.media == 'anime') && @entry.current %>
+      <% if (@entry.media == 'series' || @entry.media == 'anime') && current_user_subentry %>
         <p class="text-muted mb-2" style="font-size: 0.8rem;">
-          Season <%= @entry.current.season %>, Episode <%= @entry.current.episode %>
+          <%# Numbered the way the list above numbers it: anime run continuously. %>
+          <% if @entry.media == 'anime' %>
+            Episode <%= current_user_subentry.calculate_absolute_episode_number %>
+          <% else %>
+            Season <%= current_user_subentry.season %>, Episode <%= current_user_subentry.episode %>
+          <% end %>
         </p>
         <h6 class="text-white mb-3" style="font-size: 0.95rem; font-weight: 600; line-height: 1.3;">
-          <%= @entry.current.name %>
+          <%= current_user_subentry.name %>
         </h6>
-        <% if @entry.current.plot.present? %>
+        <% if current_user_subentry.plot.present? %>
           <p class="text-white-50 mb-0" style="font-size: 0.8rem; line-height: 1.4;">
-            <%= @entry.current.plot %>
+            <%= current_user_subentry.plot %>
           </p>
         <% elsif @entry.plot.present? %>
           <p class="text-white-50 mb-0" style="font-size: 0.8rem; line-height: 1.4;">
@@ -147,7 +163,7 @@
         <% end %>
       <% else %>
         <p class="text-muted mb-2" style="font-size: 0.8rem;">
-          Position <%= @entry.position %> of <%= @entry.list.entries.count %>
+          Position <%= channel_entries.index(@entry).to_i + 1 %> of <%= channel_entries.count %>
         </p>
         <h6 class="text-white mb-2" style="font-size: 0.95rem; font-weight: 600; line-height: 1.3;">
           <%= @entry.name %>
