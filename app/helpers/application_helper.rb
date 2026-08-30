@@ -29,11 +29,37 @@ module ApplicationHelper
     }
   end
 
+  # What the menu calls a grouping. The channel's own order is stored as Position and reads
+  # as Order, which is the one place the two differ.
+  CRITERIA_LABELS = { 'Position' => 'Order' }.freeze
+
+  def criteria_label(criteria)
+    CRITERIA_LABELS.fetch(criteria, criteria)
+  end
+
+  # What a section is called on screen. The key stays the raw value -- it is what the filter
+  # matches on -- so the unit is added here rather than baked into it.
+  def section_label(criteria, key)
+    return "#{key} Min" if criteria == 'Length' && key.is_a?(Numeric)
+
+    key
+  end
+
   # A section is named by its key -- "Science Fiction", "1970s", 8.1 -- which is not a dom
   # id. These two turn a key into the ids the grouped view labels its section with, so a
   # card added without a reload can be put in the right one.
   def section_body_id(key)
     "section-body-#{section_slug(key)}"
+  end
+
+  # The section itself and its button in the rail, so emptying one can take both off the
+  # page rather than leaving a heading over nothing and a filter that finds nothing.
+  def section_id(key)
+    "section-#{section_slug(key)}"
+  end
+
+  def section_filter_id(key)
+    "section-filter-#{section_slug(key)}"
   end
 
   def section_count_id(key)
