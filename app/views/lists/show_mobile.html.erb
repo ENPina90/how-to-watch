@@ -6,10 +6,10 @@
     <div class="search-container">
       <input type="text"
              class="form-control search-input"
-             placeholder="Search movies & series..."
+             placeholder="Search movies, series, and channels"
              id="mobile-entry-search"
                  name="q"
-                 aria-label="Search movies and series"
+                 aria-label="Search movies, series, and channels"
                  autocomplete="off"
                  data-mobile-search-target="input"
              data-action="input->mobile-search#performSearch"
@@ -71,7 +71,7 @@
     <% end %>
 
     <h1 class="mobile-list-title text-center">
-      <%= render 'lists/header_count', count: @list.entries.count + @list.child_lists.count, list: @list %>
+      <%= render 'lists/header_count', count: @list.total_entry_count, list: @list %>
       - <%= link_to @list.name, list_path(@list) %>
     </h1>
 

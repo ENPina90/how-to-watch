@@ -19,8 +19,8 @@ RSpec.describe 'Series wording', :needs_provider, type: :request do
   it 'says so in the search box too' do
     get list_path(list)
 
-    expect(response.body).to include('placeholder="Search movies & series..."')
-    expect(response.body).to include('aria-label="Search movies and series"')
+    expect(response.body).to include('placeholder="Search movies, series, and channels"')
+    expect(response.body).to include('aria-label="Search movies, series, and channels"')
   end
 
   it 'labels the add button and the type menu on /entries/new' do
