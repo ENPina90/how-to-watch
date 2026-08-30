@@ -20,6 +20,10 @@ Rails.application.routes.draw do
     resource :dashboard, only: %i[show update], controller: 'dashboard'
   end
 
+  # Does this Letterboxd handle have a readable diary? Reachable signed out: the sign-up
+  # form asks before the account exists.
+  get '/letterboxd/check', to: 'letterboxd#check', as: :letterboxd_check
+
   # User preferences
   patch '/users/toggle_dark_mode', to: 'users#toggle_dark_mode', as: :toggle_dark_mode
 

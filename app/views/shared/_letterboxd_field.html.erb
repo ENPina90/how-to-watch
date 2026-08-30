@@ -1,0 +1,32 @@
+<%# The username and the Letterboxd opt-in that depends on it, as one unit: the opt-in is
+    only meaningful next to the field it reads, and the Stimulus controller has to scope
+    over both to check one against the other. Rendered on sign-up and on the profile page,
+    which is why it takes the form builder rather than reaching for `resource`. %>
+<div data-controller="letterboxd-check"
+     data-letterboxd-check-url-value="<%= letterboxd_check_path %>">
+  <%= f.input :username,
+              required: local_assigns.fetch(:username_required, false),
+              input_html: {
+                autocomplete: "username",
+                data: {
+                  letterboxd_check_target: "username",
+                  action: "input->letterboxd-check#debouncedCheck"
+                }
+              } %>
+
+  <div class="letterboxd-optin">
+    <%= f.input :letterboxd_enabled,
+                as: :boolean,
+                label: "Link my Letterboxd account",
+                input_html: {
+                  data: {
+                    letterboxd_check_target: "toggle",
+                    action: "change->letterboxd-check#check"
+                  }
+                },
+                hint: "Uses the username above. We build a channel from your Letterboxd diary — the films you have logged, already marked watched and carrying your ratings." %>
+
+    <%# Filled in by the Stimulus controller; hidden until there is something to say. %>
+    <p class="letterboxd-status" data-letterboxd-check-target="status" hidden></p>
+  </div>
+</div>
