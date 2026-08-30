@@ -163,14 +163,17 @@ Devise.setup do |config|
   # config.confirmation_keys = [:email]
 
   # ==> Configuration for :rememberable
-  # The time the user will be remembered without asking for credentials again.
-  # config.remember_for = 2.weeks
+  # How long a browser stays signed in without being asked again. The default is two
+  # weeks, which is why signing in came round so often.
+  config.remember_for = 1.year
 
   # Invalidates all the remember me tokens when the user signs out.
   config.expire_all_remember_me_on_sign_out = true
 
-  # If true, extends the user's remember period when remembered via cookie.
-  # config.extend_remember_period = false
+  # Pushes the year out again on every visit that arrives on the remember cookie, so
+  # somebody who uses the site is never signed out for having used it long enough. Without
+  # this the year runs from the last time credentials were typed, whatever happens after.
+  config.extend_remember_period = true
 
   # Options to be passed to the created cookie. For instance, you can set
   # secure: true in order to force SSL only cookies.
