@@ -36,6 +36,48 @@ RSpec.describe LetterboxdSyncJob do
 
     expect { described_class.perform_now(user.id) }.not_to raise_error
   end
+
+  describe 'what it records for the profile page to report' do
+    let(:user) { create(:user, username: 'testmember', letterboxd_enabled: true) }
+
+    it 'marks a success, so the page can stop saying it is still working' do
+      described_class.perform_now(user.id)
+
+      expect(user.reload.letterboxd_synced_at).to be_present
+      expect(user.letterboxd_sync_error).to be_nil
+      expect(user.letterboxd_sync_state).to eq(:ok)
+    end
+
+    it 'keeps the reason a diary could not be read' do
+      stub_request(:get, %r{letterboxd\.com/.+/rss/}).to_return(status: 403, body: '')
+
+      described_class.perform_now(user.id)
+
+      expect(user.reload.letterboxd_sync_error).to include('403')
+      expect(user.letterboxd_sync_state).to eq(:failed)
+    end
+
+    # Silence is the failure mode this whole column exists to prevent, so an unexpected
+    # error is recorded and then re-raised for the queue to retry and report.
+    it 'records an unexpected failure and still raises it' do
+      allow_any_instance_of(LetterboxdList).to receive(:sync!).and_raise(ActiveRecord::RecordInvalid)
+
+      expect { described_class.perform_now(user.id) }.to raise_error(ActiveRecord::RecordInvalid)
+      expect(user.reload.letterboxd_sync_state).to eq(:failed)
+    end
+
+    # Recording the outcome must not look like a settings change, or it would queue
+    # another sync and arrive straight back here.
+    it 'does not queue another sync by recording the outcome' do
+      described_class.perform_now(user.id)
+
+      expect { described_class.perform_now(user.id) }.not_to have_enqueued_job(described_class)
+    end
+
+    it 'reads as still working before the job has run' do
+      expect(user.letterboxd_sync_state).to eq(:waiting)
+    end
+  end
 end
 
 RSpec.describe LetterboxdWeeklyRefreshJob do

@@ -33,15 +33,41 @@
       </div>
     <% end %>
 
-    <%# Shown once the channel exists, so there is somewhere to go from here. %>
-    <% if (channel = @user.letterboxd_list) %>
-      <p class="profile-note">
-        <i class="fa-brands fa-square-letterboxd"></i>
-        Your diary is in
-        <%= link_to channel.name, list_path(channel) %>
-        (<%= pluralize(channel.entries.count, 'film') %>). It refreshes weekly, and shortly
-        after you review something on Letterboxd.
-      </p>
+    <%# The channel is built by a background job, so the page has to say where that got
+        to -- a channel that has simply not appeared is otherwise indistinguishable from
+        one that failed. %>
+    <% if @user.letterboxd_enabled? %>
+      <div class="letterboxd-sync letterboxd-sync--<%= @user.letterboxd_sync_state %>">
+        <% case @user.letterboxd_sync_state %>
+        <% when :waiting %>
+          <p>
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            Reading your Letterboxd diary. This takes a minute for a long diary — reload
+            the page. If it stays like this, the background queue is not running.
+          </p>
+        <% when :failed %>
+          <p>
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            Could not read your diary: <%= @user.letterboxd_sync_error %>
+          </p>
+          <p class="profile-note">
+            Check the username is your Letterboxd handle and that your profile is public.
+          </p>
+        <% when :ok %>
+          <% channel = @user.letterboxd_list %>
+          <p>
+            <i class="fa-brands fa-square-letterboxd"></i>
+            <% if channel %>
+              Your diary is in <%= link_to channel.name, list_path(channel) %>
+              (<%= pluralize(channel.entries.count, 'film') %>),
+            <% end %>
+            updated <%= time_ago_in_words(@user.letterboxd_synced_at) %> ago. It refreshes
+            weekly, and shortly after you review something on Letterboxd.
+          </p>
+        <% end %>
+
+        <%= button_to 'Sync now', letterboxd_sync_path, class: 'btn btn-sm btn-outline-secondary' %>
+      </div>
     <% end %>
   </section>
 
