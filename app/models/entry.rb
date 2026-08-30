@@ -258,7 +258,10 @@ class Entry < ApplicationRecord
 
   # Get user's current episode for this entry
   def current_subentry_for_user(user)
-    return nil unless user
+    # Signed out there is no per-user position to read, so the entry's own pointer is the
+    # only "current" there is. Returning nil left a series with no episode to play for a
+    # visitor the access mode had let in to watch it.
+    return current unless user
     return current unless media == 'series' || media == 'anime' # Fallback to entry-level current
 
     user_position = UserEntryPosition.find_or_create_for(user, self)
