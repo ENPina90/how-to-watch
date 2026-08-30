@@ -15,6 +15,8 @@ class EntriesController < ApplicationController
   before_action :check_edit_permissions,
                 only: %i[edit update destroy update_poster
                          update_position reportlink set_source repair_image migrate_poster]
+  # An entry is as private as the channel it lives in.
+  before_action -> { refuse_guest_on_private!(@entry.list) }, only: %i[show watch]
 
   def new
     @entry = Entry.new
@@ -230,13 +232,13 @@ class EntriesController < ApplicationController
       # Picking an episode from the sidebar asks for it by id. Recording it first means the
       # rest of this -- the embed url, the season and episode in the sidebar -- follows
       # from the same place a normal visit reads, rather than being patched in afterwards.
-      if params[:subentry].present?
-        chosen = @entry.subentries.find_by(id: params[:subentry])
-        @entry.update_user_subentry!(current_user, chosen) if chosen
-      end
+      chosen = @entry.subentries.find_by(id: params[:subentry]) if params[:subentry].present?
+      @entry.update_user_subentry!(current_user, chosen) if chosen
 
-      # Use user's current episode position instead of global entry.current
-      @current_subentry = @entry.current_subentry_for_user(current_user)
+      # Use user's current episode position instead of global entry.current. Signed out
+      # there is nowhere to record the choice, so it holds for this request alone -- which
+      # is all the sidebar's episode links need to work.
+      @current_subentry = chosen || @entry.current_subentry_for_user(current_user)
 
       # Set episode sidebar variables based on user's current episode
       if @current_subentry
@@ -584,6 +586,10 @@ class EntriesController < ApplicationController
     # so a hand-edited id cannot make one channel wear another's contents.
     def watching_channel
       asked = List.find_by(id: params[:channel])
+      # `?channel=` names the channel being watched *from*, and the page reads its name,
+      # its siblings and what is next on it. A private one is not a context a signed-out
+      # visitor gets, even when the entry they asked for is public.
+      asked = nil if asked&.private? && !user_signed_in?
 
       asked&.contains_entry?(@entry) ? asked : @entry.list
     end

@@ -12,7 +12,7 @@
   </head>
   <%# `page-<controller>-<action>` alongside the sidebar and theme classes already here,
       so a style can be scoped to one page without a flag being threaded through to it. %>
-  <body class="page-<%= controller_name.dasherize %>-<%= action_name.dasherize %> <%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> <%= user_signed_in? && current_user.dark_mode ? 'dark-mode' : 'light-mode' %>">
+  <body class="page-<%= controller_name.dasherize %>-<%= action_name.dasherize %> <%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> <%= theme_class %>">
     <%= render "shared/navbar" %>
     <%= render "shared/impersonation_banner" %>
     <%= render 'shared/flashes' %>
@@ -45,6 +45,7 @@
                    class="btn btn-success btn-sm">
                   <i class="fa-solid fa-play me-1"></i>Watch Now
                 </a>
+                <% if user_signed_in? %>
                 {{#entryId}}
                 <%# Already on this channel: the same button takes it back out, the way the
                     /entries/new results do. %>
@@ -66,6 +67,7 @@
                   <i class="fas fa-plus me-1"></i>{{addLabel}}
                 </button>
                 {{/entryId}}
+                <% end %>
               </div>
             </div>
           </div>
@@ -94,6 +96,7 @@
                    class="btn btn-success btn-sm">
                   <i class="fa-solid fa-play me-1"></i>Watch Now
                 </a>
+                <% if user_signed_in? %>
                 {{#entryId}}
                 <%# Already on this channel: the same button takes it back out, the way the
                     /entries/new results do. %>
@@ -116,6 +119,7 @@
                   <i class="fas fa-plus me-1"></i>{{addLabel}}
                 </button>
                 {{/entryId}}
+                <% end %>
                 <button type="button"
                         class="btn btn-outline-primary btn-sm"
                         data-action="click->list-search#seeEpisodes"
@@ -176,6 +180,7 @@
           <option value="{{number}}">Season {{number}}</option>
           {{/seasons}}
         </select>
+        <% if user_signed_in? %>
         <button type="button"
                 class="btn btn-primary btn-sm"
                 data-action="click->list-search#add"
@@ -189,6 +194,7 @@
                 data-type="{{type}}">
           <i class="fas fa-plus me-1"></i>Season
         </button>
+        <% end %>
         {{/top}}
 
         {{#top}}
@@ -196,9 +202,11 @@
         <button type="button" class="btn btn-outline-primary btn-sm" data-action="click->list-search#bySeason">
           <i class="fa-solid fa-list-ol me-1"></i>By Season
         </button>
+        <% if user_signed_in? %>
         <button type="button" class="btn btn-primary btn-sm" data-action="click->list-search#openTopModal">
           <i class="fas fa-plus me-1"></i>Top Episodes
         </button>
+        <% end %>
         {{/top}}
       </div>
 
@@ -220,6 +228,7 @@
                    class="btn btn-success btn-sm">
                   <i class="fa-solid fa-play me-1"></i>Watch Now
                 </a>
+                <% if user_signed_in? %>
                 {{#entryId}}
                 <%# Already on this channel: the same button takes it back out, the way the
                     /entries/new results do. %>
@@ -244,6 +253,7 @@
                   <i class="fas fa-plus me-1"></i>Episode
                 </button>
                 {{/entryId}}
+                <% end %>
               </div>
             </div>
           </div>
@@ -285,6 +295,7 @@
                 <a href="/lists/{{id}}" class="btn btn-primary btn-sm">
                   <i class="fa-solid fa-eye me-1"></i>View Channel
                 </a>
+                <% if user_signed_in? %>
                 <%# Files this channel inside another one, the same way the + on an entry
                     files it: into the channel you are looking at, or into whichever one
                     the picker is answered with. %>
@@ -304,6 +315,7 @@
                   </button>
                 </form>
                 {{/canSubscribe}}
+                <% end %>
               </div>
             </div>
           </div>

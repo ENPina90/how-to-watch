@@ -1,0 +1,202 @@
+/* The Devise screens. One centred card on the page's own background, so the front door
+   reads as the same app as everything behind it.
+
+   Colours are set here for the dark theme and overridden in themes/_light_mode.scss, the
+   way the rest of the app does it. Several rules carry the page-container's own
+   specificity (or !important) because .page-container blanket-colours every heading,
+   label, paragraph and link white -- the card has to say otherwise for its quieter text. */
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 220px);
+  padding: 48px 16px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 36px 32px;
+  background-color: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+
+.auth-card__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.auth-card__logo {
+  width: 30px;
+  height: 30px;
+}
+
+.auth-card__wordmark {
+  font-family: $headers-font;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.auth-card .auth-card__title {
+  margin: 0 0 6px;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.auth-card .auth-card__subtitle {
+  margin: 0 0 26px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+/* Field labels sit above their input as a quiet caption rather than competing with the
+   title for the same weight. */
+.auth-card .form-label,
+.auth-card label {
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.auth-card .form-control {
+  padding: 11px 13px;
+  border-radius: 8px;
+}
+
+.auth-card .form-control:focus {
+  box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.18);
+}
+
+.auth-card .form-text,
+.auth-card .auth-card__note {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Remember me: a checkbox reads as a control, not as another field with a caption. */
+.auth-card .form-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 0;
+}
+
+.auth-card .form-check-input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  float: none;
+  background-color: #1a1a1a;
+  border-color: #3a3a3a;
+}
+
+.auth-card .form-check-input:checked {
+  background-color: #1db954;
+  border-color: #1db954;
+}
+
+.auth-card .form-check-label {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.auth-card fieldset {
+  margin-bottom: 20px;
+}
+
+.page-container .auth-submit {
+  display: block;
+  width: 100%;
+  padding: 11px;
+  margin-top: 4px;
+  background-color: #1db954;
+  border: none;
+  border-radius: 8px;
+  color: #0a0a0a;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.page-container .auth-submit:hover,
+.page-container .auth-submit:focus {
+  background-color: #1ed760;
+  color: #0a0a0a;
+}
+
+.auth-card__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #2a2a2a;
+  font-size: 0.85rem;
+}
+
+.auth-card .auth-card__links a {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.auth-card .auth-card__links a:hover {
+  color: #1db954 !important;
+}
+
+/* Deleting the account is not one more field: it gets its own block, below the form and
+   in its own colour. */
+.auth-card__danger {
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid #2a2a2a;
+}
+
+.auth-card .auth-card__danger-title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.page-container .auth-danger {
+  margin-top: 12px;
+  padding: 8px 14px;
+  background-color: transparent;
+  border: 1px solid rgba(253, 16, 21, 0.55);
+  border-radius: 8px;
+  color: #ff6b6f;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.page-container .auth-danger:hover {
+  background-color: rgba(253, 16, 21, 0.12);
+  color: #ff6b6f;
+}
+
+/* Devise's own error box, which the sign-up and password forms render on failure. */
+.auth-card .alert {
+  padding: 10px 12px;
+  margin-bottom: 18px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 480px) {
+  .auth-page {
+    padding: 24px 12px;
+  }
+
+  .auth-card {
+    padding: 28px 20px;
+  }
+}

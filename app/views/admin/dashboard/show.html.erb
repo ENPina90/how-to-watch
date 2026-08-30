@@ -1,0 +1,160 @@
+<% stats = @stats %>
+<div class="admin-dashboard">
+  <header class="admin-header">
+    <h1 class="admin-title">Dashboard</h1>
+    <p class="admin-subtitle">The last <%= stats.window %> days, and the switches that change how the site behaves.</p>
+  </header>
+
+  <section class="admin-section">
+    <h2 class="admin-section__title">People</h2>
+    <div class="admin-stats">
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= number_with_delimiter(stats.users_total) %></span>
+        <span class="admin-stat__label">Users</span>
+        <span class="admin-stat__note"><%= stats.admins %> admin<%= 's' unless stats.admins == 1 %></span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= number_with_delimiter(stats.users_new) %></span>
+        <span class="admin-stat__label">New sign-ups</span>
+        <span class="admin-stat__note">in <%= stats.window %> days</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= number_with_delimiter(stats.users_active) %></span>
+        <span class="admin-stat__label">Active users</span>
+        <span class="admin-stat__note">opened a page this week</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= number_with_delimiter(stats.subscriptions) %></span>
+        <span class="admin-stat__label">Subscriptions</span>
+        <span class="admin-stat__note">across all channels</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <h2 class="admin-section__title">Traffic</h2>
+    <div class="admin-stats">
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= number_with_delimiter(stats.visits) %></span>
+        <span class="admin-stat__label">Visits</span>
+        <span class="admin-stat__note">one browser, one day</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= number_with_delimiter(stats.page_views) %></span>
+        <span class="admin-stat__label">Page views</span>
+        <span class="admin-stat__note">in <%= stats.window %> days</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= number_with_delimiter(stats.guest_visits) %></span>
+        <span class="admin-stat__label">Signed-out visits</span>
+        <span class="admin-stat__note">nobody logged in</span>
+      </div>
+    </div>
+
+    <% days = stats.daily_visits %>
+    <% peak = [days.map { |day| day[:page_views] }.max, 1].max %>
+    <div class="admin-chart">
+      <% days.each do |day| %>
+        <div class="admin-chart__day">
+          <div class="admin-chart__bar-track"
+               title="<%= day[:date].strftime('%-d %b') %>: <%= day[:visits] %> visits, <%= day[:page_views] %> page views">
+            <div class="admin-chart__bar" style="height: <%= (day[:page_views] * 100.0 / peak).round(1) %>%"></div>
+          </div>
+          <span class="admin-chart__count"><%= day[:page_views] %></span>
+          <span class="admin-chart__label"><%= day[:date].strftime('%a') %></span>
+        </div>
+      <% end %>
+    </div>
+    <p class="admin-note">
+      Bars are page views. Counting started when visit tracking was deployed, so days before
+      that read as zero.
+    </p>
+  </section>
+
+  <section class="admin-section">
+    <h2 class="admin-section__title">Content</h2>
+    <div class="admin-stats">
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= number_with_delimiter(stats.lists_total) %></span>
+        <span class="admin-stat__label">Channels</span>
+        <span class="admin-stat__note"><%= stats.private_lists %> private · <%= stats.lists_new %> new</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= number_with_delimiter(stats.entries_total) %></span>
+        <span class="admin-stat__label">Entries</span>
+        <span class="admin-stat__note"><%= number_with_delimiter(stats.entries_new) %> added this week</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= number_with_delimiter(stats.completions) %></span>
+        <span class="admin-stat__label">Watched</span>
+        <span class="admin-stat__note"><%= number_with_delimiter(stats.completions_total) %> all time</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= stats.sources_active %>/<%= stats.sources_total %></span>
+        <span class="admin-stat__label">Sources active</span>
+        <span class="admin-stat__note"><%= link_to 'Manage', sources_path %></span>
+      </div>
+    </div>
+
+    <div class="admin-tables">
+      <div class="admin-table">
+        <h3 class="admin-table__title">Biggest channels</h3>
+        <% if stats.busiest_lists.any? %>
+          <ol class="admin-list">
+            <% stats.busiest_lists.each do |row| %>
+              <li>
+                <%= link_to row[:name].presence || "Channel ##{row[:id]}", list_path(row[:id]) %>
+                <span class="admin-list__count"><%= row[:entries] %></span>
+              </li>
+            <% end %>
+          </ol>
+        <% else %>
+          <p class="admin-note">No channels yet.</p>
+        <% end %>
+      </div>
+
+      <div class="admin-table">
+        <h3 class="admin-table__title">Most watched</h3>
+        <% if stats.most_watched.any? %>
+          <ol class="admin-list">
+            <% stats.most_watched.each do |row| %>
+              <li>
+                <%= link_to row[:name].presence || "Entry ##{row[:id]}", watch_entry_path(row[:id]) %>
+                <span class="admin-list__count"><%= row[:watches] %></span>
+              </li>
+            <% end %>
+          </ol>
+        <% else %>
+          <p class="admin-note">Nothing has been marked watched yet.</p>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <h2 class="admin-section__title">Who can reach the site</h2>
+    <%= form_with model: @setting, url: admin_dashboard_path, method: :patch, class: "admin-modes" do |f| %>
+      <% [
+           ['secure', 'Secure', 'A visitor must sign in before they see anything. How the site has always worked.'],
+           ['moderate', 'Moderate', 'A visitor can browse channels and search. Watching anything needs an account.'],
+           ['open', 'Open', 'A visitor can browse and watch. Creating channels, adding entries and tracking progress still need an account.']
+         ].each do |mode, title, blurb| %>
+        <label class="admin-mode <%= 'admin-mode--on' if @setting.access_mode == mode %>">
+          <%= f.radio_button :access_mode, mode, class: "admin-mode__input" %>
+          <span class="admin-mode__body">
+            <span class="admin-mode__title"><%= title %></span>
+            <span class="admin-mode__blurb"><%= blurb %></span>
+          </span>
+        </label>
+      <% end %>
+
+      <div class="admin-modes__actions">
+        <%= f.submit "Save access mode", class: "admin-save" %>
+      </div>
+    <% end %>
+    <p class="admin-note">
+      Whichever mode is set, a signed-out visitor can only ever read: every action that
+      writes is closed to them, so nothing here can hand out an account's abilities.
+    </p>
+  </section>
+</div>
