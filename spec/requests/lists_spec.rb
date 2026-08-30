@@ -65,5 +65,27 @@ RSpec.describe 'Lists', type: :request do
 
       expect(list.reload.settings).to eq('Genre')
     end
+
+    it 'persists an admin\'s choice on a channel they do not own' do
+      sign_in create(:user, :admin)
+      create(:entry, list: list, genre: 'Action')
+
+      get list_path(list, criteria: 'Genre', sort: 'desc')
+
+      expect(list.reload.settings).to eq('Genre')
+      expect(list.reload.sort).to eq('desc')
+    end
+
+    it 'leaves the saved view alone for a visitor who neither owns it nor is an admin' do
+      list.update!(settings: 'Year', sort: 'asc')
+      sign_in create(:user)
+      create(:entry, list: list, genre: 'Action')
+
+      get list_path(list, criteria: 'Genre', sort: 'desc')
+
+      expect(response).to be_successful
+      expect(list.reload.settings).to eq('Year')
+      expect(list.reload.sort).to eq('asc')
+    end
   end
 end
