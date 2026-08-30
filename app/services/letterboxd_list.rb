@@ -28,6 +28,11 @@ class LetterboxdList
   # Raises LetterboxdFeed::RequestError if the diary cannot be read -- callers decide
   # whether that is worth surfacing or just worth logging.
   def sync!
+    # Re-read the flag rather than trusting the copy the caller loaded. A sync is queued
+    # and runs later -- the weekly pass, or one booked when a review was opened -- so it
+    # can land after the member has unticked the box, and would otherwise rebuild the
+    # channel they had just deleted.
+    user.reload
     return Result.new(created: 0, updated: 0, total: 0) unless user.letterboxd_enabled?
 
     watches = LetterboxdFeed.new(user.username).watches

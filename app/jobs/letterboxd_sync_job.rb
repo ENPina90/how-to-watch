@@ -25,6 +25,9 @@ class LetterboxdSyncJob < ApplicationJob
       "Letterboxd sync for user #{user_id}: #{result.created} added, " \
       "#{result.updated} updated, #{result.total} in feed"
     )
+  rescue ActiveRecord::RecordNotFound
+    # The account was deleted between the job being queued and running.
+    nil
   rescue LetterboxdFeed::RequestError => e
     # A private profile, a renamed account or a Letterboxd outage. Not re-raised: none of
     # those is fixed by retrying, and the weekly run will try again anyway.

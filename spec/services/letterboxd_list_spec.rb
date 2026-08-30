@@ -91,6 +91,16 @@ RSpec.describe LetterboxdList do
     end
   end
 
+  # A sync is queued and runs later, so it can arrive after the member changed their mind.
+  it 'does not rebuild a channel that was deleted while the sync was queued' do
+    described_class.new(user).sync!
+    queued = described_class.new(user)
+
+    user.update!(letterboxd_enabled: false)
+
+    expect { queued.sync! }.not_to change { user.lists.where(letterboxd: true).count }.from(0)
+  end
+
   describe '#remove!' do
     it 'deletes the channel and its entries' do
       described_class.new(user).sync!
