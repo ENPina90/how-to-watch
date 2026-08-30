@@ -98,10 +98,4 @@ Rails.application.routes.draw do
   # Streaming source/provider definitions (managed via modals on the watch page)
   resources :sources, only: [:index, :create, :update, :destroy]
 
-  # Letterboxd integration routes
-  get '/letterboxd/connect', to: 'letterboxd#connect', as: :connect_letterboxd
-  get '/letterboxd/callback', to: 'letterboxd#callback', as: :letterboxd_callback
-  delete '/letterboxd/disconnect', to: 'letterboxd#disconnect', as: :disconnect_letterboxd
-  post '/letterboxd/sync/:entry_id', to: 'letterboxd#sync_entry', as: :sync_entry_to_letterboxd
-  post '/letterboxd/bulk_sync', to: 'letterboxd#bulk_sync', as: :bulk_sync_to_letterboxd
 end
