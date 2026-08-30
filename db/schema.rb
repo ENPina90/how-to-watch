@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_30_100100) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_30_200650) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -65,6 +65,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_30_100100) do
     t.string "imdb"
     t.string "language"
     t.integer "length"
+    t.float "letterboxd_score"
     t.bigint "list_id", null: false
     t.string "media"
     t.string "name"
@@ -233,6 +234,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_30_100100) do
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
     t.text "letterboxd_access_token"
+    t.boolean "letterboxd_enabled", default: false, null: false
     t.text "letterboxd_refresh_token"
     t.datetime "letterboxd_token_expires_at"
     t.string "letterboxd_user_id"
@@ -244,6 +246,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_30_100100) do
     t.string "username"
     t.index ["admin"], name: "index_users_on_admin"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["letterboxd_enabled"], name: "index_users_on_letterboxd_enabled", where: "letterboxd_enabled"
     t.index ["letterboxd_user_id"], name: "index_users_on_letterboxd_user_id"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
