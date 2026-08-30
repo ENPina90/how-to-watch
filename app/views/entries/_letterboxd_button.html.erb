@@ -1,0 +1,13 @@
+<%# Movies only, and only when the entry carries an id Letterboxd can resolve -- both
+    conditions live in the helper, which returns nil otherwise. %>
+<% url = letterboxd_review_url(entry) %>
+<% if url %>
+  <a href="<%= url %>"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="letterboxd-link"
+     title="Review <%= entry.name %> on Letterboxd"
+     aria-label="Review <%= entry.name %> on Letterboxd">
+    <i class="fa-brands fa-square-letterboxd"></i>
+  </a>
+<% end %>

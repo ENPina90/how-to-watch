@@ -1,0 +1,42 @@
+// Letterboxd's brand green. The selector carries the `.card-menu` prefix because that
+// container paints every icon and link inside it white, the same reason `.fa-link-slash`
+// has to state its colours explicitly.
+$letterboxd-green: #00e054;
+
+.letterboxd-link,
+.card-menu a.letterboxd-link {
+  color: $letterboxd-green;
+  transition: transform 0.15s ease, filter 0.15s ease;
+
+  i {
+    color: $letterboxd-green;
+  }
+
+  &:hover,
+  &:hover i {
+    color: $letterboxd-green;
+    filter: brightness(1.25);
+  }
+
+  &:hover {
+    transform: scale(1.12);
+  }
+}
+
+// The member's own half-star rating, shown on a card only when the entry has one.
+.letterboxd-score {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: $letterboxd-green;
+
+  i {
+    font-size: 0.75rem;
+  }
+
+  .letterboxd-score__value {
+    margin-left: 2px;
+    opacity: 0.85;
+  }
+}
