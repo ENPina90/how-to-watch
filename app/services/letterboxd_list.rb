@@ -80,6 +80,8 @@ class LetterboxdList
       imdb: imdb_id_for(watch),
       pic: watch.poster_url,
       letterboxd_score: watch.rating,
+      # Free here; anything not imported from a diary has to pay a request for it.
+      letterboxd_slug: watch.slug,
       position: Entry.next_position(channel)
     )
   end
@@ -87,6 +89,7 @@ class LetterboxdList
   # Returns true when something actually changed, so the caller can report a real count.
   def refresh(entry, watch)
     entry.letterboxd_score = watch.rating
+    entry.letterboxd_slug = watch.slug if entry.letterboxd_slug.blank?
     entry.imdb = imdb_id_for(watch) if entry.imdb.blank?
 
     return false unless entry.changed?

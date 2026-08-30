@@ -37,6 +37,13 @@ RSpec.describe LetterboxdList do
       expect(crime).to have_attributes(name: 'Crime 101', year: 2026, media: 'movie', letterboxd_score: 3.5)
     end
 
+    it 'keeps the film slug, which is the only URL the review prompt accepts' do
+      described_class.new(user).sync!
+
+      expect(user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '1171145').letterboxd_slug)
+        .to eq('crime-101')
+    end
+
     it 'backfills the IMDb id the feed does not carry, so entries are playable' do
       described_class.new(user).sync!
 

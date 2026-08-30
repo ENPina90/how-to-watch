@@ -24,9 +24,10 @@ Rails.application.routes.draw do
   # form asks before the account exists.
   get '/letterboxd/check', to: 'letterboxd#check', as: :letterboxd_check
 
-  # Pinged when somebody opens Letterboxd's review prompt, so their diary can be re-read
-  # once the review has had time to appear in the feed.
-  post '/letterboxd/reviewed', to: 'letterboxd#reviewed', as: :letterboxd_reviewed
+  # The Letterboxd button. Bounces through the app so the film's canonical slug can be
+  # resolved -- only /film/<slug>/review/ opens the review prompt -- and so a diary
+  # refresh can be booked for once the review has had time to reach the feed.
+  get '/letterboxd/review/:entry_id', to: 'letterboxd#review', as: :letterboxd_review
 
   # User preferences
   patch '/users/toggle_dark_mode', to: 'users#toggle_dark_mode', as: :toggle_dark_mode
