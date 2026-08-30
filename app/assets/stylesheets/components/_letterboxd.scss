@@ -83,3 +83,29 @@ $letterboxd-green: #00e054;
     opacity: 0.7;
   }
 }
+
+// Where the diary sync got to. The channel is built by a background job, so the page has
+// to say so -- one that has not appeared yet looks exactly like one that failed.
+.letterboxd-sync {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  border-left: 3px solid currentColor;
+  font-size: 0.85rem;
+
+  p {
+    margin-bottom: 0.5rem;
+  }
+
+  &--ok {
+    color: $letterboxd-green;
+  }
+
+  &--waiting {
+    color: #9aa0a6;
+  }
+
+  &--failed {
+    color: #ffb020;
+  }
+}

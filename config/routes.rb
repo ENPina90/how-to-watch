@@ -29,6 +29,9 @@ Rails.application.routes.draw do
   # refresh can be booked for once the review has had time to reach the feed.
   get '/letterboxd/review/:entry_id', to: 'letterboxd#review', as: :letterboxd_review
 
+  # Run the diary sync by hand, for when the queue has not.
+  post '/letterboxd/sync', to: 'letterboxd#sync', as: :letterboxd_sync
+
   # User preferences
   patch '/users/toggle_dark_mode', to: 'users#toggle_dark_mode', as: :toggle_dark_mode
 

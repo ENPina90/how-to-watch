@@ -41,6 +41,62 @@ RSpec.describe 'The profile page', type: :request do
     end
   end
 
+  describe 'reporting the sync' do
+    let(:user) { create(:user, username: 'testmember', letterboxd_enabled: true) }
+
+    # A channel that has not appeared yet looks exactly like one that failed, so the page
+    # has to distinguish them.
+    it 'says it is still working before the job has run' do
+      get profile_path
+
+      expect(response.body).to include('Reading your Letterboxd diary')
+    end
+
+    it 'shows the reason the diary could not be read' do
+      user.update_columns(letterboxd_sync_error: 'Letterboxd feed for testmember returned 403')
+
+      get profile_path
+
+      expect(response.body).to include('Could not read your diary')
+      expect(response.body).to include('returned 403')
+    end
+
+    it 'links to the channel once it exists' do
+      LetterboxdSyncJob.perform_now(user.id)
+      # The job writes through its own instance; Warden's test mode holds on to the one
+      # signed in above, where a real request would reload it from the session.
+      user.reload
+
+      get profile_path
+
+      expect(response.body).to include("Testmember&#39;s Letterbox")
+      expect(response.body).to include('2 films')
+    end
+
+    it 'offers a manual sync, for when the queue has not run one' do
+      expect { post letterboxd_sync_path }.to have_enqueued_job(LetterboxdSyncJob).with(user.id)
+      expect(response).to redirect_to(profile_path)
+    end
+
+    it 'refuses a manual sync with no username to read' do
+      user.update_columns(username: nil, letterboxd_enabled: true)
+
+      expect { post letterboxd_sync_path }.not_to have_enqueued_job(LetterboxdSyncJob)
+      expect(flash[:alert]).to match(/username/i)
+    end
+  end
+
+  describe 'deleting the account' do
+    # `lists` has a foreign key, so without dependent: :destroy this raised
+    # ActiveRecord::InvalidForeignKey and the button on this page simply errored.
+    it 'takes the channels with it' do
+      create(:list, user: user)
+
+      expect { delete user_registration_path }.to change { User.count }.by(-1)
+      expect(List.where(user_id: user.id)).to be_empty
+    end
+  end
+
   describe 'updating the profile' do
     it 'changes the username without asking for a password' do
       patch profile_path, params: { user: { username: 'newname' } }

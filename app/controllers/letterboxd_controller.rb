@@ -57,6 +57,17 @@ class LetterboxdController < ApplicationController
                 allow_other_host: true
   end
 
+  # Runs the diary sync by hand. The channel is built by a background job, so if that
+  # queue is not running there was previously no way to notice, let alone retry.
+  def sync
+    unless current_user.letterboxd_ready?
+      redirect_to profile_path, alert: 'Add your Letterboxd username first.' and return
+    end
+
+    LetterboxdSyncJob.perform_later(current_user.id)
+    redirect_to profile_path, notice: 'Reading your Letterboxd diary. Refresh in a moment.'
+  end
+
   private
 
   # A diary import already carries its slug. Anything else resolves one now and keeps it,
