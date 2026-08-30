@@ -38,10 +38,13 @@ So: **linking is just a username**. No OAuth, no token, no handshake.
 
 ## Decisions worth knowing
 
-**Review URL suffix.** The button targets `…/review/`. Checked signed-out: `/review/`
-returns `403`, identically to a bogus path, while the bare film page returns `200`. That
-is consistent with an authenticated-only route, and inconclusive either way. Kept as a
-single constant (`LetterboxdFilm::REVIEW_SUFFIX`) so it is a one-line change if wrong.
+**Review URL needs the canonical slug.** `/imdb/<id>/review/` is a dead URL: the shortcut
+redirects the *film*, not a path hanging off it. Only `/film/<slug>/review/` opens the
+prompt. So the button points at the app, which resolves the slug at click time and
+redirects out — resolution costs a request, which is fine once per film and impossible
+per card on a channel of several hundred. Diary imports get the slug free from the feed's
+own links; anything else resolves once and stores it on the entry. Where it cannot be
+resolved the link falls back to `/imdb/<id>/`, one further click to the same place.
 
 **IMDb vs TMDB.** The feed carries only `tmdb:movieId`. Entries need `imdb` for playback
 under most source templates, so the sync backfills it via `TmdbService#fetch_imdb_id`,
@@ -72,6 +75,18 @@ this could work, as the username is the handle.
 **`lists.letterboxd`** was added so disabling can find exactly the right channel. Matching
 on the name would strand a channel the member had renamed.
 
+**A queued sync could rebuild a deleted channel.** Syncs run later than they are queued,
+so one can land after the member unticks the box. The flag is now re-read at the point it
+matters rather than trusted from when the job started.
+
+**Deleting an account raised `InvalidForeignKey`.** `has_many :lists` had no `dependent:`,
+and lists carry a foreign key. Pre-existing, but the profile page's delete button walks
+straight into it, so it is fixed here.
+
+**Sync outcomes are recorded on the user.** Ticking the box queues a job; if that queue is
+not running there was no signal at all beyond a channel that never appeared. The profile
+page now distinguishes working / failed / never-ran, and offers a manual sync.
+
 ## Open questions for Nic
 
 1. The list name — you wrote "[Username]'s Letterbox", not "Letterboxd". Followed
@@ -79,7 +94,5 @@ on the name would strand a channel the member had renamed.
 2. `letterboxd_score` is on `Entry` as requested, so it is "whoever imported this film's
    score", not per-user. Fine while the channel is private and per-user; it would read
    wrong if one of these entries were copied into a shared channel.
-3. The `/review/` suffix is unverified from outside a logged-in session — worth a check in
-   your own browser. It is `LetterboxdFilm::REVIEW_SUFFIX` if it needs changing.
-4. Reviews are parsed out of the feed but not stored anywhere. `user_entries.comment`
+3. Reviews are parsed out of the feed but not stored anywhere. `user_entries.comment`
    would be the obvious home if you want them.
