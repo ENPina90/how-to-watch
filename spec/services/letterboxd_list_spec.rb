@@ -37,6 +37,13 @@ RSpec.describe LetterboxdList do
       expect(crime).to have_attributes(name: 'Crime 101', year: 2026, media: 'movie', letterboxd_score: 3.5)
     end
 
+    it 'keeps the film slug, which is the only URL the review prompt accepts' do
+      described_class.new(user).sync!
+
+      expect(user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '1171145').letterboxd_slug)
+        .to eq('crime-101')
+    end
+
     it 'backfills the IMDb id the feed does not carry, so entries are playable' do
       described_class.new(user).sync!
 
@@ -82,6 +89,16 @@ RSpec.describe LetterboxdList do
       expect(described_class.new(user).sync!.total).to eq(0)
       expect(user.lists.find_by(letterboxd: true)).to be_nil
     end
+  end
+
+  # A sync is queued and runs later, so it can arrive after the member changed their mind.
+  it 'does not rebuild a channel that was deleted while the sync was queued' do
+    described_class.new(user).sync!
+    queued = described_class.new(user)
+
+    user.update!(letterboxd_enabled: false)
+
+    expect { queued.sync! }.not_to change { user.lists.where(letterboxd: true).count }.from(0)
   end
 
   describe '#remove!' do

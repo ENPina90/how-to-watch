@@ -14,18 +14,19 @@ RSpec.describe 'The Letterboxd button', type: :request do
 
       get list_path(list)
 
-      expect(response.body).to include('https://letterboxd.com/imdb/tt0111161/review/')
+      entry = list.entries.sole
+      expect(response.body).to include(letterboxd_review_path(entry))
       expect(response.body).to include('fa-square-letterboxd')
     end
 
     # Only diary imports carry an IMDb id; a film matched from the feed has a TMDB id
     # until the backfill runs, and the link has to work in the meantime.
-    it 'falls back to the TMDB id when there is no IMDb id' do
-      create(:entry, list: list, media: 'movie', imdb: nil, tmdb: '278')
+    it 'is offered for a film known only by its TMDB id' do
+      entry = create(:entry, list: list, media: 'movie', imdb: nil, tmdb: '278')
 
       get list_path(list)
 
-      expect(response.body).to include('https://letterboxd.com/tmdb/278/review/')
+      expect(response.body).to include(letterboxd_review_path(entry))
     end
 
     it 'is left off a movie with no id to resolve the film by' do
@@ -54,7 +55,7 @@ RSpec.describe 'The Letterboxd button', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('watch-letterboxd')
-      expect(response.body).to include('https://letterboxd.com/imdb/tt0111161/review/')
+      expect(response.body).to include(letterboxd_review_path(entry))
     end
 
     it 'is absent for a series', :needs_provider do

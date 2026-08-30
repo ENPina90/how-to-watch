@@ -12,7 +12,8 @@ class User < ApplicationRecord
   after_commit :sync_letterboxd_channel, on: :create, if: :letterboxd_ready?
   after_commit :apply_letterboxd_change, on: :update, if: :letterboxd_settings_changed?
 
-  has_many :lists
+  # Channels belong to the account; the foreign key means a destroy raises without this.
+  has_many :lists, dependent: :destroy
   has_many :user_entries, dependent: :destroy
   has_many :user_entry_positions, dependent: :destroy
   has_many :subscriptions, dependent: :destroy
@@ -144,6 +145,17 @@ class User < ApplicationRecord
 
   def letterboxd_list
     LetterboxdList.new(self).list
+  end
+
+  # What the profile page reports. :waiting covers both "queued" and "the worker never
+  # picked it up", which look identical from here -- and a wait that never resolves is
+  # itself the signal that nothing is running the queue.
+  def letterboxd_sync_state
+    return :off unless letterboxd_enabled?
+    return :failed if letterboxd_sync_error.present?
+    return :waiting if letterboxd_synced_at.blank?
+
+    :ok
   end
 
   private
