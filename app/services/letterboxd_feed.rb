@@ -38,13 +38,18 @@ class LetterboxdFeed
   # Letterboxd closes every diary description with this, review or no review.
   WATCHED_ON_SENTENCE = /\AWatched on .*\.\z/
 
+  # A diary link is /<member>/film/<slug>/, with a numeric suffix on a rewatch. The
+  # slug is the only form of the film URL that accepts /review/, so it is worth taking
+  # here rather than resolving later with a request per film.
+  FILM_SLUG = %r{/[^/]+/film/([^/]+)/}
+
   class RequestError < StandardError; end
 
   # A single diary entry. `rating` is Letterboxd's own 0.5-5.0 half-star scale, and is
   # nil for an unrated watch -- which is ordinary, not an error.
   Watch = Struct.new(
     :guid, :tmdb_id, :title, :year, :rating, :watched_on,
-    :rewatch, :poster_url, :review, :url,
+    :rewatch, :poster_url, :review, :url, :slug,
     keyword_init: true
   ) do
     def rewatch? = rewatch
@@ -112,6 +117,7 @@ class LetterboxdFeed
     return if tmdb_id.blank?
 
     description = text(item, 'description').to_s
+    link = text(item, 'link')
 
     Watch.new(
       guid: guid,
@@ -123,7 +129,8 @@ class LetterboxdFeed
       rewatch: text(item, 'letterboxd:rewatch') == 'Yes',
       poster_url: poster_from(description),
       review: review_from(description),
-      url: text(item, 'link')
+      url: link,
+      slug: link&.[](FILM_SLUG, 1)
     )
   end
 

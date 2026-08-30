@@ -47,7 +47,10 @@ RSpec.describe LetterboxdFeed do
         year: 2026,
         rating: 3.5,
         watched_on: Date.new(2026, 8, 28),
-        poster_url: 'https://a.ltrbxd.com/poster/crime-101.jpg'
+        poster_url: 'https://a.ltrbxd.com/poster/crime-101.jpg',
+        # Only /film/<slug>/ accepts the /review/ suffix, and the feed gives it away
+        # free -- resolving it later costs a request per film.
+        slug: 'crime-101'
       )
       expect(watch).not_to be_rewatch
     end

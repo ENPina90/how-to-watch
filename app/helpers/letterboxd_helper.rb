@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
 module LetterboxdHelper
-  # Letterboxd catalogues films, so the link is offered on movies only. Returns nil for
-  # anything else, and for a movie with neither an IMDb nor a TMDB id to resolve -- the
-  # single guard the button partial leans on.
-  def letterboxd_review_url(entry)
-    return unless entry.media == 'movie'
-
-    LetterboxdFilm.review_url(imdb: entry.imdb, tmdb: entry.tmdb)
+  # Letterboxd catalogues films, so the link is offered on movies only, and only where
+  # there is something to find the film by. The single guard the button partial leans on.
+  def letterboxd_reviewable?(entry)
+    entry.media == 'movie' &&
+      (entry.letterboxd_slug.present? || entry.imdb.present? || entry.tmdb.present?)
   end
 
   # Letterboxd's half-star rating as filled and empty stars. Returns nil when the entry
