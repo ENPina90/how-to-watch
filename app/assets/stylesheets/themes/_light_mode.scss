@@ -250,3 +250,61 @@ body.light-mode .page-container .auth-danger:hover {
   background-color: rgba(200, 12, 16, 0.08);
   color: #c80c10;
 }
+
+/* Light mode admin dashboard. The panels lift off the cream page; the green accent stays
+   the darker one the rest of light mode uses. */
+body.light-mode .admin-stat,
+body.light-mode .admin-chart,
+body.light-mode .admin-table,
+body.light-mode .admin-mode {
+  background-color: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .admin-dashboard .admin-subtitle,
+body.light-mode .admin-dashboard .admin-section__title,
+body.light-mode .admin-dashboard .admin-note {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+body.light-mode .admin-stat__value,
+body.light-mode .admin-list__count {
+  color: #1a936f;
+}
+
+body.light-mode .admin-dashboard .admin-stat__note a {
+  color: #1a936f !important;
+}
+
+body.light-mode .admin-stat__note,
+body.light-mode .admin-chart__label,
+body.light-mode .admin-mode__blurb {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+body.light-mode .admin-chart__bar {
+  background-color: #1a936f;
+}
+
+body.light-mode .admin-list li {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .admin-mode--on {
+  border-color: #1a936f;
+  box-shadow: inset 0 0 0 1px rgba(26, 147, 111, 0.35);
+}
+
+body.light-mode .admin-mode__input {
+  accent-color: #1a936f;
+}
+
+body.light-mode .page-container .admin-save {
+  background-color: #1a936f;
+  color: #ffffff !important;
+}
+
+body.light-mode .page-container .admin-save:hover {
+  background-color: #157a5c;
+  color: #ffffff !important;
+}
