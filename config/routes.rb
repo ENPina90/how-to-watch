@@ -1,7 +1,7 @@
 require 'sidekiq/web'
 
 Rails.application.routes.draw do
-  devise_for :users
+  devise_for :users, controllers: { registrations: 'users/registrations' }
 
   # Queue dashboard: what is enqueued, retrying, or dead. Admins only -- Sidekiq::Web
   # exposes job arguments and lets you delete or replay jobs.
