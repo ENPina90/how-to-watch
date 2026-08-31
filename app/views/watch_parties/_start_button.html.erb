@@ -1,0 +1,9 @@
+<%# Starting a room from the player. Only shown when there is not already one open: the
+    party bar replaces this once there is. %>
+<%= button_to watch_parties_path(entry_id: entry.id, channel: channel.id, subentry_id: subentry&.id),
+      method: :post,
+      class: "watch-party-start",
+      title: "Start a watch party",
+      form: { class: "d-inline-block m-0" } do %>
+  <i class="fa-solid fa-users"></i> Watch together
+<% end %>

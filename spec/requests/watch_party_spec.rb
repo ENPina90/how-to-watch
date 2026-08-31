@@ -18,6 +18,31 @@ RSpec.describe 'Watch parties' do
     end
   end
 
+  describe 'the player page' do
+    let!(:source) do
+      Source.create!(name: 'Test provider', slug: 'test-provider', kind: 'imdb', active: true,
+                     position: 1, templates: { 'movie' => 'https://example.com/embed/%{imdb}' })
+    end
+
+    it 'offers to start a party when you are not in one' do
+      sign_in host
+      get watch_entry_path(entry, channel: list.id)
+
+      expect(response.body).to include('Watch together')
+    end
+
+    it 'shows the room instead once you are in one' do
+      party = WatchParty.open_for(list: list, host: host, entry: entry)
+
+      sign_in host
+      get watch_party_path(party.token)
+      get watch_entry_path(entry, channel: list.id)
+
+      expect(response.body).to include(party.token)
+      expect(response.body).not_to include('Watch together')
+    end
+  end
+
   describe 'joining by token' do
     it 'puts the guest where the host is' do
       party = WatchParty.open_for(list: list, host: host, entry: entry)
