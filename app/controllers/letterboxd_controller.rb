@@ -50,11 +50,12 @@ class LetterboxdController < ApplicationController
   # id instead. Resolving the slug costs a request, which is fine once per click and
   # impossible per card on a page of several hundred.
   def review
-    entry = Entry.find(params[:entry_id])
     book_refresh
 
-    redirect_to LetterboxdFilm.best_url(slug: slug_for(entry), imdb: entry.imdb, tmdb: entry.tmdb),
-                allow_other_host: true
+    url = params[:entry_id].present? ? url_for_entry : url_for_ids
+    return redirect_to(root_path, alert: 'No film to look up on Letterboxd.') if url.nil?
+
+    redirect_to url, allow_other_host: true
   end
 
   # Runs the diary sync by hand. The channel is built by a background job, so if that
@@ -69,6 +70,22 @@ class LetterboxdController < ApplicationController
   end
 
   private
+
+  def url_for_entry
+    entry = Entry.find(params[:entry_id])
+    LetterboxdFilm.best_url(slug: slug_for(entry), imdb: entry.imdb, tmdb: entry.tmdb)
+  end
+
+  # watch_now plays whatever the search handed it, so there is no Entry and nowhere to
+  # keep a resolved slug. LetterboxdFilm caches the lookup, so a popular film is still
+  # resolved once rather than once per viewer. The ids are validated there before they
+  # reach a URL -- they arrive from the query string.
+  def url_for_ids
+    imdb = params[:imdb]
+    tmdb = params[:tmdb]
+
+    LetterboxdFilm.best_url(slug: LetterboxdFilm.resolve_slug(imdb: imdb, tmdb: tmdb), imdb: imdb, tmdb: tmdb)
+  end
 
   # A diary import already carries its slug. Anything else resolves one now and keeps it,
   # so this is paid once per film rather than once per click.

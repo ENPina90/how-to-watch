@@ -41,6 +41,14 @@
             <%= tag.attributes(add_to_list_data(@imdb_id, @title, @poster, @tmdb_id)) %>>
       <i class="fas fa-plus me-1"></i>Add to Channel
     </button>
+
+    <%# Letterboxd catalogues films, so this is for movies only. There is no Entry here --
+        watch_now plays whatever the search handed it -- so the film is named by id. %>
+    <% if @media_type == 'movie' && (@imdb_id.present? || @tmdb_id.present?) %>
+      <%= render 'shared/letterboxd_button',
+                 url: letterboxd_review_path(imdb: @imdb_id, tmdb: @tmdb_id),
+                 name: @title %>
+    <% end %>
   </div>
 </div>
 

@@ -18,6 +18,12 @@ module LetterboxdFilm
   # Appended to a canonical film URL to open Letterboxd's review prompt.
   REVIEW_SUFFIX = 'review'
 
+  # Ids are interpolated into an outbound URL and then redirected to, so they are checked
+  # against the shapes the two catalogues actually issue. Anything else would let a
+  # crafted id add path segments of its own.
+  IMDB_FORMAT = /\Att\d{5,}\z/
+  TMDB_FORMAT = /\A\d{1,12}\z/
+
   OPEN_TIMEOUT = 3
   READ_TIMEOUT = 5
 
@@ -30,15 +36,17 @@ module LetterboxdFilm
   # The lookup shortcut for a film. Always lands on the right page, but cannot carry an
   # action, so it is the fallback rather than the target.
   def lookup_url(imdb: nil, tmdb: nil)
-    if imdb.present?
+    if imdb.to_s.match?(IMDB_FORMAT)
       "#{BASE_URL}/imdb/#{imdb}/"
-    elsif tmdb.present?
+    elsif tmdb.to_s.match?(TMDB_FORMAT)
       "#{BASE_URL}/tmdb/#{tmdb}/"
     end
   end
 
+  SLUG_FORMAT = /\A[a-z0-9][a-z0-9-]{0,120}\z/i
+
   def film_url(slug)
-    "#{BASE_URL}/film/#{slug}/" if slug.present?
+    "#{BASE_URL}/film/#{slug}/" if slug.to_s.match?(SLUG_FORMAT)
   end
 
   # The review prompt for a film whose slug is known.

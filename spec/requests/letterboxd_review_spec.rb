@@ -63,6 +63,52 @@ RSpec.describe 'Opening a review on Letterboxd', type: :request do
     expect(response).to redirect_to('https://letterboxd.com/tmdb/278/')
   end
 
+  describe 'from watch_now, which has no Entry' do
+    it 'resolves the film from the ids in the query string' do
+      stub_request(:get, 'https://letterboxd.com/imdb/tt0010323/')
+        .to_return(status: 302, headers: { 'Location' => 'https://letterboxd.com/film/caligari/' })
+
+      get letterboxd_review_path(imdb: 'tt0010323')
+
+      expect(response).to redirect_to('https://letterboxd.com/film/caligari/review/')
+    end
+
+    it 'falls back to the lookup URL when the slug will not resolve' do
+      stub_request(:get, 'https://letterboxd.com/tmdb/278/').to_return(status: 404)
+
+      get letterboxd_review_path(tmdb: '278')
+
+      expect(response).to redirect_to('https://letterboxd.com/tmdb/278/')
+    end
+
+    it 'books the same delayed refresh as the entry path' do
+      stub_request(:get, %r{letterboxd\.com/imdb/}).to_return(status: 404)
+
+      expect { get letterboxd_review_path(imdb: 'tt0010323') }
+        .to have_enqueued_job(LetterboxdSyncJob).with(user.id)
+    end
+  end
+
+  # These ids arrive from the query string and are interpolated into a URL that is then
+  # redirected to, so a crafted one must not be able to add path segments of its own.
+  describe 'ids that are not ids' do
+    it 'refuses anything that is not an IMDb or TMDB id, without calling out' do
+      ['../../evil', 'tt1/../../x', 'https://evil.test', '', 'tt1'].each do |bad|
+        get letterboxd_review_path(imdb: bad)
+
+        expect(response).to redirect_to(root_path), "expected #{bad.inspect} to be refused"
+      end
+
+      expect(a_request(:get, %r{letterboxd\.com})).not_to have_been_made
+    end
+
+    it 'refuses a non-numeric TMDB id' do
+      get letterboxd_review_path(tmdb: '278/../../x')
+
+      expect(response).to redirect_to(root_path)
+    end
+  end
+
   describe 'the refresh it books' do
     let(:entry) { create(:entry, list: list, media: 'movie', letterboxd_slug: 'crime-101') }
 
