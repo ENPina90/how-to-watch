@@ -17,6 +17,10 @@ end
 # registering them too would have several dynos racing to own the same schedule.
 Sidekiq.configure_server do |config|
   config.on(:startup) do
+    # Written by the worker itself, so the dashboard can show which build is actually
+    # running here rather than which one was last deployed. See DeploymentStatus.
+    DeploymentStatus.record_worker!
+
     schedule = Rails.root.join("config/schedule.yml")
     next unless schedule.exist?
 

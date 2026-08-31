@@ -91,4 +91,67 @@ RSpec.describe 'The admin dashboard', type: :request do
       expect(AdminStatistics.new.daily_visits.map { |day| day[:visits] }).to all(eq(0))
     end
   end
+
+  describe 'the deployment panel' do
+    let(:admin) { create(:user, :admin) }
+
+    before { sign_in admin }
+
+    def stub_deployment(web:, worker:, beats: [Time.current])
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('RAILWAY_GIT_COMMIT_SHA').and_return(web)
+      allow(Sidekiq).to receive(:redis).and_return({ sha: worker, booted_at: Time.current.iso8601 }.to_json)
+      allow(Sidekiq::ProcessSet).to receive(:new).and_return(beats.map { |b| { 'beat' => b.to_f } })
+    end
+
+    # The failure this panel exists for: the worker on an older build fails every job it
+    # does not recognise, and nothing else on the site says so.
+    it 'shouts when web and worker are on different builds' do
+      stub_deployment(web: 'aaaaaaa1', worker: 'bbbbbbb2')
+
+      get admin_dashboard_path
+
+      expect(response.body).to include('different builds')
+      expect(response.body).to include('aaaaaaa')
+      expect(response.body).to include('bbbbbbb')
+    end
+
+    it 'shouts when nothing is processing the queue' do
+      stub_deployment(web: 'aaaaaaa1', worker: 'aaaaaaa1', beats: [])
+
+      get admin_dashboard_path
+
+      expect(response.body).to include('No worker is running')
+    end
+
+    it 'says nothing alarming when the two agree' do
+      stub_deployment(web: 'aaaaaaa1', worker: 'aaaaaaa1')
+
+      get admin_dashboard_path
+
+      expect(response.body).not_to include('different builds')
+      expect(response.body).not_to include('No worker is running')
+    end
+
+    # Locally Railway injects nothing, and a panel that cried mismatch every run would be
+    # ignored by the time it mattered.
+    it 'explains itself rather than warning when it knows nothing' do
+      stub_deployment(web: nil, worker: nil, beats: [])
+      allow(Sidekiq).to receive(:redis).and_return(nil)
+
+      get admin_dashboard_path
+
+      expect(response.body).not_to include('different builds')
+      expect(response.body).to include('RAILWAY_GIT_COMMIT_SHA')
+    end
+
+    it 'renders even with no Redis at all' do
+      allow(Sidekiq).to receive(:redis).and_raise(RedisClient::CannotConnectError)
+      allow(Sidekiq::ProcessSet).to receive(:new).and_raise(RedisClient::CannotConnectError)
+
+      get admin_dashboard_path
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
 end

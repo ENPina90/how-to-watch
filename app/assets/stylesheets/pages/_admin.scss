@@ -243,3 +243,34 @@
     height: 90px;
   }
 }
+
+// Deployment banners. The web app and the worker deploy independently, so the dashboard
+// has to be able to shout when they disagree -- that failure is otherwise silent.
+.admin-alert {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border-left: 3px solid currentColor;
+  font-size: 0.88rem;
+
+  code {
+    font-size: 0.85em;
+  }
+}
+
+.admin-alert--bad {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.08);
+}
+
+.admin-alert--warn {
+  color: #ffb020;
+  background: rgba(255, 176, 32, 0.08);
+}
+
+// A commit sha is longer than the counts this shares a row with, and unreadable at their
+// size.
+.admin-stat__value code,
+.admin-section .admin-stat__value {
+  overflow-wrap: anywhere;
+}

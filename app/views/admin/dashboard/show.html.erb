@@ -131,6 +131,79 @@
     </div>
   </section>
 
+  <%# The web app and the worker are separate Railway services with their own deploy
+      triggers, so they can drift apart. When they do, every enqueued job fails with
+      UnknownJobClassError and nothing else on the site says so. %>
+  <section class="admin-section">
+    <h2 class="admin-section__title">Deployment</h2>
+
+    <% if @deployment.drift? %>
+      <p class="admin-alert admin-alert--bad">
+        <strong>Web and worker are on different builds.</strong>
+        Jobs the worker's build does not know about will fail with
+        <code>UnknownJobClassError</code> until it is redeployed.
+      </p>
+    <% elsif !@deployment.worker_running? %>
+      <p class="admin-alert admin-alert--bad">
+        <strong>No worker is running.</strong>
+        Nothing is processing the queue, so every enqueued job is just sitting there.
+      </p>
+    <% elsif @deployment.stale? %>
+      <p class="admin-alert admin-alert--warn">
+        <strong>The worker has stopped reporting in.</strong>
+        Last heartbeat <%= time_ago_in_words(@deployment.last_heartbeat) %> ago.
+      </p>
+    <% end %>
+
+    <div class="admin-stats">
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= @deployment.short(@deployment.web_sha) || '—' %></span>
+        <span class="admin-stat__label">Web build</span>
+        <span class="admin-stat__note">this process</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= @deployment.short(@deployment.worker_sha) || '—' %></span>
+        <span class="admin-stat__label">Worker build</span>
+        <span class="admin-stat__note">
+          <% if @deployment.worker_booted_at %>
+            booted <%= time_ago_in_words(@deployment.worker_booted_at) %> ago
+          <% else %>
+            never reported
+          <% end %>
+        </span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= @deployment.live_processes.size %></span>
+        <span class="admin-stat__label">Worker processes</span>
+        <span class="admin-stat__note">
+          <% if @deployment.last_heartbeat %>
+            beat <%= time_ago_in_words(@deployment.last_heartbeat) %> ago
+          <% else %>
+            no heartbeat
+          <% end %>
+        </span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= link_to 'Queue', sidekiq_web_path %></span>
+        <span class="admin-stat__label">Sidekiq</span>
+        <span class="admin-stat__note">retries and dead jobs</span>
+      </div>
+    </div>
+
+    <p class="admin-note">
+      <% if @deployment.unknown? %>
+        Neither process is reporting a build. Railway only injects
+        <code>RAILWAY_GIT_COMMIT_SHA</code> for deploys that came from a GitHub trigger, so
+        this is expected locally — and on a service deployed by hand, which never
+        auto-deploys again.
+      <% else %>
+        Both services deploy from the same repo but on their own triggers. A worker left on
+        an older build fails every job it does not recognise, which is otherwise visible
+        only in the Sidekiq retries tab.
+      <% end %>
+    </p>
+  </section>
+
   <section class="admin-section">
     <h2 class="admin-section__title">Who can reach the site</h2>
     <%= form_with model: @setting, url: admin_dashboard_path, method: :patch, class: "admin-modes" do |f| %>
