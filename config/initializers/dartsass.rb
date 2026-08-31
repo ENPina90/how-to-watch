@@ -12,6 +12,10 @@ Rails.application.config.dartsass.build_options = [
   # font-awesome-sass still use it, so silence the noise until those move.
   "--quiet-deps",
   "--silence-deprecation=import",
-  # Bootstrap and Font Awesome both come from node_modules
-  "--load-path=#{Rails.root.join('node_modules')}"
+  # Bootstrap's and Font Awesome's Sass sources, vendored into the repo. They used to be
+  # read out of node_modules, which meant the stylesheet could only be built where
+  # `yarn install` had run in the same filesystem as `assets:precompile` -- true of one
+  # Railway builder and not the other, so the worker's build broke the day node_modules
+  # stopped being committed. See vendor/sass/README.md.
+  "--load-path=#{Rails.root.join('vendor/sass')}"
 ]
