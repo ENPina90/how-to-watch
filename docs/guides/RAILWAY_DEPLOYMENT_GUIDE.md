@@ -74,6 +74,27 @@ In the worker service's **Settings → Source**, keep all three the same as the 
 | Branch | `master` | Deploying different branches is the drift, straightforwardly. |
 | Watch paths | **empty** | Paths that do not match a push *silently skip the deployment*. Tempting to scope the worker to `app/jobs/**`, but wrong: jobs run the whole codebase — models, services, everything they touch — so the worker needs every push. |
 
+### If a build fails on `assets:precompile`
+
+```
+Error: Can't find stylesheet to import.
+7 │ @import "bootstrap/scss/bootstrap";
+```
+
+Bootstrap and Font Awesome come from `node_modules`, which `config/initializers/dartsass.rb`
+adds as a Sass load path. `node_modules` used to be committed, so the git checkout supplied
+it; since it stopped being tracked the build has to run `yarn install` itself.
+
+Each service has its **own build cache**, so one can go stale on its own. That is what
+happened to the worker: its cached yarn layers dated from when `node_modules` came from
+git, so they installed nothing, and the fresh source copy no longer supplied it — the web
+service, whose cache had been rebuilt, was fine on the identical commit. Every yarn step
+reading `cached 0ms` in the build log is the tell.
+
+**Fix:** clear that service's build cache and redeploy. `railway redeploy` reuses the
+cache, so it has to be the dashboard, or a change to something the yarn layer's cache key
+covers (`package.json`, `yarn.lock`).
+
 ### Checking it
 
 The admin dashboard's **Deployment** panel shows the commit each process is running and
