@@ -101,6 +101,46 @@ RSpec.describe LetterboxdList do
     expect { queued.sync! }.not_to change { user.lists.where(letterboxd: true).count }.from(0)
   end
 
+  describe 'two syncs at once' do
+    # The weekly pass, a refresh booked when a review was opened, and Sync now can all be
+    # in flight together; two racing syncs both see a film as missing and both create it,
+    # which trips Entry's name uniqueness and fails the whole sync. Postgres advisory
+    # locks are per session and reentrant, and transactional specs pin the pool to one
+    # connection, so contention is simulated at the lock call rather than for real.
+    def refuse_the_lock
+      connection = ActiveRecord::Base.connection
+      allow(connection).to receive(:select_value).and_wrap_original do |original, sql, *rest|
+        sql.to_s.include?('pg_try_advisory_lock') ? false : original.call(sql, *rest)
+      end
+    end
+
+    it 'skips rather than racing the sync already running' do
+      refuse_the_lock
+
+      expect { described_class.new(user).sync! }.not_to change { Entry.count }
+    end
+
+    it 'reports having done nothing rather than pretending the diary was empty' do
+      refuse_the_lock
+
+      expect(described_class.new(user).sync!).to have_attributes(created: 0, updated: 0, total: 0)
+    end
+
+    it 'releases the lock when the sync finishes' do
+      expect(ActiveRecord::Base.connection).to receive(:execute).with(/pg_advisory_unlock/).and_call_original
+
+      described_class.new(user).sync!
+    end
+
+    # A crashed sync must not leave the member permanently unsyncable.
+    it 'releases the lock when the diary read blows up' do
+      stub_request(:get, 'https://letterboxd.com/testmember/rss/').to_return(status: 500, body: '')
+      expect(ActiveRecord::Base.connection).to receive(:execute).with(/pg_advisory_unlock/).and_call_original
+
+      expect { described_class.new(user).sync! }.to raise_error(LetterboxdFeed::RequestError)
+    end
+  end
+
   describe '#remove!' do
     it 'deletes the channel and its entries' do
       described_class.new(user).sync!

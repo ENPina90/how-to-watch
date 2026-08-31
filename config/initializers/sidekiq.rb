@@ -18,6 +18,15 @@ end
 Sidekiq.configure_server do |config|
   config.on(:startup) do
     schedule = Rails.root.join("config/schedule.yml")
-    Sidekiq::Cron::Job.load_from_hash!(YAML.load_file(schedule)) if schedule.exist?
+    next unless schedule.exist?
+
+    begin
+      Sidekiq::Cron::Job.load_from_hash!(YAML.load_file(schedule))
+    rescue StandardError => e
+      # Registering the schedule touches Redis, and a failure here would otherwise take
+      # the whole worker down at boot. Processing queued jobs matters more than the weekly
+      # refresh, which the next restart will register anyway.
+      Sidekiq.logger.error("Could not load config/schedule.yml: #{e.class}: #{e.message}")
+    end
   end
 end
