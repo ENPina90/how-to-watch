@@ -27,7 +27,9 @@ Rails.application.routes.draw do
   # The Letterboxd button. Bounces through the app so the film's canonical slug can be
   # resolved -- only /film/<slug>/review/ opens the review prompt -- and so a diary
   # refresh can be booked for once the review has had time to reach the feed.
-  get '/letterboxd/review/:entry_id', to: 'letterboxd#review', as: :letterboxd_review
+  # entry_id is optional: watch_now plays a film the app has no Entry for, and names it
+  # by imdb/tmdb id instead.
+  get '/letterboxd/review(/:entry_id)', to: 'letterboxd#review', as: :letterboxd_review
 
   # Run the diary sync by hand, for when the queue has not.
   post '/letterboxd/sync', to: 'letterboxd#sync', as: :letterboxd_sync

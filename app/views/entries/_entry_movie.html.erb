@@ -44,7 +44,9 @@
             </a>
           <% end %>
           <%= render 'entries/completion_status', entry: entry, user: current_user %>
-          <%= render 'entries/letterboxd_button', entry: entry %>
+          <% if letterboxd_reviewable?(entry) %>
+            <%= render 'shared/letterboxd_button', url: letterboxd_review_path(entry), name: entry.name %>
+          <% end %>
           <% if current_user&.can_edit_entry?(entry) %>
             <%= render 'shared/poster_selector_button', entry: entry %>
             <i class="fa-solid fa-pen" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= entry.id %>" data-action="click->edit#toggle"></i>

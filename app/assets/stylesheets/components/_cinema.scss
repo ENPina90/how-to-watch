@@ -124,6 +124,15 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   /* The switcher's pill pads its buttons down by this much; matching it puts the two
      rows of labels on the same line rather than the two containers. */
   padding: 6px 0;
+  /* Add to Channel and the Letterboxd mark share this line. */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .letterboxd-link {
+    font-size: 1.75rem;
+    line-height: 1;
+  }
 }
 
 .source-switcher .btn {
