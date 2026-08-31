@@ -63,4 +63,36 @@ RSpec.describe 'Watch parties' do
     end
   end
 
+  describe 'the host moving' do
+    # `watch` bails out before anything else when nothing can play the entry, and the room
+    # is right not to follow the host to a page they were bounced off.
+    let!(:source) do
+      Source.create!(name: 'Test provider', slug: 'test-provider', kind: 'imdb', active: true,
+                     position: 1, templates: { 'movie' => 'https://example.com/embed/%{imdb}' })
+    end
+
+    # The room follows the host by watching what their player page renders, so visiting a
+    # different entry is what moves everyone -- there is no separate "advance" call.
+    it 'moves the party when the host opens a different entry' do
+      other = create(:entry, list: list, position: 2, name: 'Something else')
+      party = WatchParty.open_for(list: list, host: host, entry: entry)
+
+      sign_in host
+      get watch_party_path(party.token)
+      get watch_entry_path(other, channel: list.id)
+
+      expect(party.reload.entry).to eq(other)
+    end
+
+    it 'does not let a guest move the room' do
+      other = create(:entry, list: list, position: 2, name: 'Something else')
+      party = WatchParty.open_for(list: list, host: host, entry: entry)
+
+      sign_in guest
+      get watch_party_path(party.token)
+      get watch_entry_path(other, channel: list.id)
+
+      expect(party.reload.entry).to eq(entry)
+    end
+  end
 end
