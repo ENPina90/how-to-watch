@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_30_215907) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_31_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -292,6 +292,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_30_215907) do
     t.index ["vote_session_id"], name: "index_votes_on_vote_session_id"
   end
 
+  create_table "watch_parties", force: :cascade do |t|
+    t.datetime "closed_at"
+    t.datetime "created_at", null: false
+    t.bigint "entry_id", null: false
+    t.bigint "host_user_id", null: false
+    t.bigint "list_id", null: false
+    t.float "player_progress", default: 0.0, null: false
+    t.string "player_status", default: "paused", null: false
+    t.datetime "state_at"
+    t.bigint "subentry_id"
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entry_id"], name: "index_watch_parties_on_entry_id"
+    t.index ["host_user_id"], name: "index_watch_parties_on_host_user_id"
+    t.index ["host_user_id"], name: "index_watch_parties_on_open_host", unique: true, where: "(closed_at IS NULL)"
+    t.index ["list_id"], name: "index_watch_parties_on_list_id"
+    t.index ["subentry_id"], name: "index_watch_parties_on_subentry_id"
+    t.index ["token"], name: "index_watch_parties_on_token", unique: true
+  end
+
+  create_table "watch_party_memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_seen_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.bigint "watch_party_id", null: false
+    t.index ["user_id"], name: "index_watch_party_memberships_on_user_id"
+    t.index ["watch_party_id", "user_id"], name: "index_watch_party_memberships_on_party_and_user", unique: true
+    t.index ["watch_party_id"], name: "index_watch_party_memberships_on_watch_party_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "entries", "lists"
@@ -318,4 +349,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_30_215907) do
   add_foreign_key "vote_sessions", "lists"
   add_foreign_key "votes", "vote_options"
   add_foreign_key "votes", "vote_sessions"
+  add_foreign_key "watch_parties", "entries", on_delete: :cascade
+  add_foreign_key "watch_parties", "lists", on_delete: :cascade
+  add_foreign_key "watch_parties", "subentries", on_delete: :nullify
+  add_foreign_key "watch_parties", "users", column: "host_user_id", on_delete: :cascade
+  add_foreign_key "watch_party_memberships", "users"
+  add_foreign_key "watch_party_memberships", "watch_parties"
 end
