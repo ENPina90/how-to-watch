@@ -35,6 +35,18 @@
   </iframe>
   <%= render 'entries/source_switcher' %>
 
+  <%# The room. It sits on the frame rather than in a sidebar because everything it does --
+      following the host, correcting drift -- is about the player right underneath it. %>
+  <% if user_signed_in? %>
+    <% if @watch_party %>
+      <%= render 'watch_parties/bar', party: @watch_party,
+                                      adapter: @entry.resolved_source&.sync_adapter %>
+    <% else %>
+      <%= render 'watch_parties/start_button', entry: @entry, channel: @channel,
+                                               subentry: @current_subentry %>
+    <% end %>
+  <% end %>
+
   <%# On the switcher's line, pinned to the left edge of the frame -- the same place
       watch_now puts Add to Channel, and out of the switcher's own pill, which sits at
       0.35 opacity until hovered. %>
