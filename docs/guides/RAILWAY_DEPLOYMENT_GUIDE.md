@@ -81,19 +81,31 @@ Error: Can't find stylesheet to import.
 7 │ @import "bootstrap/scss/bootstrap";
 ```
 
-Bootstrap and Font Awesome come from `node_modules`, which `config/initializers/dartsass.rb`
-adds as a Sass load path. `node_modules` used to be committed, so the git checkout supplied
-it; since it stopped being tracked the build has to run `yarn install` itself.
+**This should no longer be possible** — read it as a sign that something was moved back.
+Bootstrap's and Font Awesome's Sass sources live in `vendor/sass/` and are committed, so
+the stylesheet builds from the checkout alone. If you see it, either
+`config/initializers/dartsass.rb` has been pointed somewhere else or `vendor/sass/` was
+deleted.
 
-Each service has its **own build cache**, so one can go stale on its own. That is what
-happened to the worker: its cached yarn layers dated from when `node_modules` came from
-git, so they installed nothing, and the fresh source copy no longer supplied it — the web
-service, whose cache had been rebuilt, was fine on the identical commit. Every yarn step
-reading `cached 0ms` in the build log is the tell.
+It used to be possible, and the reason is worth keeping, because it is the general shape of
+every drift between these two services. The Sass came from `node_modules`, which was
+committed, so the checkout supplied it. When `node_modules` stopped being tracked the build
+had to run `yarn install` itself — and the two services do not build the same way. **The
+web service builds with Nixpacks and the worker with Railpack**, and Railpack runs install
+and build as separate layers: yarn genuinely ran (`Done in 0.83s` in the log) but
+`/app/node_modules` was not in the filesystem its build step saw. So the worker failed on
+every deploy for eighteen hours while the web service succeeded on the identical commit —
+and because the worker never rebuilt, it went on running an older image, failing jobs the
+web service enqueued with `ActiveJob::UnknownJobClassError` where only the Sidekiq retries
+tab would show it.
 
-**Fix:** clear that service's build cache and redeploy. `railway redeploy` reuses the
-cache, so it has to be the dashboard, or a change to something the yarn layer's cache key
-covers (`package.json`, `yarn.lock`).
+Railpack's Ruby provider adds `assets:precompile` unconditionally when it detects Rails
+plus sprockets/propshaft. There is no flag to turn it off, and a Custom Build Command does
+not replace it, so a worker that compiles no assets still has to be able to.
+
+**If you ever need node in a build again**, the fix is not a per-service builder setting:
+match what the *build* needs to what the *checkout* carries, or the next builder change
+brings this straight back.
 
 ### Checking it
 
