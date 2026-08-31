@@ -26,20 +26,35 @@ runtime dependency on sassc/sassc-rails -- the deprecated native extension this 
 deliberately dropped in favour of dartsass-rails, and which the Sidekiq worker has no
 business loading.
 
+## Versions
+
+Bootstrap **5.2.3**, Font Awesome Free **6.7.2**. There is no `package.json` — this file is
+where the versions are recorded. Font Awesome is pinned to 6.x deliberately: v7 renames
+icons. Bootstrap's *JavaScript* is a separate pin in `config/importmap.rb` and is loaded
+from a CDN; keep the two versions in step when you bump either.
+
 ## Updating
 
-Bump the version in `package.json`, `yarn install`, then replace the directories:
+Fetch the package straight from the registry -- no manifest and no install step:
 
-    rm -rf vendor/sass/bootstrap/scss vendor/sass/@fortawesome
-    cp -R node_modules/bootstrap/scss vendor/sass/bootstrap/scss
+    cd $(mktemp -d)
+    npm pack bootstrap@5.3.3                       # writes bootstrap-5.3.3.tgz
+    tar xf bootstrap-5.3.3.tgz                     # unpacks into ./package
+
+Then replace the directory, from the repo root:
+
+    rm -rf vendor/sass/bootstrap/scss
+    cp -R /path/to/package/scss vendor/sass/bootstrap/scss
+
+Font Awesome is the same, with two directories rather than one -- its webfonts live in
+`public/webfonts` and are served from there:
+
+    npm pack @fortawesome/fontawesome-free@6.7.2
+    rm -rf vendor/sass/@fortawesome
     mkdir -p vendor/sass/@fortawesome/fontawesome-free
-    cp -R node_modules/@fortawesome/fontawesome-free/scss \
-          vendor/sass/@fortawesome/fontawesome-free/scss
-
-Font Awesome's webfonts live in `public/webfonts` and are served from there directly; if
-the Font Awesome version changes, copy those across too:
-
-    cp node_modules/@fortawesome/fontawesome-free/webfonts/fa-{solid-900,regular-400,brands-400,v4compatibility}.* \
+    cp -R /path/to/package/scss vendor/sass/@fortawesome/fontawesome-free/scss
+    cp /path/to/package/webfonts/fa-{solid-900,regular-400,brands-400,v4compatibility}.* \
        public/webfonts/
 
-Then `bin/rails dartsass:build` and check the diff in `app/assets/builds/application.css`.
+Then `bin/rails dartsass:build` and read the diff in `app/assets/builds/application.css` --
+on a patch bump it should be small and explicable. Update the versions above.
