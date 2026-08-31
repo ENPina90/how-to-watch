@@ -15,6 +15,13 @@ import { playerAdapterFor, isControllable } from "services/player_adapter";
 // republished as though the viewer had pressed it; and small drift is left alone, because
 // streams buffer independently and reseeking everyone every few seconds is worse to sit
 // through than being a second out.
+//
+// The first two are windows rather than latches, and that distinction is the whole of a
+// bug this had: a command the player ignores -- a pause it was already in, one sent while
+// it was rebuilding a stream -- produces no echo at all, and a flag left waiting for one
+// silently swallows the viewer's next real press. Which is exactly what "it worked for a
+// while and then stopped" looks like from the sofa.
+const ECHO_WINDOW = 2000;
 export default class extends Controller {
   static targets = ["members", "status", "link", "permission"];
   static values = {
@@ -33,8 +40,7 @@ export default class extends Controller {
 
     this.controllable = isControllable(this.adapterValue);
     this.lastSent = 0;
-    this.correcting = false;
-    this.applying = false;
+    this.echoes = {};
     this.player = playerAdapterFor(this.adapterValue, iframe, {
       onState: (state) => this.playerReported(state),
     });
@@ -67,18 +73,15 @@ export default class extends Controller {
     this.local = state;
 
     // A correction we asked for, echoed back. Acting on it would restart the loop.
-    if (this.correcting) {
-      this.correcting = false;
-      return;
-    }
+    if (this.wasOurs("seek")) return;
 
     // A play or pause the viewer performed themselves, rather than one we just applied on
     // the room's behalf. That is the whole signal -- a deliberate press.
     const pressed = previous && previous.status !== state.status;
-    if (pressed && !this.applying && this.mayControl && !this.hostValue) {
+    const ours = this.wasOurs("command");
+    if (pressed && !ours && this.mayControl && !this.hostValue) {
       this.subscription?.perform("control", { status: state.status });
     }
-    this.applying = false;
 
     if (this.hostValue) return this.publish(state);
 
@@ -140,7 +143,7 @@ export default class extends Controller {
     if (!this.controllable || !this.player.ready) return;
     if (this.local?.status === data.status) return;
 
-    this.applying = true;
+    this.expectEcho("command");
     if (data.status === "playing") this.player.play();
     else this.player.pause();
   }
@@ -154,17 +157,17 @@ export default class extends Controller {
     // Being a little out is the normal condition of two independent streams, and saying so
     // every five seconds is noise. Only a correction is worth a word.
     if (Math.abs(drift) > this.toleranceValue) {
-      this.correcting = true;
+      this.expectEcho("seek");
       this.player.seek(this.host.progress);
       this.setStatus(`Resynced ${this.format(Math.abs(drift))}`, { transient: true });
     }
 
     if (this.host.status === "playing" && this.local.status !== "playing") {
-      this.applying = true;
+      this.expectEcho("command");
       this.player.play();
     }
     if (this.host.status === "paused" && this.local.status === "playing") {
-      this.applying = true;
+      this.expectEcho("command");
       this.player.pause();
     }
   }
@@ -214,6 +217,21 @@ export default class extends Controller {
         return chip;
       }),
     );
+  }
+
+  // We just told the player to do something and expect it to say so back.
+  expectEcho(kind) {
+    this.echoes[kind] = Date.now();
+  }
+
+  // Was this report the echo of something we asked for? Reading consumes it either way, so
+  // a command that never produced one cannot go on suppressing later reports.
+  wasOurs(kind) {
+    const at = this.echoes[kind];
+    if (at === undefined) return false;
+
+    delete this.echoes[kind];
+    return Date.now() - at < ECHO_WINDOW;
   }
 
   get currentUserId() {
