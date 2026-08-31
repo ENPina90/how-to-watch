@@ -57,6 +57,19 @@ class Source < ApplicationRecord
   def imdb?   = kind == "imdb"
   def direct? = kind == "direct"
 
+  # Providers whose embedded player can be driven from the page around it, and the module
+  # name of the adapter that drives it. Both vidsrc front doors resolve to one backend --
+  # same wrapper, same player.js -- so one adapter serves them; the rest of the providers
+  # hand the parent page no control surface at all, and a watch party on them can only tell
+  # people how far apart they are.
+  SYNC_ADAPTERS = {
+    "vidsrc-embed.ru" => "vidsrc",
+    "vidsrcme"        => "vidsrc",
+  }.freeze
+
+  def sync_adapter = SYNC_ADAPTERS[slug]
+  def syncable?    = sync_adapter.present?
+
   # Build the playable embed URL for an entry (plus optional subentry for series/anime).
   # Returns nil if no template matches the entry's media type.
   def url_for(entry, subentry: nil, autoplay: false)

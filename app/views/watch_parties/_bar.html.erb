@@ -1,0 +1,33 @@
+<%# The room, on the player page. Rendered only when this request is being made from inside
+    a party -- the session token is what puts it here. %>
+<div class="watch-party"
+     data-controller="watch-party"
+     data-watch-party-token-value="<%= party.token %>"
+     data-watch-party-adapter-value="<%= adapter %>"
+     data-watch-party-host-value="<%= party.host?(current_user) %>"
+     data-watch-party-frame-value="cinema">
+
+  <span class="watch-party__label">
+    <i class="fa-solid fa-users"></i>
+    <%= party.host?(current_user) ? "Hosting" : "Watching with #{party.host_user.display_name}" %>
+  </span>
+
+  <span class="watch-party__members" data-watch-party-target="members"></span>
+
+  <span class="watch-party__status" data-watch-party-target="status">
+    <%= adapter.present? ? "Connecting…" : "Sync unavailable on this source" %>
+  </span>
+
+  <button type="button" class="watch-party__btn"
+          data-watch-party-target="link"
+          data-url="<%= watch_party_url(party.token) %>"
+          data-action="watch-party#copy">
+    Copy invite
+  </button>
+
+  <%= button_to party.host?(current_user) ? "End" : "Leave",
+        watch_party_path(party.token),
+        method: :delete,
+        class: "watch-party__btn watch-party__btn--quiet",
+        form: { class: "d-inline-block m-0" } %>
+</div>

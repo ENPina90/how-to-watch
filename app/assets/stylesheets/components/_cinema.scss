@@ -193,3 +193,96 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   font-size: 1.75rem;
   line-height: 1;
 }
+
+/* The watch party bar rides the top edge of the frame -- the switcher already owns the
+   bottom, and the room's state (who is here, how far off you are) is something you glance
+   at rather than reach for. Unlike the switcher it does not fade: a party you cannot see
+   you are in is worse than one pill too many on screen. */
+.watch-party {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: 92%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.watch-party__label {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.watch-party__members {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.watch-party__member {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  white-space: nowrap;
+}
+
+.watch-party__member--host {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* The one line that changes on its own, so it gets room to change in without the bar
+   resizing around it every few seconds. */
+.watch-party__status {
+  min-width: 12ch;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.watch-party__btn {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.watch-party__btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.watch-party__btn--quiet {
+  opacity: 0.6;
+}
+
+/* Starting a room sits where the bar will be once there is one, so the control does not
+   move the moment you use it. */
+.watch-party-start {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.watch-party-start:hover {
+  opacity: 1;
+}
