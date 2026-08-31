@@ -8,7 +8,7 @@ namespace :font_awesome do
     # into the asset pipeline: Dart Sass compiles outside Sprockets, so it has no way to
     # write the digested filenames Sprockets produces.
     unless Dir.exist?(SOURCE)
-      warn "Font Awesome webfonts not found at #{SOURCE}. Run `npm install` first."
+      warn "Font Awesome webfonts not found at #{SOURCE}. Run `yarn install` first."
       next
     end
 
