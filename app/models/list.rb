@@ -2,6 +2,7 @@
 
 class List < ApplicationRecord
   has_many :vote_sessions, dependent: :destroy
+  has_many :watch_parties, dependent: :destroy
 
   belongs_to :user
   belongs_to :provider, class_name: 'Source', optional: true
