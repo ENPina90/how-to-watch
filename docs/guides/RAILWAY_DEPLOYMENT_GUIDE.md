@@ -47,6 +47,47 @@ config.hosts << ENV.fetch("RAILS_HOST", "yourdomain.com")
 config.hosts << /.*\.railway\.app/
 ```
 
+## ⚙️ **The worker service**
+
+Sidekiq runs as its own Railway service (`worker`) alongside the web service
+(`how-to-watch`), because it needs a long-running process of its own. Both run the *same
+codebase* from the *same repo* — the worker is not a separate app, it is this app started
+differently:
+
+```
+web     rails server            (Railway uses the Procfile's `web` process)
+worker  bundle exec sidekiq -C config/sidekiq.yml
+```
+
+### They must deploy together
+
+Railway gives each service its own deploy trigger, so they can drift apart. When they do,
+the web service enqueues a job the worker's older build has never heard of and every one
+fails with `ActiveJob::UnknownJobClassError`. Nothing else reports this — it happened once
+for a full day, visible only in the Sidekiq retries tab.
+
+In the worker service's **Settings → Source**, keep all three the same as the web service:
+
+| Setting | Must be | Why |
+|---|---|---|
+| Repository | `ENPina90/how-to-watch` | A service with no GitHub source never auto-deploys; it only moves when someone runs `railway up`. |
+| Branch | `master` | Deploying different branches is the drift, straightforwardly. |
+| Watch paths | **empty** | Paths that do not match a push *silently skip the deployment*. Tempting to scope the worker to `app/jobs/**`, but wrong: jobs run the whole codebase — models, services, everything they touch — so the worker needs every push. |
+
+### Checking it
+
+The admin dashboard's **Deployment** panel shows the commit each process is running and
+warns when they disagree, when no worker is running, or when one has stopped heartbeating.
+Check it after any deploy that adds or renames a job class. The commits come from
+`RAILWAY_GIT_COMMIT_SHA`, which Railway injects only for deploys from a GitHub trigger —
+so a service showing no commit at all is itself the warning that it is deployed by hand.
+
+To force the worker to catch up:
+
+```bash
+railway redeploy --service worker
+```
+
 ## 🚀 **Step-by-Step Deployment**
 
 ### **Phase 1: Railway Setup**
