@@ -17,7 +17,7 @@ class WatchPartyChannel < ApplicationCable::Channel
 
     # Whoever just arrived needs the room's current state; everyone else needs to know
     # they are here.
-    transmit(action: 'state', **state_payload)
+    transmit({ action: 'state', **state_payload })
     broadcast_presence
   end
 
@@ -36,21 +36,26 @@ class WatchPartyChannel < ApplicationCable::Channel
 
     status = data['status'] == 'playing' ? 'playing' : 'paused'
     @party.record_state!(status: status, progress: data['progress'].to_f)
-    WatchPartyChannel.broadcast_to(@party, action: 'state', **state_payload)
+    # The host's player reporting in is the host still being here. They never send
+    # `heartbeat` -- that is the guests' message -- so without this they age out of the
+    # member list while sitting in the room they are hosting.
+    touch_presence
+    WatchPartyChannel.broadcast_to(@party, { action: 'state', **state_payload })
   end
 
   # A guest saying where their own player is, so the bar can show the gap.
   def heartbeat(data)
     return unless @party
 
-    @party.watch_party_memberships
-          .where(user: current_user)
-          .update_all(last_seen_at: Time.current)
-
+    touch_presence
     broadcast_presence(progress: data['progress'])
   end
 
   private
+
+  def touch_presence
+    @party.watch_party_memberships.where(user: current_user).update_all(last_seen_at: Time.current)
+  end
 
   def state_payload
     {
@@ -67,6 +72,6 @@ class WatchPartyChannel < ApplicationCable::Channel
       { id: membership.user_id, name: membership.user.display_name, host: @party.host?(membership.user) }
     end
 
-    WatchPartyChannel.broadcast_to(@party, action: 'presence', members: members, progress: progress)
+    WatchPartyChannel.broadcast_to(@party, { action: 'presence', members: members, progress: progress })
   end
 end
