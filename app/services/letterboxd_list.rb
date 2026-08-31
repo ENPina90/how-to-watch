@@ -10,6 +10,10 @@ class LetterboxdList
 
   Result = Struct.new(:created, :updated, :total, keyword_init: true)
 
+  # Namespace for the per-user advisory lock below. Arbitrary, only has to be stable and
+  # not collide with another advisory lock in the app.
+  LOCK_NAMESPACE = 8_231_004
+
   def self.name_for(user)
     "#{user.display_name.capitalize}#{NAME_SUFFIX}"
   end
@@ -28,6 +32,22 @@ class LetterboxdList
   # Raises LetterboxdFeed::RequestError if the diary cannot be read -- callers decide
   # whether that is worth surfacing or just worth logging.
   def sync!
+    # One sync per member at a time. The weekly pass, a refresh booked when a review was
+    # opened, and Sync now can all be in flight together, and two of them racing both see
+    # a film as missing and both create it. Skipping is right rather than waiting: the
+    # sync already running reads the same feed.
+    with_lock { run_sync } || Result.new(created: 0, updated: 0, total: 0)
+  end
+
+  # Disabling the feature takes the channel with it. List's own before_destroy clears the
+  # entry graph in bulk, so this does not need to walk the entries itself.
+  def remove!
+    list&.destroy
+  end
+
+  private
+
+  def run_sync
     # Re-read the flag rather than trusting the copy the caller loaded. A sync is queued
     # and runs later -- the weekly pass, or one booked when a review was opened -- so it
     # can land after the member has unticked the box, and would otherwise rebuild the
@@ -57,13 +77,19 @@ class LetterboxdList
     Result.new(created: created, updated: updated, total: watches.size)
   end
 
-  # Disabling the feature takes the channel with it. List's own before_destroy clears the
-  # entry graph in bulk, so this does not need to walk the entries itself.
-  def remove!
-    list&.destroy
-  end
+  # Postgres advisory locks are held for the session and released in the ensure, so a
+  # crashed worker cannot leave a member permanently unsyncable. Returns nil when the
+  # lock is already held, which the caller reads as "another sync has this".
+  def with_lock
+    connection = ActiveRecord::Base.connection
+    return nil unless connection.select_value("SELECT pg_try_advisory_lock(#{LOCK_NAMESPACE}, #{user.id.to_i})")
 
-  private
+    begin
+      yield
+    ensure
+      connection.execute("SELECT pg_advisory_unlock(#{LOCK_NAMESPACE}, #{user.id.to_i})")
+    end
+  end
 
   def find_or_create_list
     list || user.lists.create!(
