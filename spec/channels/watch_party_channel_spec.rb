@@ -79,6 +79,34 @@ RSpec.describe WatchPartyChannel, type: :channel do
       expect(party.reload.player_progress).to be_within(2.0).of(300.0)
     end
 
+    # The channel instance lives as long as the socket. Holding the party it loaded when
+    # someone joined meant a guest carried on being allowed to stop the film after the
+    # host had closed that off -- and that a pause was recorded against whatever position
+    # was true when they arrived, which Active Record then wrote as no change at all.
+    it 'refuses a guest the host closes off mid-film, without them reconnecting' do
+      party.update!(player_status: 'playing')
+      stub_connection current_user: guest
+      subscribe(token: party.token)
+
+      party.update!(guests_can_control: false)
+      perform :control, 'status' => 'paused'
+
+      expect(party.reload.player_status).to eq('playing')
+    end
+
+    it 'records the pause against where the room actually is, not where it was' do
+      party.update!(player_status: 'playing', player_progress: 0.0, state_at: Time.current)
+      stub_connection current_user: guest
+      subscribe(token: party.token)
+
+      # The host has been reporting all along; the guest's channel never saw any of it.
+      party.update!(player_progress: 640.0, state_at: Time.current)
+      perform :control, 'status' => 'paused'
+
+      expect(party.reload.player_status).to eq('paused')
+      expect(party.player_progress).to be_within(2.0).of(640.0)
+    end
+
     it 'refuses a guest once the host has closed it off' do
       party.update!(guests_can_control: false, player_status: 'playing')
       stub_connection current_user: guest
