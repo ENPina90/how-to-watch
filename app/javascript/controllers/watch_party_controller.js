@@ -42,6 +42,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    clearTimeout(this.statusTimer);
     this.subscription?.unsubscribe();
     this.consumer?.disconnect();
     this.player?.destroy();
@@ -88,6 +89,10 @@ export default class extends Controller {
   }
 
   hostMoved(data) {
+    // Being in the room is the normal state and needs no commentary, so the placeholder
+    // goes as soon as there is something behind it.
+    this.clearStatus();
+
     // The projection the server sends was true when it sent it; by the time it arrives the
     // host has moved on by however long the trip took.
     const latency = data.at ? Math.max(0, Date.now() / 1000 - data.at) : 0;
@@ -104,12 +109,12 @@ export default class extends Controller {
 
     const drift = this.local.progress - this.host.progress;
 
+    // Being a little out is the normal condition of two independent streams, and saying so
+    // every five seconds is noise. Only a correction is worth a word.
     if (Math.abs(drift) > this.toleranceValue) {
       this.correcting = true;
       this.player.seek(this.host.progress);
-      this.setStatus(`Resynced ${this.format(Math.abs(drift))} ${drift > 0 ? "back" : "forward"}`);
-    } else {
-      this.setStatus(`In sync (${this.format(Math.abs(drift))} off)`);
+      this.setStatus(`Resynced ${this.format(Math.abs(drift))}`, { transient: true });
     }
 
     if (this.host.status === "playing" && this.local.status !== "playing") this.player.play();
@@ -143,8 +148,18 @@ export default class extends Controller {
     );
   }
 
-  setStatus(text) {
-    if (this.hasStatusTarget) this.statusTarget.textContent = text;
+  setStatus(text, { transient = false } = {}) {
+    if (!this.hasStatusTarget) return;
+
+    clearTimeout(this.statusTimer);
+    this.statusTarget.textContent = text;
+    if (transient) this.statusTimer = setTimeout(() => this.clearStatus(), 4000);
+  }
+
+  clearStatus() {
+    if (!this.hasStatusTarget) return;
+    clearTimeout(this.statusTimer);
+    this.statusTarget.textContent = "";
   }
 
   format(seconds) {
@@ -155,7 +170,7 @@ export default class extends Controller {
   copy() {
     if (!this.hasLinkTarget) return;
     navigator.clipboard.writeText(this.linkTarget.dataset.url).then(() => {
-      this.setStatus("Invite link copied.");
+      this.setStatus("Invite link copied.", { transient: true });
     });
   }
 }
