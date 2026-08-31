@@ -15,6 +15,7 @@ class Entry < ApplicationRecord
   has_many :subentries, dependent: :delete_all
   has_many :user_entries, dependent: :destroy
   has_many :user_entry_positions, dependent: :destroy
+  has_many :watch_parties, dependent: :destroy
   has_many :users_who_watched, -> { where(user_entries: { completed: true }) }, through: :user_entries, source: :user
   has_many :users_who_reviewed, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :user
   # No dependent: :destroy here -- `current` is always one of this entry's own

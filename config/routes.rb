@@ -86,6 +86,10 @@ Rails.application.routes.draw do
     resources :entries, only: [:new, :create]
   end
 
+  # Watch parties. The token is the invitation, so it addresses the room rather than an
+  # id -- `show` is the join link people paste to each other.
+  resources :watch_parties, only: %i[show create destroy], param: :token
+
   # Add to favorites route (not nested under lists)
   post '/lists/add_to_favorites', to: 'lists#add_to_favorites'
   # Add to list route (not nested under lists)

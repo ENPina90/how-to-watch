@@ -1,5 +1,6 @@
 class ApplicationController < ActionController::Base
   include Impersonation
+  include WatchPartyContext
   # Declares the before_action that replaces a blanket authenticate_user!: who gets in
   # without an account depends on AppSetting#access_mode.
   include AccessControl
