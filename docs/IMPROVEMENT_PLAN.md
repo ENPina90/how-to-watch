@@ -270,7 +270,8 @@ layout had a cdnjs `<link>` as a workaround, which is now removed since all thre
 share working self-hosted fonts. `$fa-font-path` points at `/webfonts`, populated from
 node_modules by `rails font_awesome:copy` (hooked to `assets:precompile`); it cannot point
 into the asset pipeline because Dart Sass runs outside Sprockets and cannot emit digested
-filenames.
+filenames. *(Superseded by #40: the fonts are committed to `public/webfonts` and the copy
+task is gone. `$fa-font-path` and the reason for it are unchanged.)*
 
 **Railway follow-up:** `libffi8` can now come out of `RAILPACK_DEPLOY_APT_PACKAGES` on both
 services — but only *after* this branch is deployed, since the currently running code still
@@ -424,6 +425,46 @@ lookup on `index_entries_on_list_id_and_position`. Batching the ordered case beh
 single query is possible but was not worth the complexity here.
 
 ---
+
+### 40. ✅ The stylesheet build needed `node_modules`, which one builder never had (found 2026-08-31)
+`config/initializers/dartsass.rb` put `node_modules` on Dart Sass's load path, so
+`assets:precompile` could only succeed where `yarn install` had run *in the same filesystem
+as the build step*. That is true of Nixpacks and not of Railpack, which runs install and
+build as separate layers — and the two Railway services use different builders. While
+`node_modules` was committed the difference was invisible; the commit that stopped tracking
+it broke every worker build for eighteen hours, and because the worker never rebuilt it
+kept serving an older image, failing every job the web service enqueued with
+`ActiveJob::UnknownJobClassError` where only the Sidekiq retries tab showed it.
+
+**Fix:** Bootstrap 5.2.3's and Font Awesome 6.7.2's `scss/` are copied into `vendor/sass/`
+and committed, and the load path points there. Import paths in `application.scss` are
+unchanged, because the vendored tree keeps the same directory names. The webfonts are
+committed to `public/webfonts` and served from there, so `rails font_awesome:copy` and its
+`assets:precompile` hook are gone. `node_modules` also came off Sprockets' asset paths;
+nothing was ever served from it (all JavaScript is pinned in `config/importmap.rb`).
+
+**Verified:** the compiled CSS is byte-identical to the previous build, and
+`assets:precompile` was re-run in production mode with `node_modules` moved out of the tree
+entirely — it succeeds and emits the same file, which is what the worker's builder sees.
+
+**Not the gems.** `bootstrap` and `font-awesome-sass` both exist at exactly these versions
+and would be the tidier answer, but each declares a runtime dependency on `sassc` — the
+`ffi` chain #28 removed, and the cause of the worker's `libffi.so.8` crash on Railpack.
+Taking the gems would undo that fix to fix this one.
+
+**`package.json` and `yarn.lock` went too.** Once the Sass was vendored, nothing in the
+repo read anything npm installed: Bootstrap's and Font Awesome's JavaScript are CDN pins in
+`config/importmap.rb`, `@popperjs/core` and `sortablejs` were pinned there as well and had
+been dead weight in the manifest for a while, and the only live entry was `prettier` with
+an empty `.prettierrc`. Keeping them would have left both services running an install step
+that can fail while producing nothing either build needs -- the same shape as the outage
+above. `npx prettier` still formats; the vendored versions are recorded in
+`vendor/sass/README.md` along with how to update them without a manifest.
+
+**Node is now absent from the build entirely.** Neither builder has a package manifest to
+detect, `dartsass-rails` ships its own platform binary, and importmap needs no bundler. If
+a future change wants an npm package, weigh that against reintroducing the one build step
+that differs between the two services.
 
 ## P1 — Performance
 
@@ -750,5 +791,6 @@ tables were confirmed empty in production (0 rows) rather than assumed:
    what make the list and sidebar pages fast.
 6. ~~**Then P3** — the dead-code sweep.~~ **Done 2026-08-22.**
 7. ~~#17, #14, #20, #21, #28~~ done (#28 bar the font-awesome-sass swap that would
-   finally drop `ffi`). Next: **#18/#19** — the three near-identical TMDB search
+   finally drop `ffi`; #40 settles where the Sass comes from for good, and records why the
+   gem is not the way back). Next: **#18/#19** — the three near-identical TMDB search
    controllers, and the parallel mobile view tree.

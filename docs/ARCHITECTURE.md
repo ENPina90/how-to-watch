@@ -271,14 +271,18 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
   `data-action` pointing at a method no controller defines, and a `data-*-target` no
   controller declares. All of those otherwise show up only in the browser console — or
   not at all, since Stimulus ignores an undeclared target silently.
-- **Font Awesome** is self-hosted from npm (pinned to 6.x; v7 renames icons). Its
-  `scss/` and `webfonts/` are vendored under `node_modules`, and `rails font_awesome:copy`
-  puts the fonts in `public/webfonts` during `assets:precompile` — `$fa-font-path` points
-  there because Dart Sass cannot emit Sprockets' digested filenames.
+- **Font Awesome** is self-hosted (pinned to 6.7.2; v7 renames icons). Its `scss/` is
+  vendored in `vendor/sass/`, and the webfonts are committed to `public/webfonts` and
+  served straight from there — `$fa-font-path` points at `/webfonts` because Dart Sass
+  cannot emit Sprockets' digested filenames.
 - **SCSS** is compiled by Dart Sass, *not* Sprockets: `application.scss` →
   `app/assets/builds/application.css`. External imports need explicit load paths in
-  `config/initializers/dartsass.rb` (Bootstrap from `node_modules`, Font Awesome from its
-  gem). Run `bin/dev` in development — it starts `dartsass:watch` next to the server;
+  `config/initializers/dartsass.rb`, which points at `vendor/sass/` — Bootstrap's and Font
+  Awesome's Sass sources, copied from the npm packages of the same versions and committed.
+  They are not read from `node_modules` and not taken from the `bootstrap` /
+  `font-awesome-sass` gems: node is absent from one Railway builder at precompile time
+  (see the deployment guide), and both gems depend on `sassc`, the `ffi` chain #28 removed.
+  Run `bin/dev` in development — it starts `dartsass:watch` next to the server;
   `assets:precompile` handles the build on deploy.
 - **SCSS** in `app/assets/stylesheets`: `config/` (variables, colors, fonts),
   `components/`, `pages/`, `themes/_light_mode.scss`. Dark mode is the default; the theme
