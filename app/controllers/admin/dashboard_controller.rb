@@ -6,6 +6,7 @@ module Admin
     def show
       @stats = AdminStatistics.new
       @setting = AppSetting.current
+      @deployment = DeploymentStatus.new
       @hide_sidebar = true
     end
 
