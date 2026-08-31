@@ -48,7 +48,17 @@ export default class extends Controller {
     this.consumer = createConsumer();
     this.subscription = this.consumer.subscriptions.create(
       { channel: "WatchPartyChannel", token: this.tokenValue },
-      { received: (data) => this.received(data) },
+      {
+        received: (data) => this.received(data),
+        // A socket that goes away takes the room with it, silently: the film keeps
+        // playing, nothing follows anyone any more, and the bar looks exactly as it did
+        // when it was working. These say so. The client reconnects on its own, so
+        // "Reconnecting" is a state to wait out rather than act on -- but a room that has
+        // been quietly dead for ten minutes should not look identical to a live one.
+        connected: () => this.socketUp(),
+        disconnected: () => this.socketDown(),
+        rejected: () => this.setStatus("Could not rejoin the room — reload the page."),
+      },
     );
 
     if (!this.controllable) this.setStatus("Sync unavailable on this source — press play together.");
@@ -95,10 +105,25 @@ export default class extends Controller {
   // the point, but a state change fires its own event immediately and would otherwise
   // double up with the tick either side of it.
   publish(state) {
+    if (this.connected === false) return;
+
     const now = Date.now();
     if (now - this.lastSent < 750) return;
     this.lastSent = now;
     this.subscription?.perform("state", { status: state.status, progress: state.progress });
+  }
+
+  socketUp() {
+    this.connected = true;
+    this.clearStatus();
+  }
+
+  socketDown() {
+    this.connected = false;
+    // Anything we were told about the room stopped being true the moment we stopped
+    // hearing from it; acting on it after a reconnect would move people on stale news.
+    this.host = null;
+    this.setStatus("Reconnecting…");
   }
 
   // ---- the room ----------------------------------------------------------------------
