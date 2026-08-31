@@ -63,8 +63,16 @@ class WatchParty < ApplicationRecord
     broadcast(action: 'navigate', url: url)
   end
 
+  # Broadcasting happens in the middle of ordinary requests -- moving the room runs while
+  # the host's player page is rendering, and closing it runs on their way out. A pubsub
+  # backend that is down or unreachable must not take the player page down with it: the
+  # party is something the page has, not something it is. The room falls out of step and
+  # says so; the film keeps playing.
   def broadcast(payload)
     WatchPartyChannel.broadcast_to(self, payload)
+  rescue StandardError => e
+    Rails.logger.error "Watch party #{id} could not broadcast #{payload[:action]}: #{e.class}: #{e.message}"
+    nil
   end
 
   # Who is here. Anyone whose page has not checked in for a while has closed the tab or
