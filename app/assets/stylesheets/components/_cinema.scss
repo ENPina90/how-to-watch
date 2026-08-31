@@ -313,3 +313,10 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
 .cinema__play-hint[hidden] {
   display: none;
 }
+
+/* The permission toggle reads as pressed when the room is open, so its state is legible
+   without hovering for the tooltip. */
+.watch-party__btn--toggle[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.45);
+}

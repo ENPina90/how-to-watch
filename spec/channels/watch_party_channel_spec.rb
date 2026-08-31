@@ -56,6 +56,80 @@ RSpec.describe WatchPartyChannel, type: :channel do
     end
   end
 
+  describe 'anyone stopping the film' do
+    it 'lets a guest pause the room when the host allows it' do
+      party.update!(player_status: 'playing', player_progress: 300.0, state_at: Time.current)
+      stub_connection current_user: guest
+      subscribe(token: party.token)
+
+      expect { perform :control, 'status' => 'paused' }
+        .to have_broadcasted_to(party).with(hash_including(action: 'control', status: 'paused'))
+      expect(party.reload.player_status).to eq('paused')
+    end
+
+    # A pause carries no position of its own, so stopping the film cannot also drag the
+    # room to wherever the person who pressed it happened to be sitting.
+    it 'does not move the room to wherever the guest was' do
+      party.update!(player_status: 'playing', player_progress: 300.0, state_at: Time.current)
+      stub_connection current_user: guest
+      subscribe(token: party.token)
+
+      perform :control, 'status' => 'paused'
+
+      expect(party.reload.player_progress).to be_within(2.0).of(300.0)
+    end
+
+    it 'refuses a guest once the host has closed it off' do
+      party.update!(guests_can_control: false, player_status: 'playing')
+      stub_connection current_user: guest
+      subscribe(token: party.token)
+
+      perform :control, 'status' => 'paused'
+
+      expect(party.reload.player_status).to eq('playing')
+    end
+
+    it 'still lets the host stop it when it is closed off' do
+      party.update!(guests_can_control: false, player_status: 'playing')
+      stub_connection current_user: host
+      subscribe(token: party.token)
+
+      perform :control, 'status' => 'paused'
+
+      expect(party.reload.player_status).to eq('paused')
+    end
+  end
+
+  describe 'who may stop the film' do
+    it 'is the host\'s to change' do
+      stub_connection current_user: host
+      subscribe(token: party.token)
+
+      perform :permission, 'allowed' => false
+
+      expect(party.reload.guests_can_control).to be(false)
+    end
+
+    it 'is not a guest\'s to change' do
+      stub_connection current_user: guest
+      subscribe(token: party.token)
+
+      perform :permission, 'allowed' => false
+
+      expect(party.reload.guests_can_control).to be(true)
+    end
+
+    # A guest handed control mid-film has no way to know unless the room tells them.
+    it 'reaches the room without a reload' do
+      stub_connection current_user: host
+      subscribe(token: party.token)
+
+      expect { perform :permission, 'allowed' => false }
+        .to have_broadcasted_to(party)
+        .with(hash_including(action: 'settings', guests_can_control: false))
+    end
+  end
+
   describe 'a guest reporting in' do
     # The host's player is the room's clock. A guest that could post state would drag
     # everyone else to wherever they happen to be.
