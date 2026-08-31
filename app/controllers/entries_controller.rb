@@ -275,6 +275,14 @@ class EntriesController < ApplicationController
     @tmdb_id = @entry.tmdb
     @imdb_id = @entry.imdb
 
+    # The room follows the host. Reading this page is what moves it: the navigation
+    # actions all redirect here, and the episode links in the sidebar arrive here
+    # directly, so this is the one place that sees every change of what is playing.
+    @watch_party = current_watch_party
+    follow_host_navigation(@watch_party, @entry, @current_subentry,
+                           watch_entry_path(@entry, channel: @channel.id,
+                                                    subentry: @current_subentry&.id))
+
     # Set sidebar states for watch page - both sidebars collapsed by default
     @sidebar_collapsed = true # Left sidebar collapsed
     @hide_sidebar = false # But still render it
