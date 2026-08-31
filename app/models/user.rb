@@ -22,6 +22,8 @@ class User < ApplicationRecord
   has_many :unwatched_entries, -> { where(user_entries: { completed: false }) }, through: :user_entries, source: :entry
   has_many :reviewed_entries, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :entry
   has_many :user_list_positions, dependent: :destroy
+  has_many :hosted_watch_parties, class_name: 'WatchParty', foreign_key: :host_user_id, dependent: :destroy
+  has_many :watch_party_memberships, dependent: :destroy
 
   # The username is the Letterboxd handle, so there is nothing to link without one.
   validates :username, presence: { message: 'is needed to link a Letterboxd account' },
