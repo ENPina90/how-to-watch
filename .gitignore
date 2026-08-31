@@ -39,9 +39,6 @@
 /app/assets/builds/*
 !/app/assets/builds/.keep
 
-# Copied from node_modules by font_awesome:copy
-/public/webfonts
-
 # Claude Code. settings.local.json is per-machine, and .claude/projects/ is a stray
 # copy of the memory store that belongs in ~/.claude -- neither should be committed.
 /.claude/projects/
