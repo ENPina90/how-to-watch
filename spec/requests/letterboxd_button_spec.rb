@@ -48,23 +48,38 @@ RSpec.describe 'The Letterboxd button', type: :request do
   end
 
   describe 'on the watch page' do
-    it 'rides the source switcher line for a movie', :needs_provider do
+    # The control ring, not the switcher line: it sits opposite the edit pencil in the
+    # ring's one free corner, and wears the plain mark rather than the card's square one.
+    it 'sits in the control ring for a movie', :needs_provider do
+      user.update!(letterboxd_enabled: true, username: 'someone')
       entry = create(:entry, list: list, media: 'movie', imdb: 'tt0111161')
 
       get watch_entry_path(entry)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include('watch-letterboxd')
+      expect(response.body).to include('fa-letterboxd')
       expect(response.body).to include(letterboxd_review_path(entry))
     end
 
+    # To someone who has not linked an account it is a prompt to review somewhere they do
+    # not post.
+    it 'is absent for a member who has not linked Letterboxd', :needs_provider do
+      entry = create(:entry, list: list, media: 'movie', imdb: 'tt0111161')
+
+      get watch_entry_path(entry)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include('fa-letterboxd')
+    end
+
     it 'is absent for a series', :needs_provider do
+      user.update!(letterboxd_enabled: true, username: 'someone')
       entry = create(:entry, list: list, media: 'series', name: 'A Show',
                              imdb: 'tt0903747', series_imdb: 'tt0903747')
 
       get watch_entry_path(entry)
 
-      expect(response.body).not_to include('fa-square-letterboxd')
+      expect(response.body).not_to include('fa-letterboxd')
     end
   end
 
