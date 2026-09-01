@@ -116,7 +116,7 @@
             catalogues nothing else -- and only for someone who has linked an account,
             since to anyone else it is a prompt to review somewhere they do not post. %>
         <% if current_user.letterboxd_enabled? && letterboxd_reviewable?(@entry) %>
-          <div class="position-absolute bottom-0 start-0 translate-middle-y">
+          <div class="position-absolute bottom-0 start-0 translate-middle-y cinema__letterboxd">
             <%= render 'shared/letterboxd_button', url: letterboxd_review_path(@entry),
                                                    name: @entry.name,
                                                    icon: 'fa-letterboxd fa-2x' %>
