@@ -47,6 +47,14 @@ body.cinema__mode .page-container {
   text-decoration: none !important;
 }
 
+/* The Letterboxd mark sits further out of its corner than the pencil does opposite it.
+   Both the left and the down caret reach into this one, so at the pencil's offset the
+   three of them crowd; the negative margins push it down and out past them. */
+.cinema__letterboxd {
+  margin-bottom: -10px;
+  margin-left: -10px;
+}
+
 /* Add gradient overlay to iframe for better text readability */
 .cinema__screen {
   position: relative;
