@@ -79,7 +79,14 @@ export default class extends Controller {
   // ---- our own player ----------------------------------------------------------------
 
   playerReported(state) {
+    // The same report sometimes arrives twice -- visible in the server log as a pair of
+    // identical heartbeats a millisecond apart. Left alone, the first copy consumes the
+    // record of a command we issued and the second is then read as the viewer acting, so
+    // one duplicated report can publish a press nobody made. A player that is playing
+    // never reports the same position twice, so an exact repeat is never real.
     const previous = this.local;
+    if (previous && previous.status === state.status && previous.progress === state.progress) return;
+
     this.local = state;
 
     // A correction we asked for, echoed back. Acting on it would restart the loop.
@@ -151,12 +158,19 @@ export default class extends Controller {
     // The host is the clock, so their own copy has nothing to learn from its own echo.
     if (this.hostValue) return;
 
-    // The projection was true when it was sent; by the time it arrives the host has moved
-    // on by however long the trip took.
+    // The host is a clock, not a snapshot. It reports every five seconds or so, and
+    // reconcile runs on our own player's reports in between -- so what matters is not
+    // where the host was when it spoke, but where it is now. Freezing the number it sent
+    // and comparing against that meant a viewer who was correctly in step got dragged
+    // backwards by however far into the gap between messages they happened to report.
+    //
+    // The trip time is folded in here because it has already elapsed; everything after
+    // this is measured from when we heard it.
     const latency = data.at ? Math.max(0, Date.now() / 1000 - data.at) : 0;
     this.host = {
       status: data.status,
       progress: data.progress + (data.status === "playing" ? latency : 0),
+      heardAt: Date.now(),
     };
     this.reconcile();
   }
@@ -173,17 +187,24 @@ export default class extends Controller {
     else this.player.pause();
   }
 
+  // Where the host's player is right now, rather than where it was when it last said so.
+  hostProgressNow() {
+    if (this.host.status !== "playing") return this.host.progress;
+
+    return this.host.progress + (Date.now() - this.host.heardAt) / 1000;
+  }
+
   reconcile() {
     if (this.hostValue || !this.host || !this.controllable || !this.player.ready) return;
     if (!this.local) return;
 
-    const drift = this.local.progress - this.host.progress;
+    const drift = this.local.progress - this.hostProgressNow();
 
     // Being a little out is the normal condition of two independent streams, and saying so
     // every five seconds is noise. Only a correction is worth a word.
     if (Math.abs(drift) > this.toleranceValue) {
       this.expectEcho("seek");
-      this.player.seek(this.host.progress);
+      this.player.seek(this.hostProgressNow());
       this.setStatus(`Resynced ${this.format(Math.abs(drift))}`, { transient: true });
     }
 
