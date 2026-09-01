@@ -286,3 +286,37 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
 .watch-party-start:hover {
   opacity: 1;
 }
+
+/* Waiting on a click that has to happen inside the provider's own frame. It must never
+   eat that click, so it does not take pointer events -- it is a caption on the frame, not
+   a button. */
+.cinema__play-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  /* The provider draws its own play button in the middle of the frame; sitting directly
+     on top of it would hide the thing being pointed at. */
+  padding-top: 92px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.cinema__play-hint[hidden] {
+  display: none;
+}
+
+/* The permission toggle reads as pressed when the room is open, so its state is legible
+   without hovering for the tooltip. */
+.watch-party__btn--toggle[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.45);
+}

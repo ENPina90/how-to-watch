@@ -34,6 +34,12 @@
 
   </iframe>
   <%= render 'entries/source_switcher' %>
+  <%# This provider will not start until the play button inside its own frame is clicked,
+      and that frame is cross-origin -- so the page says so rather than looking broken. %>
+  <% if (adapter = @entry.resolved_source&.sync_adapter) %>
+    <%= render 'entries/play_hint', adapter: adapter %>
+  <% end %>
+
 
   <%# The room. It sits on the frame rather than in a sidebar because everything it does --
       following the host, correcting drift -- is about the player right underneath it. %>

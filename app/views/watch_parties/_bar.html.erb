@@ -5,7 +5,9 @@
      data-watch-party-token-value="<%= party.token %>"
      data-watch-party-adapter-value="<%= adapter %>"
      data-watch-party-host-value="<%= party.host?(current_user) %>"
-     data-watch-party-frame-value="cinema">
+     data-watch-party-guests-can-control-value="<%= party.guests_can_control? %>"
+     data-watch-party-frame-value="cinema"
+     data-watch-party-user-id="<%= current_user.id %>">
 
   <span class="watch-party__label">
     <i class="fa-solid fa-users"></i>
@@ -14,9 +16,23 @@
 
   <span class="watch-party__members" data-watch-party-target="members"></span>
 
+  <%# Only ever holds something worth reading: being a second out is the normal condition
+      of two independent streams, not news. %>
   <span class="watch-party__status" data-watch-party-target="status">
     <%= adapter.present? ? "Connecting…" : "Sync unavailable on this source" %>
   </span>
+
+  <% if party.host?(current_user) && adapter.present? %>
+    <%# Over the socket rather than a form: a reload here would rebuild the player iframe
+        and lose everyone's place, including the host's. %>
+    <button type="button" class="watch-party__btn watch-party__btn--toggle"
+            data-watch-party-target="permission"
+            data-action="watch-party#togglePermission"
+            aria-pressed="<%= party.guests_can_control? %>"
+            title="Whether everyone can play and pause, or only you">
+      <%= party.guests_can_control? ? "Anyone can pause" : "Only you can pause" %>
+    </button>
+  <% end %>
 
   <button type="button" class="watch-party__btn"
           data-watch-party-target="link"

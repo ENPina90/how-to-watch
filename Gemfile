@@ -37,7 +37,11 @@ gem "stimulus-rails"
 gem "jbuilder", "~> 2.12"
 
 # Use Redis adapter to run Action Cable in production
-gem "redis", "~> 6.0"
+# Action Cable's redis pubsub adapter declares `gem "redis", ">= 4", "< 6"`, so on 6.x it
+# fails to load and every broadcast raises Gem::LoadError -- the socket connects, the
+# subscription takes, and nothing is ever delivered. Nothing else here uses this gem:
+# Sidekiq is on redis-client.
+gem "redis", ">= 4", "< 6"
 
 # Background job processing (Active Job adapter in production)
 gem "sidekiq", "~> 8.1"
