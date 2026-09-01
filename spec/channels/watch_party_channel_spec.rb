@@ -32,6 +32,26 @@ RSpec.describe WatchPartyChannel, type: :channel do
     end
   end
 
+  describe 'the last person leaving' do
+    # Checked again after a grace period rather than on the spot: from here a reload looks
+    # exactly like leaving, and closing the room under someone who is two seconds from
+    # coming back is worse than one that lingers.
+    it 'queues a check once nobody is left' do
+      stub_connection current_user: host
+      subscribe(token: party.token)
+
+      expect { unsubscribe }.to have_enqueued_job(CloseAbandonedWatchPartiesJob)
+    end
+
+    it 'queues nothing while somebody is still there' do
+      party.join!(guest)
+      stub_connection current_user: host
+      subscribe(token: party.token)
+
+      expect { unsubscribe }.not_to have_enqueued_job(CloseAbandonedWatchPartiesJob)
+    end
+  end
+
   describe 'the host reporting in' do
     it 'records where the host is' do
       stub_connection current_user: host

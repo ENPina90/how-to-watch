@@ -6,3 +6,9 @@ letterboxd_weekly_refresh:
   class: "LetterboxdWeeklyRefreshJob"
   queue: default
   description: "Re-read every linked member's Letterboxd diary and add what is new."
+
+close_abandoned_watch_parties:
+  cron: "*/15 * * * *"   # every 15 minutes
+  class: "CloseAbandonedWatchPartiesJob"
+  queue: default
+  description: "Close watch parties nobody has had open for a while."
