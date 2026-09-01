@@ -111,7 +111,7 @@
               class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
           <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y" title="Shuffle channel"></i>
         <% end %>
-        <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
+        <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y cinema__edit" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
         <%# Opposite the pen, in the ring's one free corner. Films only -- Letterboxd
             catalogues nothing else -- and only for someone who has linked an account,
             since to anyone else it is a prompt to review somewhere they do not post. %>
