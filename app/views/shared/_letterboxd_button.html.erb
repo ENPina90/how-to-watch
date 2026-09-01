@@ -3,12 +3,16 @@
 
     The url points back at the app so the film's canonical slug can be resolved -- only
     /film/<slug>/review/ opens the review prompt -- and so a diary refresh can be booked
-    for once the review has had time to reach the feed. %>
+    for once the review has had time to reach the feed.
+
+    `icon` names the mark: the square fits a card's cramped row, the plain one suits the
+    watch page's control ring. %>
+<% icon ||= 'fa-square-letterboxd' %>
 <a href="<%= url %>"
    target="_blank"
    rel="noopener noreferrer"
    class="letterboxd-link"
    title="Review <%= name %> on Letterboxd"
    aria-label="Review <%= name %> on Letterboxd">
-  <i class="fa-brands fa-square-letterboxd"></i>
+  <i class="fa-brands <%= icon %>"></i>
 </a>
