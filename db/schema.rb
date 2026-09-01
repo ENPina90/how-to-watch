@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_31_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_31_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -296,6 +296,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_000002) do
     t.datetime "closed_at"
     t.datetime "created_at", null: false
     t.bigint "entry_id", null: false
+    t.boolean "guests_can_control", default: true, null: false
     t.bigint "host_user_id", null: false
     t.bigint "list_id", null: false
     t.float "player_progress", default: 0.0, null: false

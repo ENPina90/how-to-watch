@@ -60,6 +60,28 @@ RSpec.describe WatchParty do
     end
   end
 
+  describe 'when the pubsub backend is unreachable' do
+    # move_to! runs while the host's player page is rendering. A Redis that is down took
+    # the whole page with it, so the host could not watch anything at all.
+    it 'still moves the room, and does not take the page down' do
+      party = described_class.open_for(list: list, host: host, entry: entry)
+      other = create(:entry, list: list, position: 2, name: 'Something else')
+      allow(WatchPartyChannel).to receive(:broadcast_to).and_raise(Redis::CannotConnectError)
+
+      expect { party.move_to!(entry: other, subentry: nil, url: '/entries/2/watch') }
+        .not_to raise_error
+      expect(party.reload.entry).to eq(other)
+    end
+
+    it 'still closes the room' do
+      party = described_class.open_for(list: list, host: host, entry: entry)
+      allow(WatchPartyChannel).to receive(:broadcast_to).and_raise(Redis::CannotConnectError)
+
+      expect { party.close! }.not_to raise_error
+      expect(party.reload).not_to be_open
+    end
+  end
+
   describe 'destroying what it points at' do
     # Lists delete their entries with delete_all, so nothing in Rails clears the party;
     # only the database-level cascade keeps a channel deletable.
