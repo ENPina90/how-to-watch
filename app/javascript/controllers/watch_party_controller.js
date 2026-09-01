@@ -98,6 +98,7 @@ export default class extends Controller {
     const ours = this.wasOurs("command");
     if (pressed && !ours && this.mayControl && !this.hostValue) {
       this.subscription?.perform("control", { status: state.status });
+      this.assumeRoomStatus(state.status);
     }
 
     if (this.hostValue) return this.publish(state);
@@ -178,13 +179,29 @@ export default class extends Controller {
   // Someone in the room hit play or pause. Everyone follows, including the host -- that is
   // the point of letting guests do it at all.
   roomPressed(data) {
+    // Our own press, already applied when we made it.
     if (data.by === this.currentUserId) return;
+
+    this.assumeRoomStatus(data.status);
+
     if (!this.controllable || !this.player.ready) return;
     if (this.local?.status === data.status) return;
 
     this.expectEcho("command");
     if (data.status === "playing") this.player.play();
     else this.player.pause();
+  }
+
+  // A press changes what the room is doing, and only the host's `state` was ever recording
+  // that. Reconcile runs against this within milliseconds -- on our own player's very next
+  // report -- so leaving it on the previous status meant the press was undone before the
+  // room had even answered: the host pauses, you hit play, and something pauses you
+  // straight back. Rebasing the position first keeps a resume counting from where the
+  // room stopped rather than from wherever the clock had reached.
+  assumeRoomStatus(status) {
+    if (!this.host || this.host.status === status) return;
+
+    this.host = { status: status, progress: this.hostProgressNow(), heardAt: Date.now() };
   }
 
   // Where the host's player is right now, rather than where it was when it last said so.
