@@ -60,6 +60,51 @@ RSpec.describe WatchParty do
     end
   end
 
+  describe 'rooms nobody is in any more' do
+    let(:party) { described_class.open_for(list: list, host: host, entry: entry) }
+
+    def age(record, by) = record.update_columns(created_at: by.ago)
+
+    it 'counts a room whose members have all gone quiet' do
+      party.join!(host)
+      age(party, 10.minutes)
+      party.watch_party_memberships.update_all(last_seen_at: 10.minutes.ago)
+
+      expect(described_class.abandoned).to include(party)
+    end
+
+    it 'leaves a room somebody still has open' do
+      party.join!(host)
+      age(party, 10.minutes)
+
+      expect(described_class.abandoned).not_to include(party)
+    end
+
+    # A room is created before its host's browser has opened a socket, so for those first
+    # seconds it legitimately has nobody in it.
+    it 'leaves a room too new to have been joined yet' do
+      expect(described_class.abandoned).not_to include(party)
+    end
+
+    it 'leaves a room that is already closed' do
+      party.join!(host)
+      age(party, 10.minutes)
+      party.watch_party_memberships.update_all(last_seen_at: 10.minutes.ago)
+      party.close!
+
+      expect(described_class.abandoned).not_to include(party)
+    end
+
+    it 'closes what it finds and says how many' do
+      party.join!(host)
+      age(party, 10.minutes)
+      party.watch_party_memberships.update_all(last_seen_at: 10.minutes.ago)
+
+      expect(described_class.close_abandoned!).to eq(1)
+      expect(party.reload).not_to be_open
+    end
+  end
+
   describe 'when the pubsub backend is unreachable' do
     # move_to! runs while the host's player page is rendering. A Redis that is down took
     # the whole page with it, so the host could not watch anything at all.
