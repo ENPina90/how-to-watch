@@ -21,6 +21,27 @@ class WatchParty < ApplicationRecord
 
   scope :open, -> { where(closed_at: nil) }
 
+  # Presence goes stale after 45 seconds, but a reload is a disconnect too and someone
+  # stepping back to the channel page for a moment has not left the room. A room only
+  # counts as abandoned once nobody has had it open for considerably longer than that.
+  ABANDONED_AFTER = 2.minutes
+
+  # Open rooms nobody has had a page open on for a while. The age check is what keeps a
+  # room from being reaped in the seconds between the host starting it and their browser
+  # opening the socket.
+  scope :abandoned, lambda { |now = Time.current|
+    cutoff = now - ABANDONED_AFTER
+
+    open.where(created_at: ...cutoff)
+        .where.not(id: WatchPartyMembership.where(last_seen_at: cutoff..).select(:watch_party_id))
+  }
+
+  # Closing them one at a time rather than in an update_all: each one has a room to tell,
+  # and the broadcast is the only thing a page still open on a dead party would hear.
+  def self.close_abandoned!(now: Time.current)
+    abandoned(now).each(&:close!).size
+  end
+
   before_validation :assign_token, on: :create
 
   # Starting a party closes whatever the host had open: the unique index allows one, and

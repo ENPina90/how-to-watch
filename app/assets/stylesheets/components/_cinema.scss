@@ -47,6 +47,22 @@ body.cinema__mode .page-container {
   text-decoration: none !important;
 }
 
+/* The marks in the two bottom corners sit further out than the carets do. The down caret
+   reaches into both corners and the left caret into one of them, so at the carets' own
+   offset they crowd each other; these push each mark down and out past its neighbours. */
+.cinema__letterboxd,
+.cinema__edit {
+  margin-bottom: -10px;
+}
+
+.cinema__letterboxd {
+  margin-left: -10px;
+}
+
+.cinema__edit {
+  margin-right: -10px;
+}
+
 /* Add gradient overlay to iframe for better text readability */
 .cinema__screen {
   position: relative;
@@ -180,19 +196,6 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   z-index: 1100;
 }
 
-/* The Letterboxd link rides the switcher's line at the left edge, the same place
-   watch_now puts Add to Channel. The watch page's iframe is full height, so the
-   switcher sits at bottom:16px rather than watch_now's below-the-frame offset. */
-.watch-letterboxd {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  z-index: 20;
-  /* Matches the switcher pill's vertical padding so the two sit on one line. */
-  padding: 6px 0;
-  font-size: 1.75rem;
-  line-height: 1;
-}
 
 /* The watch party bar rides the top edge of the frame -- the switcher already owns the
    bottom, and the room's state (who is here, how far off you are) is something you glance
@@ -287,32 +290,6 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   opacity: 1;
 }
 
-/* Waiting on a click that has to happen inside the provider's own frame. It must never
-   eat that click, so it does not take pointer events -- it is a caption on the frame, not
-   a button. */
-.cinema__play-hint {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 15;
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 0.9rem;
-  letter-spacing: 0.02em;
-  /* The provider draws its own play button in the middle of the frame; sitting directly
-     on top of it would hide the thing being pointed at. */
-  padding-top: 92px;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
-}
-
-.cinema__play-hint[hidden] {
-  display: none;
-}
 
 /* The permission toggle reads as pressed when the room is open, so its state is legible
    without hovering for the tooltip. */

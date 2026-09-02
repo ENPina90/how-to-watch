@@ -30,6 +30,12 @@ class WatchPartyChannel < ApplicationCable::Channel
     # them straight back in the room.
     room.watch_party_memberships.where(user: current_user).update_all(last_seen_at: 2.minutes.ago)
     broadcast_presence(room)
+
+    # That may have been the last of them. Checked again after the grace period rather
+    # than now, because leaving is also what a reload looks like from here.
+    return if room.present_memberships.any?
+
+    CloseAbandonedWatchPartiesJob.set(wait: WatchParty::ABANDONED_AFTER).perform_later
   end
 
   # The host's player reporting in.

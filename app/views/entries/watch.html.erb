@@ -34,12 +34,6 @@
 
   </iframe>
   <%= render 'entries/source_switcher' %>
-  <%# This provider will not start until the play button inside its own frame is clicked,
-      and that frame is cross-origin -- so the page says so rather than looking broken. %>
-  <% if (adapter = @entry.resolved_source&.sync_adapter) %>
-    <%= render 'entries/play_hint', adapter: adapter %>
-  <% end %>
-
 
   <%# The room. It sits on the frame rather than in a sidebar because everything it does --
       following the host, correcting drift -- is about the player right underneath it. %>
@@ -53,14 +47,6 @@
     <% end %>
   <% end %>
 
-  <%# On the switcher's line, pinned to the left edge of the frame -- the same place
-      watch_now puts Add to Channel, and out of the switcher's own pill, which sits at
-      0.35 opacity until hovered. %>
-  <% if letterboxd_reviewable?(@entry) %>
-    <div class="watch-letterboxd">
-      <%= render 'shared/letterboxd_button', url: letterboxd_review_path(@entry), name: @entry.name %>
-    </div>
-  <% end %>
 
   <div class="cinema__title">
     <h3 class="d-flex align-items-center list-name-container" onmouseover="this.querySelector('.subscription-icon').style.opacity='1'" onmouseout="this.querySelector('.subscription-icon').style.opacity='0'">
@@ -125,7 +111,17 @@
               class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
           <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y" title="Shuffle channel"></i>
         <% end %>
-        <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
+        <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y cinema__edit" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
+        <%# Opposite the pen, in the ring's one free corner. Films only -- Letterboxd
+            catalogues nothing else -- and only for someone who has linked an account,
+            since to anyone else it is a prompt to review somewhere they do not post. %>
+        <% if current_user.letterboxd_enabled? && letterboxd_reviewable?(@entry) %>
+          <div class="position-absolute bottom-0 start-0 translate-middle-y cinema__letterboxd">
+            <%= render 'shared/letterboxd_button', url: letterboxd_review_path(@entry),
+                                                   name: @entry.name,
+                                                   icon: 'fa-letterboxd fa-2x' %>
+          </div>
+        <% end %>
         <div class="position-absolute top-0 start-0 translate-middle-y">
           <%= render 'entries/completion_status', entry: @entry, user: current_user %>
         </div>
