@@ -262,6 +262,24 @@ class List < ApplicationRecord
       entries.maximum(:position) == count
   end
 
+  # --- Playback settings ------------------------------------------------------------
+  #
+  # The channel's own setting is the default, and a member who has answered for themselves
+  # overrides it on every channel they watch -- which is the point of having the preference
+  # rather than editing each channel in turn. Nil on the member means they have not
+  # answered, which is not the same as "off"; that is why those columns are nullable.
+  #
+  # Signed out there is nobody to have a preference, so the channel decides, exactly as it
+  # did before.
+
+  def auto_play_for(user)
+    user&.auto_play.nil? ? auto_play? : user.auto_play
+  end
+
+  def auto_next_for(user)
+    user&.auto_next.nil? ? auto_next? : user.auto_next
+  end
+
   # READ. nil when this user has never opened the list. Rendering the index page calls
   # this once per card, so it must not write -- use #position_for_user! when the user
   # actually moves.

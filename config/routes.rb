@@ -116,6 +116,9 @@ Rails.application.routes.draw do
       patch :update_position
       patch :set_source
       patch :update_poster
+      # POST rather than PATCH because navigator.sendBeacon -- how the position is saved
+      # as the page goes away -- can only send POST.
+      post :progress
       # Reads stay GET: `watch` renders the player page and `fetch_posters` is a lookup.
       get :watch
       get :fetch_posters

@@ -9,6 +9,11 @@ class UserEntry < ApplicationRecord
   validates :user_id, uniqueness: { scope: :entry_id }
   validates :review, inclusion: { in: 1..10 }, allow_nil: true
 
+  # How far through a film counts as having watched it. The last stretch is credits, and
+  # a viewer who stops there has seen the film -- waiting for the player's own `completed`
+  # would leave it unticked for everybody who does not sit through them.
+  COMPLETION_FRACTION = 0.95
+
   scope :completed, -> { where(completed: true) }
   scope :incomplete, -> { where(completed: false) }
   scope :with_review, -> { where.not(review: nil) }
@@ -24,6 +29,43 @@ class UserEntry < ApplicationRecord
   # Mark as completed
   def mark_completed!
     update!(completed: true, completed_at: Time.current, last_watched_at: Time.current)
+  end
+
+  # --- Player position ------------------------------------------------------------------
+  #
+  # Only providers whose player talks to the page around it report any of this (vidsrc, in
+  # practice -- see docs/guides/VIDSRC.md §6). On everything else these stay nil and the
+  # entry behaves as it always did.
+
+  # Records where the player has reached, and ticks the entry off once it is far enough
+  # through. `finished` is the player saying the video ended; the fraction is the fallback
+  # for the far more common case of somebody stopping during the credits.
+  #
+  # Completion is only ever switched on here. Somebody who un-ticks a film they have seen
+  # and then scrubs through it should not have that undone by the player.
+  def record_progress!(seconds, duration: nil, finished: false)
+    seconds = [seconds.to_f, 0.0].max
+
+    changes = { player_progress: seconds }
+    # `completed` going true fires set_completed_at and set_last_watched_at, which stamp
+    # the present -- right here, because this is somebody watching it now.
+    changes[:completed] = true if !completed? && watched_enough?(seconds, duration, finished)
+
+    update!(changes)
+  end
+
+  # Where the player should pick up, or nil to start from the beginning.
+  #
+  # A film watched to the end reports back a position in its own credits, and resuming
+  # there means pressing play and watching it finish. Past the completion mark it starts
+  # again; a viewer who then stops halfway through the rewatch resumes there as normal.
+  def resume_position
+    return nil unless player_progress.to_f.positive?
+
+    mark = completion_mark
+    return nil if mark && player_progress >= mark
+
+    player_progress
   end
 
   # Mark as incomplete
@@ -61,6 +103,24 @@ class UserEntry < ApplicationRecord
   end
 
   private
+
+  def watched_enough?(seconds, duration, finished)
+    return true if finished
+
+    mark = completion_mark(duration)
+    mark.present? && seconds >= mark
+  end
+
+  # The position past which the film counts as watched, or nil when nothing here knows how
+  # long it is. The catalogue's runtime is preferred over the player's reported duration:
+  # it is the length of the film, while the player is timing whatever file it was handed,
+  # ads and all.
+  def completion_mark(duration = nil)
+    minutes = entry.length.to_i
+    return minutes * 60 * COMPLETION_FRACTION if minutes.positive?
+
+    duration.to_f.positive? ? duration.to_f * COMPLETION_FRACTION : nil
+  end
 
   def set_completed_at
     if completed?

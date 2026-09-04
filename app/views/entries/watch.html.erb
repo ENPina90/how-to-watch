@@ -12,8 +12,16 @@
     return null;
   };
 
-  // Prevent iframe from reloading parent
+  // Prevent iframe from reloading parent.
+  //
+  // The test is "does the frame have focus", which is true for most of a film -- so a
+  // navigation the page itself starts is caught by it too, and the browser asks the
+  // viewer whether they meant to leave. That is fine for a hijack and wrong for the
+  // up-next card, whose whole job is to leave: the prompt appears behind the countdown
+  // and nothing happens. Anything in the app that navigates on purpose says so first.
   window.addEventListener('beforeunload', function(e) {
+    if (window.leavingOnPurpose) return;
+
     if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
       e.preventDefault();
       e.returnValue = '';
@@ -22,7 +30,23 @@
   });
 </script>
 
-<div class="cinema__screen" data-list-auto-next="<%= @channel.auto_next? %>" data-list-ordered="<%= @channel.ordered? %>">
+<%# Position tracking rides on the same player reports the room does, and only providers
+    with an adapter send any -- on the rest the controller connects and finds nothing to
+    listen to. Signed out there is nowhere to record a position, so it is left off. %>
+<div class="cinema__screen" data-list-auto-next="<%= @channel.auto_next_for(current_user) %>" data-list-ordered="<%= @channel.ordered? %>"
+     <% if user_signed_in? %>
+       data-controller="player-progress"
+       data-player-progress-url-value="<%= progress_entry_path(@entry) %>"
+       data-player-progress-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
+       data-player-progress-frame-value="cinema"
+       data-player-progress-token-value="<%= form_authenticity_token %>"
+       <%# The runtime and the fraction the client needs to spot the credits starting.
+           Both are what the server itself decides completion by, so neither side can
+           drift from the other. 0 means the catalogue has no runtime and the player's own
+           reported duration stands in. %>
+       data-player-progress-runtime-value="<%= @entry.length.to_i * 60 %>"
+       data-player-progress-fraction-value="<%= UserEntry::COMPLETION_FRACTION %>"
+     <% end %>>
   <iframe id="cinema"
       title="<%= @entry.name %>"
       referrerpolicy="origin"
@@ -172,7 +196,7 @@
       <div class="mb-3">
         <label class="form-label text-muted">Current URL</label>
         <div class="p-2 border rounded" style="font-family: monospace; font-size: 0.85rem; word-break: break-all;">
-          <%= @entry.embed_url(subentry: @current_subentry, autoplay: @channel.auto_play?) || "No source available" %>
+          <%= @entry.embed_url(subentry: @current_subentry, autoplay: @channel.auto_play_for(current_user)) || "No source available" %>
         </div>
         <small class="form-text text-muted d-block">
           Provider: <%= @entry.resolved_source&.name || "none" %>
@@ -210,5 +234,9 @@
 
 </div>
 
-<!-- Auto-advance modal temporarily disabled -->
-<%# render 'entries/auto_advance_modal', entry: @entry, list: @entry.list %>
+<%# What happens when a film ends and nobody says otherwise. Only where the channel asks
+    for it -- Auto Next is the channel's own setting and this is the feature it names --
+    and only for somebody signed in, since advancing writes their position. %>
+<% if user_signed_in? && @channel.auto_next_for(current_user) %>
+  <%= render 'entries/auto_advance_modal', entry: @entry, channel: @channel %>
+<% end %>

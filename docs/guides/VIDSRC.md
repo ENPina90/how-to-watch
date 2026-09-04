@@ -121,6 +121,12 @@ No API key, no sign-up. All domains serve identical content.
 | `sub_label` | string | Display name for the `sub_url` track. Defaults to "Custom subtitle". |
 | `sub_lang` | string | Language code for the `sub_url` track. |
 
+`startAt` is how a part-watched entry resumes. The position is baked into the embed URL
+server-side before the frame is written, because a `seek` sent downward is dropped until
+the player has spoken (§6) — and by then the viewer has watched the opening again. See
+`Source::RESUME_PARAMS`, keyed by adapter rather than by domain: the parameter belongs to
+the player, and a provider with no adapter has no player to hand a position to.
+
 **Parameter order matters less than parameter separators.** A forum user broke this with
 `…&ds_lang=en?autonext=1` (a second `?`). The admin's own corrected form:
 
@@ -306,10 +312,12 @@ says nothing here is documented — that is now only true of the *downward* comm
 | `completed` | video reaches the end |
 | `seeked` | viewer seeks |
 
-**What our client does with them.** `VidsrcPlayer#receive` collapses this to
-`status: "playing" | "paused"` — so `completed` and `seeked` both arrive as `paused`. That
-is fine for position tracking and wrong for anything that wants to know a film *finished*;
-if we ever drive our own auto-next, `completed` needs distinguishing first.
+**What our client does with them.** `VidsrcPlayer#receive` passes each report on twice
+over: `event` is the player's own word, and `status` is that collapsed to
+`"playing" | "paused"`. The two callers want different things — a watch party's clock only
+cares whether the film is moving, while position tracking has to tell a seek from an ending.
+Until 2026-09-04 only the collapsed form existed, so `completed` and `seeked` were
+indistinguishable; anything driving our own auto-next wants `event`.
 
 `player_info` carries `season` and `episode`, which is how we can keep our own position
 record even when `autonext` advances episodes behind our back (§7).
@@ -381,6 +389,10 @@ is worth remembering if entry validation ever comes up.
 | `Entry#embed_url` | renders a template into a URL |
 | `db/seeds/sources.rb` | the create-only seed those rows come from (`rails sources:seed`) |
 | `Source::SYNC_ADAPTERS` | maps a slug to the player adapter — a new vidsrc slug must be added here or it is treated as uncontrollable |
+| `Source::RESUME_PARAMS` | maps an adapter to its resume parameter (`startAt`), so only a provider with a player carries one |
+| [`app/javascript/controllers/player_progress_controller.js`](../../app/javascript/controllers/player_progress_controller.js) | saves the position on pause, on seek, at the completion mark and as the page goes away; reads the `event` from §6. Leaves fullscreen at 98%, which works because the exit belongs to the top-level document even though the frame requested it, and needs no user gesture |
+| [`app/javascript/controllers/auto_advance_controller.js`](../../app/javascript/controllers/auto_advance_controller.js) | the up-next countdown, raised by coming out of fullscreen past the completion mark — so a rewatch, already marked watched, is not offered the next entry over its opening titles |
+| `EntriesController#progress` | records it on the viewer's `UserEntry`, ticking the film off at `UserEntry::COMPLETION_FRACTION` |
 
 ---
 
