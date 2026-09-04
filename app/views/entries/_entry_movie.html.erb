@@ -25,12 +25,13 @@
           </div>
           <p class="mb-4"><small><%= entry.genre %></small></p>
           <p class="mb-4"><small><%= entry.language&.split(',')&.first %></small></p>
-          <%# Only for entries that came from a linked Letterboxd diary; everything
-              else has no score and shows no row. %>
-          <% if entry.letterboxd_score.present? %>
+          <%# This viewer's own rating from their linked diary. Nobody else's is shown:
+              a score is one member's opinion, and a card with no score shows no row. %>
+          <% letterboxd_score = entry.letterboxd_score_for(current_user) %>
+          <% if letterboxd_score.present? %>
             <p class="letterboxd-score mb-4">
-              <%= letterboxd_stars(entry.letterboxd_score) %>
-              <span class="letterboxd-score__value"><%= entry.letterboxd_score %></span>
+              <%= letterboxd_stars(letterboxd_score) %>
+              <span class="letterboxd-score__value"><%= letterboxd_score %></span>
             </p>
           <% end %>
           <p class="card-plot"><%= entry.plot %></p>

@@ -84,8 +84,9 @@ RSpec.describe 'The Letterboxd button', type: :request do
   end
 
   describe 'the score on a card' do
-    it 'is shown as half stars when the entry has one' do
-      create(:entry, list: list, media: 'movie', letterboxd_score: 3.5)
+    it 'is shown as half stars when this viewer has rated the film' do
+      entry = create(:entry, list: list, media: 'movie')
+      user.user_entry_for!(entry).update!(letterboxd_score: 3.5)
 
       get list_path(list)
 
@@ -93,8 +94,19 @@ RSpec.describe 'The Letterboxd button', type: :request do
       expect(response.body).to include('fa-star-half-stroke')
     end
 
-    it 'is left off entirely when the entry has no score' do
-      create(:entry, list: list, media: 'movie', letterboxd_score: nil)
+    it 'is left off entirely when this viewer has no score for the film' do
+      create(:entry, list: list, media: 'movie')
+
+      get list_path(list)
+
+      expect(response.body).not_to include('letterboxd-score')
+    end
+
+    # A score is one member's opinion, so somebody else's diary must not show up on the
+    # card this viewer is looking at.
+    it 'does not show another member\'s score' do
+      entry = create(:entry, list: list, media: 'movie')
+      create(:user).user_entry_for!(entry).update!(letterboxd_score: 4.5)
 
       get list_path(list)
 
