@@ -27,18 +27,20 @@ Measured 2026-09-04 with `GET /embed/movie?imdb=tt0172495`:
 
 | Domain | Result | Notes |
 |---|---|---|
-| `vidsrc2.ru` | `200` | **recommended replacement** |
-| `vidsrc.ir` | `200` | **recommended replacement** |
+| `framerelay.dev` | `200` | **ours** (§5) — the only one that autoplays |
+| `vidsrc2.ru` | `200` | provider's recommended default domain |
+| `vidsrc.ir` | `200` | provider's recommended default domain |
 | `vidsrcme.ru` | `200` | on the admin's at-risk list |
 | `vidsrcme.su` | `200` | on the admin's at-risk list |
-| `vidsrc-embed.ru` | `301` → `vsembed.ru` → `200` | **used by this app**, at-risk list |
-| `v2.vidsrc.me` | `301` → `vidsrcme.ru` → `200` | **used by this app**, resolves to an at-risk domain |
+| `vidsrc-embed.ru` | `301` → `vsembed.ru` → `200` | kept as a fallback, at-risk list |
+| `v2.vidsrc.me` | `301` → `vidsrcme.ru` → `200` | kept as a fallback, resolves to an at-risk domain |
 | `vsrc.su` | `301` → `vsembed.ru` → `200` | at-risk list |
 | `vidsrc.net` | **no DNS** | dead — and it is the domain in their own 2025 announcement |
 
-**Both of this app's active vidsrc sources are on the at-risk list.** They still work, but
-they are one provider timeout from every embed going dark. `vidsrc.net` going fully dark is
-what that failure looks like.
+Until 2026-09-04 the app's only two vidsrc sources were `vidsrc-embed.ru` and
+`v2.vidsrc.me`, both on that at-risk list — one provider timeout from every embed going
+dark at once. `vidsrc.net` is what that failure looks like once it lands. They are still
+configured, but now as fallbacks behind our own domain.
 
 The provider's own history of this: an October 2025 announcement titled *"Urgent
 Announcement: Update Your Embed URLs"* told everyone to move **to** `vidsrc-embed.ru`,
@@ -56,8 +58,8 @@ provider and both fail silently if they are left behind:
 | `Source::SYNC_ADAPTERS` in [`source.rb`](../../app/models/source.rb) | maps slug → player adapter | `sync_adapter` is `nil`, so the source is treated as having no control surface and watch parties fall back to "tell people how far apart they are" |
 
 Both are keyed by hand — a slug or host that is playable but missing from them looks
-healthy and behaves broken. **Change all three together.** `vidsrc2.ru` / `vidsrc-ir` were
-added to both on 2026-09-04.
+healthy and behaves broken. **Change all three together.** `framerelay`, `vidsrc2` and
+`vidsrc-ir` were added to both on 2026-09-04.
 
 ---
 
@@ -218,19 +220,39 @@ to their design and cannot be configured away.
 before setting up. As of 2026-09-04 the Announcements forum holds only four threads and
 none supersede `vidsrc-ip.com`.
 
-### Once it is live
+### Ours: framerelay.dev
 
-It is a `Source` row and nothing else — no code, beyond adding the host to
-`VidsrcPlayer.ORIGINS` (§1a):
+Live since **2026-09-04**, on a **separate Cloudflare account** from the app. That
+separation is deliberate and worth preserving: with the orange cloud on, the zone is
+*proxying the stream*, so abuse complaints reach Cloudflare about this domain — and
+Cloudflare can act at the account level, not just the zone. Keeping it out of the app's
+account means the worst case is losing the player domain, not the app.
+
+The name is deliberately dull and unbranded — it reads as networking infrastructure and
+carries nothing of the app's identity, which is the point.
+
+Seeded as the `framerelay` source at position 1, `kind: 'imdb'`, `autoplay_param: 'autoplay'`.
+`autonext` is deliberately **not** in the templates: the app drives episode order itself,
+and vidsrc's own advance loses track of which episode it is on (§7).
+
+**Renewal is load-bearing.** If the domain lapses every embed dies at once, and the cause
+will not be obvious from inside the app. Auto-renew is on.
+
+### How we know it works
+
+The custom-domain flag is observable from outside, which is worth knowing because it means
+this can be checked without a browser. Walk the chain to the shell and read `CFG.autoStart`
+— the same field whose hardcoded `false` §4a is about:
 
 ```
-movie:   https://player.OURDOMAIN/embed/movie?imdb=%{imdb}&autoplay=1&ds_lang=en
-series:  https://player.OURDOMAIN/embed/tv?imdb=%{series_imdb}&season=%{season}&episode=%{episode}&autoplay=1&ds_lang=en
-episode: (same as series)
-anime:   (same as series)
+framerelay.dev  →  "autoStart": true      # shell hides the play button and calls start()
+vidsrc2.ru      →  "autoStart": false     # default domain, gated
 ```
 
-Keep `kind: 'imdb'` and `sync_adapter: 'vidsrc'`.
+Verified 2026-09-04 for both a film and an episode, same title and same minute on both
+front doors. If autoplay ever stops working, check this first: `autoStart: false` on
+framerelay.dev means the custom-domain arrangement has lapsed at their end, not that
+anything in this app changed.
 
 ---
 
@@ -342,9 +364,10 @@ is worth remembering if entry validation ever comes up.
 
 ## 10. Recommended order of work
 
-1. **Repoint the two active sources to `vidsrc2.ru` / `vidsrc.ir`**, adding both to
-   `VidsrcPlayer.ORIGINS` in the same change (§1a). Removes the outage risk. No DNS, no
-   waiting.
-2. **Custom domain on a subdomain** for autoplay, heeding both warnings in §5.
+1. ~~Add `vidsrc2.ru` / `vidsrc.ir`~~ — **done 2026-09-04**, with the `ORIGINS` and
+   `SYNC_ADAPTERS` entries alongside.
+2. ~~Custom domain for autoplay~~ — **done 2026-09-04**, `framerelay.dev` (§5).
+   Still outstanding: existing channels and entries keep whichever provider they are
+   linked to, so nothing has moved onto it yet. Repointing them is a data migration.
 3. ~~Delete the `/lab` direct-embed experiment~~ — **done 2026-09-04**. Its findings live
    in §4a; the code is gone, and the custom domain is the supported route to the same end.
