@@ -14,6 +14,11 @@ class LetterboxdList
   # not collide with another advisory lock in the app.
   LOCK_NAMESPACE = 8_231_004
 
+  # What a diary import takes from OMDb. Everything else an OMDb record carries -- the
+  # title, year, poster and ids -- the feed already gave us, and the feed is the record
+  # of what the member actually logged.
+  DETAIL_ATTRIBUTES = %i[length plot genre director writer actors rating language].freeze
+
   def self.name_for(user)
     "#{user.display_name.capitalize}#{NAME_SUFFIX}"
   end
@@ -72,6 +77,7 @@ class LetterboxdList
       end
 
       mark_watched(entry, watch)
+      mark_matching_entries_watched(entry, watch)
     end
 
     Result.new(created: created, updated: updated, total: watches.size)
@@ -103,30 +109,76 @@ class LetterboxdList
   end
 
   def create_entry(channel, watch)
-    channel.entries.create!(
-      name: watch.title,
-      year: watch.year,
-      media: 'movie',
-      tmdb: watch.tmdb_id,
-      imdb: imdb_id_for(watch),
-      pic: watch.poster_url,
-      letterboxd_score: watch.rating,
-      # Free here; anything not imported from a diary has to pay a request for it.
-      letterboxd_slug: watch.slug,
-      position: Entry.next_position(channel)
+    imdb = imdb_id_for(watch)
+
+    entry = channel.entries.create!(
+      details_for(imdb).merge(
+        name: watch.title,
+        year: watch.year,
+        media: 'movie',
+        tmdb: watch.tmdb_id,
+        imdb: imdb,
+        pic: watch.poster_url,
+        # Free here; anything not imported from a diary has to pay a request for it.
+        letterboxd_slug: watch.slug,
+        position: Entry.next_position(channel)
+      )
     )
+
+    trailer = trailer_for(entry)
+    entry.update!(trailer: trailer) if trailer
+    entry
   end
 
   # Returns true when something actually changed, so the caller can report a real count.
   def refresh(entry, watch)
-    entry.letterboxd_score = watch.rating
     entry.letterboxd_slug = watch.slug if entry.letterboxd_slug.blank?
     entry.imdb = imdb_id_for(watch) if entry.imdb.blank?
+    # Films imported before the sync fetched details have a title and a poster and
+    # nothing else. There is no separate backfill: the weekly pass re-reads the whole
+    # window anyway, so it fills them in as it goes. A film OMDb has no record of is
+    # asked for again on each pass, which is a request a week for a film nobody can
+    # describe -- cheaper than a column to remember the miss in.
+    backfill_details(entry) if entry.plot.blank?
+    entry.trailer = trailer_for(entry) if entry.trailer.blank?
 
     return false unless entry.changed?
 
     entry.save!
     true
+  end
+
+  # The feed carries a title, a year, a poster and a score -- not the runtime, plot, cast
+  # or genre the entry page is built from, which is why a diary import used to look half
+  # empty next to a film added by hand. OMDb holds all of it against the IMDb id already
+  # resolved above, so one more request per film new to the channel buys parity.
+  #
+  # Returns {} when there is no IMDb id to ask about, when OMDb has no usable record --
+  # get_movie also declines anything without a poster -- or when the request fails. A
+  # thin entry is still worth having, and a diary sync should not fall over because OMDb
+  # did.
+  def details_for(imdb)
+    return {} if imdb.blank?
+
+    result = OmdbApi.get_movie(imdb)
+    return {} if result.nil?
+
+    OmdbApi.normalize_omdb_data(result).slice(*DETAIL_ATTRIBUTES)
+  rescue StandardError => e
+    Rails.logger.warn("Letterboxd sync could not detail #{imdb}: #{e.class}: #{e.message}")
+    {}
+  end
+
+  # Only where the entry is still blank: an edit made in the app outranks OMDb.
+  def backfill_details(entry)
+    details_for(entry.imdb).each do |attribute, value|
+      entry[attribute] = value if entry[attribute].blank?
+    end
+  end
+
+  # Nil on anything going wrong, which the callers read as "leave the trailer alone".
+  def trailer_for(entry)
+    TmdbService.new.fetch_trailer_url(entry)
   end
 
   # The feed identifies films by TMDB id only, but playback resolves through IMDb for
@@ -139,23 +191,50 @@ class LetterboxdList
     nil
   end
 
+  # A film logged on Letterboxd was watched wherever else it appears, so the diary ticks
+  # it off across the whole app rather than only in the channel it was imported into.
+  # Completion is per-user, so this writes nobody else's history: it means a member who
+  # links their diary finds every channel they open already marked up with what they have
+  # seen, instead of re-ticking films they logged years ago.
+  #
+  # The UserEntry rows this needs mostly do not exist yet -- a member has no row against
+  # a channel they have never opened -- so user_entry_for! creates them.
+  #
+  # Matched on IMDb id: it is the one id every entry carries however it was added, while
+  # `tmdb` is only filled in when the entry came from a search that returned one. Movies
+  # only -- an episode or a series sharing the id would be the series' own record, which
+  # is not the thing that was watched.
+  def mark_matching_entries_watched(entry, watch)
+    return if entry.imdb.blank?
+
+    matches = Entry.where(media: 'movie', imdb: entry.imdb).where.not(id: entry.id)
+    matches.find_each { |match| mark_watched(match, watch) }
+  end
+
   # Columns are written directly because UserEntry#set_completed_at stamps Time.current
   # over completed_at whenever `completed` changes. That is right for someone ticking the
   # eye on a card and wrong here: the diary knows the date the film was actually watched,
   # and re-dating a five-year-old entry to today would be the only record of it.
+  #
+  # The score rides along because it is this member's own rating -- it belongs to their
+  # tracking row, not to the entry everybody sharing the channel sees. It is written even
+  # when the completion columns are left alone, so a rating changed on Letterboxd is
+  # picked up without re-dating the watch.
   def mark_watched(entry, watch)
     user_entry = user.user_entry_for!(entry)
     # in_time_zone, not to_time: to_time reads midnight in the *server's* zone, which for
     # a server west of the app's UTC lands the watch on the previous day.
     watched_at = watch.watched_on&.in_time_zone || Time.current
 
-    return if user_entry.completed? && user_entry.completed_at&.to_date == watched_at.to_date
+    changes = {}
+    changes[:letterboxd_score] = watch.rating if user_entry.letterboxd_score != watch.rating
 
-    user_entry.update_columns(
-      completed: true,
-      completed_at: watched_at,
-      last_watched_at: watched_at,
-      updated_at: Time.current
-    )
+    unless user_entry.completed? && user_entry.completed_at&.to_date == watched_at.to_date
+      changes.merge!(completed: true, completed_at: watched_at, last_watched_at: watched_at)
+    end
+
+    return if changes.empty?
+
+    user_entry.update_columns(changes.merge(updated_at: Time.current))
   end
 end

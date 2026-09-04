@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_04_064648) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_04_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -65,7 +65,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_064648) do
     t.string "imdb"
     t.string "language"
     t.integer "length"
-    t.float "letterboxd_score"
     t.string "letterboxd_slug"
     t.bigint "list_id", null: false
     t.string "media"
@@ -214,6 +213,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_064648) do
     t.datetime "created_at", null: false
     t.bigint "entry_id", null: false
     t.datetime "last_watched_at"
+    t.float "letterboxd_score"
     t.integer "review"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
