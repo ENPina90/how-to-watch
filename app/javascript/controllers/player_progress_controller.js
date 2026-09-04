@@ -95,15 +95,26 @@ export default class extends Controller {
     // ending both leave the film stopped, and only one of them means it was watched.
     const finished = state.event === "completed";
 
+    // The first report says where the film already was, which is not somewhere it got to
+    // while anybody was watching: an entry resumed near its end opens with the credits
+    // rolling, and offering the next one before the viewer has seen a frame is the
+    // opposite of what any of this is for. So the first report sets the baseline and
+    // crosses nothing.
+    //
+    // The player's own `completed` is exempt: it is an event rather than a threshold, and
+    // it only ever fires because the video ended just now.
+    const opening = this.reported !== true;
+    this.reported = true;
+
     // The moment of crossing, not the state of being past it -- the player reports every
     // five seconds through the credits, and each of these should happen once. Seeking back
     // before a mark re-arms it, so watching the ending twice behaves the same way twice.
     const watched = finished || this.past(state, this.fractionValue);
-    const crossedWatched = watched && !this.watched;
+    const crossedWatched = finished || (watched && !this.watched && !opening);
     this.watched = watched;
 
     const credits = finished || this.past(state, CREDITS_FRACTION);
-    const crossedCredits = credits && !this.credits;
+    const crossedCredits = finished || (credits && !this.credits && !opening);
     this.credits = credits;
 
     // In fullscreen, the exit is what raises the up-next card: it fires fullscreenchange
@@ -116,7 +127,7 @@ export default class extends Controller {
       else this.upNext();
     }
 
-    if (crossedWatched || finished) return this.save({ finished: finished, force: true });
+    if (crossedWatched) return this.save({ finished: finished, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
   }
 
