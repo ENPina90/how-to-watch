@@ -31,7 +31,18 @@ RSpec.describe LetterboxdFeed do
     subject(:watches) { described_class.new('testmember').watches }
 
     it 'skips list items, which share the feed with diary entries' do
-      expect(watches.map(&:guid)).to all(start_with('letterboxd-watch-'))
+      expect(watches.map(&:title)).not_to include('My favourite noirs')
+    end
+
+    # Letterboxd gives a reviewed film a `review` guid and a bare log a `watch` one. A
+    # member who writes something about everything they watch has a diary of nothing but
+    # `review` guids, and reading only `watch` left them looking like they had no diary
+    # at all.
+    it 'keeps a reviewed diary entry as well as a bare one' do
+      prestige = watches.find { |w| w.title == 'The Prestige' }
+
+      expect(prestige).to have_attributes(guid: start_with('letterboxd-review-'), tmdb_id: '1124', rating: 3.5)
+      expect(prestige.review).to eq('Two straight men trying to win an argument.')
     end
 
     it 'skips diary entries with no TMDB id, which nothing could be matched against' do

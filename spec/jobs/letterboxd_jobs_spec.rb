@@ -15,7 +15,7 @@ RSpec.describe LetterboxdSyncJob do
 
     described_class.perform_now(user.id)
 
-    expect(user.lists.find_by(letterboxd: true).entries.count).to eq(2)
+    expect(user.lists.find_by(letterboxd: true).entries.count).to eq(3)
   end
 
   it 'does nothing for a member who has since unlinked' do
