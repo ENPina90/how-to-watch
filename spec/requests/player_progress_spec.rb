@@ -157,4 +157,50 @@ RSpec.describe 'Player progress', type: :request do
       expect(response.body).not_to include('player-progress')
     end
   end
+
+  describe 'the up-next card' do
+    before do
+      sign_in user
+      entry.update!(provider: vidsrc_provider)
+    end
+
+    it 'waits on the player coming out of fullscreen rather than showing itself' do
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('data-controller="auto-advance"')
+      expect(response.body).to include('player-progress:up-next@document->auto-advance#start')
+    end
+
+    # "Next" means next on the channel being watched, which is not always the channel the
+    # entry lives in, so the card carries it rather than working it out again.
+    it 'carries the channel it should advance on, and how' do
+      list.update!(ordered: true)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).to include(%(data-auto-advance-channel-id-value="#{list.id}"))
+      expect(response.body).to include('data-auto-advance-is-ordered-value="true"')
+    end
+
+    # Auto Next is the channel's own setting, and this is the feature its hint describes.
+    it 'is left out of a channel that does not want it' do
+      list.update!(auto_next: false)
+      entry.reload
+
+      get watch_entry_path(entry)
+
+      expect(response.body).not_to include('auto-advance')
+    end
+
+    # Advancing writes a position, so there is nobody to advance.
+    it 'is left out for a signed-out viewer' do
+      AppSetting.update_access_mode!('open')
+      sign_out user
+      entry.reload
+
+      get watch_entry_path(entry)
+
+      expect(response.body).not_to include('auto-advance')
+    end
+  end
 end

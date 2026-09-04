@@ -226,5 +226,9 @@
 
 </div>
 
-<!-- Auto-advance modal temporarily disabled -->
-<%# render 'entries/auto_advance_modal', entry: @entry, list: @entry.list %>
+<%# What happens when a film ends and nobody says otherwise. Only where the channel asks
+    for it -- Auto Next is the channel's own setting and this is the feature it names --
+    and only for somebody signed in, since advancing writes their position. %>
+<% if user_signed_in? && @channel.auto_next? %>
+  <%= render 'entries/auto_advance_modal', entry: @entry, channel: @channel %>
+<% end %>

@@ -1,47 +1,79 @@
 import { Controller } from "@hotwired/stimulus"
+import { Modal } from "bootstrap"
 
-// Connects to data-controller="auto-advance"
+// The up-next card: what happens when a film ends and nobody has said otherwise.
+//
+// It is raised by `player-progress` coming out of fullscreen with the film effectively
+// over, not by the entry being marked watched -- a rewatch is marked from the first
+// second, and would otherwise be offered the next entry over its opening titles.
+//
+// Thirty seconds is long enough to read and act on, and long enough to sit through a
+// stinger, which is the thing most likely to be interrupted by getting this wrong.
+const COUNTDOWN_SECONDS = 30
+
 export default class extends Controller {
   static targets = ["countdown"]
   static values = {
     entryId: Number,
-    listId: Number,
+    channelId: Number,
     isOrdered: Boolean
   }
 
   connect() {
-    // Disable auto-start for debugging
-    console.log('Auto-advance controller connected but not starting countdown')
-    this.timeLeft = 3
-    this.countdownTarget.textContent = this.timeLeft
-    // this.startCountdown() // Disabled
+    this.modal = new Modal(this.element)
+    // Dismissed any other way than the buttons -- escape, the close cross -- is still the
+    // viewer saying no. Without this the countdown would run on behind a hidden card and
+    // navigate out from under them.
+    this.element.addEventListener("hidden.bs.modal", () => this.stop())
   }
 
-  startCountdown() {
-    this.timer = setInterval(() => {
-      this.timeLeft--
-      this.countdownTarget.textContent = this.timeLeft
-
-      if (this.timeLeft <= 0) {
-        this.advance()
-      }
-    }, 1000)
-  }
-
-  cancel() {
+  disconnect() {
     this.clearTimer()
-    // Modal will be dismissed by Bootstrap
+  }
+
+  // Once per visit. Somebody who stopped it does not want asking again every time they
+  // step in and out of fullscreen, and a countdown already running does not restart.
+  start() {
+    if (this.stopped || this.timer) return
+
+    this.timeLeft = COUNTDOWN_SECONDS
+    this.render()
+    this.modal.show()
+    this.timer = setInterval(() => this.tick(), 1000)
+  }
+
+  tick() {
+    this.timeLeft -= 1
+    this.render()
+
+    if (this.timeLeft <= 0) this.advance()
+  }
+
+  render() {
+    if (this.hasCountdownTarget) this.countdownTarget.textContent = this.timeLeft
+  }
+
+  // Stay here. The card goes and does not come back on this page: the viewer has said what
+  // they want to happen next, which is nothing.
+  stop() {
+    this.stopped = true
+    this.clearTimer()
+    this.modal.hide()
   }
 
   advance() {
     this.clearTimer()
 
+    // The channel is carried through because the entry being watched is not always in the
+    // channel it is being watched *from*, and "next" means next on the one you are on.
+    const channel = `mode=watch&channel=${this.channelIdValue}`
+
+    // An ordered channel plays in its order; an unordered one picks something unseen, the
+    // same as the shuffle button in the ring does.
     if (this.isOrderedValue) {
-      // For ordered lists, go to next entry in sequence
-      this.submitPatch(`/entries/${this.entryIdValue}/increment_current?mode=watch`)
+      this.submitPatch(`/entries/${this.entryIdValue}/increment_current?${channel}`)
     } else {
-      // For unordered lists, go to random incomplete entry
-      this.submitPatch(`/entries/${this.entryIdValue}/shuffle_current?mode=watch`)
+      this.submitPatch(`/entries/${this.entryIdValue}/shuffle_current?${channel}`)
     }
   }
 
@@ -69,19 +101,10 @@ export default class extends Controller {
     form.submit()
   }
 
-  goToList() {
-    this.clearTimer()
-    window.location.href = `/lists/${this.listIdValue}`
-  }
-
   clearTimer() {
     if (this.timer) {
       clearInterval(this.timer)
       this.timer = null
     }
-  }
-
-  disconnect() {
-    this.clearTimer()
   }
 }

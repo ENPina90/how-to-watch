@@ -1,41 +1,44 @@
+<%# Raised by the player-progress controller when the viewer comes out of fullscreen with
+    the film effectively over. It listens on the document because the two live in different
+    corners of the page -- the player is inside the cinema frame, this sits outside it. %>
 <div class="modal fade" id="autoAdvanceModal" tabindex="-1" aria-labelledby="autoAdvanceModalLabel" aria-hidden="true"
      data-controller="auto-advance"
+     data-action="player-progress:up-next@document->auto-advance#start"
      data-bs-backdrop="static"
      data-auto-advance-entry-id-value="<%= entry.id %>"
-     data-auto-advance-list-id-value="<%= list.id %>"
-     data-auto-advance-is-ordered-value="<%= list.ordered? %>">
+     data-auto-advance-channel-id-value="<%= channel.id %>"
+     data-auto-advance-is-ordered-value="<%= channel.ordered? %>">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="autoAdvanceModalLabel">
-          <i class="fa-solid fa-check-circle text-success me-2"></i>
-          <%= entry.name %> marked as complete!
+          <i class="fa-solid fa-forward text-primary me-2"></i>
+          Up next on <%= channel.name %>
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-action="click->auto-advance#cancel"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Stay on this entry"></button>
       </div>
       <div class="modal-body text-center">
-        <% if list.ordered? %>
-          <p class="mb-3">Playing next entry in:</p>
+        <%# An ordered channel plays the next entry; an unordered one picks something
+            unseen, so there is no particular entry to name here. %>
+        <% if channel.ordered? %>
+          <p class="mb-3">Playing the next entry in:</p>
         <% else %>
-          <p class="mb-3">Playing random entry in:</p>
+          <p class="mb-3">Playing another entry in:</p>
         <% end %>
 
         <div class="countdown-display mb-4">
-          <span class="display-4 text-primary" data-auto-advance-target="countdown">3</span>
+          <%# Overwritten before the card is ever shown; the controller owns the count. %>
+          <span class="display-4 text-primary" data-auto-advance-target="countdown">30</span>
         </div>
 
         <div class="d-flex gap-2 justify-content-center">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-action="click->auto-advance#cancel">
-            <i class="fa-solid fa-times me-1"></i>
-            Cancel
-          </button>
-          <button type="button" class="btn btn-outline-primary" data-action="click->auto-advance#goToList">
-            <i class="fa-solid fa-list me-1"></i>
-            Back to Channel
+          <button type="button" class="btn btn-secondary" data-action="click->auto-advance#stop">
+            <i class="fa-solid fa-stop me-1"></i>
+            Stop
           </button>
           <button type="button" class="btn btn-primary" data-action="click->auto-advance#advance">
             <i class="fa-solid fa-play me-1"></i>
-            Play Now
+            Play now
           </button>
         </div>
       </div>
