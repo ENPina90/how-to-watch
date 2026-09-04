@@ -5,10 +5,42 @@
 # back to wherever the form was submitted from.
 class SourcesController < ApplicationController
   before_action :require_admin
-  before_action :set_source, only: %i[update destroy]
+  before_action :set_source, only: %i[update destroy renew deactivate test]
 
   def index
-    @sources = Source.order(:position, :name)
+    # Anything with a date first and soonest at the top, so whatever needs attention is
+    # what you see; the imperishable providers settle underneath in their usual order.
+    @sources = Source.by_expiry.order(:position, :name)
+  end
+
+  # Buys another year (see Source#renew!). Its own action rather than a field on the edit
+  # form because it is the answer to a warning, and wants to be one click from it.
+  def renew
+    @source.renew!
+
+    redirect_back fallback_location: sources_path,
+                  notice: "#{@source.name} is now good until #{@source.valid_until.to_fs(:long)}."
+  end
+
+  # Switching a provider off rather than deleting it: nothing that references it is
+  # disturbed, entries fall back the way they already do when a provider is inactive, and
+  # it can be switched back on. Deleting stays available for a provider that is really gone.
+  def deactivate
+    @source.update!(active: false)
+
+    redirect_back fallback_location: sources_path,
+                  notice: "#{@source.name} is off. Channels on it fall back to the next active provider."
+  end
+
+  # Plays one known title through this provider and nothing else. Opened in a new tab from
+  # the index, so the answer to "is this domain still alive" is a glance rather than a hunt
+  # for an entry that happens to use it.
+  def test
+    @probe_url = @source.probe_url
+    @probe_label = @source.probe_label
+    @hide_sidebar = true
+
+    render layout: 'application'
   end
 
   def create

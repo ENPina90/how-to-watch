@@ -122,7 +122,24 @@ Rails.application.routes.draw do
     end
   end
 
-  # Streaming source/provider definitions (managed via modals on the watch page)
-  resources :sources, only: [:index, :create, :update, :destroy]
+  # What the app has to tell you. Admin-only kinds are filtered per notification rather
+  # than per page, so this stays everyone's as more kinds arrive.
+  resources :notifications, only: :index do
+    member { patch :dismiss }
+    collection { patch :dismiss_all }
+  end
+
+  # Streaming source/provider definitions (managed via modals on the watch page, and from
+  # the index at /sources)
+  resources :sources, only: [:index, :create, :update, :destroy] do
+    member do
+      # Both change how the app plays things, so neither is a GET.
+      patch :renew
+      patch :deactivate
+      # Plays a known title through this provider and nothing else, to answer "is this
+      # domain still alive" without hunting for an entry that uses it.
+      get :test
+    end
+  end
 
 end

@@ -1,0 +1,45 @@
+<%# Answers one question: does this provider still play something? Deliberately bare --
+    no channel, no position tracking, nothing that could fail and be mistaken for the
+    provider failing. %>
+<div class="source-test">
+  <div class="source-test__bar">
+    <strong><%= @source.name %></strong>
+    <code><%= @source.slug %></code>
+
+    <% if @source.perishable? %>
+      <span class="source-test__expiry source-test__expiry--<%= @source.expiry_state %>">
+        <%= @source.expired? ? 'expired' : 'valid' %> <%= @source.valid_until.to_fs(:long) %>
+      </span>
+    <% end %>
+
+    <% if @probe_label %>
+      <span class="source-test__meta">playing <%= @probe_label %></span>
+    <% end %>
+
+    <%= link_to 'Back to providers', sources_path, class: 'source-test__link' %>
+  </div>
+
+  <% if @probe_url %>
+    <p class="source-test__note">
+      If this stays black, the provider is not answering — check the domain before assuming
+      the app is at fault. <%= link_to 'Open the embed directly', @probe_url,
+                                       target: '_blank', rel: 'noopener noreferrer' %>
+      to rule out anything on this page.
+    </p>
+
+    <iframe class="source-test__frame"
+            title="<%= @source.name %> test"
+            allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+            allowfullscreen
+            src="<%= @probe_url %>"></iframe>
+  <% else %>
+    <p class="source-test__note source-test__note--empty">
+      <% if @source.imdb? %>
+        This provider has no <code>movie</code> template, so there is nothing to probe with.
+      <% else %>
+        This provider plays files by key, so it can only be tested with something already
+        filed under it — and nothing is. Add an entry that uses it, then test again.
+      <% end %>
+    </p>
+  <% end %>
+</div>
