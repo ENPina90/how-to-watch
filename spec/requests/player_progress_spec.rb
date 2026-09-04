@@ -120,6 +120,29 @@ RSpec.describe 'Player progress', type: :request do
       expect(response.body).to include(progress_entry_path(entry))
     end
 
+    # The client spots the credits starting for itself, to drop out of fullscreen without
+    # waiting for a round trip. It has to reach the same answer the server would, so it is
+    # given the same runtime and the same fraction rather than carrying its own copy.
+    it 'hands the client the runtime and fraction the server judges completion by' do
+      entry.update!(provider: vidsrc_provider, length: 100)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('data-player-progress-runtime-value="6000"')
+      expect(response.body).to include(
+        %(data-player-progress-fraction-value="#{UserEntry::COMPLETION_FRACTION}")
+      )
+    end
+
+    # Then the player's own reported duration stands in, on both sides.
+    it 'sends a zero runtime for an entry the catalogue has no length for' do
+      entry.update!(provider: vidsrc_provider, length: nil)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('data-player-progress-runtime-value="0"')
+    end
+
     # Nowhere to record a position, so the controller is left off rather than posting into
     # a sign-in redirect. The open access mode is what lets a stranger reach the player at
     # all -- without it this would pass on the sign-in page and prove nothing.
