@@ -35,6 +35,8 @@
     with an adapter send any -- on the rest the controller connects and finds nothing to
     listen to. Signed out there is nowhere to record a position, so it is left off. %>
 <div class="cinema__screen" data-list-auto-next="<%= @channel.auto_next_for(current_user) %>" data-list-ordered="<%= @channel.ordered? %>"
+     data-controller="cinema-fullscreen"
+     data-cinema-fullscreen-idle-class="cinema__screen--idle"
      <% if user_signed_in? %>
        data-controller="player-progress"
        data-player-progress-url-value="<%= progress_entry_path(@entry) %>"
@@ -48,16 +50,28 @@
        data-player-progress-runtime-value="<%= @entry.length.to_i * 60 %>"
        data-player-progress-fraction-value="<%= UserEntry::COMPLETION_FRACTION %>"
      <% end %>>
+  <%# No `allowfullscreen`, deliberately. Fullscreen belongs to the container above, which
+      keeps the controls and the up-next card on screen; the player taking it instead would
+      hand the whole display to a third party. Withholding the permission is what makes
+      that stick -- its button, its `f` and its double-click all go dead together, and
+      fullscreen cannot be taken back off the frame once granted. See
+      cinema_fullscreen_controller.js. %>
   <iframe id="cinema"
       title="<%= @entry.name %>"
       referrerpolicy="origin"
       width="100%"
       height="100%"
-      allowfullscreen
       allow="autoplay"
       src="<%= @embed_url %>">
 
   </iframe>
+
+  <%# Rides the source switcher's line, opposite the Add to Channel side. Fades with the
+      rest of the chrome once the viewer stops moving. %>
+  <button type="button" class="cinema__fullscreen" title="Fullscreen"
+          data-action="click->cinema-fullscreen#toggle">
+    <i class="fa-solid fa-expand"></i>
+  </button>
   <%= render 'entries/source_switcher' %>
 
   <%# The room. It sits on the frame rather than in a sidebar because everything it does --
@@ -233,11 +247,15 @@
   </div>
 </div>
 
-</div>
 
 <%# What happens when a film ends and nobody says otherwise. Only where the channel asks
     for it -- Auto Next is the channel's own setting and this is the feature it names --
-    and only for somebody signed in, since advancing writes their position. %>
+    and only for somebody signed in, since advancing writes their position.
+
+    Inside the cinema screen, because that is the element that goes fullscreen: anything
+    outside it is not rendered at all while fullscreen, and a countdown nobody can see
+    would advance the channel unannounced. %>
 <% if user_signed_in? && @channel.auto_next_for(current_user) %>
   <%= render 'entries/auto_advance_modal', entry: @entry, channel: @channel %>
 <% end %>
+</div>
