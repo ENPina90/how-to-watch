@@ -1,0 +1,53 @@
+<div class="admin-dashboard notifications">
+  <header class="admin-header">
+    <h1 class="admin-title">Notifications</h1>
+    <p class="admin-subtitle">
+      <% if @notifications.any? %>
+        <%= pluralize(@notifications.size, 'thing') %> worth knowing about.
+      <% else %>
+        Nothing needs you right now.
+      <% end %>
+    </p>
+  </header>
+
+  <% if @notifications.any? %>
+    <div class="notifications__actions">
+      <%= button_to 'Dismiss all', dismiss_all_notifications_path, method: :patch,
+                    class: 'notification__dismiss',
+                    form: { data: { turbo_confirm: 'Dismiss everything on this page?' } } %>
+    </div>
+  <% end %>
+
+  <ul class="notifications__list">
+    <% @notifications.each do |notification| %>
+      <%= tag.li id: dom_id(notification),
+                 class: "notification notification--#{notification_tone(notification)}" do %>
+        <div class="notification__body">
+          <span class="notification__title"><%= notification_title(notification) %></span>
+          <span class="notification__detail"><%= notification_detail(notification) %></span>
+          <span class="notification__meta"><%= time_ago_in_words(notification.created_at) %> ago</span>
+        </div>
+
+        <div class="notification__buttons">
+          <% if (link = notification_action_path(notification)) %>
+            <%= link_to 'View', link, class: 'notification__link' %>
+          <% end %>
+          <%= button_to 'Dismiss', dismiss_notification_path(notification), method: :patch,
+                        class: 'notification__dismiss' %>
+        </div>
+      <% end %>
+    <% end %>
+  </ul>
+
+  <% if @notifications.empty? %>
+    <p class="admin-note">
+      <% if @dismissed_count.positive? %>
+        <%= pluralize(@dismissed_count, 'notification') %> dismissed earlier.
+        A provider warning comes back on its own if it is still unresolved when the date it
+        warned about changes.
+      <% else %>
+        Warnings about provider domains getting close to lapsing show up here.
+      <% end %>
+    </p>
+  <% end %>
+</div>

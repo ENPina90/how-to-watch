@@ -1,4 +1,13 @@
 module ApplicationHelper
+  # How many notifications are waiting. The navbar asks twice per page -- once for the dot
+  # on the menu, once for the badge inside it -- so the count is worked out once per
+  # request rather than once per caller.
+  def unread_notification_count
+    return 0 unless user_signed_in?
+
+    @unread_notification_count ||= Notification.visible_to(current_user).active.count
+  end
+
   # Which theme the page renders in. A signed-in user has said which they want; a signed-out
   # one has not, and users.dark_mode defaults to true, so the sign-in screens read dark like
   # the app they are the front door to -- rather than the cream fallback, which made them
