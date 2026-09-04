@@ -29,7 +29,9 @@ import { playerAdapterFor, isControllable } from "services/player_adapter";
 //   the completion mark (from the server) is when the film counts as watched. Past it,
 //   coming out of fullscreen means the film is over rather than interrupted, and the
 //   up-next card is offered;
-//   the credits mark, later, is when the page takes the screen back by itself.
+//   the credits mark, later, is when the page takes the screen back by itself -- or, for
+//   somebody who never went fullscreen and so has no screen to take back, offers the card
+//   where the exit would have.
 //
 // Playback itself is not saved. The player reports every ~5s while playing, and writing a
 // row twelve times a minute per viewer buys nothing: anyone who leaves mid-film leaves the
@@ -104,10 +106,15 @@ export default class extends Controller {
     const crossedCredits = credits && !this.credits;
     this.credits = credits;
 
-    // No up-next offered from here: leaving fullscreen is what raises that, and this exit
-    // fires fullscreenchange like any other, so the one path covers both the automatic
-    // exit and a viewer pressing escape through the credits.
-    if (crossedCredits) this.leaveFullscreen();
+    // In fullscreen, the exit is what raises the up-next card: it fires fullscreenchange
+    // like any other, so one path covers the exit below, the player's own control and a
+    // viewer pressing escape through the credits. Windowed there is no exit to wait for,
+    // and the card is raised here instead -- otherwise somebody who watches in a window
+    // never gets offered the next entry at all.
+    if (crossedCredits) {
+      if (this.fullscreen) this.leaveFullscreen();
+      else this.upNext();
+    }
 
     if (crossedWatched || finished) return this.save({ finished: finished, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
@@ -128,11 +135,23 @@ export default class extends Controller {
   // Keyed on the position rather than on the entry being marked watched, because a rewatch
   // is already marked and would otherwise offer the next entry from its opening titles.
   fullscreenMoved() {
-    const inFullscreen = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-    const left = this.inFullscreen && !inFullscreen;
-    this.inFullscreen = inFullscreen;
+    const left = this.wasFullscreen && !this.fullscreen;
+    this.wasFullscreen = this.fullscreen;
 
-    if (left && this.watched) this.dispatch("up-next", { target: document });
+    if (left && this.watched) this.upNext();
+  }
+
+  // Is anything on the page filling the screen? Not necessarily ours -- leaveFullscreen
+  // checks that -- but enough to know whether there is an exit coming to wait for.
+  get fullscreen() {
+    return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+
+  // On the document because the card lives outside the cinema frame, in another corner of
+  // the page. Raising it twice is harmless -- it ignores a second call while it is already
+  // counting down, or once the viewer has stopped it -- but it is raised once.
+  upNext() {
+    this.dispatch("up-next", { target: document });
   }
 
   // Hand the page back once the credits are rolling, so the ring of controls -- next
