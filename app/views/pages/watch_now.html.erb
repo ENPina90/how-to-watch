@@ -1,3 +1,9 @@
+<%# Same cold start as the player page, and the same fix. Both branches below frame the
+    identical URL; only the surrounding markup differs. %>
+<%= render 'shared/player_preconnect',
+           url: @default_source&.build_url(@source_media_key, @source_vars, autoplay: true),
+           source: @default_source %>
+
 <% if @media_type == 'tv' && @tmdb_id.present? %>
   <%= render "shared/episodes_sidebar" %>
   <script nonce="<%= content_security_policy_nonce %>">

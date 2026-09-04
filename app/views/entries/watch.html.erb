@@ -1,3 +1,4 @@
+<%= render 'shared/player_preconnect', url: @embed_url, source: @entry.resolved_source %>
 <%= render "shared/entries_sidebar" %>
 <script nonce="<%= content_security_policy_nonce %>">
   // Add has-entries-sidebar class to body

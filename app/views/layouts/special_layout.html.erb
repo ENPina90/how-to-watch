@@ -14,6 +14,9 @@
 
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
+
+    <%# Pages that frame a third-party player warm its connections from here. %>
+    <%= yield :head %>
   </head>
 
   <body class="cinema__mode <%= @sidebar_collapsed ? 'sidebar-collapsed' : '' %> <%= user_signed_in? && !@hide_sidebar ? 'has-sidebar' : '' %> has-entries-sidebar <%= theme_class %>" data-turbo="false">
