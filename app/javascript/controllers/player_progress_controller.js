@@ -16,11 +16,14 @@ import { playerAdapterFor, isControllable } from "services/player_adapter";
 //                    is worth anything, and the only ones the player marks out for us
 //   leaving the page a redirect home, to a list, to another film. Sent with sendBeacon so
 //                    it survives the navigation that triggered it
+//   the credits      crossing far enough through to count as watched, which also drops the
+//                    player out of fullscreen -- see leaveFullscreen
 //   the end          the player's own `completed`
 //
-// Whether a saved position is far enough through to tick the film off is the server's
-// call, on whatever save happens to arrive -- so a viewer who watches to the credits and
-// closes the tab is credited by the same rule as one who sits through them.
+// The server decides for itself whether a saved position counts as watched, so a viewer
+// who closes the tab during the credits is credited by the same rule as one who sits
+// through them. The mark is mirrored here only to know when to say so and when to leave
+// fullscreen; both sides read the same runtime and the same fraction, passed in below.
 //
 // Playback itself is not saved. The player reports every ~5s while playing, and writing a
 // row twelve times a minute per viewer buys nothing: anyone who leaves mid-film leaves the
@@ -33,6 +36,11 @@ export default class extends Controller {
     adapter: String,
     frame: String,
     token: String,
+    // The catalogue's runtime in seconds, 0 when it has none -- the player's own reported
+    // duration stands in then, exactly as it does server-side.
+    runtime: Number,
+    // UserEntry::COMPLETION_FRACTION, passed rather than repeated so there is one of it.
+    fraction: Number,
   };
 
   connect() {
@@ -41,6 +49,7 @@ export default class extends Controller {
     const iframe = document.getElementById(this.frameValue);
     if (!iframe) return;
 
+    this.iframe = iframe;
     this.lastSaved = 0;
     this.player = playerAdapterFor(this.adapterValue, iframe, {
       onState: (state) => this.playerReported(state),
@@ -66,8 +75,58 @@ export default class extends Controller {
 
     // The player's own word for what happened, not the collapsed status: a seek and an
     // ending both leave the film stopped, and only one of them means it was watched.
-    if (state.event === "completed") return this.save({ finished: true, force: true });
+    const finished = state.event === "completed";
+    const credits = finished || this.pastCreditsMark(state);
+
+    // The moment of crossing, not the state of being past it -- the player reports every
+    // five seconds through the credits, and this should happen once. Seeking back before
+    // the mark re-arms it, so watching the ending twice leaves fullscreen twice.
+    const crossed = credits && !this.pastCredits;
+    this.pastCredits = credits;
+
+    if (crossed) {
+      this.leaveFullscreen();
+      return this.save({ finished: finished, force: true });
+    }
+
+    if (finished) return this.save({ finished: true, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
+  }
+
+  // The same rule the server applies, on the same two numbers, so the two agree about when
+  // a film has been watched.
+  pastCreditsMark({ progress, duration }) {
+    const runtime = this.runtimeValue > 0 ? this.runtimeValue : duration;
+
+    return runtime > 0 && progress >= runtime * this.fractionValue;
+  }
+
+  // Hand the page back once the credits are rolling, so the ring of controls -- next
+  // entry, shuffle, home -- is there to use rather than behind a full-screen player the
+  // viewer has to dismiss first.
+  //
+  // Leaving fullscreen needs no user gesture; only entering does. And the request belongs
+  // to the top-level document even when the player inside the frame made it, which is what
+  // makes this reachable at all on an embed we cannot otherwise touch.
+  //
+  // Three cases where nothing happens, all of them correct: nobody is in fullscreen; the
+  // viewer is in the *browser's* fullscreen (F11, the green button), which is not this API
+  // and leaves fullscreenElement null; or something else on the page is fullscreen and is
+  // not ours to close. On an iPhone a video fills the screen through the native player
+  // rather than through this API, so it stays as it is.
+  leaveFullscreen() {
+    const element = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!element) return;
+    if (element !== this.iframe && !element.contains(this.iframe)) return;
+
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    try {
+      // Older WebKit returns undefined rather than a promise; a rejection means the
+      // browser declined, and nothing on the page depends on it either way.
+      exit.call(document)?.catch(() => {});
+    } catch {
+      // Not available at all. The viewer closes it themselves, as they did before.
+    }
   }
 
   // `force` skips the interval, for the saves that must not be dropped -- the ending, and

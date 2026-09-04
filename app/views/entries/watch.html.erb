@@ -32,6 +32,12 @@
        data-player-progress-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
        data-player-progress-frame-value="cinema"
        data-player-progress-token-value="<%= form_authenticity_token %>"
+       <%# The runtime and the fraction the client needs to spot the credits starting.
+           Both are what the server itself decides completion by, so neither side can
+           drift from the other. 0 means the catalogue has no runtime and the player's own
+           reported duration stands in. %>
+       data-player-progress-runtime-value="<%= @entry.length.to_i * 60 %>"
+       data-player-progress-fraction-value="<%= UserEntry::COMPLETION_FRACTION %>"
      <% end %>>
   <iframe id="cinema"
       title="<%= @entry.name %>"
