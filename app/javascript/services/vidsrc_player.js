@@ -2,12 +2,16 @@
 //
 // The embed is three nested cross-origin frames -- wrapper, shell, player -- and each one
 // relays postMessages verbatim in both directions, so the page around them can talk to the
-// real player as though it were a child. Nothing here is documented by the provider; the
-// message shapes were read off the player's own handler and can change without warning,
+// real player as though it were a child. The message shapes can change without warning --
+// the downward protocol was read off the player's own handler and is documented nowhere --
 // which is why every failure path here is "do nothing" rather than "throw".
 //
 // Up:   { type: "PLAYER_EVENT", data: { player_status, player_progress, player_duration } }
 // Down: { player: true, action: "play" | "pause" | "mute" | "unmute" | "seek<N>" }
+//
+// Reports are handed on with both the raw `event` and a `status` collapsed to
+// playing/paused, because the two callers want different things: the room only cares
+// whether the film is moving, while position tracking has to tell a seek from an ending.
 export default class VidsrcPlayer {
   // The front doors move around (vidsrc-embed.ru -> vsembed.ru, v2.vidsrc.me ->
   // vidsrcme.ru), so an origin is trusted by suffix rather than by exact host.
@@ -62,6 +66,11 @@ export default class VidsrcPlayer {
     this.started = true;
     const { player_status: status, player_progress: progress, player_duration: duration } = message.data;
     this.onState({
+      // The player's own word: "playing", "paused", "seeked" or "completed". Anything
+      // that wants to know a film *finished*, rather than merely stopped, needs this.
+      event: status,
+      // Collapsed to what the film is doing now, which is all a watch party's clock is
+      // about -- a seek and an ending both leave it stopped.
       status: status === "playing" ? "playing" : "paused",
       progress: Number(progress) || 0,
       duration: Number(duration) || 0,

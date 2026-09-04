@@ -253,8 +253,10 @@ class Entry < ApplicationRecord
   # Pass the current subentry for series/anime so season/episode resolve correctly.
   # Blank means nothing can play it -- callers show "no source available" rather than
   # loading an iframe that cannot work.
-  def embed_url(subentry: nil, autoplay: false)
-    resolved_source&.url_for(self, subentry: subentry, autoplay: autoplay).presence
+  # `start_at` resumes a part-watched entry, and is only honoured by a provider whose
+  # player takes a position (see Source::RESUME_PARAMS); everywhere else it is dropped.
+  def embed_url(subentry: nil, autoplay: false, start_at: nil)
+    resolved_source&.url_for(self, subentry: subentry, autoplay: autoplay, start_at: start_at).presence
   end
 
   # Get user's current episode for this entry

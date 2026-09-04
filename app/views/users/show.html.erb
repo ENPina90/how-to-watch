@@ -28,6 +28,20 @@
 
       <%= render 'shared/letterboxd_field', f: f %>
 
+      <%# Three states, not two: blank leaves each channel to its own setting, which is
+          what everybody had before this existed. Answering here overrides every channel
+          at once, which is the reason to answer here rather than editing each of them. %>
+      <%= f.input :auto_play, as: :select,
+            collection: [['Always', true], ['Never', false]],
+            include_blank: 'Follow each channel',
+            label: 'Auto play',
+            hint: 'Start playing as soon as an entry opens.' %>
+      <%= f.input :auto_next, as: :select,
+            collection: [['Always', true], ['Never', false]],
+            include_blank: 'Follow each channel',
+            label: 'Auto next',
+            hint: 'Offer the next entry when one finishes.' %>
+
       <div class="form-actions">
         <%= f.button :submit, 'Save', class: 'btn btn-primary' %>
       </div>

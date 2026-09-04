@@ -25,7 +25,7 @@ class UsersController < ApplicationController
   private
 
   def profile_params
-    params.require(:user).permit(:username, :letterboxd_enabled)
+    params.require(:user).permit(:username, :letterboxd_enabled, :auto_play, :auto_next)
   end
 
   def load_statistics
