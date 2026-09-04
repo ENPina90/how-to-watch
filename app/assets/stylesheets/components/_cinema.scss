@@ -361,3 +361,55 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   gap: 8px;
   flex-shrink: 0;
 }
+
+/* Fullscreen that belongs to the page.
+
+   The cinema screen goes fullscreen, not the player frame, so the ring of controls, the
+   channel name and the up-next card stay on screen instead of vanishing behind a
+   third-party player. See cinema_fullscreen_controller.js for why the frame is not
+   allowed to take the screen itself. */
+.cinema__screen:fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Our own way in and out, since the player's is switched off. It rides the switcher's
+   line and fades with the rest of the chrome. */
+.cinema__fullscreen {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 20;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+}
+
+.cinema__fullscreen:hover,
+.cinema__fullscreen:focus-visible {
+  opacity: 1;
+}
+
+/* Idle, and only in fullscreen: windowed, this page has always shown its controls and
+   there is no reason to start hiding them. Opacity rather than display so nothing reflows
+   and the fade reads as the picture being left alone, and pointer-events so a control
+   faded to nothing cannot still be clicked. */
+.cinema__screen:fullscreen.cinema__screen--idle {
+  cursor: none;
+
+  .cinema__title,
+  .cinema__control,
+  .source-switcher,
+  .cinema__fullscreen,
+  .watch-party {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+}
