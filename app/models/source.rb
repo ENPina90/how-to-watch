@@ -9,14 +9,92 @@ class Source < ApplicationRecord
 
   has_many :lists,   foreign_key: :provider_id, dependent: :nullify
   has_many :entries, foreign_key: :provider_id, dependent: :nullify
+  has_many :notifications, as: :subject, dependent: :destroy
 
   before_validation :set_slug_from_name
+
+  # Warnings are derived from `valid_until` and `active`, so they have to be recomputed the
+  # moment either moves -- renewing a provider should clear its warning there and then, not
+  # at the next nightly scan. after_commit because the notifier writes rows of its own.
+  after_commit :refresh_expiry_notifications, on: %i[create update],
+                                              if: -> { saved_change_to_valid_until? || saved_change_to_active? }
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true
   validates :kind, inclusion: { in: KINDS }
 
   scope :active, -> { where(active: true) }
+
+  # --- Expiry ---------------------------------------------------------------------------
+  #
+  # `valid_until` is when the provider's address should be checked again, not a promise it
+  # works until then. Ours is a domain registration that has to be renewed; vidsrc's are
+  # theirs to rotate whenever they like. Null means "cannot lapse" -- Drive, YouTube and the
+  # rest -- and those never warn, so the warnings that do appear are worth reading.
+
+  # How long before the date a warning starts. A month is enough to renew a domain without
+  # rushing, and short enough that the page is not permanently amber.
+  EXPIRY_WARNING_WINDOW = 30.days
+
+  # What a renewal adds. Matches how domains are actually sold.
+  RENEWAL_PERIOD = 1.year
+
+  scope :perishable, -> { where.not(valid_until: nil) }
+  scope :expiring_by, ->(date) { perishable.where(valid_until: ..date) }
+  scope :by_expiry, -> { order(Arel.sql('valid_until ASC NULLS LAST')) }
+
+  def perishable? = valid_until.present?
+  def expired?      = perishable? && valid_until < Date.current
+  def expiring_soon? = perishable? && !expired? && valid_until <= EXPIRY_WARNING_WINDOW.from_now.to_date
+
+  # :fine / :soon / :expired, or nil for a provider that cannot lapse. One value for the
+  # view to switch on rather than three predicates it has to combine correctly.
+  def expiry_state
+    return nil unless perishable?
+    return :expired if expired?
+
+    expiring_soon? ? :soon : :fine
+  end
+
+  # Negative once it is past, which is what lets one sentence describe both sides.
+  def days_until_expiry = perishable? ? (valid_until - Date.current).to_i : nil
+
+  # Extends from the existing date rather than from today, so renewing early does not throw
+  # away the time already paid for. From today when it has already lapsed.
+  def renew!(period = RENEWAL_PERIOD)
+    from = perishable? && valid_until > Date.current ? valid_until : Date.current
+    update!(valid_until: from + period)
+  end
+
+  # --- Testing a provider ------------------------------------------------------------
+
+  # A film to probe an imdb provider with. Widely available, and vidsrc's own docs use it,
+  # so a provider that cannot serve this is broken rather than merely missing something
+  # obscure.
+  PROBE_IMDB = 'tt1300854'
+  PROBE_TITLE = 'Iron Man 3'
+
+  # A URL that plays something through this provider, for the test page.
+  #
+  # An imdb provider is probed with a known film. A direct one cannot be: its templates take
+  # a source_key that belongs to a particular file, so the only honest test is something
+  # already filed under it -- and if nothing is, there is nothing to test.
+  # autoplay is on: "does it play" is the question, and on a custom domain autoplay is
+  # itself part of what is being tested -- that is the whole reason for having one.
+  def probe_url
+    return build_url('movie', { imdb: PROBE_IMDB }, autoplay: true) if imdb?
+
+    entry = entries.where.not(source_key: [nil, '']).first
+    entry && url_for(entry, autoplay: true)
+  end
+
+  # What the test page is actually playing, so the tab does not just show an unlabelled
+  # video.
+  def probe_label
+    return "#{PROBE_TITLE} (#{PROBE_IMDB})" if imdb?
+
+    entries.where.not(source_key: [nil, '']).first&.name
+  end
 
   # A pasted URL -> [provider slug, source_key]. Both the manual entry form and the
   # legacy-cleanup resolver need this, so the patterns live in one place.
@@ -149,5 +227,9 @@ class Source < ApplicationRecord
 
     separator = url.include?("?") ? "&" : "?"
     "#{url}#{separator}#{autoplay_param}=#{autoplay ? 1 : 0}"
+  end
+
+  def refresh_expiry_notifications
+    SourceExpiryNotifier.call
   end
 end
