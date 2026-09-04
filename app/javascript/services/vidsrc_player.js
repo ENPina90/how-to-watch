@@ -17,6 +17,8 @@ export default class VidsrcPlayer {
   // every PLAYER_EVENT is rejected, so `started` never flips and play/pause/seek and all
   // position tracking silently stop. See docs/guides/VIDSRC.md.
   static ORIGINS = [
+    // Ours, CNAMEd to vidsrc -- the frame is on our host but the player inside it is theirs.
+    "framerelay.dev",
     "vidsrc2.ru", "vidsrc.ir",
     "vsembed.ru", "vidsrcme.ru", "vidsrc-embed.ru", "vidsrc.me",
     "cloudorchestranova.com",

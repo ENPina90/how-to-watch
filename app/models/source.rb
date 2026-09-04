@@ -63,6 +63,8 @@ class Source < ApplicationRecord
   # hand the parent page no control surface at all, and a watch party on them can only tell
   # people how far apart they are.
   SYNC_ADAPTERS = {
+    # Our CNAMEd domain: vidsrc's own backend behind our host, so the same adapter drives it.
+    "framerelay"      => "vidsrc",
     "vidsrc2"         => "vidsrc",
     "vidsrc-ir"       => "vidsrc",
     "vidsrc-embed.ru" => "vidsrc",
