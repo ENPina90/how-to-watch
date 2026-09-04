@@ -386,6 +386,12 @@ afterwards: once the frame holds fullscreen, moving it to an ancestor is refused
 ("Permissions check failed") without a fresh gesture in *our* document, which a click
 inside theirs never gives us. See `cinema_fullscreen_controller.js`.
 
+Their button still *draws*, though, so ours is positioned on top of it to hide it. Those
+offsets are read off `iframe_player/assets/player.css` (`.jw-controls` padding, `--bar-h`,
+`.jw-btn` size) rather than guessed, and they are the one place in this app that depends on
+their visual layout — if the bar is restyled, ours goes off-centre. Cosmetic only: the
+button underneath is inert either way.
+
 **The embed wipes itself when DevTools is open.** It loads `disable-devtool.js` on both
 the wrapper and the player, and on detecting an inspector it navigates the document to
 `about:blank` — so anyone debugging playback sees an empty frame and will reasonably think
