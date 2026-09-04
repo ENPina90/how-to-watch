@@ -373,21 +373,44 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   height: 100vh;
 }
 
-/* Our own way in and out, since the player's is switched off. It rides the switcher's
-   line and fades with the rest of the chrome. */
+/* Our own way in and out, since the player's is switched off.
+
+   It sits *on top of* the player's own fullscreen button rather than beside it. That
+   button is dead now -- the frame has no fullscreen permission -- so leaving it showing
+   is just a second, non-working control next to the working one. Covering it is cosmetic
+   only: if their layout shifts, ours is merely off-centre rather than broken, which is
+   why this is worth doing at all and would not have been as a way of catching clicks.
+  
+   The two offsets are the whole of the alignment, so they are named. They place the
+   button's centre relative to the frame's bottom-right corner, which is where the
+   player's control bar anchors its own row. */
+.cinema__screen {
+  --fullscreen-button-right: 35px;
+  --fullscreen-button-bottom: 45px;
+  --fullscreen-button-size: 44px;
+}
+
 .cinema__fullscreen {
   position: absolute;
-  bottom: 16px;
-  right: 16px;
-  z-index: 20;
-  padding: 6px 12px;
+  right: calc(var(--fullscreen-button-right) - var(--fullscreen-button-size) / 2);
+  bottom: calc(var(--fullscreen-button-bottom) - var(--fullscreen-button-size) / 2);
+  width: var(--fullscreen-button-size);
+  height: var(--fullscreen-button-size);
+  /* Above the frame, so it masks what is behind it rather than sharing the space. */
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  /* Opaque, because the point is that nothing shows through. Their icon is roughly 24px,
+     so 44px of solid ground covers it with room for their layout to drift a little. */
+  background: #000;
   color: white;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  line-height: 1;
   cursor: pointer;
-  opacity: 0.35;
+  opacity: 0.8;
   transition: opacity 0.2s ease;
 }
 
