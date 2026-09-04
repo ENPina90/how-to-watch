@@ -185,6 +185,36 @@ RSpec.describe LetterboxdList do
       expect(user_entry.completed_at.to_date).to eq(Date.new(2026, 8, 28))
     end
 
+    # The point of reaching outside the member's own channels: a linked diary is a watch
+    # history, so a channel they have never opened is already marked up when they find it.
+    it 'ticks off the same film in a channel the member does not own' do
+      theirs = create(:entry, list: create(:list), media: 'movie', imdb: 'tt1111111', name: 'Crime 101 theirs')
+
+      described_class.new(user).sync!
+
+      expect(user.user_entry_for(theirs)).to be_completed
+    end
+
+    # A member has no row against a channel they have never opened, so there is usually
+    # nothing to update -- the row has to be made.
+    it 'creates the completion row where the member has none' do
+      theirs = create(:entry, list: create(:list), media: 'movie', imdb: 'tt1111111', name: 'Crime 101 theirs')
+
+      expect { described_class.new(user).sync! }
+        .to change { UserEntry.where(user: user, entry: theirs).count }.from(0).to(1)
+    end
+
+    # Completion is per-user, so reaching into another member's channel writes only this
+    # member's history.
+    it 'leaves the owner of that channel unwatched' do
+      owner = create(:user)
+      theirs = create(:entry, list: create(:list, user: owner), media: 'movie', imdb: 'tt1111111')
+
+      described_class.new(user).sync!
+
+      expect(owner.user_entry_for(theirs)).to be_nil
+    end
+
     # A diary entry is a film. A series carrying the same IMDb id is its own record, not
     # the thing that was watched.
     it 'leaves a matching entry that is not a movie alone' do
@@ -194,15 +224,6 @@ RSpec.describe LetterboxdList do
       described_class.new(user).sync!
 
       expect(user.user_entry_for(series)).to be_nil
-    end
-
-    it 'leaves a matching entry in somebody else\'s channel alone' do
-      stranger_list = create(:list)
-      theirs = create(:entry, list: stranger_list, media: 'movie', imdb: 'tt1111111', name: 'Crime 101 theirs')
-
-      described_class.new(user).sync!
-
-      expect(user.user_entry_for(theirs)).to be_nil
     end
 
     it 'does nothing for a user who has not opted in' do
