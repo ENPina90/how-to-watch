@@ -51,4 +51,5 @@ class UserEntryPosition < ApplicationRecord
     raise ArgumentError unless subentry.entry_id == entry_id
     update!(current_subentry: subentry)
   end
+
 end

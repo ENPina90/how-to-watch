@@ -7,7 +7,7 @@ require 'json'
 class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress]
   # Everything here writes state shared by everyone who can see the entry -- its position
   # in the list, its provider, its poster, the `stream` flag. The per-user actions
   # (complete, review, shuffle_current and friends) are deliberately absent: they write
@@ -419,6 +419,24 @@ class EntriesController < ApplicationController
       format.html { redirect_back(fallback_location: list_path(@entry.list)) }
       format.json { head :ok }
     end
+  end
+
+  # The player saying where it has reached. Sent on pause, on seek, and once more as the
+  # page goes away, so it answers with nothing at all: by the time a reply arrives the page
+  # that asked is often already unloading, and there is nothing on screen to update.
+  #
+  # Only providers whose player talks to the page around it ever reach here -- see
+  # docs/guides/VIDSRC.md §6. Signed out there is no position to record and the page leaves
+  # the tracking off entirely; a session that lapses mid-film is a write like any other and
+  # goes to the sign-in page, where nothing is listening for the answer.
+  def progress
+    current_user.user_entry_for!(@entry).record_progress!(
+      params[:progress],
+      duration: params[:duration],
+      finished: params[:finished].to_s == 'true'
+    )
+
+    head :no_content
   end
 
   def review

@@ -24,6 +24,21 @@ RSpec.describe 'Entry write verbs', :needs_provider, type: :request do
     end
   end
 
+  describe 'recording where the player got to' do
+    it 'saves the position over POST' do
+      post progress_entry_path(entry), params: { progress: 300 }
+
+      expect(user.user_entry_for(entry).player_progress).to eq(300)
+    end
+
+    it 'is not reachable over GET' do
+      get "/entries/#{entry.id}/progress"
+
+      expect(response).to have_http_status(:not_found)
+      expect(user.user_entry_for(entry)).to be_nil
+    end
+  end
+
   describe 'reporting a broken link' do
     it 'toggles the stream flag over PATCH' do
       entry.update!(stream: false)
