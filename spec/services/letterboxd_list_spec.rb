@@ -57,7 +57,8 @@ RSpec.describe LetterboxdList do
       expect(result.created).to eq(3)
 
       crime = entries.find_by(tmdb: '1171145')
-      expect(crime).to have_attributes(name: 'Crime 101', year: 2026, media: 'movie', letterboxd_score: 3.5)
+      expect(crime).to have_attributes(name: 'Crime 101', year: 2026, media: 'movie')
+      expect(user.user_entry_for(crime).letterboxd_score).to eq(3.5)
     end
 
     it 'keeps the film slug, which is the only URL the review prompt accepts' do
@@ -95,8 +96,7 @@ RSpec.describe LetterboxdList do
       described_class.new(user).sync!
 
       expect(user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '1124')).to have_attributes(
-        name: 'The Prestige', year: 2006, pic: 'https://a.ltrbxd.com/poster/the-prestige.jpg',
-        letterboxd_score: 3.5
+        name: 'The Prestige', year: 2006, pic: 'https://a.ltrbxd.com/poster/the-prestige.jpg'
       )
     end
 
@@ -152,7 +152,8 @@ RSpec.describe LetterboxdList do
     it 'leaves an unrated watch with no score rather than a zero' do
       described_class.new(user).sync!
 
-      expect(user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '12345').letterboxd_score).to be_nil
+      entry = user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '12345')
+      expect(user.user_entry_for(entry).letterboxd_score).to be_nil
     end
 
     # The weekly refresh re-reads the whole window every time, so this runs constantly.
@@ -162,14 +163,27 @@ RSpec.describe LetterboxdList do
         .not_to change { Entry.count }
     end
 
+    # The completion columns are left alone on a re-sync, so the score has to be written
+    # on its own rather than as a side effect of marking the film watched.
     it 'picks up a score that changed on Letterboxd' do
       described_class.new(user).sync!
       entry = user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '1171145')
-      entry.update!(letterboxd_score: 1.0)
+      user_entry = user.user_entry_for(entry)
+      user_entry.update!(letterboxd_score: 1.0)
 
       described_class.new(user).sync!
 
-      expect(entry.reload.letterboxd_score).to eq(3.5)
+      expect(user_entry.reload.letterboxd_score).to eq(3.5)
+    end
+
+    # The score is the member's own, so it follows them onto the same film wherever it
+    # sits rather than staying in the diary channel.
+    it 'carries the score onto matching entries elsewhere' do
+      theirs = create(:entry, list: create(:list), media: 'movie', imdb: 'tt1111111')
+
+      described_class.new(user).sync!
+
+      expect(user.user_entry_for(theirs).letterboxd_score).to eq(3.5)
     end
 
     # Somebody who keeps a watchlist alongside the diary should not have to tick

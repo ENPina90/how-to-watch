@@ -308,6 +308,13 @@ class Entry < ApplicationRecord
     user_entries.find_or_create_by(user: user)
   end
 
+  # The Letterboxd rating is one member's own, so it lives on their tracking row rather
+  # than on the entry everybody sharing the channel sees. Reads through the preloaded
+  # association, so a card can ask without costing a query.
+  def letterboxd_score_for(user)
+    user_entry_for(user)&.letterboxd_score
+  end
+
   # Check if a specific user has completed this entry
   def completed_by?(user)
     return completed if user.nil? # Fallback to old system

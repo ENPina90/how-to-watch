@@ -119,7 +119,6 @@ class LetterboxdList
         tmdb: watch.tmdb_id,
         imdb: imdb,
         pic: watch.poster_url,
-        letterboxd_score: watch.rating,
         # Free here; anything not imported from a diary has to pay a request for it.
         letterboxd_slug: watch.slug,
         position: Entry.next_position(channel)
@@ -133,7 +132,6 @@ class LetterboxdList
 
   # Returns true when something actually changed, so the caller can report a real count.
   def refresh(entry, watch)
-    entry.letterboxd_score = watch.rating
     entry.letterboxd_slug = watch.slug if entry.letterboxd_slug.blank?
     entry.imdb = imdb_id_for(watch) if entry.imdb.blank?
     # Films imported before the sync fetched details have a title and a poster and
@@ -217,19 +215,26 @@ class LetterboxdList
   # over completed_at whenever `completed` changes. That is right for someone ticking the
   # eye on a card and wrong here: the diary knows the date the film was actually watched,
   # and re-dating a five-year-old entry to today would be the only record of it.
+  #
+  # The score rides along because it is this member's own rating -- it belongs to their
+  # tracking row, not to the entry everybody sharing the channel sees. It is written even
+  # when the completion columns are left alone, so a rating changed on Letterboxd is
+  # picked up without re-dating the watch.
   def mark_watched(entry, watch)
     user_entry = user.user_entry_for!(entry)
     # in_time_zone, not to_time: to_time reads midnight in the *server's* zone, which for
     # a server west of the app's UTC lands the watch on the previous day.
     watched_at = watch.watched_on&.in_time_zone || Time.current
 
-    return if user_entry.completed? && user_entry.completed_at&.to_date == watched_at.to_date
+    changes = {}
+    changes[:letterboxd_score] = watch.rating if user_entry.letterboxd_score != watch.rating
 
-    user_entry.update_columns(
-      completed: true,
-      completed_at: watched_at,
-      last_watched_at: watched_at,
-      updated_at: Time.current
-    )
+    unless user_entry.completed? && user_entry.completed_at&.to_date == watched_at.to_date
+      changes.merge!(completed: true, completed_at: watched_at, last_watched_at: watched_at)
+    end
+
+    return if changes.empty?
+
+    user_entry.update_columns(changes.merge(updated_at: Time.current))
   end
 end
