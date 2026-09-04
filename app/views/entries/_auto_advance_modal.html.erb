@@ -1,47 +1,43 @@
 <%# Raised by the player-progress controller once the film is effectively over: on coming
     out of fullscreen, or at the credits mark for somebody watching in a window. It listens
     on the document because the two live in different corners of the page -- the player is
-    inside the cinema frame, this sits outside it. %>
-<div class="modal fade" id="autoAdvanceModal" tabindex="-1" aria-labelledby="autoAdvanceModalLabel" aria-hidden="true"
+    inside the cinema frame, this sits outside it.
+
+    No backdrop, and it sits low on the screen rather than over the middle of it: the film
+    is still running when this appears, and somebody watching the last of it should not
+    have to move a panel off the picture to see it. %>
+<div class="modal fade up-next" id="autoAdvanceModal" tabindex="-1" aria-labelledby="autoAdvanceModalLabel" aria-hidden="true"
      data-controller="auto-advance"
      data-action="player-progress:up-next@document->auto-advance#start"
-     data-bs-backdrop="static"
+     data-bs-backdrop="false"
      data-auto-advance-entry-id-value="<%= entry.id %>"
      data-auto-advance-channel-id-value="<%= channel.id %>"
      data-auto-advance-is-ordered-value="<%= channel.ordered? %>">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="autoAdvanceModalLabel">
-          <i class="fa-solid fa-forward text-primary me-2"></i>
+  <div class="modal-dialog">
+    <div class="modal-content up-next__card">
+      <div class="up-next__text">
+        <span class="up-next__label" id="autoAdvanceModalLabel">
+          <i class="fa-solid fa-forward"></i>
           Up next on <%= channel.name %>
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Stay on this entry"></button>
-      </div>
-      <div class="modal-body text-center">
-        <%# An ordered channel plays the next entry; an unordered one picks something
-            unseen, so there is no particular entry to name here. %>
-        <% if channel.ordered? %>
-          <p class="mb-3">Playing the next entry in:</p>
-        <% else %>
-          <p class="mb-3">Playing another entry in:</p>
-        <% end %>
-
-        <div class="countdown-display mb-4">
+        </span>
+        <span class="up-next__timing">
+          <%# An ordered channel plays the next entry; an unordered one picks something
+              unseen, so there is no particular entry to name here. %>
+          <%= channel.ordered? ? 'Next entry in' : 'Another entry in' %>
           <%# Overwritten before the card is ever shown; the controller owns the count. %>
-          <span class="display-4 text-primary" data-auto-advance-target="countdown">30</span>
-        </div>
+          <strong data-auto-advance-target="countdown">30</strong>s
+        </span>
+      </div>
 
-        <div class="d-flex gap-2 justify-content-center">
-          <button type="button" class="btn btn-secondary" data-action="click->auto-advance#stop">
-            <i class="fa-solid fa-stop me-1"></i>
-            Stop
-          </button>
-          <button type="button" class="btn btn-primary" data-action="click->auto-advance#advance">
-            <i class="fa-solid fa-play me-1"></i>
-            Play now
-          </button>
-        </div>
+      <div class="up-next__actions">
+        <button type="button" class="btn btn-sm btn-secondary" data-action="click->auto-advance#stop">
+          <i class="fa-solid fa-stop"></i>
+          Stop
+        </button>
+        <button type="button" class="btn btn-sm btn-primary" data-action="click->auto-advance#advance">
+          <i class="fa-solid fa-play"></i>
+          Play now
+        </button>
       </div>
     </div>
   </div>

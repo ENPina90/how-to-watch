@@ -297,3 +297,67 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   background: rgba(255, 255, 255, 0.22);
   border-color: rgba(255, 255, 255, 0.45);
 }
+
+/* The up-next card.
+
+   It sits low on the screen rather than over the middle of it, and brings no backdrop:
+   at the point it appears the film is still running, and somebody watching the last of
+   it should not have to move a panel off the picture to see it. Clear of the source
+   switcher, which owns the bottom of the frame. */
+.up-next {
+  /* With no backdrop the modal layer still covers the viewport, so it has to stop
+     swallowing clicks meant for the player underneath it. */
+  pointer-events: none;
+
+  .modal-dialog {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 5rem;
+    /* Margin rather than a transform, because Bootstrap animates .modal-dialog with one
+       and sets `transform: none` on show -- which would drop a centred card to the left. */
+    margin: 0 auto;
+    width: min(30rem, 92vw);
+    max-width: none;
+  }
+
+  .modal-content {
+    pointer-events: auto;
+  }
+}
+
+.up-next__card {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.up-next__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.up-next__label {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.up-next__timing {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.up-next__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
