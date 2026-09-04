@@ -16,19 +16,30 @@ import { playerAdapterFor, isControllable } from "services/player_adapter";
 //                    is worth anything, and the only ones the player marks out for us
 //   leaving the page a redirect home, to a list, to another film. Sent with sendBeacon so
 //                    it survives the navigation that triggered it
-//   the credits      crossing far enough through to count as watched, which also drops the
-//                    player out of fullscreen -- see leaveFullscreen
+//   the credits      crossing far enough through to count as watched
 //   the end          the player's own `completed`
 //
 // The server decides for itself whether a saved position counts as watched, so a viewer
 // who closes the tab during the credits is credited by the same rule as one who sits
-// through them. The mark is mirrored here only to know when to say so and when to leave
-// fullscreen; both sides read the same runtime and the same fraction, passed in below.
+// through them. The mark is mirrored here only to know when to say so; both sides read the
+// same runtime and the same fraction, passed in below.
+//
+// Two marks, and they do different jobs:
+//
+//   the completion mark (from the server) is when the film counts as watched. Past it,
+//   coming out of fullscreen means the film is over rather than interrupted, and the
+//   up-next card is offered;
+//   the credits mark, later, is when the page takes the screen back by itself.
 //
 // Playback itself is not saved. The player reports every ~5s while playing, and writing a
 // row twelve times a minute per viewer buys nothing: anyone who leaves mid-film leaves the
 // page, and leaving the page saves.
 const SAVE_INTERVAL = 2000;
+
+// When to hand the screen back. Deliberately later than the completion mark: a film counts
+// as watched once the credits start, but a stinger after them is still the film, and
+// taking the screen off somebody waiting for one is worse than leaving it a minute longer.
+const CREDITS_FRACTION = 0.98;
 
 export default class extends Controller {
   static values = {
@@ -60,13 +71,18 @@ export default class extends Controller {
     // page may be discarded later without ever running another handler.
     this.leaving = () => this.save({ beacon: true });
     this.hiding = () => { if (document.visibilityState === "hidden") this.save({ beacon: true }); };
+    this.fullscreenChanged = () => this.fullscreenMoved();
     window.addEventListener("pagehide", this.leaving);
     document.addEventListener("visibilitychange", this.hiding);
+    document.addEventListener("fullscreenchange", this.fullscreenChanged);
+    document.addEventListener("webkitfullscreenchange", this.fullscreenChanged);
   }
 
   disconnect() {
     window.removeEventListener("pagehide", this.leaving);
     document.removeEventListener("visibilitychange", this.hiding);
+    document.removeEventListener("fullscreenchange", this.fullscreenChanged);
+    document.removeEventListener("webkitfullscreenchange", this.fullscreenChanged);
     this.player?.destroy();
   }
 
@@ -76,29 +92,47 @@ export default class extends Controller {
     // The player's own word for what happened, not the collapsed status: a seek and an
     // ending both leave the film stopped, and only one of them means it was watched.
     const finished = state.event === "completed";
-    const credits = finished || this.pastCreditsMark(state);
 
     // The moment of crossing, not the state of being past it -- the player reports every
-    // five seconds through the credits, and this should happen once. Seeking back before
-    // the mark re-arms it, so watching the ending twice leaves fullscreen twice.
-    const crossed = credits && !this.pastCredits;
-    this.pastCredits = credits;
+    // five seconds through the credits, and each of these should happen once. Seeking back
+    // before a mark re-arms it, so watching the ending twice behaves the same way twice.
+    const watched = finished || this.past(state, this.fractionValue);
+    const crossedWatched = watched && !this.watched;
+    this.watched = watched;
 
-    if (crossed) {
-      this.leaveFullscreen();
-      return this.save({ finished: finished, force: true });
-    }
+    const credits = finished || this.past(state, CREDITS_FRACTION);
+    const crossedCredits = credits && !this.credits;
+    this.credits = credits;
 
-    if (finished) return this.save({ finished: true, force: true });
+    // No up-next offered from here: leaving fullscreen is what raises that, and this exit
+    // fires fullscreenchange like any other, so the one path covers both the automatic
+    // exit and a viewer pressing escape through the credits.
+    if (crossedCredits) this.leaveFullscreen();
+
+    if (crossedWatched || finished) return this.save({ finished: finished, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
   }
 
-  // The same rule the server applies, on the same two numbers, so the two agree about when
-  // a film has been watched.
-  pastCreditsMark({ progress, duration }) {
+  // Is the film this far through? The same rule the server applies for the completion
+  // mark, on the same two numbers, so the two agree about when a film has been watched.
+  past({ progress, duration }, fraction) {
     const runtime = this.runtimeValue > 0 ? this.runtimeValue : duration;
 
-    return runtime > 0 && progress >= runtime * this.fractionValue;
+    return runtime > 0 && progress >= runtime * fraction;
+  }
+
+  // Coming out of fullscreen past the completion mark means the film is over, whoever
+  // ended it -- the exit above, the player's own control, or escape. Coming out before the
+  // mark is somebody adjusting their screen, and is left alone.
+  //
+  // Keyed on the position rather than on the entry being marked watched, because a rewatch
+  // is already marked and would otherwise offer the next entry from its opening titles.
+  fullscreenMoved() {
+    const inFullscreen = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    const left = this.inFullscreen && !inFullscreen;
+    this.inFullscreen = inFullscreen;
+
+    if (left && this.watched) this.dispatch("up-next", { target: document });
   }
 
   // Hand the page back once the credits are rolling, so the ring of controls -- next
