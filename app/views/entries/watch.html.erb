@@ -12,8 +12,16 @@
     return null;
   };
 
-  // Prevent iframe from reloading parent
+  // Prevent iframe from reloading parent.
+  //
+  // The test is "does the frame have focus", which is true for most of a film -- so a
+  // navigation the page itself starts is caught by it too, and the browser asks the
+  // viewer whether they meant to leave. That is fine for a hijack and wrong for the
+  // up-next card, whose whole job is to leave: the prompt appears behind the countdown
+  // and nothing happens. Anything in the app that navigates on purpose says so first.
   window.addEventListener('beforeunload', function(e) {
+    if (window.leavingOnPurpose) return;
+
     if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
       e.preventDefault();
       e.returnValue = '';
