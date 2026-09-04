@@ -90,4 +90,112 @@ RSpec.describe Source do
       expect(described_class.classify_url('https://vidsrc.cc/v3/embed/movie/tt1')).to eq([nil, nil])
     end
   end
+
+  describe 'expiry' do
+    def perishable(days)
+      described_class.create!(name: "P#{days}", slug: "p#{days.to_s.sub('-', 'm')}", kind: 'imdb',
+                              position: 1, valid_until: Date.current + days,
+                              templates: { 'movie' => 'https://p.test/%{imdb}' })
+    end
+
+    let(:imperishable) do
+      described_class.create!(name: 'MEGA', slug: 'mega-x', kind: 'direct', position: 9,
+                              templates: { 'default' => 'https://mega.nz/embed/%{source_key}' })
+    end
+
+    it 'calls a provider with no date imperishable, and never warns about it' do
+      expect(imperishable).not_to be_perishable
+      expect(imperishable.expiry_state).to be_nil
+      expect(imperishable.days_until_expiry).to be_nil
+    end
+
+    it 'is fine well before the date' do
+      expect(perishable(200).expiry_state).to eq(:fine)
+    end
+
+    it 'is soon once inside the warning window' do
+      expect(perishable(10).expiry_state).to eq(:soon)
+    end
+
+    # The boundary itself counts as a warning rather than as fine.
+    it 'is soon exactly on the edge of the window' do
+      expect(perishable(described_class::EXPIRY_WARNING_WINDOW.in_days.to_i).expiry_state).to eq(:soon)
+    end
+
+    it 'is soon, not expired, on the day itself' do
+      source = perishable(0)
+
+      expect(source.expiry_state).to eq(:soon)
+      expect(source).not_to be_expired
+    end
+
+    it 'is expired the day after' do
+      expect(perishable(-1).expiry_state).to eq(:expired)
+    end
+
+    it 'counts days as negative once it is past' do
+      expect(perishable(-5).days_until_expiry).to eq(-5)
+    end
+  end
+
+  describe '#renew!' do
+    def source_with(valid_until)
+      described_class.create!(name: 'R', slug: 'r', kind: 'imdb', position: 1,
+                              valid_until: valid_until,
+                              templates: { 'movie' => 'https://r.test/%{imdb}' })
+    end
+
+    # Renewing early should not cost the time already paid for, which is how domain
+    # registrations actually work.
+    it 'extends from the existing date when it has not passed' do
+      source = source_with(Date.current + 20)
+
+      source.renew!
+
+      expect(source.valid_until).to eq(Date.current + 20 + 1.year)
+    end
+
+    it 'extends from today once it has lapsed' do
+      source = source_with(Date.current - 30)
+
+      source.renew!
+
+      expect(source.valid_until).to eq(Date.current + 1.year)
+    end
+
+    it 'gives a date to a provider that had none' do
+      source = source_with(nil)
+
+      source.renew!
+
+      expect(source.valid_until).to eq(Date.current + 1.year)
+    end
+  end
+
+  describe '#probe_url' do
+    it 'probes an imdb provider with a known film' do
+      source = described_class.create!(name: 'P', slug: 'probe', kind: 'imdb', position: 1,
+                                       templates: { 'movie' => 'https://p.test/embed/movie?imdb=%{imdb}' })
+
+      expect(source.probe_url).to eq("https://p.test/embed/movie?imdb=#{described_class::PROBE_IMDB}")
+    end
+
+    # A direct provider addresses one file by a key, so there is nothing generic to probe
+    # it with -- only something already filed under it.
+    it 'has nothing to probe a direct provider with until something uses it' do
+      source = described_class.create!(name: 'D', slug: 'direct-x', kind: 'direct', position: 9,
+                                       templates: { 'default' => 'https://d.test/%{source_key}' })
+
+      expect(source.probe_url).to be_nil
+    end
+
+    it 'probes a direct provider with an entry that uses it' do
+      source = described_class.create!(name: 'D', slug: 'direct-y', kind: 'direct', position: 9,
+                                       templates: { 'default' => 'https://d.test/%{source_key}' })
+      user = create(:user)
+      create(:entry, list: create(:list, user: user), media: 'movie', provider: source, source_key: 'abc')
+
+      expect(source.probe_url).to eq('https://d.test/abc')
+    end
+  end
 end

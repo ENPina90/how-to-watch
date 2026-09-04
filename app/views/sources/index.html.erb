@@ -1,43 +1,108 @@
-<div class="container py-4">
+<div class="container py-4 sources-index">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Source providers</h1>
+    <div>
+      <h1 class="h3 mb-0">Source providers</h1>
+      <p class="text-muted mb-0 small">
+        Drag by the handle to reorder. A channel whose own provider is gone falls back to
+        the first one here that can play it, so the top of this list is the default.
+        <br>
+        A provider with a date is one whose address can lapse — ours because the
+        registration runs out, vidsrc's because they rotate them. The rest never expire.
+      </p>
+    </div>
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newSourceModal">
       <i class="fa-solid fa-plus"></i> New source
     </button>
   </div>
 
-  <table class="table align-middle">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Slug</th>
-        <th>Kind</th>
-        <th>Templates</th>
-        <th>Autoplay</th>
-        <th>Active</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @sources.each do |source| %>
-        <tr>
-          <td><%= source.name %></td>
-          <td><code><%= source.slug %></code></td>
-          <td><%= source.kind %></td>
-          <td><small class="text-muted"><%= source.templates.keys.join(', ') %></small></td>
-          <td><%= source.autoplay_param.presence || '—' %></td>
-          <td><%= source.active? ? '✅' : '—' %></td>
-          <td class="text-end">
-            <button type="button" class="btn btn-sm btn-outline-secondary"
-                    data-bs-toggle="modal" data-bs-target="#manageSourcesModal"
-                    onclick="document.getElementById('manageSourceSelect').value='<%= source.id %>'; manageSourcesShow('<%= source.id %>')">
-              <i class="fa-solid fa-pen"></i> Edit
-            </button>
-          </td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
+  <div class="source-cards"
+       data-controller="source-sort"
+       data-source-sort-url-value="<%= reorder_sources_path %>">
+    <% @sources.each_with_index do |source, index| %>
+      <%# The stripe and border say the same thing twice on purpose: colour alone would
+          leave the state invisible to anyone who cannot separate orange from red. %>
+      <article class="source-card source-card--<%= source.expiry_state || 'none' %>
+                      <%= 'source-card--off' unless source.active? %>"
+               data-source-id="<%= source.id %>">
+        <div class="source-card__head">
+          <div class="source-card__identity">
+            <%# The grip is the drag handle, so the buttons below stay clickable. %>
+            <span class="source-card__grip" title="Drag to reorder">
+              <i class="fa-solid fa-grip-vertical"></i>
+            </span>
+            <div>
+              <span class="source-card__rank">Source <%= index + 1 %></span>
+              <h2 class="source-card__name">
+                <%= source.name %>
+                <% unless source.active? %><span class="source-card__badge">off</span><% end %>
+              </h2>
+              <code class="source-card__slug"><%= source.slug %></code>
+              <span class="source-card__kind"><%= source.kind %></span>
+            </div>
+          </div>
+
+          <div class="source-card__expiry">
+            <% case source.expiry_state %>
+            <% when :expired %>
+              <strong class="source-card__state source-card__state--expired">Expired</strong>
+              <span><%= source.valid_until.to_fs(:long) %> —
+                <%= pluralize(source.days_until_expiry.abs, 'day') %> ago</span>
+            <% when :soon %>
+              <strong class="source-card__state source-card__state--soon">Expiring</strong>
+              <span><%= source.valid_until.to_fs(:long) %> —
+                <%= source.days_until_expiry.zero? ? 'today' : "in #{pluralize(source.days_until_expiry, 'day')}" %></span>
+            <% when :fine %>
+              <strong class="source-card__state">Valid</strong>
+              <span>until <%= source.valid_until.to_fs(:long) %></span>
+            <% else %>
+              <strong class="source-card__state">No expiry</strong>
+              <span>cannot lapse</span>
+            <% end %>
+          </div>
+        </div>
+
+        <p class="source-card__templates">
+          <% if source.templates.any? %>
+            <%= source.templates.keys.sort.join(' · ') %>
+          <% else %>
+            <em>no templates</em>
+          <% end %>
+          <% if source.autoplay_param.present? %>
+            <span class="source-card__autoplay">autoplay: <%= source.autoplay_param %></span>
+          <% end %>
+        </p>
+
+        <div class="source-card__actions">
+          <button type="button" class="btn btn-sm btn-outline-secondary"
+                  data-bs-toggle="modal" data-bs-target="#manageSourcesModal"
+                  onclick="document.getElementById('manageSourceSelect').value='<%= source.id %>'; manageSourcesShow('<%= source.id %>')">
+            <i class="fa-solid fa-pen"></i> Templates
+          </button>
+
+          <%# New tab: the point is to compare it against the app still open behind it. %>
+          <%= link_to test_source_path(source), target: '_blank', rel: 'noopener',
+                      class: 'btn btn-sm btn-outline-secondary' do %>
+            <i class="fa-solid fa-flask"></i> Test
+          <% end %>
+
+          <%= button_to renew_source_path(source), method: :patch,
+                        class: 'btn btn-sm btn-outline-success' do %>
+            <i class="fa-solid fa-rotate-right"></i>
+            <%= source.perishable? ? 'Renew a year' : 'Give it a year' %>
+          <% end %>
+
+          <% if source.active? %>
+            <%= button_to deactivate_source_path(source), method: :patch,
+                          class: 'btn btn-sm btn-outline-warning',
+                          form: { data: { turbo_confirm: "Switch #{source.name} off? " \
+                                                         'Channels using it fall back to the next active provider.' } } do %>
+              <i class="fa-solid fa-power-off"></i> Deactivate
+            <% end %>
+          <% end %>
+        </div>
+      </article>
+    <% end %>
+  </div>
 </div>
 
 <%= render 'sources/new_modal' %>
