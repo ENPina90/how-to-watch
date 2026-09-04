@@ -61,6 +61,28 @@ Both are keyed by hand — a slug or host that is playable but missing from them
 healthy and behaves broken. **Change all three together.** `framerelay`, `vidsrc2` and
 `vidsrc-ir` were added to both on 2026-09-04.
 
+### 1b. Expiry dates
+
+Every provider whose address can lapse carries a `valid_until`, and admins get a warning
+30 days out and again once it passes — the notifications page, and orange/red on
+`/sources`. Null means the address cannot lapse (Drive, YouTube, the Archive), and those
+never warn, which is what keeps the warnings that do appear worth reading.
+
+| Provider | Window | Why |
+|---|---|---|
+| `framerelay` | 1 year | the real registration date; renew it at Cloudflare *and* here |
+| `vidsrc2`, `vidsrc-ir` | 6 months | the provider's current recommendation, and their recommendations do not last a year |
+| `vidsrc-embed.ru`, `vidsrcme` | 2 months | already on the at-risk list, working by inertia |
+
+**Renewing here does not renew anything out there.** The date is a reminder to go and
+check; `Renew a year` on `/sources` only moves the reminder. For framerelay that means
+confirming the registration actually auto-renewed at Cloudflare — in its own account, so
+it is not on the same billing as the app's.
+
+`Test` on `/sources` plays a known film through one provider in a new tab, which answers
+"is this domain still alive" without hunting for an entry that uses it. It sends
+`autoplay=1`, so on framerelay it also demonstrates §4 still holds.
+
 ---
 
 ## 2. Endpoints
