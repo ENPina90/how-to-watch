@@ -7,6 +7,10 @@
 # (activating/deactivating a provider, tweaking a template) survive deploys. To change
 # an existing provider, edit it in the UI; only brand-new slugs here get created.
 #
+# valid_until: when the provider's address should be checked again -- ours because the
+# registration lapses, vidsrc's because they rotate. Null for providers that cannot lapse.
+# Relative to the seed run, since a fresh database is being set up today whenever today is.
+#
 # Placeholders: %{imdb} %{series_imdb} %{season} %{episode} %{absolute_episode} %{source_key}
 # For series/anime the resolver is passed the current subentry; standalone episode
 # entries resolve season/episode from the entry itself.
@@ -22,6 +26,7 @@ SOURCES = [
     # advance is known to lose track of which episode it is on.
     slug: "framerelay", name: "Player", kind: "imdb",
     autoplay_param: "autoplay", position: 1, active: true,
+    valid_until: Date.current + 365,
     templates: {
       "movie"   => "https://framerelay.dev/embed/movie?imdb=%{imdb}&ds_lang=en",
       "series"  => "https://framerelay.dev/embed/tv?imdb=%{series_imdb}&season=%{season}&episode=%{episode}&ds_lang=en",
@@ -35,6 +40,7 @@ SOURCES = [
     # Both are default domains, so neither can skip the play button.
     slug: "vidsrc2", name: "VidSrc 2", kind: "imdb",
     autoplay_param: "autoplay", position: 2, active: true,
+    valid_until: Date.current + 180,
     templates: {
       "movie"   => "https://vidsrc2.ru/embed/movie?imdb=%{imdb}&ds_lang=en",
       "series"  => "https://vidsrc2.ru/embed/tv?imdb=%{series_imdb}&season=%{season}&episode=%{episode}&ds_lang=en",
@@ -48,6 +54,7 @@ SOURCES = [
     # for when one of the two domains goes down.
     slug: "vidsrc-ir", name: "VidSrc IR", kind: "imdb",
     autoplay_param: "autoplay", position: 3, active: true,
+    valid_until: Date.current + 180,
     templates: {
       "movie"   => "https://vidsrc.ir/embed/movie?imdb=%{imdb}&ds_lang=en",
       "series"  => "https://vidsrc.ir/embed/tv?imdb=%{series_imdb}&season=%{season}&episode=%{episode}&ds_lang=en",
@@ -61,6 +68,7 @@ SOURCES = [
     # off, but nothing should prefer it.
     slug: "vidsrc-embed.ru", name: "vidsrc.ru", kind: "imdb",
     autoplay_param: "autoplay", position: 4, active: true,
+    valid_until: Date.current + 60,
     templates: {
       "movie"   => "https://vidsrc-embed.ru/embed/movie?imdb=%{imdb}&ds_lang=en",
       "series"  => "https://vidsrc-embed.ru/embed/tv?imdb=%{series_imdb}&season=%{season}&episode=%{episode}&ds_lang=en",
@@ -73,6 +81,7 @@ SOURCES = [
     # Demoted 2026-09-04: resolves to vidsrcme.ru, which is on the same at-risk list.
     slug: "vidsrcme", name: "VidSrc.me", kind: "imdb",
     autoplay_param: "autoplay", position: 5, active: true,
+    valid_until: Date.current + 60,
     templates: {
       "movie"   => "https://v2.vidsrc.me/embed/%{imdb}",
       "series"  => "https://v2.vidsrc.me/embed/%{series_imdb}/%{season}-%{episode}",
