@@ -8,6 +8,9 @@ RSpec.describe LetterboxdSyncJob do
   before do
     stub_request(:get, %r{letterboxd\.com/.+/rss/}).to_return(status: 200, body: body)
     stub_request(:get, %r{api\.themoviedb\.org}).to_return(status: 200, body: { imdb_id: 'tt1' }.to_json)
+    # Details are LetterboxdList's business; here it only matters that the sync survives
+    # OMDb having nothing for the film.
+    stub_request(:get, %r{omdbapi\.com}).to_return(status: 200, body: { Response: 'False' }.to_json)
   end
 
   it 'fills the channel for a linked member' do
