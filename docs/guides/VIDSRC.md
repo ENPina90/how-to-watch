@@ -333,6 +333,35 @@ the player has spoken.
 
 ---
 
+## 6a. How long an embed takes to start
+
+Measured 2026-09-05 against `framerelay.dev`, `tt0089003`, loaded top-level so the chain
+could be instrumented. Milliseconds from navigation start, warm DNS and warm HTTP cache:
+
+| | ms | what happens |
+|---|---|---|
+| wrapper TTFB | 55–127 | our front door answers |
+| `vs_src.php` returns | ~215 | the wrapper's own XHR, which yields the shell URL |
+| shell document done | ~360 | first cross-origin hop, on `cloudorchestranova.com` |
+| first `PLAYER_EVENT` | ~720 | the player exists and is talking (§6) |
+| picture actually moving | **1300–1600** | stream resolved, first segments in, decoding |
+
+So **about 1.5s warm**, and more cold: the chain touches six origins — `framerelay.dev`,
+`cloudorchestranova.com`, `data.vidsrcme.ru`, `cdn.jsdelivr.net` (hls.js), `kudzukernel.site`
+(the stream) and `vidapi.cloud` — and a cold name lookup measured ~145ms each. The hops are
+strictly sequential: each URL is only discoverable once the document before it has loaded
+and run, which is why §9's preconnect exists and why it can only help the hops whose origin
+is known in advance.
+
+`data.vidsrcme.ru/api.php` is the slowest single call at 136–211ms TTFB, and it is on the
+critical path twice (once for metadata, once for `stream_urls`).
+
+Worth knowing before optimising: roughly ten requests per embed, and several are neither
+ours nor the player's — `histats.com`, plus a rotating ad/tracking host. Anything that
+loads N embeds at once multiplies those too.
+
+---
+
 ## 7. Known issues and caveats
 
 **Autonext loses track of position.** Reported 2025-05-07: as `autonext` advances, the
@@ -346,6 +375,14 @@ regardless of what their UI shows.
 the feature is off pending a new dashboard. So a custom domain's 50% reduction is currently
 the only ad lever that exists. The same notice warns that anyone selling ad-free access or
 "special accounts" is a scammer — they do not sell it.
+
+**The embed wipes itself when DevTools is open.** It loads `disable-devtool.js` on both
+the wrapper and the player, and on detecting an inspector it navigates the document to
+`about:blank` — so anyone debugging playback sees an empty frame and will reasonably think
+it is our bug. It is not. Measuring or debugging the embed means neutralising that script
+first: it installs itself on `window.DisableDevtool`, so defining that property as a
+non-writable no-op before the page's own scripts run leaves playback working and the
+inspector attached.
 
 **Adblockers frequently block the player entirely.** Repeated complaints through 2026-08;
 the admin's response was to ask which blocker rather than to fix it. Anyone testing playback
