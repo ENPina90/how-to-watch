@@ -376,6 +376,16 @@ the feature is off pending a new dashboard. So a custom domain's 50% reduction i
 the only ad lever that exists. The same notice warns that anyone selling ad-free access or
 "special accounts" is a scammer — they do not sell it.
 
+**Fullscreen is ours, not theirs — and it has to be taken away up front.** The player
+offers fullscreen by button, by `f` and by double-click, and any of them puts *their*
+frame full-screen, which hides everything this app draws around it. Dropping
+`allowfullscreen` from the iframe kills all three at once, because what is withheld is the
+capability rather than any one way of asking; measured 2026-09-05, playback is unaffected
+and the dead button does nothing visible. It has to be withheld rather than corrected
+afterwards: once the frame holds fullscreen, moving it to an ancestor is refused
+("Permissions check failed") without a fresh gesture in *our* document, which a click
+inside theirs never gives us. See `cinema_fullscreen_controller.js`.
+
 **The embed wipes itself when DevTools is open.** It loads `disable-devtool.js` on both
 the wrapper and the player, and on detecting an inspector it navigates the document to
 `about:blank` — so anyone debugging playback sees an empty frame and will reasonably think
