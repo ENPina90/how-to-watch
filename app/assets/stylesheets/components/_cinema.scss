@@ -381,12 +381,21 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
    only: if their layout shifts, ours is merely off-centre rather than broken, which is
    why this is worth doing at all and would not have been as a way of catching clicks.
   
-   The two offsets are the whole of the alignment, so they are named. They place the
-   button's centre relative to the frame's bottom-right corner, which is where the
-   player's control bar anchors its own row. */
+   The offsets place our centre on theirs, and they are not guesses -- they are read off
+   the player's own stylesheet (iframe_player/assets/player.css, read 2026-09-05):
+
+     .jw-controls { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px 6px }
+     .jw-bar      { height: var(--bar-h), which is 46px; align-items: center }
+     .jw-btn      { width: 40px; height: 40px }
+
+   so the row's centre sits 6 + 46/2 = 29px above the bottom, and the rightmost button's
+   centre 10 + 40/2 = 30px in from the right. Their mobile media query shrinks the buttons
+   to 36px, moving that to 28px -- inside the margin our own 44px leaves. If they restyle
+   the bar these two numbers are the whole of the fix. */
 .cinema__screen {
-  --fullscreen-button-right: 35px;
-  --fullscreen-button-bottom: 45px;
+  --fullscreen-button-right: 30px;
+  --fullscreen-button-bottom: 29px;
+  /* Comfortably over their 40px button, so a few pixels of drift still covers it. */
   --fullscreen-button-size: 44px;
 }
 
