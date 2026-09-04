@@ -6,15 +6,36 @@ RSpec.describe LetterboxdList do
   let(:user) { create(:user, username: 'testmember', letterboxd_enabled: true) }
   let(:body) { Rails.root.join('spec/fixtures/letterboxd/diary.xml').read }
 
+  # What OMDb answers for a film the sync has just resolved an IMDb id for. Only the
+  # fields the import takes from it are worth spelling out.
+  def omdb_record(title:, runtime: '116 min', plot: 'A plot.')
+    {
+      Title: title, Type: 'movie', Poster: 'https://img.omdbapi.com/poster.jpg',
+      Runtime: runtime, Plot: plot, Genre: 'Crime, Thriller', Director: 'A Director',
+      Writer: 'A Writer', Actors: 'Somebody, Somebody Else', imdbRating: '7.4',
+      Language: 'English'
+    }.to_json
+  end
+
   before do
     stub_request(:get, 'https://letterboxd.com/testmember/rss/').to_return(status: 200, body: body)
     # The feed carries TMDB ids only; the sync resolves IMDb ids so entries are playable.
-    stub_request(:get, %r{api\.themoviedb\.org/3/movie/1171145})
+    stub_request(:get, %r{api\.themoviedb\.org/3/movie/1171145\?})
       .to_return(status: 200, body: { imdb_id: 'tt1111111' }.to_json)
-    stub_request(:get, %r{api\.themoviedb\.org/3/movie/12345})
+    stub_request(:get, %r{api\.themoviedb\.org/3/movie/12345\?})
       .to_return(status: 200, body: { imdb_id: 'tt2222222' }.to_json)
-    stub_request(:get, %r{api\.themoviedb\.org/3/movie/1124})
+    stub_request(:get, %r{api\.themoviedb\.org/3/movie/1124\?})
       .to_return(status: 200, body: { imdb_id: 'tt3333333' }.to_json)
+    # The trailer, fetched for parity with an entry added by hand.
+    stub_request(:get, %r{api\.themoviedb\.org/3/movie/\d+/videos})
+      .to_return(status: 200, body: { results: [{ type: 'Trailer', site: 'YouTube', key: 'abc123' }] }.to_json)
+    # The details the feed does not carry, which OMDb holds against the IMDb id.
+    stub_request(:get, %r{omdbapi\.com/.*[?&]i=tt1111111})
+      .to_return(status: 200, body: omdb_record(title: 'Crime 101'))
+    stub_request(:get, %r{omdbapi\.com/.*[?&]i=tt2222222})
+      .to_return(status: 200, body: omdb_record(title: 'The Odyssey'))
+    stub_request(:get, %r{omdbapi\.com/.*[?&]i=tt3333333})
+      .to_return(status: 200, body: omdb_record(title: 'The Prestige', runtime: '130 min', plot: 'Two magicians.'))
   end
 
   describe '#sync!' do
@@ -50,6 +71,72 @@ RSpec.describe LetterboxdList do
       described_class.new(user).sync!
 
       expect(user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '1171145').imdb).to eq('tt1111111')
+    end
+
+    it 'fills in the details the feed does not carry, so an import reads like any entry' do
+      described_class.new(user).sync!
+
+      expect(user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '1171145')).to have_attributes(
+        length: 116,
+        plot: 'A plot.',
+        genre: 'Crime, Thriller',
+        director: 'A Director',
+        writer: 'A Writer',
+        actors: 'Somebody, Somebody Else',
+        rating: 7.4,
+        language: 'English',
+        trailer: 'https://www.youtube.com/watch?v=abc123'
+      )
+    end
+
+    # The diary is the record of what was watched; OMDb is only asked for the parts it
+    # does not carry.
+    it 'keeps the diary title, year, poster and score over OMDb' do
+      described_class.new(user).sync!
+
+      expect(user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '1124')).to have_attributes(
+        name: 'The Prestige', year: 2006, pic: 'https://a.ltrbxd.com/poster/the-prestige.jpg',
+        letterboxd_score: 3.5
+      )
+    end
+
+    it 'still imports the film when OMDb has nothing to say about it' do
+      stub_request(:get, %r{omdbapi\.com/.*[?&]i=tt1111111})
+        .to_return(status: 200, body: { Response: 'False', Error: 'Movie not found!' }.to_json)
+
+      described_class.new(user).sync!
+
+      expect(user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '1171145'))
+        .to have_attributes(name: 'Crime 101', plot: nil)
+    end
+
+    it 'does not fail the sync when OMDb is down' do
+      stub_request(:get, %r{omdbapi\.com}).to_return(status: 500, body: '')
+
+      expect { described_class.new(user).sync! }.not_to raise_error
+      expect(user.lists.find_by(letterboxd: true).entries.count).to eq(3)
+    end
+
+    # Films imported before the sync fetched details are filled in by the weekly pass
+    # rather than a one-off backfill.
+    it 'fills in details on a film imported before the sync fetched any' do
+      described_class.new(user).sync!
+      entry = user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '1171145')
+      entry.update_columns(plot: nil, length: nil, director: nil)
+
+      described_class.new(user).sync!
+
+      expect(entry.reload).to have_attributes(plot: 'A plot.', length: 116, director: 'A Director')
+    end
+
+    it 'leaves details somebody edited in the app alone' do
+      described_class.new(user).sync!
+      entry = user.lists.find_by(letterboxd: true).entries.find_by(tmdb: '1171145')
+      entry.update_columns(plot: nil, director: 'The right director')
+
+      described_class.new(user).sync!
+
+      expect(entry.reload.director).to eq('The right director')
     end
 
     it 'marks each film watched on the date the diary gives, not the date of the sync' do
