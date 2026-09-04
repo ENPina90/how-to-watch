@@ -65,10 +65,21 @@
           <li class="nav-item dropdown" style="color:black;">
             <a href="#" class="nav-link" id="navbarDropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
               <%= current_user.display_name %>
+              <%# A dot rather than a number: the count is one click away, and the menu is
+                  the only thing that needs to be noticed from out here. %>
+              <% if unread_notification_count.positive? %>
+                <span class="nav-dot" title="You have notifications"></span>
+              <% end %>
             </a>
             <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
               <%= link_to profile_path, class: "dropdown-item" do %>
                 <i class="fa-solid fa-user me-2"></i>Profile
+              <% end %>
+              <%= link_to notifications_path, class: "dropdown-item" do %>
+                <i class="fa-solid fa-bell me-2"></i>Notifications
+                <% if (count = unread_notification_count).positive? %>
+                  <span class="nav-badge"><%= count %></span>
+                <% end %>
               <% end %>
               <div class="dropdown-divider"></div>
               <%= link_to toggle_dark_mode_path, method: :patch, class: "dropdown-item", data: { turbo_method: :patch } do %>
@@ -81,6 +92,9 @@
               <% if true_user&.admin? && !impersonating? %>
                 <%= link_to admin_dashboard_path, class: "dropdown-item" do %>
                   <i class="fa-solid fa-gauge-high me-2"></i>Admin dashboard
+                <% end %>
+                <%= link_to sources_path, class: "dropdown-item" do %>
+                  <i class="fa-solid fa-server me-2"></i>Source providers
                 <% end %>
               <% end %>
               <%= link_to "Log out", destroy_user_session_path, data: {turbo_method: :delete}, class: "dropdown-item" %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_31_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_04_064648) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -146,6 +146,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_000003) do
     t.index ["user_id"], name: "index_lists_on_user_id"
   end
 
+  create_table "notifications", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "data", default: {}, null: false
+    t.string "dedupe_key", null: false
+    t.datetime "dismissed_at"
+    t.string "kind", null: false
+    t.bigint "subject_id"
+    t.string "subject_type"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["subject_type", "subject_id"], name: "index_notifications_on_subject"
+    t.index ["user_id", "dedupe_key"], name: "index_notifications_on_user_id_and_dedupe_key", unique: true
+    t.index ["user_id", "dismissed_at", "created_at"], name: "index_notifications_on_user_id_and_dismissed_at_and_created_at"
+    t.index ["user_id"], name: "index_notifications_on_user_id"
+  end
+
   create_table "sources", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.string "autoplay_param"
@@ -156,7 +172,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_000003) do
     t.string "slug", null: false
     t.jsonb "templates", default: {}, null: false
     t.datetime "updated_at", null: false
+    t.date "valid_until"
     t.index ["slug"], name: "index_sources_on_slug", unique: true
+    t.index ["valid_until"], name: "index_sources_on_valid_until", where: "(valid_until IS NOT NULL)"
   end
 
   create_table "subentries", force: :cascade do |t|
@@ -334,6 +352,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_000003) do
   add_foreign_key "lists", "lists", column: "parent_list_id"
   add_foreign_key "lists", "sources", column: "provider_id"
   add_foreign_key "lists", "users"
+  add_foreign_key "notifications", "users"
   add_foreign_key "subentries", "entries"
   add_foreign_key "subscriptions", "lists"
   add_foreign_key "subscriptions", "users"

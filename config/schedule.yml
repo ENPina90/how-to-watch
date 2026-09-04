@@ -7,6 +7,12 @@ letterboxd_weekly_refresh:
   queue: default
   description: "Re-read every linked member's Letterboxd diary and add what is new."
 
+source_expiry_scan:
+  cron: "30 5 * * *"   # daily at 05:30 UTC
+  class: "SourceExpiryScanJob"
+  queue: default
+  description: "Warn admins about provider domains that are close to lapsing, or have."
+
 close_abandoned_watch_parties:
   cron: "*/15 * * * *"   # every 15 minutes
   class: "CloseAbandonedWatchPartiesJob"
