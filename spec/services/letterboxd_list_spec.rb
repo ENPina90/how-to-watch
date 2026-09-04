@@ -172,6 +172,39 @@ RSpec.describe LetterboxdList do
       expect(entry.reload.letterboxd_score).to eq(3.5)
     end
 
+    # Somebody who keeps a watchlist alongside the diary should not have to tick
+    # everything off twice.
+    it 'ticks off the same film sitting in the member\'s other channels' do
+      other = create(:list, user: user)
+      elsewhere = create(:entry, list: other, media: 'movie', imdb: 'tt1111111', name: 'Crime 101 elsewhere')
+
+      described_class.new(user).sync!
+
+      user_entry = user.user_entry_for(elsewhere)
+      expect(user_entry).to be_completed
+      expect(user_entry.completed_at.to_date).to eq(Date.new(2026, 8, 28))
+    end
+
+    # A diary entry is a film. A series carrying the same IMDb id is its own record, not
+    # the thing that was watched.
+    it 'leaves a matching entry that is not a movie alone' do
+      other = create(:list, user: user)
+      series = create(:entry, list: other, media: 'series', imdb: 'tt1111111', name: 'Crime 101 the series')
+
+      described_class.new(user).sync!
+
+      expect(user.user_entry_for(series)).to be_nil
+    end
+
+    it 'leaves a matching entry in somebody else\'s channel alone' do
+      stranger_list = create(:list)
+      theirs = create(:entry, list: stranger_list, media: 'movie', imdb: 'tt1111111', name: 'Crime 101 theirs')
+
+      described_class.new(user).sync!
+
+      expect(user.user_entry_for(theirs)).to be_nil
+    end
+
     it 'does nothing for a user who has not opted in' do
       user.update_column(:letterboxd_enabled, false)
 
