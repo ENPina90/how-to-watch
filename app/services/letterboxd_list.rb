@@ -77,7 +77,7 @@ class LetterboxdList
       end
 
       mark_watched(entry, watch)
-      mark_matching_entries_watched(channel, entry, watch)
+      mark_matching_entries_watched(entry, watch)
     end
 
     Result.new(created: created, updated: updated, total: watches.size)
@@ -193,22 +193,23 @@ class LetterboxdList
     nil
   end
 
-  # A film logged on Letterboxd was watched wherever else it sits in the member's own
-  # channels, so the diary ticks it off there too -- otherwise somebody who keeps a
-  # watchlist alongside the diary has to mark everything twice.
+  # A film logged on Letterboxd was watched wherever else it appears, so the diary ticks
+  # it off across the whole app rather than only in the channel it was imported into.
+  # Completion is per-user, so this writes nobody else's history: it means a member who
+  # links their diary finds every channel they open already marked up with what they have
+  # seen, instead of re-ticking films they logged years ago.
+  #
+  # The UserEntry rows this needs mostly do not exist yet -- a member has no row against
+  # a channel they have never opened -- so user_entry_for! creates them.
   #
   # Matched on IMDb id: it is the one id every entry carries however it was added, while
   # `tmdb` is only filled in when the entry came from a search that returned one. Movies
   # only -- an episode or a series sharing the id would be the series' own record, which
   # is not the thing that was watched.
-  #
-  # Only channels the member owns. Ticking an entry in somebody else's channel would be
-  # harmless -- completion is per-user -- but it is not what linking a diary asked for.
-  def mark_matching_entries_watched(channel, entry, watch)
+  def mark_matching_entries_watched(entry, watch)
     return if entry.imdb.blank?
 
-    elsewhere = user.lists.where.not(id: channel.id)
-    matches = Entry.where(list: elsewhere, media: 'movie', imdb: entry.imdb)
+    matches = Entry.where(media: 'movie', imdb: entry.imdb).where.not(id: entry.id)
     matches.find_each { |match| mark_watched(match, watch) }
   end
 
