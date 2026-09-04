@@ -32,8 +32,11 @@ class LetterboxdFeed
     'tmdb' => 'https://themoviedb.org'
   }.freeze
 
-  # Diary entries carry this guid prefix; lists and stories share the feed and do not.
-  WATCH_GUID_PREFIX = 'letterboxd-watch-'
+  # Diary entries carry one of these guid prefixes: `review` when the member wrote
+  # something about the film and `watch` when they only logged it. A member who reviews
+  # everything they log has a feed with no `watch` guid in it at all. Lists and stories
+  # share the feed and carry neither prefix.
+  DIARY_GUID_PREFIXES = ['letterboxd-watch-', 'letterboxd-review-'].freeze
 
   # Letterboxd closes every diary description with this, review or no review.
   WATCHED_ON_SENTENCE = /\AWatched on .*\.\z/
@@ -111,7 +114,7 @@ class LetterboxdFeed
   # with no TMDB id -- there is nothing to match such a film against.
   def build_watch(item)
     guid = text(item, 'guid')
-    return unless guid&.start_with?(WATCH_GUID_PREFIX)
+    return unless guid&.start_with?(*DIARY_GUID_PREFIXES)
 
     tmdb_id = text(item, 'tmdb:movieId')
     return if tmdb_id.blank?

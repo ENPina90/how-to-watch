@@ -230,4 +230,53 @@
       writes is closed to them, so nothing here can hand out an account's abilities.
     </p>
   </section>
+
+  <section class="admin-section">
+    <h2 class="admin-section__title">What channels play through</h2>
+
+    <div class="admin-stats">
+      <% @channel_breakdown.each do |source, count| %>
+        <div class="admin-stat">
+          <span class="admin-stat__value"><%= number_with_delimiter(count) %></span>
+          <span class="admin-stat__label"><%= source&.name || 'Nothing set' %></span>
+          <span class="admin-stat__note">
+            <% if source.nil? %>
+              falls back to whichever sorts first
+            <% elsif !source.active? %>
+              deactivated — these fall back
+            <% else %>
+              channel<%= 's' unless count == 1 %>
+            <% end %>
+          </span>
+        </div>
+      <% end %>
+    </div>
+
+    <%= form_with url: reset_source_admin_dashboard_path, method: :post, class: "admin-reset" do |f| %>
+      <label class="admin-reset__label" for="source_id">Move every channel to</label>
+      <%# Deliberately starts on nothing. Several of these providers are called some
+          variation of "VidSrc", so a pre-selected first option is a wrong bulk move one
+          careless click away; the action rejects a blank choice. %>
+      <%= f.select :source_id,
+                   options_for_select(@imdb_source_options),
+                   { include_blank: 'Choose a provider…' },
+                   class: "admin-reset__select" %>
+      <%= f.submit "Reset all channels",
+                   class: "admin-save",
+                   data: { turbo_confirm: "Point every channel at this provider? " \
+                                          "Entries pinned to a different IMDb provider lose that pin. " \
+                                          "Anything on Drive, MEGA, YouTube or a custom URL is untouched." } %>
+    <% end %>
+
+    <p class="admin-note">
+      For when a provider domain dies and every channel needs moving at once. Only providers
+      that play by IMDb id are touched — those are interchangeable, because they all address
+      a film by the same id. A channel or entry on Drive, MEGA, YouTube, the Archive or a
+      custom URL keeps what it has: its key means nothing to any other provider, so moving it
+      would produce a dead link rather than a different player.
+      <br>
+      Entries that override their channel are cleared rather than repointed, so they follow
+      their channel from then on.
+    </p>
+  </section>
 </div>
