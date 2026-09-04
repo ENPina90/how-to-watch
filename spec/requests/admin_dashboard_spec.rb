@@ -154,4 +154,74 @@ RSpec.describe 'The admin dashboard', type: :request do
       expect(response).to have_http_status(:ok)
     end
   end
+
+  describe 'resetting which provider channels play through' do
+    let!(:target) do
+      Source.create!(name: 'Player', slug: 'framerelay', kind: 'imdb', active: true, position: 1,
+                     templates: { 'movie' => 'https://framerelay.dev/embed/movie?imdb=%{imdb}' })
+    end
+    let!(:drive) do
+      Source.create!(name: 'Google Drive', slug: 'google-drive', kind: 'direct', active: true,
+                     position: 9, templates: { 'default' => 'https://drive.google.com/file/d/%{source_key}/preview' })
+    end
+
+    it 'moves the channels and says what it did' do
+      sign_in admin
+      channel = create(:list, user: admin, provider: nil)
+
+      post reset_source_admin_dashboard_path, params: { source_id: target.id }
+
+      expect(response).to redirect_to(admin_dashboard_path)
+      expect(channel.reload.provider).to eq(target)
+      expect(flash[:notice]).to match(/plays? through Player/)
+    end
+
+    # The templates of a direct provider take a source_key, which no channel has.
+    it 'refuses a provider that does not play by imdb id' do
+      sign_in admin
+      channel = create(:list, user: admin, provider: nil)
+
+      post reset_source_admin_dashboard_path, params: { source_id: drive.id }
+
+      expect(channel.reload.provider).to be_nil
+      expect(flash[:alert]).to match(/IMDb id/)
+    end
+
+    # The select starts blank on purpose, so submitting without choosing must not guess.
+    it 'refuses a blank choice rather than picking one' do
+      sign_in admin
+      channel = create(:list, user: admin, provider: nil)
+
+      post reset_source_admin_dashboard_path, params: { source_id: '' }
+
+      expect(channel.reload.provider).to be_nil
+      expect(flash[:alert]).to be_present
+    end
+
+    it 'refuses a provider that has been deactivated' do
+      sign_in admin
+      target.update!(active: false)
+
+      post reset_source_admin_dashboard_path, params: { source_id: target.id }
+
+      expect(flash[:alert]).to be_present
+    end
+
+    # It rewrites rows across two tables, so it is gated exactly like the rest of /admin.
+    it 'turns away a user who is not an admin' do
+      sign_in create(:user)
+      channel = create(:list, user: admin, provider: nil)
+
+      post reset_source_admin_dashboard_path, params: { source_id: target.id }
+
+      expect(response).to redirect_to(root_path)
+      expect(channel.reload.provider).to be_nil
+    end
+
+    it 'turns away a signed-out visitor' do
+      post reset_source_admin_dashboard_path, params: { source_id: target.id }
+
+      expect(response).to redirect_to(new_user_session_path)
+    end
+  end
 end
