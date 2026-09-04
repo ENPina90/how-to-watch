@@ -87,4 +87,56 @@ RSpec.describe 'Where the player got to', type: :model do
     end
   end
 
+  describe '#resume_position' do
+    it 'is nil for an entry nobody has played' do
+      expect(user_entry.resume_position).to be_nil
+    end
+
+    it 'is where the player stopped' do
+      user_entry.record_progress!(742.5)
+
+      expect(user_entry.resume_position).to eq(742.5)
+    end
+
+    # A film watched to the end reports back a position in its own credits. Resuming there
+    # means pressing play and watching it finish.
+    it 'starts a finished film again rather than resuming its credits' do
+      user_entry.record_progress!(5_900)
+
+      expect(user_entry.resume_position).to be_nil
+    end
+
+    it 'resumes a rewatch stopped part way through' do
+      user_entry.record_progress!(5_900)
+      user_entry.record_progress!(400)
+
+      expect(user_entry.resume_position).to eq(400)
+    end
+  end
+
+  # UserEntry holds one position per entry, not one per episode, so a position saved
+  # against episode 4 would drop the viewer forty minutes into episode 5.
+  describe 'a series moving to the next episode' do
+    let(:series) { create(:entry, list: list, media: 'series', name: 'A Show', length: 45) }
+    let!(:first) { Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot') }
+    let!(:second) { Subentry.create!(entry: series, season: '1', episode: '2', name: 'Second') }
+
+    it 'starts the new episode from the beginning' do
+      user.user_entry_for!(series).update!(player_progress: 1_200)
+      position = UserEntryPosition.find_or_create_for(user, series)
+
+      position.update_to_subentry!(second)
+
+      expect(user.user_entry_for(series).reload.player_progress).to be_nil
+    end
+
+    it 'leaves the position alone when the episode has not changed' do
+      user.user_entry_for!(series).update!(player_progress: 1_200)
+      position = UserEntryPosition.find_or_create_for(user, series)
+
+      position.update_to_subentry!(position.current_subentry)
+
+      expect(user.user_entry_for(series).reload.player_progress).to eq(1_200)
+    end
+  end
 end

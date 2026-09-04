@@ -265,7 +265,8 @@ class EntriesController < ApplicationController
     end
 
     # Computed embed URL, built on-demand from the resolved provider's template.
-    @embed_url = @entry.embed_url(subentry: @current_subentry, autoplay: @channel.auto_play?)
+    @embed_url = @entry.embed_url(subentry: @current_subentry, autoplay: @channel.auto_play?,
+                                  start_at: resume_position)
     if @embed_url.blank?
       flash[:alert] = "No video source available for this entry"
       redirect_to list_path(@entry.list) and return
@@ -610,6 +611,14 @@ class EntriesController < ApplicationController
     # `?channel=` says which channel the click came from. It is honoured only if that
     # channel really holds this entry -- directly or through the channels inside it --
     # so a hand-edited id cannot make one channel wear another's contents.
+    # Where the player should pick up on this visit, for the member looking at it. A read:
+    # rendering the page must not create a tracking row (see reads_do_not_write_spec), so
+    # this goes through the non-writing lookup and answers nil for somebody who has never
+    # played this entry.
+    def resume_position
+      current_user&.user_entry_for(@entry)&.resume_position
+    end
+
     def watching_channel
       asked = List.find_by(id: params[:channel])
       # `?channel=` names the channel being watched *from*, and the page reads its name,

@@ -7,6 +7,20 @@ RSpec.describe 'Player progress', type: :request do
   let(:list) { create(:list, user: user) }
   let(:entry) { create(:entry, list: list, media: 'movie', imdb: 'tt0111161', length: 100) }
 
+  # The slug is what maps a provider to a player adapter (Source::SYNC_ADAPTERS), so a
+  # provider that resumes has to be one of the real vidsrc slugs.
+  def vidsrc_provider
+    Source.create!(name: 'Vidsrc2', slug: 'vidsrc2', kind: 'imdb', active: true, position: 1,
+                   autoplay_param: 'autoplay',
+                   templates: { 'movie' => 'https://vidsrc2.ru/embed/movie?imdb=%{imdb}' })
+  end
+
+  # Drive and the rest hand the page no player to listen to, so nothing about them changes.
+  def direct_provider
+    Source.create!(name: 'Drive', slug: 'google-drive', kind: 'direct', active: true, position: 2,
+                   templates: { 'default' => 'https://drive.test/%{source_key}' })
+  end
+
   describe 'recording where the player reached' do
     before { sign_in user }
 
@@ -57,4 +71,67 @@ RSpec.describe 'Player progress', type: :request do
     expect(UserEntry.count).to eq(0)
   end
 
+  describe 'resuming on the next visit' do
+    before { sign_in user }
+
+    it 'starts a vidsrc embed where the player stopped' do
+      entry.update!(provider: vidsrc_provider)
+      user.user_entry_for!(entry).record_progress!(742.5)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('startAt=743')
+    end
+
+    it 'starts from the beginning for a member who has never played it' do
+      entry.update!(provider: vidsrc_provider)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).not_to include('startAt')
+    end
+
+    # A film seen to the end resumes at its own credits otherwise.
+    it 'starts a finished film again' do
+      entry.update!(provider: vidsrc_provider)
+      user.user_entry_for!(entry).record_progress!(5_900)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).not_to include('startAt')
+    end
+
+    # `startAt` is vidsrc's parameter; Drive would carry it as an ignored query string.
+    it 'leaves a provider with no player to resume alone' do
+      entry.update!(provider: direct_provider, source_key: 'abc123')
+      user.user_entry_for!(entry).record_progress!(742.5)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).not_to include('startAt')
+    end
+
+    it 'wires the tracking controller to the frame' do
+      entry.update!(provider: vidsrc_provider)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('data-controller="player-progress"')
+      expect(response.body).to include(progress_entry_path(entry))
+    end
+
+    # Nowhere to record a position, so the controller is left off rather than posting into
+    # a sign-in redirect. The open access mode is what lets a stranger reach the player at
+    # all -- without it this would pass on the sign-in page and prove nothing.
+    it 'leaves the tracking controller off for a signed-out viewer' do
+      AppSetting.update_access_mode!('open')
+      entry.update!(provider: vidsrc_provider)
+      sign_out user
+
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('<iframe id="cinema"')
+      expect(response.body).not_to include('player-progress')
+    end
+  end
 end

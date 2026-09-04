@@ -5,6 +5,12 @@ class UserEntryPosition < ApplicationRecord
 
   validates :user_id, uniqueness: { scope: :entry_id }
 
+  # A player position recorded against one episode means nothing on the next one, so
+  # changing episode starts the new one from the beginning rather than dropping the viewer
+  # forty minutes into it. UserEntry holds one position per entry, not per episode, and
+  # this is the one place the episode actually changes.
+  after_update_commit :clear_player_progress, if: :saved_change_to_current_subentry_id?
+
   # Get or create position tracker for a user and entry
   def self.find_or_create_for(user, entry)
     find_or_create_by(user: user, entry: entry) do |position|
@@ -52,4 +58,12 @@ class UserEntryPosition < ApplicationRecord
     update!(current_subentry: subentry)
   end
 
+  private
+
+  # update_all rather than a load-and-save: there is nothing to validate, and the row may
+  # not exist at all for somebody who has never played this entry.
+  def clear_player_progress
+    UserEntry.where(user_id: user_id, entry_id: entry_id)
+             .update_all(player_progress: nil, updated_at: Time.current)
+  end
 end
