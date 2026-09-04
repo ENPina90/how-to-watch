@@ -70,7 +70,7 @@ RSpec.describe 'The profile page', type: :request do
       get profile_path
 
       expect(response.body).to include("Testmember&#39;s Letterbox")
-      expect(response.body).to include('2 films')
+      expect(response.body).to include('3 films')
     end
 
     it 'offers a manual sync, for when the queue has not run one' do
