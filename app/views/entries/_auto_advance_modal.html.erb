@@ -1,6 +1,7 @@
-<%# Raised by the player-progress controller when the viewer comes out of fullscreen with
-    the film effectively over. It listens on the document because the two live in different
-    corners of the page -- the player is inside the cinema frame, this sits outside it. %>
+<%# Raised by the player-progress controller once the film is effectively over: on coming
+    out of fullscreen, or at the credits mark for somebody watching in a window. It listens
+    on the document because the two live in different corners of the page -- the player is
+    inside the cinema frame, this sits outside it. %>
 <div class="modal fade" id="autoAdvanceModal" tabindex="-1" aria-labelledby="autoAdvanceModalLabel" aria-hidden="true"
      data-controller="auto-advance"
      data-action="player-progress:up-next@document->auto-advance#start"
