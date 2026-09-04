@@ -265,7 +265,8 @@ class EntriesController < ApplicationController
     end
 
     # Computed embed URL, built on-demand from the resolved provider's template.
-    @embed_url = @entry.embed_url(subentry: @current_subentry, autoplay: @channel.auto_play?,
+    @embed_url = @entry.embed_url(subentry: @current_subentry,
+                                  autoplay: @channel.auto_play_for(current_user),
                                   start_at: resume_position)
     if @embed_url.blank?
       flash[:alert] = "No video source available for this entry"
