@@ -172,13 +172,25 @@ class Source < ApplicationRecord
   def sync_adapter = SYNC_ADAPTERS[slug]
   def syncable?    = sync_adapter.present?
 
+  # Where a player takes a resume position, in seconds. Keyed by adapter rather than by
+  # slug because the parameter belongs to the player, not to the front door: every vidsrc
+  # domain reads `startAt` (VIDSRC.md §3), and a provider with no adapter has no player we
+  # can hand a position to -- Drive and YouTube would just carry an ignored query string.
+  RESUME_PARAMS = {
+    'vidsrc' => 'startAt'
+  }.freeze
+
+  def resume_param = RESUME_PARAMS[sync_adapter]
+  def resumable?   = resume_param.present?
+
   # Build the playable embed URL for an entry (plus optional subentry for series/anime).
   # Returns nil if no template matches the entry's media type.
-  def url_for(entry, subentry: nil, autoplay: false)
+  def url_for(entry, subentry: nil, autoplay: false, start_at: nil)
     template = template_for(entry.media)
     return nil if template.blank?
 
-    build_url(entry.media, entry_variables(entry, subentry, template), autoplay: autoplay)
+    build_url(entry.media, entry_variables(entry, subentry, template),
+              autoplay: autoplay, start_at: start_at)
   end
 
   # Build a URL from a media key + an explicit variables hash, no Entry required.
@@ -188,14 +200,14 @@ class Source < ApplicationRecord
   # id, or a series with no resolved episode. Returning nil matters: Entry#embed_url only
   # falls back to the legacy source columns when this is blank, so a half-substituted URL
   # would be served as if it worked.
-  def build_url(media, vars, autoplay: false)
+  def build_url(media, vars, autoplay: false, start_at: nil)
     template = template_for(media)
     return nil if template.blank?
 
     url = substitute(template, vars)
     return nil if url.nil?
 
-    append_autoplay(url, autoplay)
+    append_resume(append_autoplay(url, autoplay), start_at)
   end
 
   def template_for(media)
@@ -245,8 +257,20 @@ class Source < ApplicationRecord
   def append_autoplay(url, autoplay)
     return url if autoplay_param.blank?
 
+    append_param(url, autoplay_param, autoplay ? 1 : 0)
+  end
+
+  # Whole seconds: the player rounds a fractional position anyway, and a URL is easier to
+  # read in a bug report without six decimal places of nothing.
+  def append_resume(url, seconds)
+    return url if resume_param.blank? || seconds.to_f <= 0
+
+    append_param(url, resume_param, seconds.to_f.round)
+  end
+
+  def append_param(url, key, value)
     separator = url.include?("?") ? "&" : "?"
-    "#{url}#{separator}#{autoplay_param}=#{autoplay ? 1 : 0}"
+    "#{url}#{separator}#{key}=#{value}"
   end
 
   def refresh_expiry_notifications
