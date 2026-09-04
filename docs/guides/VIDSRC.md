@@ -56,9 +56,12 @@ provider and both fail silently if they are left behind:
 |---|---|---|
 | `VidsrcPlayer.ORIGINS` in [`vidsrc_player.js`](../../app/javascript/services/vidsrc_player.js) | allowlists origins it accepts `postMessage` from | the player loads and plays fine, but every event is rejected, `started` never flips true, so play/pause/seek and **all position tracking silently stop** |
 | `Source::SYNC_ADAPTERS` in [`source.rb`](../../app/models/source.rb) | maps slug → player adapter | `sync_adapter` is `nil`, so the source is treated as having no control surface and watch parties fall back to "tell people how far apart they are" |
+| `Source::PRECONNECT_ORIGINS` in [`source.rb`](../../app/models/source.rb) | the inner origins the player reaches for, warmed while the wrapper loads (§4a) | a stale host costs one unused socket and the second hop pays its own handshake again — slower, never broken |
 
-Both are keyed by hand — a slug or host that is playable but missing from them looks
-healthy and behaves broken. **Change all three together.** `framerelay`, `vidsrc2` and
+The first two are keyed by hand — a slug or host that is playable but missing from them
+looks healthy and behaves broken. **Change all three together.** The third is keyed by
+adapter rather than by domain, so a new vidsrc front door needs nothing from it; it only
+moves if the *inner* player host does. `framerelay`, `vidsrc2` and
 `vidsrc-ir` were added to both on 2026-09-04.
 
 ### 1b. Expiry dates
@@ -390,6 +393,7 @@ is worth remembering if entry validation ever comes up.
 | `db/seeds/sources.rb` | the create-only seed those rows come from (`rails sources:seed`) |
 | `Source::SYNC_ADAPTERS` | maps a slug to the player adapter — a new vidsrc slug must be added here or it is treated as uncontrollable |
 | `Source::RESUME_PARAMS` | maps an adapter to its resume parameter (`startAt`), so only a provider with a player carries one |
+| `Source::PRECONNECT_ORIGINS` | the inner player origin, opened while the wrapper is still loading — see §1a for what a stale one costs |
 | [`app/javascript/controllers/player_progress_controller.js`](../../app/javascript/controllers/player_progress_controller.js) | saves the position on pause, on seek, at the completion mark and as the page goes away; reads the `event` from §6. Leaves fullscreen at 98%, which works because the exit belongs to the top-level document even though the frame requested it, and needs no user gesture |
 | [`app/javascript/controllers/auto_advance_controller.js`](../../app/javascript/controllers/auto_advance_controller.js) | the up-next countdown, raised by coming out of fullscreen past the completion mark — so a rewatch, already marked watched, is not offered the next entry over its opening titles |
 | `EntriesController#progress` | records it on the viewer's `UserEntry`, ticking the film off at `UserEntry::COMPLETION_FRACTION` |
