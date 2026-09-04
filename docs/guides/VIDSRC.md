@@ -390,7 +390,8 @@ is worth remembering if entry validation ever comes up.
 | `db/seeds/sources.rb` | the create-only seed those rows come from (`rails sources:seed`) |
 | `Source::SYNC_ADAPTERS` | maps a slug to the player adapter — a new vidsrc slug must be added here or it is treated as uncontrollable |
 | `Source::RESUME_PARAMS` | maps an adapter to its resume parameter (`startAt`), so only a provider with a player carries one |
-| [`app/javascript/controllers/player_progress_controller.js`](../../app/javascript/controllers/player_progress_controller.js) | saves the position on pause, on seek, at the credits mark and as the page goes away; reads the `event` from §6. Leaving fullscreen at the credits works because the exit belongs to the top-level document even though the frame requested it, and needs no user gesture |
+| [`app/javascript/controllers/player_progress_controller.js`](../../app/javascript/controllers/player_progress_controller.js) | saves the position on pause, on seek, at the completion mark and as the page goes away; reads the `event` from §6. Leaves fullscreen at 98%, which works because the exit belongs to the top-level document even though the frame requested it, and needs no user gesture |
+| [`app/javascript/controllers/auto_advance_controller.js`](../../app/javascript/controllers/auto_advance_controller.js) | the up-next countdown, raised by coming out of fullscreen past the completion mark — so a rewatch, already marked watched, is not offered the next entry over its opening titles |
 | `EntriesController#progress` | records it on the viewer's `UserEntry`, ticking the film off at `UserEntry::COMPLETION_FRACTION` |
 
 ---
