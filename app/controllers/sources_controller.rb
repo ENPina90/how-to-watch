@@ -7,10 +7,18 @@ class SourcesController < ApplicationController
   before_action :require_admin
   before_action :set_source, only: %i[update destroy renew deactivate test]
 
+  # Ordered by position, because that order is now something an admin sets by hand and it
+  # is also what the app falls back through. Expiry is shown by colour rather than by
+  # sorting, so a warning cannot silently rearrange a list somebody arranged.
   def index
-    # Anything with a date first and soonest at the top, so whatever needs attention is
-    # what you see; the imperishable providers settle underneath in their usual order.
-    @sources = Source.by_expiry.order(:position, :name)
+    @sources = Source.order(:position, :name)
+  end
+
+  # Persists a drag on the index. The whole order arrives at once -- see Source.reorder!.
+  def reorder
+    Source.reorder!(params.require(:ids))
+
+    head :no_content
   end
 
   # Buys another year (see Source#renew!). Its own action rather than a field on the edit
@@ -71,8 +79,12 @@ class SourcesController < ApplicationController
 
   private
 
+  # Same terms as /admin and /sidekiq: the check is on `true_user`, and it refuses while
+  # impersonating. Managing providers is the admin's own job, not part of what they are
+  # looking at when they view the site as somebody else -- and the navbar link only appears
+  # under those conditions, so the page and the link agree.
   def require_admin
-    return if current_user&.admin?
+    return if true_user&.admin? && !impersonating?
 
     redirect_back(fallback_location: root_path, alert: "Only admins can manage sources")
   end

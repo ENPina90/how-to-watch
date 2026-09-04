@@ -43,6 +43,26 @@ class Source < ApplicationRecord
   scope :expiring_by, ->(date) { perishable.where(valid_until: ..date) }
   scope :by_expiry, -> { order(Arel.sql('valid_until ASC NULLS LAST')) }
 
+  # Writes the order shown on /sources back as positions 1..N.
+  #
+  # Takes the whole order rather than one moved row: positions here have collided in the
+  # past -- the seed and the admin UI both wrote them independently -- and renumbering the
+  # lot on every drop is what quietly repairs that. Position is not decoration either;
+  # Entry#resolved_source falls back to the first active imdb provider by position, so the
+  # top of this list is what a channel plays through when its own provider is gone.
+  def self.reorder!(ids)
+    ordered = ids.map(&:to_i).uniq
+    found = where(id: ordered).pluck(:id).to_set
+
+    transaction do
+      ordered.each_with_index do |id, index|
+        next unless found.include?(id)
+
+        where(id: id).update_all(position: index + 1, updated_at: Time.current)
+      end
+    end
+  end
+
   def perishable? = valid_until.present?
   def expired?      = perishable? && valid_until < Date.current
   def expiring_soon? = perishable? && !expired? && valid_until <= EXPIRY_WARNING_WINDOW.from_now.to_date

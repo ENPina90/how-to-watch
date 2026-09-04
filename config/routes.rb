@@ -132,6 +132,9 @@ Rails.application.routes.draw do
   # Streaming source/provider definitions (managed via modals on the watch page, and from
   # the index at /sources)
   resources :sources, only: [:index, :create, :update, :destroy] do
+    # The order admins drag them into, which is also the order the app falls back through.
+    collection { patch :reorder }
+
     member do
       # Both change how the app plays things, so neither is a GET.
       patch :renew
