@@ -22,7 +22,17 @@
   });
 </script>
 
-<div class="cinema__screen" data-list-auto-next="<%= @channel.auto_next? %>" data-list-ordered="<%= @channel.ordered? %>">
+<%# Position tracking rides on the same player reports the room does, and only providers
+    with an adapter send any -- on the rest the controller connects and finds nothing to
+    listen to. Signed out there is nowhere to record a position, so it is left off. %>
+<div class="cinema__screen" data-list-auto-next="<%= @channel.auto_next? %>" data-list-ordered="<%= @channel.ordered? %>"
+     <% if user_signed_in? %>
+       data-controller="player-progress"
+       data-player-progress-url-value="<%= progress_entry_path(@entry) %>"
+       data-player-progress-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
+       data-player-progress-frame-value="cinema"
+       data-player-progress-token-value="<%= form_authenticity_token %>"
+     <% end %>>
   <iframe id="cinema"
       title="<%= @entry.name %>"
       referrerpolicy="origin"
