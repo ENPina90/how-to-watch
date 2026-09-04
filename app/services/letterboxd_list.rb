@@ -77,6 +77,7 @@ class LetterboxdList
       end
 
       mark_watched(entry, watch)
+      mark_matching_entries_watched(channel, entry, watch)
     end
 
     Result.new(created: created, updated: updated, total: watches.size)
@@ -190,6 +191,25 @@ class LetterboxdList
   rescue TmdbService::RequestError => e
     Rails.logger.warn("Letterboxd sync could not resolve an IMDb id for TMDB #{watch.tmdb_id}: #{e.message}")
     nil
+  end
+
+  # A film logged on Letterboxd was watched wherever else it sits in the member's own
+  # channels, so the diary ticks it off there too -- otherwise somebody who keeps a
+  # watchlist alongside the diary has to mark everything twice.
+  #
+  # Matched on IMDb id: it is the one id every entry carries however it was added, while
+  # `tmdb` is only filled in when the entry came from a search that returned one. Movies
+  # only -- an episode or a series sharing the id would be the series' own record, which
+  # is not the thing that was watched.
+  #
+  # Only channels the member owns. Ticking an entry in somebody else's channel would be
+  # harmless -- completion is per-user -- but it is not what linking a diary asked for.
+  def mark_matching_entries_watched(channel, entry, watch)
+    return if entry.imdb.blank?
+
+    elsewhere = user.lists.where.not(id: channel.id)
+    matches = Entry.where(list: elsewhere, media: 'movie', imdb: entry.imdb)
+    matches.find_each { |match| mark_watched(match, watch) }
   end
 
   # Columns are written directly because UserEntry#set_completed_at stamps Time.current
