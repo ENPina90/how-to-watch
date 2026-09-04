@@ -3,6 +3,9 @@
     <div>
       <h1 class="h3 mb-0">Source providers</h1>
       <p class="text-muted mb-0 small">
+        Drag by the handle to reorder. A channel whose own provider is gone falls back to
+        the first one here that can play it, so the top of this list is the default.
+        <br>
         A provider with a date is one whose address can lapse — ours because the
         registration runs out, vidsrc's because they rotate them. The rest never expire.
       </p>
@@ -12,20 +15,30 @@
     </button>
   </div>
 
-  <div class="source-cards">
-    <% @sources.each do |source| %>
+  <div class="source-cards"
+       data-controller="source-sort"
+       data-source-sort-url-value="<%= reorder_sources_path %>">
+    <% @sources.each_with_index do |source, index| %>
       <%# The stripe and border say the same thing twice on purpose: colour alone would
           leave the state invisible to anyone who cannot separate orange from red. %>
       <article class="source-card source-card--<%= source.expiry_state || 'none' %>
-                      <%= 'source-card--off' unless source.active? %>">
+                      <%= 'source-card--off' unless source.active? %>"
+               data-source-id="<%= source.id %>">
         <div class="source-card__head">
-          <div>
-            <h2 class="source-card__name">
-              <%= source.name %>
-              <% unless source.active? %><span class="source-card__badge">off</span><% end %>
-            </h2>
-            <code class="source-card__slug"><%= source.slug %></code>
-            <span class="source-card__kind"><%= source.kind %></span>
+          <div class="source-card__identity">
+            <%# The grip is the drag handle, so the buttons below stay clickable. %>
+            <span class="source-card__grip" title="Drag to reorder">
+              <i class="fa-solid fa-grip-vertical"></i>
+            </span>
+            <div>
+              <span class="source-card__rank">Source <%= index + 1 %></span>
+              <h2 class="source-card__name">
+                <%= source.name %>
+                <% unless source.active? %><span class="source-card__badge">off</span><% end %>
+              </h2>
+              <code class="source-card__slug"><%= source.slug %></code>
+              <span class="source-card__kind"><%= source.kind %></span>
+            </div>
           </div>
 
           <div class="source-card__expiry">

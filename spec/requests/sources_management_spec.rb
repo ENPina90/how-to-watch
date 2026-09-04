@@ -128,4 +128,64 @@ RSpec.describe 'Managing source providers' do
       expect(response).to redirect_to(root_path)
     end
   end
+
+  describe 'ordering' do
+    let!(:second) do
+      Source.create!(name: 'VidSrc 2', slug: 'vidsrc2', kind: 'imdb', active: true, position: 2,
+                     templates: { 'movie' => 'https://vidsrc2.ru/embed/movie?imdb=%{imdb}' })
+    end
+
+    it 'writes the dragged order back as positions' do
+      sign_in admin
+
+      patch reorder_sources_path, params: { ids: [second.id, source.id] }
+
+      expect(response).to have_http_status(:no_content)
+      expect(second.reload.position).to eq(1)
+      expect(source.reload.position).to eq(2)
+    end
+
+    # Position is not decoration: the first active imdb provider is what a channel falls
+    # back to when its own is gone, so dragging one to the top changes what plays.
+    it 'changes which provider a channel falls back to' do
+      list = create(:list, user: admin, provider: nil)
+      entry = create(:entry, list: list, media: 'movie', imdb: 'tt0111161', provider: nil)
+      sign_in admin
+
+      patch reorder_sources_path, params: { ids: [second.id, source.id] }
+
+      expect(entry.reload.resolved_source).to eq(second)
+    end
+
+    # These have collided before, because the seed and the UI both wrote them. Any drag
+    # renumbers the whole list, which repairs that.
+    it 'renumbers into a clean run even when positions had collided' do
+      Source.update_all(position: 1)
+      sign_in admin
+
+      patch reorder_sources_path, params: { ids: [source.id, second.id] }
+
+      expect(Source.order(:position).pluck(:position).first(2)).to eq([1, 2])
+    end
+
+    it 'turns away a member' do
+      sign_in member
+
+      patch reorder_sources_path, params: { ids: [second.id, source.id] }
+
+      expect(second.reload.position).to eq(2)
+    end
+  end
+
+  # The navbar link and the page have to agree about who may be here.
+  describe 'while viewing the site as someone else' do
+    it 'refuses, the way /admin does' do
+      sign_in admin
+      post impersonate_user_path(member)
+
+      get sources_path
+
+      expect(response).to redirect_to(root_path)
+    end
+  end
 end

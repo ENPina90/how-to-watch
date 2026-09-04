@@ -132,6 +132,55 @@
   flex-wrap: wrap;
 }
 
+.source-card__identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Only the grip drags, so the buttons on the card stay clickable. */
+.source-card__grip {
+  padding-top: 2px;
+  color: rgba(255, 255, 255, 0.25);
+  cursor: grab;
+}
+
+.source-card__grip:active {
+  cursor: grabbing;
+}
+
+.source-card:hover .source-card__grip {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.source-card__rank {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* Where the card will land. */
+.source-card--dragging {
+  opacity: 0.35;
+}
+
+/* The drag stuck on screen but the server refused it, so the two now disagree. */
+.source-cards--unsaved {
+  outline: 1px dashed #e5484d;
+  outline-offset: 6px;
+}
+
+.source-cards--unsaved::before {
+  content: "That order was not saved — reload to see what is actually stored.";
+  display: block;
+  margin-bottom: 8px;
+  color: #e5484d;
+  font-size: 0.78rem;
+}
+
 .source-card__name {
   margin: 0;
   font-size: 1rem;
