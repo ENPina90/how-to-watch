@@ -17,7 +17,12 @@ Rails.application.routes.draw do
   # The admin dashboard: site statistics, and the switches that change how the site
   # behaves. Admins only -- Admin::BaseController turns everyone else away.
   namespace :admin do
-    resource :dashboard, only: %i[show update], controller: 'dashboard'
+    resource :dashboard, only: %i[show update], controller: 'dashboard' do
+      # Moves every channel onto one provider. POST rather than PATCH on the dashboard
+      # itself: it rewrites rows across two tables and has nothing to do with the settings
+      # row that `update` edits.
+      post :reset_source
+    end
   end
 
   # Does this Letterboxd handle have a readable diary? Reachable signed out: the sign-up

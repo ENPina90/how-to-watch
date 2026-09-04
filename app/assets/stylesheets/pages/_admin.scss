@@ -220,6 +220,36 @@
   grid-column: 1 / -1;
 }
 
+/* One row: what you are moving everything to, and the button that does it. Wraps to
+   stacked on a narrow screen rather than squeezing the select down to nothing. */
+.admin-reset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.admin-reset__label {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.admin-reset__select {
+  padding: 9px 12px;
+  min-width: 180px;
+  background-color: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  color: #fff;
+  font: inherit;
+}
+
+.admin-reset__select:focus {
+  outline: none;
+  border-color: #1db954;
+}
+
 .page-container .admin-save {
   padding: 10px 20px;
   background-color: #1db954;

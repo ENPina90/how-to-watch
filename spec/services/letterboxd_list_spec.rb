@@ -13,6 +13,8 @@ RSpec.describe LetterboxdList do
       .to_return(status: 200, body: { imdb_id: 'tt1111111' }.to_json)
     stub_request(:get, %r{api\.themoviedb\.org/3/movie/12345})
       .to_return(status: 200, body: { imdb_id: 'tt2222222' }.to_json)
+    stub_request(:get, %r{api\.themoviedb\.org/3/movie/1124})
+      .to_return(status: 200, body: { imdb_id: 'tt3333333' }.to_json)
   end
 
   describe '#sync!' do
@@ -30,8 +32,8 @@ RSpec.describe LetterboxdList do
       result = described_class.new(user).sync!
 
       entries = user.lists.find_by(letterboxd: true).entries
-      expect(entries.count).to eq(2)
-      expect(result.created).to eq(2)
+      expect(entries.count).to eq(3)
+      expect(result.created).to eq(3)
 
       crime = entries.find_by(tmdb: '1171145')
       expect(crime).to have_attributes(name: 'Crime 101', year: 2026, media: 'movie', letterboxd_score: 3.5)
