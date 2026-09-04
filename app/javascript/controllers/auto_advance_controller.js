@@ -80,6 +80,11 @@ export default class extends Controller {
   // These advance the user's position, so they are PATCH routes now. Turbo is disabled on
   // the watch page, so post a real form rather than relying on data-turbo-method.
   submitPatch(path) {
+    // The watch page asks "did you mean to leave?" whenever the frame has focus, which it
+    // has for most of a film. This is the page leaving of its own accord, so say so --
+    // otherwise the countdown reaches zero and stops there behind a prompt.
+    window.leavingOnPurpose = true
+
     const form = document.createElement("form")
     form.method = "post"
     form.action = path

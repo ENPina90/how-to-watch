@@ -43,6 +43,11 @@ const SAVE_INTERVAL = 2000;
 // taking the screen off somebody waiting for one is worse than leaving it a minute longer.
 const CREDITS_FRACTION = 0.98;
 
+// How much faster than wall-clock the position may move and still count as playback. The
+// player reports about every five seconds and a film advances about a second per second,
+// so a couple of times that is generous; a jump of an hour between two reports is not.
+const PLAYBACK_TOLERANCE = 2;
+
 export default class extends Controller {
   static values = {
     url: String,
@@ -95,26 +100,25 @@ export default class extends Controller {
     // ending both leave the film stopped, and only one of them means it was watched.
     const finished = state.event === "completed";
 
-    // The first report says where the film already was, which is not somewhere it got to
-    // while anybody was watching: an entry resumed near its end opens with the credits
-    // rolling, and offering the next one before the viewer has seen a frame is the
-    // opposite of what any of this is for. So the first report sets the baseline and
-    // crosses nothing.
+    // Did the film play its way here, or did it arrive? vidsrc remembers its own position
+    // and restores it a moment after the page opens -- an entry left in the credits comes
+    // back with the credits rolling, which is not somebody watching to the end and must
+    // not offer them the next entry before they have seen a frame. Dragging the scrubber
+    // into the credits is the same thing by hand.
     //
     // The player's own `completed` is exempt: it is an event rather than a threshold, and
     // it only ever fires because the video ended just now.
-    const opening = this.reported !== true;
-    this.reported = true;
+    const played = this.playedUpTo(state);
 
     // The moment of crossing, not the state of being past it -- the player reports every
     // five seconds through the credits, and each of these should happen once. Seeking back
     // before a mark re-arms it, so watching the ending twice behaves the same way twice.
     const watched = finished || this.past(state, this.fractionValue);
-    const crossedWatched = finished || (watched && !this.watched && !opening);
+    const crossedWatched = finished || (watched && !this.watched && played);
     this.watched = watched;
 
     const credits = finished || this.past(state, CREDITS_FRACTION);
-    const crossedCredits = finished || (credits && !this.credits && !opening);
+    const crossedCredits = finished || (credits && !this.credits && played);
     this.credits = credits;
 
     // In fullscreen, the exit is what raises the up-next card: it fires fullscreenchange
@@ -129,6 +133,24 @@ export default class extends Controller {
 
     if (crossedWatched) return this.save({ finished: finished, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
+  }
+
+  // Has the position moved the way playing moves it -- forward, at about the speed of the
+  // clock? Anything faster is the player jumping: restoring a remembered position, or a
+  // scrubber dragged. Always false for the first report of a visit, which has nothing to
+  // compare against and is simply where the player opened.
+  playedUpTo({ progress }) {
+    const now = Date.now();
+    const previous = this.lastReport;
+    this.lastReport = { progress: progress, at: now };
+
+    if (!previous) return false;
+
+    const elapsed = (now - previous.at) / 1000;
+    const advanced = progress - previous.progress;
+
+    // The constant of 3 covers a report arriving late and the position moving with it.
+    return advanced >= 0 && advanced <= elapsed * PLAYBACK_TOLERANCE + 3;
   }
 
   // Is the film this far through? The same rule the server applies for the completion
