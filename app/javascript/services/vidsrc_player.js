@@ -11,7 +11,16 @@
 export default class VidsrcPlayer {
   // The front doors move around (vidsrc-embed.ru -> vsembed.ru, v2.vidsrc.me ->
   // vidsrcme.ru), so an origin is trusted by suffix rather than by exact host.
-  static ORIGINS = ["vsembed.ru", "vidsrcme.ru", "vidsrc-embed.ru", "vidsrc.me", "cloudorchestranova.com"];
+  //
+  // This list has to be kept in step with the vidsrc Source templates: a domain that is
+  // playable but missing here fails in the worst way -- the player loads and plays, but
+  // every PLAYER_EVENT is rejected, so `started` never flips and play/pause/seek and all
+  // position tracking silently stop. See docs/guides/VIDSRC.md.
+  static ORIGINS = [
+    "vidsrc2.ru", "vidsrc.ir",
+    "vsembed.ru", "vidsrcme.ru", "vidsrc-embed.ru", "vidsrc.me",
+    "cloudorchestranova.com",
+  ];
 
   constructor(iframe, { onState }) {
     this.iframe = iframe;
