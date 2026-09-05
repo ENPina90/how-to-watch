@@ -445,3 +445,11 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
     transition: opacity 0.4s ease;
   }
 }
+
+/* The frame stack fills the screen behind everything else. Absolute rather than in flow
+   so the player's own `height: 100%` has a resolved height to measure against, and so the
+   chrome -- which is absolutely positioned against the screen -- keeps sitting over it. */
+.cinema__frames {
+  position: absolute;
+  inset: 0;
+}
