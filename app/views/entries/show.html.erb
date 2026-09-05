@@ -1,53 +1,20 @@
-<%= turbo_frame_tag dom_id(@entry) do %>
-  <div class="grid-card" id="<%= @entry.imdb %>" data-controller="hover-play" data-action="mouseover->hover-play#showPlay">
-    <% if @entry.note %>
-      <div class="card-note" style="grid-column: span 2;"><%= @entry.note %></div>
-    <% end %>
-    <%= link_to entry_poster_image_tag(@entry, data: { hover_play_target: 'poster' }), watch_entry_path(@entry), class: "card-picture" %>
-    <div class="card-title">
-      <h4 class="card-header"><%= @entry.name %></h4>
-    </div>
-    <div class="card-details">
-      <div class="d-flex justify-content-between mt-1">
-        <p><%= @entry.year %></p>
-        <%# Nearly a fifth of the catalogue has no rating -- bulk-imported episodes, mostly
-            -- and there is nothing for String#* to repeat nil times. Those rows show no
-            stars rather than taking the page down. %>
-        <p><%= '*' * @entry.rating.to_i %></p>
-      </div>
-      <p class="card-plot"><%= @entry.plot %></p>
-      <p class="mb-1"><small><%= @entry.genre %></small></p>
-    </div>
-    <div class="card-menu">
-    <%= render 'entries/completion_status', entry: @entry, user: current_user %>
-    <% if current_user&.can_edit_entry?(@entry) %>
-      <%= render 'shared/poster_selector_button', entry: @entry %>
-      <%= link_to edit_entry_path(@entry) do %>
-        <i class="fa-solid fa-pen"></i>
-      <% end %>
-      <%= link_to entry_path(@entry),
-      data: {turbo_method: :delete, turbo_confirm: "Are you sure?"} do %>
-        <i class="fa-solid fa-trash"></i>
-      <% end %>
-    <% end %>
-      <i class="fa-solid fa-link-slash"
-      style="color:<%= @entry.stream ? "grey" : "red"%>"
-      title="Report broken link"
-      data-controller="link"
-      data-link-id-value="<%= @entry.id %>"
-      data-action="click->link#toggle"></i>
-      <%= link_to duplicate_entry_path(@entry), data: { turbo_method: :post } do %>
-        <i class="fa-sharp fa-regular fa-plus" title="Add to another channel"></i>
-      <% end %>
-    </div>
-    <% if @entry.review %>
-      <div class="card-review" style="grid-column: span 2;">Card Footer</div>
-    <% end %>
+<%# An entry opened on its own rather than as a card in a channel.
+    This renders the same card the channels render. It used to carry its own copy, which
+    had drifted a long way: the plot printed twice, no trailer button, no source badge, no
+    Letterboxd controls, no poster picker, and an edit pen that led to a stripped-down form
+    instead of the modal every other card opens.
+    It also has to be this partial rather than a copy. `update` answers with a turbo_stream
+    replacing dom_id(entry) with entries/entry_<media>, so whatever else were here would be
+    swapped out for this card on the first save anyway. %>
+<div class="container" data-controller="edit">
+  <div class="d-flex justify-content-center">
+    <%= entry_card(@entry) %>
   </div>
-<% end %>
 
-<%# Outside the frame on purpose. This page is also the target of a turbo-frame navigation
-    from a channel, and that page renders its own picker -- Turbo takes only the matching
-    frame from the response, so the copy here is used when the entry is opened on its own
-    and ignored when it is swapped into a list. %>
-<%= render 'shared/poster_selector_modal' %>
+  <%# One of each for the page, not one per card -- the same four a channel renders. The
+      edit modal has to be inside the data-controller="edit" element to be found. %>
+  <%= render 'entries/review_modal_list' %>
+  <%= render 'shared/trailer_modal' %>
+  <%= render 'shared/poster_selector_modal' %>
+  <%= render 'shared/edit_modal' %>
+</div>

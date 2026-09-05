@@ -1,0 +1,8 @@
+<%# The shell the `edit` Stimulus controller fills: clicking a pen fetches the entry form
+    and writes it into the dialog. Empty on purpose -- one per page, whichever entry is
+    being edited. Any page with an edit pen needs this *and* data-controller="edit" on an
+    ancestor, or the pen opens an empty modal. %>
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+  <div class="modal-dialog" data-edit-target="modal">
+  </div>
+</div>
