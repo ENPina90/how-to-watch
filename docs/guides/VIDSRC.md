@@ -360,6 +360,18 @@ Worth knowing before optimising: roughly ten requests per embed, and several are
 ours nor the player's — `histats.com`, plus a rotating ad/tracking host. Anything that
 loads N embeds at once multiplies those too.
 
+**A covered frame never speaks.** The spare frame described below loads, plays and fetches
+segments happily, but posts no `PLAYER_EVENT` at all — so the `pause` the page holds for it
+is never delivered, because commands are dropped until a player has spoken (§6). Ruled out
+2026-09-05: it is not being covered (leaving a row of pixels showing changed nothing) and
+it is not the inspector (neutralising `disable-devtool` changed nothing). Cause unknown.
+
+The practical upshot is that the spare channel is genuinely *playing* rather than merely
+buffered, which is why switching to it is instant — and why nobody has ever heard it, since
+a player that starts before anybody touches the page is muted by the browser (§4). It also
+means it drifts: sit on one channel for twenty minutes and the one below has played twenty
+minutes, and left long enough it will reach the end of its entry.
+
 The player page keeps exactly one spare. The channel below is warmed in a second frame
 five seconds after the page settles, so pressing down costs 8ms instead of the 1.5s above
 — measured 2026-09-05. Two embeds, not six: the cost above is why the other four

@@ -59,6 +59,10 @@ export default class extends Controller {
     runtime: Number,
     // UserEntry::COMPLETION_FRACTION, passed rather than repeated so there is one of it.
     fraction: Number,
+    // This player was warmed in the background before anybody flipped to it, so it has
+    // been running with nobody in front of it and may already be past the point that
+    // counts as watched. Set by cinema-navigation when it promotes a warmed frame.
+    warmed: Boolean,
   };
 
   connect() {
@@ -69,6 +73,9 @@ export default class extends Controller {
 
     this.iframe = iframe;
     this.lastSaved = 0;
+    // Where this player is may not be anywhere anybody watched it get to. It stops being
+    // unattended the moment the film is seen to move while somebody is here for it.
+    this.unattended = this.warmedValue;
     this.player = playerAdapterFor(this.adapterValue, iframe, {
       onState: (state) => this.playerReported(state),
     });
@@ -115,6 +122,10 @@ export default class extends Controller {
     // The player's own `completed` is exempt: it is an event rather than a threshold, and
     // it only ever fires because the video ended just now.
     const played = this.playedUpTo(state);
+
+    // The film moved at the speed of the clock with a viewer in front of it: from here on
+    // this is somebody watching, whatever the player did before they arrived.
+    if (played) this.unattended = false;
 
     // The moment of crossing, not the state of being past it -- the player reports every
     // five seconds through the credits, and each of these should happen once. Seeking back
@@ -235,6 +246,7 @@ export default class extends Controller {
     body.append("progress", this.state.progress);
     body.append("duration", this.state.duration);
     body.append("finished", String(finished));
+    body.append("unattended", String(this.unattended));
     // In the body rather than a header: sendBeacon cannot set one, and Rails reads the
     // token from either.
     body.append("authenticity_token", this.tokenValue);
