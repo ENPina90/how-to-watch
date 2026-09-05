@@ -29,11 +29,34 @@ class User < ApplicationRecord
   validates :username, presence: { message: 'is needed to link a Letterboxd account' },
                        if: :letterboxd_enabled?
 
+  # Minutes, so a small number. Negative is the only value that means nothing at all.
+  validates :randomizer, numericality: { greater_than_or_equal_to: 0 }
+
   # What to call this user in the UI. Both navbars used to build this inline, with
   # slightly different rules -- a blank-but-present username rendered as nothing in one
   # of them.
   def display_name
     username.presence || email.split('@').first.capitalize
+  end
+
+  # How far into an entry to start, for somebody who has asked not to start at the
+  # beginning. Nil when they have not, which is everybody by default.
+  #
+  # A fresh number every time it is asked: flipping back to a channel should land somewhere
+  # else, which is the whole point of it.
+  #
+  # Capped by the runtime where there is one. A three-minute window over a two-minute
+  # cartoon would drop the viewer into its credits -- past the mark where the entry counts
+  # as watched, so it would be marked seen without ever having been shown.
+  def random_start_for(entry)
+    window = randomizer.to_f * 60
+    return nil unless window.positive?
+
+    runtime = entry.length.to_i * 60
+    window = [window, runtime * UserEntry::COMPLETION_FRACTION].min if runtime.positive?
+    return nil unless window.positive?
+
+    rand * window
   end
 
   # READ. nil when this user has never tracked the entry -- see Entry#user_entry_for for
