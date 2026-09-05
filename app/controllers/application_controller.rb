@@ -20,6 +20,17 @@ class ApplicationController < ActionController::Base
 
   private
 
+  # A speculative fetch: the player page one move away, pulled so it is warm if the viewer
+  # goes there. Nothing has happened yet as far as they are concerned, so nothing may be
+  # recorded -- a position moved in a channel they never opened would show up as the app
+  # deciding for them where they were up to.
+  #
+  # Visits are handled by the header the fetch also sends: VisitTracking ignores XHR, which
+  # is what a speculative fetch is.
+  def preloading?
+    request.headers['X-Cinema-Preload'].present?
+  end
+
   # Devise permits only the credentials it knows about, so anything the account forms add
   # has to be listed here or it is dropped without a word -- which is what had been
   # happening to `username` since the field was added to the sign-up form.

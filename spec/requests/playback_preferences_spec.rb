@@ -69,7 +69,7 @@ RSpec.describe 'Playback preferences', :needs_provider, type: :request do
 
       get watch_entry_path(entry)
 
-      expect(response.body).not_to include('auto-advance')
+      expect(response.body).not_to include('data-controller="auto-advance"')
     end
 
     it 'offers the up-next card on a channel that does not, when the member asks for it' do

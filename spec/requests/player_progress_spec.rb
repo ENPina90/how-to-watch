@@ -189,7 +189,7 @@ RSpec.describe 'Player progress', type: :request do
 
       get watch_entry_path(entry)
 
-      expect(response.body).not_to include('auto-advance')
+      expect(response.body).not_to include('data-controller="auto-advance"')
     end
 
     # Advancing writes a position, so there is nobody to advance.
@@ -200,7 +200,7 @@ RSpec.describe 'Player progress', type: :request do
 
       get watch_entry_path(entry)
 
-      expect(response.body).not_to include('auto-advance')
+      expect(response.body).not_to include('data-controller="auto-advance"')
     end
   end
 end

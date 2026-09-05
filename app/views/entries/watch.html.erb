@@ -1,3 +1,4 @@
+<%= render 'shared/player_preconnect', url: @embed_url, source: @entry.resolved_source %>
 <%= render "shared/entries_sidebar" %>
 <script nonce="<%= content_security_policy_nonce %>">
   // Add has-entries-sidebar class to body
@@ -33,30 +34,73 @@
 <%# Position tracking rides on the same player reports the room does, and only providers
     with an adapter send any -- on the rest the controller connects and finds nothing to
     listen to. Signed out there is nowhere to record a position, so it is left off. %>
-<div class="cinema__screen" data-list-auto-next="<%= @channel.auto_next_for(current_user) %>" data-list-ordered="<%= @channel.ordered? %>"
-     <% if user_signed_in? %>
-       data-controller="player-progress"
-       data-player-progress-url-value="<%= progress_entry_path(@entry) %>"
-       data-player-progress-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
-       data-player-progress-frame-value="cinema"
-       data-player-progress-token-value="<%= form_authenticity_token %>"
-       <%# The runtime and the fraction the client needs to spot the credits starting.
-           Both are what the server itself decides completion by, so neither side can
-           drift from the other. 0 means the catalogue has no runtime and the player's own
-           reported duration stands in. %>
-       data-player-progress-runtime-value="<%= @entry.length.to_i * 60 %>"
-       data-player-progress-fraction-value="<%= UserEntry::COMPLETION_FRACTION %>"
-     <% end %>>
+<%# Three parts, and the split is the point.
+
+    The screen itself is what goes fullscreen and what carries the fullscreen controller,
+    so it must be the one thing a move between entries never replaces -- fullscreen is
+    granted to an element, and replacing that element gives it up.
+
+    The frame stack holds the player. It is separate from the chrome so that moving to
+    another entry can leave a frame alone, or swap between frames, without touching
+    anything else.
+
+    The chrome is everything that describes *this* entry: the title, the ring, the source
+    switcher, the modals. All of it is replaced together on a move, which is why the
+    per-entry controller lives on it -- being replaced is what makes Stimulus reconnect it
+    with the new entry's values. %>
+<div class="cinema__screen"
+     data-controller="cinema-fullscreen cinema-navigation"
+     data-action="auto-advance:move@document->cinema-navigation#moveFromEvent"
+     data-cinema-fullscreen-idle-class="cinema__screen--idle"
+     data-cinema-navigation-moving-class="cinema__screen--moving"
+     <%# Warming the channel below costs a second video stream, so it is a setting rather
+         than a given -- and the controller declines on its own for a metered connection,
+         a small machine or a narrow screen. %>
+     data-cinema-navigation-preload-value="<%= user_signed_in? %>">
+
+  <div id="cinema-frames" class="cinema__frames">
+  <%# No `allowfullscreen`, deliberately. Fullscreen belongs to the container above, which
+      keeps the controls and the up-next card on screen; the player taking it instead would
+      hand the whole display to a third party. Withholding the permission is what makes
+      that stick -- its button, its `f` and its double-click all go dead together, and
+      fullscreen cannot be taken back off the frame once granted. See
+      cinema_fullscreen_controller.js. %>
   <iframe id="cinema"
+      class="cinema__frame cinema__frame--live"
       title="<%= @entry.name %>"
       referrerpolicy="origin"
-      width="100%"
-      height="100%"
-      allowfullscreen
       allow="autoplay"
       src="<%= @embed_url %>">
 
   </iframe>
+  </div>
+
+  <%# Sits with the screen rather than the chrome: it is the same button whatever is
+      playing, and it drives the controller on the screen itself. %>
+  <button type="button" class="cinema__fullscreen" title="Fullscreen"
+          data-action="click->cinema-fullscreen#toggle">
+    <i class="fa-solid fa-expand"></i>
+  </button>
+
+  <div id="cinema-chrome"
+       data-list-auto-next="<%= @channel.auto_next_for(current_user) %>"
+       data-list-ordered="<%= @channel.ordered? %>"
+       <% if user_signed_in? %>
+         data-controller="player-progress"
+         <%# There is no unload on a move between entries, so the position has to be taken
+             on the way past instead. %>
+         data-action="cinema-navigation:leaving@document->player-progress#saveNow"
+         data-player-progress-url-value="<%= progress_entry_path(@entry) %>"
+         data-player-progress-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
+         data-player-progress-frame-value="cinema"
+         data-player-progress-token-value="<%= form_authenticity_token %>"
+         <%# The runtime and the fraction the client needs to spot the credits starting.
+             Both are what the server itself decides completion by, so neither side can
+             drift from the other. 0 means the catalogue has no runtime and the player's
+             own reported duration stands in. %>
+         data-player-progress-runtime-value="<%= @entry.length.to_i * 60 %>"
+         data-player-progress-fraction-value="<%= UserEntry::COMPLETION_FRACTION %>"
+       <% end %>>
   <%= render 'entries/source_switcher' %>
 
   <%# The room. It sits on the frame rather than in a sidebar because everything it does --
@@ -118,9 +162,13 @@
       <% end %>
     <% end %>
   </div>
-  <div id="watchCinemaControls" class="d-flex justify-content-center cinema__control" style="right: 390px; top: 100px; left: auto;">
+  <%# Placed in the stylesheet rather than inline: where it sits depends on whether the
+      entries sidebar is there, and in fullscreen it is not -- an inline style is the one
+      thing a stylesheet cannot answer back to. %>
+  <div id="watchCinemaControls" class="d-flex justify-content-center cinema__control cinema__control--watch">
     <div class="position-relative" style="width: 80px; height: 80px;">
-      <%= link_to list_watch_current_path(@channel.find_sibling(:previous) || @channel) do %>
+      <%= link_to list_watch_current_path(@channel.find_sibling(:previous) || @channel),
+                  data: { cinema_move: true } do %>
         <i class="fa-solid fa-3x fa-caret-up position-absolute top-0 start-50 translate-middle-x"></i>
       <% end %>
       <%# Everything in the ring except the channel arrows and the way home writes
@@ -128,11 +176,13 @@
           the ring without them rather than buttons that bounce off the sign-in page. %>
       <% if user_signed_in? %>
         <%= button_to increment_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
-              class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
+              class: 'p-0 border-0 bg-transparent text-decoration-none',
+              form: { class: 'd-inline', data: { cinema_move: true } } do %>
           <i class="fa-solid fa-3x fa-caret-right position-absolute top-50 end-0 translate-middle-y"></i>
         <% end %>
         <%= button_to shuffle_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
-              class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
+              class: 'p-0 border-0 bg-transparent text-decoration-none',
+              form: { class: 'd-inline', data: { cinema_move: true } } do %>
           <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y" title="Shuffle channel"></i>
         <% end %>
         <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y cinema__edit" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
@@ -150,12 +200,16 @@
           <%= render 'entries/completion_status', entry: @entry, user: current_user %>
         </div>
       <% end %>
-      <%= link_to list_watch_current_path(@channel.find_sibling(:next) || @channel) do %>
+      <%# Marked for warming as well as moving: this is the direction somebody surfing
+          travels, so it is the one worth having ready. %>
+      <%= link_to list_watch_current_path(@channel.find_sibling(:next) || @channel),
+                  data: { cinema_move: true, cinema_preload: true } do %>
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
       <% if user_signed_in? %>
         <%= button_to decrement_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
-              class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
+              class: 'p-0 border-0 bg-transparent text-decoration-none',
+              form: { class: 'd-inline', data: { cinema_move: true } } do %>
           <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
         <% end %>
       <% end %>
@@ -232,11 +286,16 @@
   </div>
 </div>
 
-</div>
 
 <%# What happens when a film ends and nobody says otherwise. Only where the channel asks
     for it -- Auto Next is the channel's own setting and this is the feature it names --
-    and only for somebody signed in, since advancing writes their position. %>
+    and only for somebody signed in, since advancing writes their position.
+
+    Inside the cinema screen, because that is the element that goes fullscreen: anything
+    outside it is not rendered at all while fullscreen, and a countdown nobody can see
+    would advance the channel unannounced. %>
 <% if user_signed_in? && @channel.auto_next_for(current_user) %>
   <%= render 'entries/auto_advance_modal', entry: @entry, channel: @channel %>
 <% end %>
+  </div>
+</div>
