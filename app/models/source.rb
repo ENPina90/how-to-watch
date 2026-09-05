@@ -172,6 +172,18 @@ class Source < ApplicationRecord
   def sync_adapter = SYNC_ADAPTERS[slug]
   def syncable?    = sync_adapter.present?
 
+  # The vidsrc front door the app is currently pointing at, or nil if none is active.
+  # Whatever asks VidSrc a question outside of playback -- the ID dumps, the data API --
+  # asks it here rather than naming a domain of its own, which is the mistake §1a of
+  # VIDSRC.md is about.
+  def self.vidsrc_front_door
+    active.order(:position).find { |source| source.sync_adapter == 'vidsrc' }
+  end
+
+  # The host the templates point at, e.g. "framerelay.dev". Matched rather than parsed:
+  # a template carries %{...} placeholders, which are not valid percent escapes.
+  def host = templates.values.filter_map { |template| template[%r{\Ahttps?://([^/]+)}, 1] }.first
+
   # Where a player takes a resume position, in seconds. Keyed by adapter rather than by
   # slug because the parameter belongs to the player, not to the front door: every vidsrc
   # domain reads `startAt` (VIDSRC.md §3), and a provider with no adapter has no player we
