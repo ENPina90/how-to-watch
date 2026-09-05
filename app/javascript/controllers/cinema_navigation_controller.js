@@ -148,10 +148,12 @@ export default class extends Controller {
   // Everything except the frame: promoting a warmed frame has already dealt with that.
   applyChrome(page) {
     this.swap("cinema-chrome", page)
-    this.swap("entriesSidebar", page)
-    // Contents rather than the element itself: the card is inside a panel the viewer can
-    // collapse, and that is their state to keep, not the server's to reset every move.
-    this.swapContents("nowPlayingContent", page)
+    // Contents rather than the elements themselves. Both of these are panels whose open
+    // or shut state is the viewer's, held on the element by scripts that ran once at page
+    // load -- the entries sidebar is rendered shut every time and opened afterwards from
+    // what was remembered, so handing it back the server's version closes it for good.
+    this.swapInner("entriesSidebar", page)
+    this.swapInner("nowPlayingContent", page)
 
     document.title = page.title
   }
@@ -164,10 +166,18 @@ export default class extends Controller {
     if (current && incoming) current.replaceWith(incoming)
   }
 
-  swapContents(id, page) {
+  swapInner(id, page) {
     const current = document.getElementById(id)
     const incoming = page.getElementById(id)
-    if (current && incoming) current.replaceChildren(...incoming.childNodes)
+    if (!current || !incoming) return
+
+    // The data attributes describe the entry and have to move; class and style describe
+    // whether the panel is open and must not, because only the page knows that by now.
+    for (const { name, value } of incoming.attributes) {
+      if (name.startsWith("data-")) current.setAttribute(name, value)
+    }
+
+    current.replaceChildren(...incoming.childNodes)
   }
 
   // ---- warming the channel below --------------------------------------------------
