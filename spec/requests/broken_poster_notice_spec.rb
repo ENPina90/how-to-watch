@@ -52,6 +52,24 @@ RSpec.describe 'Broken poster notices' do
       expect(response.body).not_to include('Fantasmas')
     end
 
+    # The other sweep's notifications behave the same way: raised by a job, cleared by
+    # going and dealing with the entry.
+    it 'treats an unplayable embed the same way -- one click to the entry, and gone' do
+      unplayable = Notification.create!(user: admin, kind: Notification::UNPLAYABLE_EMBED, subject: entry,
+                                        dedupe_key: "unplayable_embed:#{entry.id}:movie:tt0177242",
+                                        data: { 'name' => entry.name, 'list' => list.name,
+                                                'imdb' => 'tt0177242', 'provider' => 'framerelay' })
+      sign_in admin
+
+      get notifications_path
+      expect(response.body).to include('will not play', 'framerelay')
+
+      patch dismiss_notification_path(unplayable, view: true)
+
+      expect(response).to redirect_to(entry_path(entry))
+      expect(unplayable.reload).to be_dismissed
+    end
+
     # The expiry warnings are the other sort: a state to keep an eye on, which should not
     # disappear just because somebody looked at the sources page.
     it 'leaves an expiry warning as a plain link that does not dismiss' do

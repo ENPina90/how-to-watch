@@ -24,3 +24,9 @@ broken_poster_scan:
   class: "BrokenPosterScanJob"
   queue: default
   description: "Ask every entry's poster URL whether the image is still there, and tell admins about the ones that are not."
+
+embed_availability_scan:
+  cron: "0 6 * * 2"   # Tuesdays at 06:00 UTC
+  class: "EmbedAvailabilityScanJob"
+  queue: default
+  description: "Ask VidSrc which entries it actually holds a file for, and tell admins about the ones it does not."
