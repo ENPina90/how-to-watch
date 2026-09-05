@@ -360,6 +360,13 @@ Worth knowing before optimising: roughly ten requests per embed, and several are
 ours nor the player's — `histats.com`, plus a rotating ad/tracking host. Anything that
 loads N embeds at once multiplies those too.
 
+The player page keeps exactly one spare. The channel below is warmed in a second frame
+five seconds after the page settles, so pressing down costs 8ms instead of the 1.5s above
+— measured 2026-09-05. Two embeds, not six: the cost above is why the other four
+directions still pay full price. The spare frame is stacked *behind* the live one rather
+than hidden, because a frame the browser thinks nobody can see is one it feels free to stop
+buffering.
+
 ---
 
 ## 7. Known issues and caveats
