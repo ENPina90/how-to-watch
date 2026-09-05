@@ -280,10 +280,16 @@ class EntriesController < ApplicationController
     # The room follows the host. Reading this page is what moves it: the navigation
     # actions all redirect here, and the episode links in the sidebar arrive here
     # directly, so this is the one place that sees every change of what is playing.
+    #
+    # Except when the page is only being warmed. The host has not gone anywhere, so
+    # moving the room would take everybody to a channel nobody chose -- and the host
+    # would be the only one still watching what they thought they were all watching.
     @watch_party = current_watch_party
-    follow_host_navigation(@watch_party, @entry, @current_subentry,
-                           watch_entry_path(@entry, channel: @channel.id,
-                                                    subentry: @current_subentry&.id))
+    unless preloading?
+      follow_host_navigation(@watch_party, @entry, @current_subentry,
+                             watch_entry_path(@entry, channel: @channel.id,
+                                              subentry: @current_subentry&.id))
+    end
 
     # Set sidebar states for watch page - both sidebars collapsed by default
     @sidebar_collapsed = true # Left sidebar collapsed
