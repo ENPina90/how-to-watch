@@ -19,6 +19,26 @@ class OmdbApi
     select_movies(data, number, year)
   end
 
+  # The search endpoint's own payload already carries a Poster for every match, so the
+  # poster picker can offer several candidate titles without a follow-up lookup per result.
+  # Separate from search_by_title, which returns ids for the importer and assumes a
+  # well-formed payload.
+  def self.search_with_posters(title, year: nil, limit: 3)
+    return [] if title.blank?
+
+    query = "#{URL}s=#{CGI.escape(title.strip)}&apikey=#{API_KEYS.sample}"
+    query += "&y=#{year.to_i}" if year.to_i.positive?
+    data = api_call(query)
+    return [] if data.nil? || data['Error'].present? || data['Search'].blank?
+
+    data['Search'].first(limit).filter_map do |result|
+      poster = result['Poster']
+      next if poster.blank? || poster == 'N/A'
+
+      { poster: poster, title: result['Title'], year: result['Year'] }
+    end
+  end
+
   def self.get_movie(imdb_id)
     query = "#{URL}i=#{imdb_id}&apikey=#{API_KEYS.sample}"
     response = api_call(query)
