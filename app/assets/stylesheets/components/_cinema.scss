@@ -497,3 +497,28 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
 .cinema__frame--live {
   z-index: 1;
 }
+
+/* The player page's ring is placed to clear the entries sidebar on its right, and the
+   sidebar's own script moves it as that sidebar opens and closes. It writes a variable
+   rather than the property, so that this stays a stylesheet decision: an inline
+   !important is the one thing no rule can answer, and the fullscreen rule below has to. */
+.cinema__control--watch {
+  right: var(--watch-controls-right, 390px);
+  top: 100px;
+  left: auto;
+}
+
+/* Fullscreen is the screen and nothing else. The sidebars are outside the element that
+   went fullscreen, so they are not rendered at all -- and chrome still positioned to clear
+   them ends up huddled in the middle of the picture, dodging furniture that is not there.
+   Out to the edges instead, which is the whole point of the extra room. */
+body.cinema__mode .cinema__screen:fullscreen {
+  .cinema__title {
+    left: 0;
+  }
+
+  .cinema__control--watch {
+    right: 40px;
+    top: 40px;
+  }
+}

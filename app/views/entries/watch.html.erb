@@ -162,7 +162,10 @@
       <% end %>
     <% end %>
   </div>
-  <div id="watchCinemaControls" class="d-flex justify-content-center cinema__control" style="right: 390px; top: 100px; left: auto;">
+  <%# Placed in the stylesheet rather than inline: where it sits depends on whether the
+      entries sidebar is there, and in fullscreen it is not -- an inline style is the one
+      thing a stylesheet cannot answer back to. %>
+  <div id="watchCinemaControls" class="d-flex justify-content-center cinema__control cinema__control--watch">
     <div class="position-relative" style="width: 80px; height: 80px;">
       <%= link_to list_watch_current_path(@channel.find_sibling(:previous) || @channel),
                   data: { cinema_move: true } do %>
