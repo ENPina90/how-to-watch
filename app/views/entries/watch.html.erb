@@ -49,8 +49,10 @@
     per-entry controller lives on it -- being replaced is what makes Stimulus reconnect it
     with the new entry's values. %>
 <div class="cinema__screen"
-     data-controller="cinema-fullscreen"
-     data-cinema-fullscreen-idle-class="cinema__screen--idle">
+     data-controller="cinema-fullscreen cinema-navigation"
+     data-action="auto-advance:move@document->cinema-navigation#moveFromEvent"
+     data-cinema-fullscreen-idle-class="cinema__screen--idle"
+     data-cinema-navigation-moving-class="cinema__screen--moving">
 
   <div id="cinema-frames" class="cinema__frames">
   <%# No `allowfullscreen`, deliberately. Fullscreen belongs to the container above, which
@@ -82,6 +84,9 @@
        data-list-ordered="<%= @channel.ordered? %>"
        <% if user_signed_in? %>
          data-controller="player-progress"
+         <%# There is no unload on a move between entries, so the position has to be taken
+             on the way past instead. %>
+         data-action="cinema-navigation:leaving@document->player-progress#saveNow"
          data-player-progress-url-value="<%= progress_entry_path(@entry) %>"
          data-player-progress-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
          data-player-progress-frame-value="cinema"
@@ -156,7 +161,8 @@
   </div>
   <div id="watchCinemaControls" class="d-flex justify-content-center cinema__control" style="right: 390px; top: 100px; left: auto;">
     <div class="position-relative" style="width: 80px; height: 80px;">
-      <%= link_to list_watch_current_path(@channel.find_sibling(:previous) || @channel) do %>
+      <%= link_to list_watch_current_path(@channel.find_sibling(:previous) || @channel),
+                  data: { cinema_move: true } do %>
         <i class="fa-solid fa-3x fa-caret-up position-absolute top-0 start-50 translate-middle-x"></i>
       <% end %>
       <%# Everything in the ring except the channel arrows and the way home writes
@@ -164,11 +170,13 @@
           the ring without them rather than buttons that bounce off the sign-in page. %>
       <% if user_signed_in? %>
         <%= button_to increment_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
-              class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
+              class: 'p-0 border-0 bg-transparent text-decoration-none',
+              form: { class: 'd-inline', data: { cinema_move: true } } do %>
           <i class="fa-solid fa-3x fa-caret-right position-absolute top-50 end-0 translate-middle-y"></i>
         <% end %>
         <%= button_to shuffle_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
-              class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
+              class: 'p-0 border-0 bg-transparent text-decoration-none',
+              form: { class: 'd-inline', data: { cinema_move: true } } do %>
           <i class="fa-solid fa-2x fa-shuffle position-absolute top-0 end-0 translate-middle-y" title="Shuffle channel"></i>
         <% end %>
         <i class="fa-solid fa-pen fa-2x position-absolute bottom-0 end-0 translate-middle-y cinema__edit" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<%= @entry.id %>" data-action="click->edit#toggle"></i>
@@ -186,12 +194,14 @@
           <%= render 'entries/completion_status', entry: @entry, user: current_user %>
         </div>
       <% end %>
-      <%= link_to list_watch_current_path(@channel.find_sibling(:next) || @channel) do %>
+      <%= link_to list_watch_current_path(@channel.find_sibling(:next) || @channel),
+                  data: { cinema_move: true } do %>
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
       <% if user_signed_in? %>
         <%= button_to decrement_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
-              class: 'p-0 border-0 bg-transparent text-decoration-none', form: { class: 'd-inline' } do %>
+              class: 'p-0 border-0 bg-transparent text-decoration-none',
+              form: { class: 'd-inline', data: { cinema_move: true } } do %>
           <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
         <% end %>
       <% end %>

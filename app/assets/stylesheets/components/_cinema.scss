@@ -453,3 +453,10 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   position: absolute;
   inset: 0;
 }
+
+/* A move is in flight. The frame is about to be replaced by one that takes a second or
+   two to show anything, so dim it rather than leaving the previous entry looking live. */
+.cinema__screen--moving .cinema__frames {
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+}

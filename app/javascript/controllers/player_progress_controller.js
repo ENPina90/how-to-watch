@@ -93,6 +93,12 @@ export default class extends Controller {
     this.player?.destroy();
   }
 
+  // The page is about to move to another entry in place, so there is no unload coming to
+  // catch the position on. Called by cinema-navigation before it changes the frame.
+  saveNow() {
+    this.save({ force: true })
+  }
+
   playerReported(state) {
     this.state = state;
 

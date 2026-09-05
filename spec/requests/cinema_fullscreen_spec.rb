@@ -9,13 +9,27 @@ RSpec.describe 'Fullscreen on the player page', :needs_provider, type: :request 
 
   before { sign_in user }
 
+  # The opening tag of the cinema screen, which is where its controllers are declared.
+  def screen_tag
+    response.body[/<div class="cinema__screen"[^>]*>/m]
+  end
+
   # The container goes fullscreen, not the frame, so everything the page is for stays on
   # screen instead of vanishing behind a third-party player.
   it 'hangs fullscreen on the cinema screen' do
     get watch_entry_path(entry)
 
-    expect(response.body).to include('data-controller="cinema-fullscreen"')
+    expect(screen_tag).to match(/data-controller="[^"]*\bcinema-fullscreen\b/)
     expect(response.body).to include('click->cinema-fullscreen#toggle')
+  end
+
+  # A second `data-controller` on the same element is not an error anywhere: the parser
+  # keeps the first and drops the rest, so the controller simply never connects. That is
+  # how the progress controller came to be silently dead for a while.
+  it 'declares its controllers in one attribute' do
+    get watch_entry_path(entry)
+
+    expect(screen_tag.scan('data-controller=').length).to eq(1)
   end
 
   # Withholding the permission is what makes that stick: the player's button, its `f` and
