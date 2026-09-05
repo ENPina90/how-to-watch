@@ -18,6 +18,7 @@
     <div class="card-menu">
     <%= render 'entries/completion_status', entry: @entry, user: current_user %>
     <% if current_user&.can_edit_entry?(@entry) %>
+      <%= render 'shared/poster_selector_button', entry: @entry %>
       <%= link_to edit_entry_path(@entry) do %>
         <i class="fa-solid fa-pen"></i>
       <% end %>
@@ -41,3 +42,9 @@
     <% end %>
   </div>
 <% end %>
+
+<%# Outside the frame on purpose. This page is also the target of a turbo-frame navigation
+    from a channel, and that page renders its own picker -- Turbo takes only the matching
+    frame from the response, so the copy here is used when the entry is opened on its own
+    and ignored when it is swapped into a list. %>
+<%= render 'shared/poster_selector_modal' %>
