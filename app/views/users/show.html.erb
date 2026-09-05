@@ -42,6 +42,16 @@
             label: 'Auto next',
             hint: 'Offer the next entry when one finishes.' %>
 
+      <%# Minutes, and small ones: half a minute is a real difference when the point is
+          landing somewhere already underway. Zero is off, and is where everybody starts. %>
+      <%= f.input :randomizer, as: :string,
+            input_html: { type: 'number', step: '0.5', min: '0', inputmode: 'decimal' },
+            label: 'Start part-way in',
+            hint: 'Minutes. An entry opens at a random point between the start and this — ' \
+                  'the way a channel is already halfway through something when you land ' \
+                  'on it. Zero starts at the beginning. Picking up where you left off ' \
+                  'always wins over this.' %>
+
       <div class="form-actions">
         <%= f.button :submit, 'Save', class: 'btn btn-primary' %>
       </div>
