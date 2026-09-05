@@ -6,20 +6,6 @@ import { playerAdapterFor, isControllable } from "services/player_adapter"
 // the ones that must not stutter.
 const PRELOAD_DELAY = 5000
 
-// How long to let the warmed player run before stopping it.
-//
-// Not for the buffer: hls.js keeps loading while paused and their player never calls
-// stopLoad, so it fills its 30s (maxBufferLength, read from their player.js) and idles
-// whether we stop it or not. Waiting longer buys no more of the film.
-//
-// It is for the decoder. The player speaks at ~720ms and the picture moves at ~1300ms
-// (VIDSRC.md §6a), so stopping it the moment it first says anything can catch it before it
-// has actually started -- and then the work of starting is waiting for the viewer instead
-// of happening while nobody is watching. Long enough to be past that, short enough that
-// the entry has barely moved: whatever it drifts is a second or so off a resume position
-// nobody could notice.
-const WARMED_SETTLE = 2000
-
 // Moving between entries without rebuilding the page.
 //
 // The five ways out of an entry -- the channel above and below, the entry either side, and
@@ -259,9 +245,7 @@ export default class extends Controller {
       onState: () => {
         if (this.warmedPaused) return
         this.warmedPaused = true
-        // Muted by the browser the whole time, since nobody has touched the page -- so
-        // letting it run a moment longer is silent as well as cheap.
-        this.settleTimer = setTimeout(() => this.warmedPlayer?.pause(), WARMED_SETTLE)
+        this.warmedPlayer.pause()
       }
     })
   }
@@ -290,7 +274,6 @@ export default class extends Controller {
     // started, so the browser started it muted -- which is what kept it quiet behind the
     // film being watched, and would otherwise leave the viewer landing on a silent
     // channel. Somebody has touched the page now: they pressed down.
-    clearTimeout(this.settleTimer)
     this.warmedPlayer?.unmute()
     this.warmedPlayer?.play()
     this.warmedPlayer?.destroy()
@@ -307,7 +290,6 @@ export default class extends Controller {
 
   discardWarmed() {
     clearTimeout(this.warmingTimer)
-    clearTimeout(this.settleTimer)
     this.warmedPlayer?.destroy()
     this.warmedPlayer = null
     this.warmedPaused = false
