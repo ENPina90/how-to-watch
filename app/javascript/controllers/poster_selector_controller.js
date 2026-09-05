@@ -6,7 +6,7 @@ import * as bootstrap from "bootstrap";
 // serves every card on the page: the entry comes from the Bootstrap trigger via
 // `event.relatedTarget`, so nothing about it can be baked into the markup.
 export default class extends Controller {
-  static targets = ["modal", "loading", "results", "error", "title"];
+  static targets = ["modal", "loading", "results", "error", "title", "file", "uploadStatus"];
 
   connect() {
     this.modalTarget.addEventListener('show.bs.modal', this.open);
@@ -24,6 +24,7 @@ export default class extends Controller {
     this.titleTarget.textContent = trigger.dataset.entryName
       ? `Choose Poster for ${trigger.dataset.entryName}`
       : 'Choose Poster';
+    this.resetUpload();
     this.loadPosters();
   };
 
@@ -91,18 +92,13 @@ export default class extends Controller {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+          'X-CSRF-Token': this.csrfToken
         },
         body: JSON.stringify({ poster_url: posterUrl })
       });
 
       if (response.ok) {
-        // Close modal
-        const modalInstance = bootstrap.Modal.getInstance(this.modalTarget);
-        modalInstance.hide();
-
-        // Reload page to show new poster
-        window.location.reload();
+        this.finish();
       } else {
         alert('Failed to update poster. Please try again.');
       }
@@ -110,5 +106,65 @@ export default class extends Controller {
       console.error('Error updating poster:', error);
       alert('Failed to update poster. Please try again.');
     }
+  }
+
+  // The way out when none of the candidates is any good: the entry's own file, sent as
+  // multipart rather than as a URL for the server to go and fetch.
+  async upload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    this.setUploadStatus('Uploading…');
+
+    const body = new FormData();
+    body.append('poster', file);
+
+    try {
+      // No Content-Type header: the browser has to set it, because only it knows the
+      // multipart boundary.
+      const response = await fetch(`/entries/${this.entryId}/update_poster`, {
+        method: 'PATCH',
+        headers: { 'X-CSRF-Token': this.csrfToken },
+        body
+      });
+
+      if (response.ok) {
+        this.finish();
+        return;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      this.failUpload(data.error || 'Could not save that image.');
+    } catch (error) {
+      console.error('Error uploading poster:', error);
+      this.failUpload('Could not save that image.');
+    }
+  }
+
+  get csrfToken() {
+    return document.querySelector('[name="csrf-token"]').content;
+  }
+
+  finish() {
+    bootstrap.Modal.getInstance(this.modalTarget).hide();
+    // The poster is on the card behind the modal and in the sidebar, so the page is
+    // reloaded rather than one <img> swapped.
+    window.location.reload();
+  }
+
+  // The file stays cleared so the same one can be picked again after a failure -- a
+  // change event does not fire for an unchanged value.
+  failUpload(message) {
+    this.setUploadStatus(message);
+    this.fileTarget.value = '';
+  }
+
+  resetUpload() {
+    this.fileTarget.value = '';
+    this.setUploadStatus('');
+  }
+
+  setUploadStatus(message) {
+    this.uploadStatusTarget.textContent = message;
   }
 }

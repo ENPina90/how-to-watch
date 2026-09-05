@@ -580,38 +580,69 @@ class EntriesController < ApplicationController
     render json: { posters: posters }
   end
 
+  # The picker saves either one of the candidates it offered, by URL, or a file the user
+  # picked off their own machine -- the way out when none of the suggestions is any good.
   def update_poster
-    poster_url = params[:poster_url]
+    result = if params[:poster].present?
+               attach_uploaded_poster(params[:poster])
+             elsif params[:poster_url].present?
+               attach_poster_from_url(params[:poster_url])
+             else
+               { error: 'No poster provided' }
+             end
 
-    if poster_url.blank?
-      render json: { error: 'No poster URL provided' }, status: :unprocessable_entity
-      return
-    end
-
-    begin
-      # Determine the file extension from URL or default to jpg
-      extension = File.extname(URI.parse(poster_url).path)
-      extension = '.jpg' if extension.blank?
-
-      # Download the image from the URL
-      downloaded_image = URI.open(poster_url)
-
-      # Attach it to the entry using Active Storage
-      @entry.poster.attach(
-        io: downloaded_image,
-        filename: "poster_#{@entry.id}_#{Time.now.to_i}#{extension}",
-        content_type: downloaded_image.content_type || 'image/jpeg'
-      )
-
+    if result[:error]
+      render json: result, status: :unprocessable_entity
+    else
       render json: { success: true, message: 'Poster updated successfully' }
-    rescue => e
-      Rails.logger.error "Error updating poster: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-      render json: { error: 'Failed to update poster' }, status: :unprocessable_entity
     end
   end
 
   private
+
+    # What the picker accepts from a browser. An allowlist rather than a check for
+    # "image/*": the file is served back to everyone who can see the entry, and
+    # image/svg+xml is a way to hand them a script.
+    POSTER_CONTENT_TYPES = %w[image/jpeg image/png image/webp image/gif].freeze
+    MAX_POSTER_BYTES = 10.megabytes
+
+    # {} on success, { error: } otherwise -- update_poster turns either into JSON.
+    def attach_uploaded_poster(file)
+      return { error: "That image is over #{MAX_POSTER_BYTES / 1.megabyte}MB" } if file.size > MAX_POSTER_BYTES
+
+      # Sniffed rather than taken from the request: the content type a browser sends is
+      # whatever the client chose to say, and this one decides what gets served back.
+      content_type = Marcel::MimeType.for(file.tempfile, name: file.original_filename)
+      return { error: 'That file is not a JPEG, PNG, WebP or GIF' } unless POSTER_CONTENT_TYPES.include?(content_type)
+
+      @entry.poster.attach(
+        io: file.tempfile,
+        filename: poster_filename(content_type.split('/').last),
+        content_type: content_type
+      )
+      {}
+    rescue StandardError => e
+      Rails.logger.error "Error attaching uploaded poster for entry #{@entry.id}: #{e.message}"
+      { error: 'Failed to save that image' }
+    end
+
+    def attach_poster_from_url(poster_url)
+      downloaded_image = URI.open(poster_url)
+      extension = File.extname(URI.parse(poster_url).path).delete('.').presence || 'jpg'
+
+      @entry.poster.attach(
+        io: downloaded_image,
+        filename: poster_filename(extension),
+        content_type: downloaded_image.content_type || 'image/jpeg'
+      )
+      {}
+    rescue StandardError => e
+      Rails.logger.error "Error updating poster: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      { error: 'Failed to update poster' }
+    end
+
+    def poster_filename(extension) = "poster_#{@entry.id}_#{Time.now.to_i}.#{extension}"
 
     # Which section this entry sits in under each grouping. A delete is a plain link on the
     # card, so unlike an add it carries no word about how the page is grouped -- this
