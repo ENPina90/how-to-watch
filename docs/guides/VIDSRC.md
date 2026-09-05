@@ -56,9 +56,12 @@ provider and both fail silently if they are left behind:
 |---|---|---|
 | `VidsrcPlayer.ORIGINS` in [`vidsrc_player.js`](../../app/javascript/services/vidsrc_player.js) | allowlists origins it accepts `postMessage` from | the player loads and plays fine, but every event is rejected, `started` never flips true, so play/pause/seek and **all position tracking silently stop** |
 | `Source::SYNC_ADAPTERS` in [`source.rb`](../../app/models/source.rb) | maps slug → player adapter | `sync_adapter` is `nil`, so the source is treated as having no control surface and watch parties fall back to "tell people how far apart they are" |
+| `Source::PRECONNECT_ORIGINS` in [`source.rb`](../../app/models/source.rb) | the inner origins the player reaches for, warmed while the wrapper loads (§4a) | a stale host costs one unused socket and the second hop pays its own handshake again — slower, never broken |
 
-Both are keyed by hand — a slug or host that is playable but missing from them looks
-healthy and behaves broken. **Change all three together.** `framerelay`, `vidsrc2` and
+The first two are keyed by hand — a slug or host that is playable but missing from them
+looks healthy and behaves broken. **Change all three together.** The third is keyed by
+adapter rather than by domain, so a new vidsrc front door needs nothing from it; it only
+moves if the *inner* player host does. `framerelay`, `vidsrc2` and
 `vidsrc-ir` were added to both on 2026-09-04.
 
 ### 1b. Expiry dates
@@ -330,6 +333,42 @@ the player has spoken.
 
 ---
 
+## 6a. How long an embed takes to start
+
+Measured 2026-09-05 against `framerelay.dev`, `tt0089003`, loaded top-level so the chain
+could be instrumented. Milliseconds from navigation start, warm DNS and warm HTTP cache:
+
+| | ms | what happens |
+|---|---|---|
+| wrapper TTFB | 55–127 | our front door answers |
+| `vs_src.php` returns | ~215 | the wrapper's own XHR, which yields the shell URL |
+| shell document done | ~360 | first cross-origin hop, on `cloudorchestranova.com` |
+| first `PLAYER_EVENT` | ~720 | the player exists and is talking (§6) |
+| picture actually moving | **1300–1600** | stream resolved, first segments in, decoding |
+
+So **about 1.5s warm**, and more cold: the chain touches six origins — `framerelay.dev`,
+`cloudorchestranova.com`, `data.vidsrcme.ru`, `cdn.jsdelivr.net` (hls.js), `kudzukernel.site`
+(the stream) and `vidapi.cloud` — and a cold name lookup measured ~145ms each. The hops are
+strictly sequential: each URL is only discoverable once the document before it has loaded
+and run, which is why §9's preconnect exists and why it can only help the hops whose origin
+is known in advance.
+
+`data.vidsrcme.ru/api.php` is the slowest single call at 136–211ms TTFB, and it is on the
+critical path twice (once for metadata, once for `stream_urls`).
+
+Worth knowing before optimising: roughly ten requests per embed, and several are neither
+ours nor the player's — `histats.com`, plus a rotating ad/tracking host. Anything that
+loads N embeds at once multiplies those too.
+
+The player page keeps exactly one spare. The channel below is warmed in a second frame
+five seconds after the page settles, so pressing down costs 8ms instead of the 1.5s above
+— measured 2026-09-05. Two embeds, not six: the cost above is why the other four
+directions still pay full price. The spare frame is stacked *behind* the live one rather
+than hidden, because a frame the browser thinks nobody can see is one it feels free to stop
+buffering.
+
+---
+
 ## 7. Known issues and caveats
 
 **Autonext loses track of position.** Reported 2025-05-07: as `autonext` advances, the
@@ -343,6 +382,30 @@ regardless of what their UI shows.
 the feature is off pending a new dashboard. So a custom domain's 50% reduction is currently
 the only ad lever that exists. The same notice warns that anyone selling ad-free access or
 "special accounts" is a scammer — they do not sell it.
+
+**Fullscreen is ours, not theirs — and it has to be taken away up front.** The player
+offers fullscreen by button, by `f` and by double-click, and any of them puts *their*
+frame full-screen, which hides everything this app draws around it. Dropping
+`allowfullscreen` from the iframe kills all three at once, because what is withheld is the
+capability rather than any one way of asking; measured 2026-09-05, playback is unaffected
+and the dead button does nothing visible. It has to be withheld rather than corrected
+afterwards: once the frame holds fullscreen, moving it to an ancestor is refused
+("Permissions check failed") without a fresh gesture in *our* document, which a click
+inside theirs never gives us. See `cinema_fullscreen_controller.js`.
+
+Their button still *draws*, though, so ours is positioned on top of it to hide it. Those
+offsets are read off `iframe_player/assets/player.css` (`.jw-controls` padding, `--bar-h`,
+`.jw-btn` size) rather than guessed, and they are the one place in this app that depends on
+their visual layout — if the bar is restyled, ours goes off-centre. Cosmetic only: the
+button underneath is inert either way.
+
+**The embed wipes itself when DevTools is open.** It loads `disable-devtool.js` on both
+the wrapper and the player, and on detecting an inspector it navigates the document to
+`about:blank` — so anyone debugging playback sees an empty frame and will reasonably think
+it is our bug. It is not. Measuring or debugging the embed means neutralising that script
+first: it installs itself on `window.DisableDevtool`, so defining that property as a
+non-writable no-op before the page's own scripts run leaves playback working and the
+inspector attached.
 
 **Adblockers frequently block the player entirely.** Repeated complaints through 2026-08;
 the admin's response was to ask which blocker rather than to fix it. Anyone testing playback
@@ -390,6 +453,7 @@ is worth remembering if entry validation ever comes up.
 | `db/seeds/sources.rb` | the create-only seed those rows come from (`rails sources:seed`) |
 | `Source::SYNC_ADAPTERS` | maps a slug to the player adapter — a new vidsrc slug must be added here or it is treated as uncontrollable |
 | `Source::RESUME_PARAMS` | maps an adapter to its resume parameter (`startAt`), so only a provider with a player carries one |
+| `Source::PRECONNECT_ORIGINS` | the inner player origin, opened while the wrapper is still loading — see §1a for what a stale one costs |
 | [`app/javascript/controllers/player_progress_controller.js`](../../app/javascript/controllers/player_progress_controller.js) | saves the position on pause, on seek, at the completion mark and as the page goes away; reads the `event` from §6. Leaves fullscreen at 98%, which works because the exit belongs to the top-level document even though the frame requested it, and needs no user gesture |
 | [`app/javascript/controllers/auto_advance_controller.js`](../../app/javascript/controllers/auto_advance_controller.js) | the up-next countdown, raised by coming out of fullscreen past the completion mark — so a rewatch, already marked watched, is not offered the next entry over its opening titles |
 | `EntriesController#progress` | records it on the viewer's `UserEntry`, ticking the film off at `UserEntry::COMPLETION_FRACTION` |

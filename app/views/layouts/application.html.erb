@@ -9,6 +9,9 @@
     <meta name="tmdb-key" content="<%= ENV["TMDB_API_KEY"] %>">
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
+
+    <%# Pages that frame a third-party player warm its connections from here. %>
+    <%= yield :head %>
   </head>
   <%# `page-<controller>-<action>` alongside the sidebar and theme classes already here,
       so a style can be scoped to one page without a flag being threaded through to it. %>

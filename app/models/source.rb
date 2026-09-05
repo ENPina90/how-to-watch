@@ -183,6 +183,23 @@ class Source < ApplicationRecord
   def resume_param = RESUME_PARAMS[sync_adapter]
   def resumable?   = resume_param.present?
 
+  # Origins a provider's player reaches for *after* the page has framed it, so they can be
+  # warmed while the first frame is still loading.
+  #
+  # A vidsrc embed is three nested frames -- wrapper, shell, player (VIDSRC.md §4a) -- and
+  # only the wrapper is on the domain the template names. The other two are discovered
+  # after that one has loaded and parsed, which is the part of the wait a preconnect can
+  # actually take off: the front door's own connection opens as the page parses either way.
+  #
+  # Keyed by adapter for the same reason RESUME_PARAMS is: this belongs to the player, not
+  # to whichever front door vidsrc is answering on this month. A stale entry costs one
+  # unused socket, so it fails quietly rather than badly -- see VIDSRC.md §1a.
+  PRECONNECT_ORIGINS = {
+    'vidsrc' => ['https://cloudorchestranova.com'].freeze
+  }.freeze
+
+  def preconnect_origins = PRECONNECT_ORIGINS.fetch(sync_adapter, [])
+
   # Build the playable embed URL for an entry (plus optional subentry for series/anime).
   # Returns nil if no template matches the entry's media type.
   def url_for(entry, subentry: nil, autoplay: false, start_at: nil)

@@ -1,0 +1,15 @@
+<%# Opens the player's connections while the page is still parsing. See
+    PlayerHelper#player_preconnect_origins for what each one is worth.
+
+    dns-prefetch alongside preconnect is the usual pair: the name lookup alone is the part
+    every browser will act on, and it is what is left if preconnect is ignored or the
+    connection is dropped before the frame uses it.
+
+    No `crossorigin`: an iframe navigation is a credentialed load, and browsers pool those
+    separately from anonymous ones -- warming the wrong pool would buy nothing. %>
+<% content_for :head do %>
+  <% player_preconnect_origins(url, source).each do |origin| %>
+    <link rel="dns-prefetch" href="<%= origin %>">
+    <link rel="preconnect" href="<%= origin %>">
+  <% end %>
+<% end %>

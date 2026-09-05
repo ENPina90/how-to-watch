@@ -361,3 +361,180 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   gap: 8px;
   flex-shrink: 0;
 }
+
+/* Fullscreen that belongs to the page.
+
+   The cinema screen goes fullscreen, not the player frame, so the ring of controls, the
+   channel name and the up-next card stay on screen instead of vanishing behind a
+   third-party player. See cinema_fullscreen_controller.js for why the frame is not
+   allowed to take the screen itself. */
+.cinema__screen:fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Our own way in and out, since the player's is switched off.
+
+   It sits *on top of* the player's own fullscreen button rather than beside it. That
+   button is dead now -- the frame has no fullscreen permission -- so leaving it showing
+   is just a second, non-working control next to the working one. Covering it is cosmetic
+   only: if their layout shifts, ours is merely off-centre rather than broken, which is
+   why this is worth doing at all and would not have been as a way of catching clicks.
+  
+   The offsets place our centre on theirs, and they are not guesses -- they are read off
+   the player's own stylesheet (iframe_player/assets/player.css, read 2026-09-05):
+
+     .jw-controls { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px 6px }
+     .jw-bar      { height: var(--bar-h), which is 46px; align-items: center }
+     .jw-btn      { width: 40px; height: 40px }
+
+   so the row's centre sits 6 + 46/2 = 29px above the bottom, and the rightmost button's
+   centre 10 + 40/2 = 30px in from the right. Their mobile media query shrinks the buttons
+   to 36px, moving that to 28px -- inside the margin our own 44px leaves. If they restyle
+   the bar these two numbers are the whole of the fix. */
+.cinema__screen {
+  --fullscreen-button-right: 30px;
+  --fullscreen-button-bottom: 29px;
+  /* Comfortably over their 40px button, so a few pixels of drift still covers it. */
+  --fullscreen-button-size: 44px;
+}
+
+.cinema__fullscreen {
+  position: absolute;
+  right: calc(var(--fullscreen-button-right) - var(--fullscreen-button-size) / 2);
+  bottom: calc(var(--fullscreen-button-bottom) - var(--fullscreen-button-size) / 2);
+  width: var(--fullscreen-button-size);
+  height: var(--fullscreen-button-size);
+  /* Above the frame, so it masks what is behind it rather than sharing the space. */
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  /* Opaque, because the point is that nothing shows through. Their icon is roughly 24px,
+     so 44px of solid ground covers it with room for their layout to drift a little. */
+  background: #000;
+  color: white;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.cinema__fullscreen:hover,
+.cinema__fullscreen:focus-visible {
+  opacity: 1;
+}
+
+/* Idle, and only in fullscreen: windowed, this page has always shown its controls and
+   there is no reason to start hiding them. Opacity rather than display so nothing reflows
+   and the fade reads as the picture being left alone, and pointer-events so a control
+   faded to nothing cannot still be clicked. */
+.cinema__screen:fullscreen.cinema__screen--idle {
+  cursor: none;
+
+  /* While the chrome is hidden the player stops taking pointer events, and that is the
+     only way this page can see a mouse move at all. Pointer events inside a cross-origin
+     frame belong to its document and never reach ours -- and in fullscreen the picture is
+     the whole screen, so there is nowhere else for the mouse to be. Letting them fall
+     through to the screen underneath is what makes waking possible.
+
+     Handed straight back on the first movement, so the player is interactive again before
+     anybody could want it. The cost is one swallowed click, and only a click with no
+     movement before it. */
+  .cinema__frames {
+    pointer-events: none;
+  }
+
+  /* Everything drawn over the picture, and nothing that is asking a question. The modals
+     are deliberately absent: the up-next card can appear while the viewer is sitting
+     still, and a countdown faded to nothing would advance the channel unannounced.
+
+     `.watch-party` is the bar shown during a party and `.watch-party-start` the button
+     offering one -- different elements, and listing only the first left the button sitting
+     over the film by itself. */
+  .cinema__title,
+  .cinema__control,
+  .source-switcher,
+  .cinema__fullscreen,
+  .watch-party,
+  .watch-party-start {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+}
+
+/* The frame stack fills the screen behind everything else. Absolute rather than in flow
+   so the player's own `height: 100%` has a resolved height to measure against, and so the
+   chrome -- which is absolutely positioned against the screen -- keeps sitting over it.
+
+   The z-index is not decoration: it makes this a stacking context, which keeps the order
+   of the frames *inside* from meaning anything outside. Without it the live frame's own
+   z-index outranked every piece of chrome that had never needed one -- the control ring
+   has none and had always simply been painted later -- and the player swallowed them. */
+.cinema__frames {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* A move is in flight. The frame is about to be replaced by one that takes a second or
+   two to show anything, so dim it rather than leaving the previous entry looking live. */
+.cinema__screen--moving .cinema__frames {
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+}
+
+/* Both frames fill the stack; the one being watched sits over the one being warmed.
+
+   Stacked rather than hidden, and deliberately: a frame the browser believes nobody can
+   see is a frame it feels free to stop buffering, which would leave the warmed one as cold
+   as no preload at all. It is covered instead -- the player's own background is opaque, so
+   the frame above hides it completely. */
+.cinema__frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.cinema__frame--live {
+  z-index: 1;
+}
+
+/* The player page's ring is placed to clear the entries sidebar on its right, and the
+   sidebar's own script moves it as that sidebar opens and closes. It writes a variable
+   rather than the property, so that this stays a stylesheet decision: an inline
+   !important is the one thing no rule can answer, and the fullscreen rule below has to. */
+.cinema__control--watch {
+  right: var(--watch-controls-right, 390px);
+  top: 100px;
+  left: auto;
+}
+
+/* Fullscreen is the screen and nothing else. The sidebars are outside the element that
+   went fullscreen, so they are not rendered at all -- and chrome still positioned to clear
+   them ends up huddled in the middle of the picture, dodging furniture that is not there.
+   Out to the edges instead, which is the whole point of the extra room. */
+body.cinema__mode .cinema__screen:fullscreen {
+  /* One number for the whole of it. Pinned to the very edges the chrome looked like it
+     had been pushed there rather than placed: windowed there is black around the frame to
+     absorb an edge, and fullscreen the picture reaches every side, so the same offsets
+     that read as tidy in a window read as cramped over a film. */
+  --fullscreen-inset: 56px;
+
+  .cinema__title {
+    left: var(--fullscreen-inset);
+    /* The base rule already pads 40px down from the top; this is the rest of the way. */
+    padding-top: calc(var(--fullscreen-inset) + 16px);
+  }
+
+  .cinema__control--watch {
+    right: calc(var(--fullscreen-inset) + 40px);
+    top: calc(var(--fullscreen-inset) + 40px);
+  }
+}

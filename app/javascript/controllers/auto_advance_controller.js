@@ -77,9 +77,26 @@ export default class extends Controller {
     }
   }
 
-  // These advance the user's position, so they are PATCH routes now. Turbo is disabled on
-  // the watch page, so post a real form rather than relying on data-turbo-method.
+  // Offered rather than performed: cinema-navigation answers this by fetching the next
+  // entry and pasting it in, which keeps the player's frame and any fullscreen alive. If
+  // nothing answers -- the controller absent, or an error before it could -- the old
+  // route below still works, so the card is never a dead end.
   submitPatch(path) {
+    const body = new FormData()
+    body.append("_method", "patch")
+    body.append("authenticity_token", this.csrfToken())
+
+    const asked = this.dispatch("move", { target: document, cancelable: true, detail: { url: path, body: body } })
+    if (!asked.defaultPrevented) this.navigateTo(path)
+  }
+
+  csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content
+  }
+
+  // The original route, kept as the fallback. Turbo is disabled on the watch page, so post
+  // a real form rather than relying on data-turbo-method.
+  navigateTo(path) {
     // The watch page asks "did you mean to leave?" whenever the frame has focus, which it
     // has for most of a film. This is the page leaving of its own accord, so say so --
     // otherwise the countdown reaches zero and stops there behind a prompt.
@@ -99,7 +116,7 @@ export default class extends Controller {
     const token = document.createElement("input")
     token.type = "hidden"
     token.name = "authenticity_token"
-    token.value = document.querySelector('meta[name="csrf-token"]')?.content
+    token.value = this.csrfToken()
     form.appendChild(token)
 
     document.body.appendChild(form)
