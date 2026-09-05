@@ -281,6 +281,11 @@ export default class extends Controller {
     this.warmedPaused = false
     this.warmed = null
 
+    // Said before the chrome goes in, so the controller inside it is already connected
+    // knowing this: the player it is about to adopt has been running with nobody in front
+    // of it, and wherever it has reached is not somewhere anybody watched it reach.
+    page.getElementById("cinema-chrome")?.setAttribute("data-player-progress-warmed-value", "true")
+
     this.applyChrome(page)
     history.pushState({}, "", url)
 

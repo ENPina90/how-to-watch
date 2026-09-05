@@ -79,6 +79,38 @@ RSpec.describe 'Where the player got to', type: :model do
       expect(user_entry.reload.completed_at).to be_within(1.second).of(was)
     end
 
+    # The channel warmed in the background plays while it waits its turn, so by the time
+    # somebody flips to it, it can already be past the point that counts as watched --
+    # without anybody having seen a frame of it.
+    context 'when the film got there with nobody in front of it' do
+      it 'still records where it reached' do
+        user_entry.record_progress!(5_700, unattended: true)
+
+        expect(user_entry.reload.player_progress).to eq(5_700)
+      end
+
+      it 'does not call that watched' do
+        user_entry.record_progress!(5_700, unattended: true)
+
+        expect(user_entry.reload).not_to be_completed
+      end
+
+      # Not even the player's own word for it: it ended while the room was empty.
+      it 'does not call it watched when the player says it finished' do
+        user_entry.record_progress!(5_900, finished: true, unattended: true)
+
+        expect(user_entry.reload).not_to be_completed
+      end
+
+      # Once somebody is actually there, the ordinary rule applies again.
+      it 'counts the next position that somebody was present for' do
+        user_entry.record_progress!(5_700, unattended: true)
+        user_entry.record_progress!(5_710)
+
+        expect(user_entry.reload).to be_completed
+      end
+    end
+
     # The player has reported a negative position after a seek to the very start.
     it 'refuses a position before the beginning' do
       user_entry.record_progress!(-12)
