@@ -10,9 +10,12 @@
     <div class="card-details">
       <div class="d-flex justify-content-between mt-1">
         <p><%= @entry.year %></p>
-        <p><%= '*' * @entry.rating %></p>
+        <%# Nearly a fifth of the catalogue has no rating -- bulk-imported episodes, mostly
+            -- and there is nothing for String#* to repeat nil times. Those rows show no
+            stars rather than taking the page down. %>
+        <p><%= '*' * @entry.rating.to_i %></p>
       </div>
-      <p class="card-plot"><%= @entry.plot %><%= @entry.plot %></p>
+      <p class="card-plot"><%= @entry.plot %></p>
       <p class="mb-1"><small><%= @entry.genre %></small></p>
     </div>
     <div class="card-menu">
