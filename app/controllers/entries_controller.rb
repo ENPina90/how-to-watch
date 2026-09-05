@@ -267,7 +267,7 @@ class EntriesController < ApplicationController
     # Computed embed URL, built on-demand from the resolved provider's template.
     @embed_url = @entry.embed_url(subentry: @current_subentry,
                                   autoplay: @channel.auto_play_for(current_user),
-                                  start_at: resume_position)
+                                  start_at: start_position)
     if @embed_url.blank?
       flash[:alert] = "No video source available for this entry"
       redirect_to list_path(@entry.list) and return
@@ -618,10 +618,18 @@ class EntriesController < ApplicationController
     # `?channel=` says which channel the click came from. It is honoured only if that
     # channel really holds this entry -- directly or through the channels inside it --
     # so a hand-edited id cannot make one channel wear another's contents.
-    # Where the player should pick up on this visit, for the member looking at it. A read:
-    # rendering the page must not create a tracking row (see reads_do_not_write_spec), so
-    # this goes through the non-writing lookup and answers nil for somebody who has never
-    # played this entry.
+    # Where the player should pick up on this visit, for the member looking at it.
+    #
+    # Somewhere they have already been beats somewhere chosen for them: picking up where
+    # you left off is a thing you asked for, and the randomiser is for entries you are
+    # arriving at rather than returning to.
+    def start_position
+      resume_position || current_user&.random_start_for(@entry)
+    end
+
+    # A read: rendering the page must not create a tracking row (see
+    # reads_do_not_write_spec), so this goes through the non-writing lookup and answers nil
+    # for somebody who has never played this entry.
     def resume_position
       current_user&.user_entry_for(@entry)&.resume_position
     end
