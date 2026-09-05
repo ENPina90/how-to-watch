@@ -513,12 +513,20 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
    them ends up huddled in the middle of the picture, dodging furniture that is not there.
    Out to the edges instead, which is the whole point of the extra room. */
 body.cinema__mode .cinema__screen:fullscreen {
+  /* One number for the whole of it. Pinned to the very edges the chrome looked like it
+     had been pushed there rather than placed: windowed there is black around the frame to
+     absorb an edge, and fullscreen the picture reaches every side, so the same offsets
+     that read as tidy in a window read as cramped over a film. */
+  --fullscreen-inset: 56px;
+
   .cinema__title {
-    left: 0;
+    left: var(--fullscreen-inset);
+    /* The base rule already pads 40px down from the top; this is the rest of the way. */
+    padding-top: calc(var(--fullscreen-inset) + 16px);
   }
 
   .cinema__control--watch {
-    right: 40px;
-    top: 40px;
+    right: calc(var(--fullscreen-inset) + 40px);
+    top: calc(var(--fullscreen-inset) + 40px);
   }
 }
