@@ -58,6 +58,23 @@ If your app uses The Movie Database API:
 TMDB_API_KEY=your_tmdb_api_key
 ```
 
+### **Optional: Google image search**
+The last source in the poster picker, for titles the film databases have never heard of --
+fan edits, cuts, compilations. Both variables are needed; with either missing the picker
+simply offers no web results and every other source is unaffected.
+
+```bash
+GOOGLE_SEARCH_API_KEY=your_google_api_key
+GOOGLE_SEARCH_ENGINE_ID=your_programmable_search_engine_id
+```
+
+Get them from the [Custom Search JSON API](https://developers.google.com/custom-search/v1/overview)
+(the key) and [Programmable Search Engine](https://programmablesearchengine.google.com/)
+(the engine id -- create an engine set to search the whole web, with Image search on). The
+free tier is 100 queries a day, which is why results are cached for 12 hours per query.
+
+There is no Bing equivalent: Microsoft retired the Bing Search APIs in August 2025.
+
 ## 🚀 **How to Set Environment Variables in Railway**
 
 1. **Go to your Railway project dashboard**
@@ -120,6 +137,7 @@ Before deploying, ensure you have:
 - [ ] `CLOUDINARY_CLOUD_NAME=...`
 - [ ] `CLOUDINARY_API_KEY=...`
 - [ ] `CLOUDINARY_API_SECRET=...`
+- [ ] `GOOGLE_SEARCH_API_KEY=...` and `GOOGLE_SEARCH_ENGINE_ID=...` (optional; poster picker web results)
 - [ ] PostgreSQL service added to Railway project
 - [ ] Redis service added to Railway project (if using Action Cable)
 
