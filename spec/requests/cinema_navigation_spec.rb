@@ -82,6 +82,30 @@ RSpec.describe 'Moving between entries in place', :needs_provider, type: :reques
     it 'is not counted as somebody arriving' do
       expect { preload(watch_entry_path(over_there)) }.not_to change { Visit.count }
     end
+
+    # The host reading a player page is what moves everyone in a watch party onto it. A
+    # page nobody has opened must not, or the room lands on a channel nobody chose and the
+    # host is left the only one watching what they thought they all were.
+    context 'with a watch party open' do
+      # Through the controller, because the room is context carried in the session -- a
+      # record on its own is not a party this request is in.
+      let(:party) do
+        post watch_parties_path, params: { entry_id: entry.id, channel: channel.id }
+        WatchParty.open.find_by(host_user: user)
+      end
+
+      before { party }
+
+      it 'does not move the room' do
+        expect { preload(watch_entry_path(over_there)) }
+          .not_to change { party.reload.entry_id }
+      end
+
+      it 'still moves the room when the host actually goes there' do
+        expect { get watch_entry_path(over_there) }
+          .to change { party.reload.entry_id }.to(over_there.id)
+      end
+    end
   end
 
   describe 'the regions a move replaces' do
