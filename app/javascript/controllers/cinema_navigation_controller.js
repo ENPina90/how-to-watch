@@ -241,11 +241,19 @@ export default class extends Controller {
     const adapter = this.adapterFor(incoming)
     if (!adapter) return
 
+    // Ask it to stop on every report until it actually does.
+    //
+    // One ask is not enough: a pause sent on the player's first report -- about four
+    // seconds after the frame is built -- is ignored, while the same message a few seconds
+    // later is obeyed. Measured 2026-09-05, and there is no announced moment when it
+    // starts listening, so there is nothing to wait for exactly. Asking again each time it
+    // says it has moved needs no such moment: it costs one message per five seconds, and
+    // it stops of its own accord, because a player that has stopped stops reporting.
     this.warmedPlayer = playerAdapterFor(adapter, frame, {
-      onState: () => {
-        if (this.warmedPaused) return
-        this.warmedPaused = true
-        this.warmedPlayer.pause()
+      onState: (state) => {
+        if (this.warmedAt === state.progress) return
+        this.warmedAt = state.progress
+        this.warmedPlayer?.pause()
       }
     })
   }
@@ -269,11 +277,22 @@ export default class extends Controller {
     next.id = "cinema"
     next.classList.add("cinema__frame--live")
     // It was stopped while it warmed; this is what it was warmed for.
+    //
+    // Unmuted as well as played. Nobody had touched the page when the warmed frame
+    // started, so the browser started it muted -- which is what kept it quiet behind the
+    // film being watched, and would otherwise leave the viewer landing on a silent
+    // channel. Somebody has touched the page now: they pressed down.
+    this.warmedPlayer?.unmute()
     this.warmedPlayer?.play()
     this.warmedPlayer?.destroy()
     this.warmedPlayer = null
-    this.warmedPaused = false
+    this.warmedAt = null
     this.warmed = null
+
+    // Said before the chrome goes in, so the controller inside it is already connected
+    // knowing this: the player it is about to adopt has been running with nobody in front
+    // of it, and wherever it has reached is not somewhere anybody watched it reach.
+    page.getElementById("cinema-chrome")?.setAttribute("data-player-progress-warmed-value", "true")
 
     this.applyChrome(page)
     history.pushState({}, "", url)
@@ -286,7 +305,7 @@ export default class extends Controller {
     clearTimeout(this.warmingTimer)
     this.warmedPlayer?.destroy()
     this.warmedPlayer = null
-    this.warmedPaused = false
+    this.warmedAt = null
     this.warmed = null
     document.getElementById("cinema-next")?.remove()
   }

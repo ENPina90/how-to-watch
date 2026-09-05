@@ -441,7 +441,8 @@ class EntriesController < ApplicationController
     current_user.user_entry_for!(@entry).record_progress!(
       params[:progress],
       duration: params[:duration],
-      finished: params[:finished].to_s == 'true'
+      finished: params[:finished].to_s == 'true',
+      unattended: params[:unattended].to_s == 'true'
     )
 
     head :no_content
