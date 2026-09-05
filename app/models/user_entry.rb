@@ -41,15 +41,23 @@ class UserEntry < ApplicationRecord
   # through. `finished` is the player saying the video ended; the fraction is the fallback
   # for the far more common case of somebody stopping during the credits.
   #
+  # `unattended` is a position the film reached on its own, with nobody in front of it: the
+  # channel warmed in the background plays while it waits, so by the time somebody flips to
+  # it, it may already be past the point that counts as watched. Where it got to is still
+  # worth recording -- that is where they are about to be -- but it cannot be the reason
+  # the entry is called seen. Nobody saw it.
+  #
   # Completion is only ever switched on here. Somebody who un-ticks a film they have seen
   # and then scrubs through it should not have that undone by the player.
-  def record_progress!(seconds, duration: nil, finished: false)
+  def record_progress!(seconds, duration: nil, finished: false, unattended: false)
     seconds = [seconds.to_f, 0.0].max
 
     changes = { player_progress: seconds }
     # `completed` going true fires set_completed_at and set_last_watched_at, which stamp
     # the present -- right here, because this is somebody watching it now.
-    changes[:completed] = true if !completed? && watched_enough?(seconds, duration, finished)
+    if !completed? && !unattended && watched_enough?(seconds, duration, finished)
+      changes[:completed] = true
+    end
 
     update!(changes)
   end

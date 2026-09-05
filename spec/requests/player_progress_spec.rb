@@ -55,6 +55,16 @@ RSpec.describe 'Player progress', type: :request do
       expect(user.user_entry_for(entry)).to be_completed
     end
 
+    # A frame warmed in the background reaches its position on its own; the viewer who
+    # flips to it has not watched any of it yet.
+    it 'records an unattended position without calling it watched' do
+      post progress_entry_path(entry), params: { progress: 5_700, unattended: 'true' }
+
+      user_entry = user.user_entry_for(entry)
+      expect(user_entry.player_progress).to eq(5_700)
+      expect(user_entry).not_to be_completed
+    end
+
     it 'leaves a film stopped part way through unwatched' do
       post progress_entry_path(entry), params: { progress: 600 }
 
