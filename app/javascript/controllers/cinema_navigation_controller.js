@@ -269,6 +269,12 @@ export default class extends Controller {
     next.id = "cinema"
     next.classList.add("cinema__frame--live")
     // It was stopped while it warmed; this is what it was warmed for.
+    //
+    // Unmuted as well as played. Nobody had touched the page when the warmed frame
+    // started, so the browser started it muted -- which is what kept it quiet behind the
+    // film being watched, and would otherwise leave the viewer landing on a silent
+    // channel. Somebody has touched the page now: they pressed down.
+    this.warmedPlayer?.unmute()
     this.warmedPlayer?.play()
     this.warmedPlayer?.destroy()
     this.warmedPlayer = null

@@ -14,7 +14,9 @@ export default class ManualPlayer {
 
   get ready() { return false; }
 
-  play()  {}
-  pause() {}
-  seek()  {}
+  play()   {}
+  pause()  {}
+  mute()   {}
+  unmute() {}
+  seek()   {}
 }
