@@ -448,11 +448,19 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
     pointer-events: none;
   }
 
+  /* Everything drawn over the picture, and nothing that is asking a question. The modals
+     are deliberately absent: the up-next card can appear while the viewer is sitting
+     still, and a countdown faded to nothing would advance the channel unannounced.
+
+     `.watch-party` is the bar shown during a party and `.watch-party-start` the button
+     offering one -- different elements, and listing only the first left the button sitting
+     over the film by itself. */
   .cinema__title,
   .cinema__control,
   .source-switcher,
   .cinema__fullscreen,
-  .watch-party {
+  .watch-party,
+  .watch-party-start {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s ease;
