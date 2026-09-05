@@ -174,13 +174,83 @@ singleton `position` method so they can be interleaved with entries.
 2. For series/anime: resolves `@current_subentry` via `UserEntryPosition`, then makes a
    **synchronous TMDB call** for episode details.
 3. Computes `@embed_url` (§4); redirects back to the list with an alert if blank.
-4. Renders `entries/watch` in `layouts/special_layout` with both sidebars
+4. Moves any open watch party onto this entry — reading the host's player page is what
+   moves the room (§5.3c).
+5. Renders `entries/watch` in `layouts/special_layout` with both sidebars
    (`shared/_sidebar` = channels + now playing, `shared/_entries_sidebar` = the list;
    `shared/_episodes_sidebar` for episodes).
 
 Navigation around the player: `increment_current` / `decrement_current` move **episode**
 for series/anime (via `UserEntryPosition`) and **entry** otherwise; `shuffle_current`
 jumps to a random unwatched entry.
+
+#### 5.3a The page is three parts, and the split is load-bearing
+
+```
+.cinema__screen              the fullscreen element — never replaced
+├─ #cinema-frames            the player, plus a warmed spare behind it
+├─ .cinema__fullscreen       our own way in and out
+└─ #cinema-chrome            title, ring, switcher, modals — replaced on every move
+```
+
+Fullscreen is granted to an *element*, so the screen has to survive a move or changing
+channel drops out of fullscreen. The chrome has to be replaced, because being replaced is
+what makes Stimulus reconnect its controllers with the new entry's values. Those two wants
+are opposite, which is why they are separate elements.
+
+The frame carries **no `allowfullscreen`**, deliberately: fullscreen belongs to the screen
+so the controls stay on top of the picture, and the permission cannot be taken back off a
+frame once granted. See `docs/guides/VIDSRC.md` §7.
+
+#### 5.3b Moving between entries happens in place
+
+`cinema_navigation_controller.js` intercepts the five controls marked `data-cinema-move`,
+fetches the target page and pastes it in. The server still renders the whole page and still
+records the position — nothing is navigated, that is all. Turbo Drive cannot do this job:
+it replaces `document.body`, which destroys the fullscreen element, and marking that
+element `data-turbo-permanent` would freeze the chrome inside it.
+
+The channel below is **warmed in advance** — its page fetched and its player built in a
+second frame behind the live one, then paused. Pressing down promotes that frame: measured
+8ms against ~1.6s cold (VIDSRC.md §6a). One spare, not five; the other four directions pay
+full price, and why is in §6a.
+
+**What a move replaces, and what it must not.** A move replaces `#cinema-chrome` outright,
+and replaces the *contents* of `#entriesSidebar` and `#nowPlayingContent` while carrying
+their `data-*` attributes across. That asymmetry is not fussiness — see §5.3d.
+
+#### 5.3c Side effects belong to somebody arriving
+
+`entries#watch` does three things that only make sense when a person has actually gone
+somewhere: it records their position, it counts a visit, and it moves any watch party they
+are hosting. The warm-up fetches the same page for somewhere nobody has gone, so it sends
+`X-Cinema-Preload` (and `X-Requested-With`, which is what excludes it from the visit count)
+and the action skips the other two.
+
+Anything added to `watch` needs the same question asked of it: *would this be wrong if the
+viewer never presses down?* Pinned by `spec/requests/cinema_navigation_spec.rb`.
+
+#### 5.3d Sidebar state lives on the element, not in the markup
+
+`shared/_sidebar.html.erb` carries ~340 lines of inline script that owns the visibility and
+placement of both sidebars as **inline styles**, remembered in `localStorage`. The server
+renders the entries sidebar shut every time (`@entries_sidebar_collapsed` is set true
+unconditionally) and that script opens it afterwards.
+
+So on this page, anything a script has opened or positioned is **lost the moment the
+element is replaced**. That is why a move replaces contents rather than elements, and why
+the ring's offset goes through a `--watch-controls-right` custom property rather than an
+inline `right` — an inline `!important` is the one declaration no stylesheet can answer,
+and fullscreen has to answer it.
+
+Two further consequences of moving in place:
+
+- `DOMContentLoaded` now fires **once for a whole surfing session**, not once per entry.
+  Nothing depends on that today, precisely because those elements are preserved — but a
+  future addition to that script that expects to re-run per page will not.
+- That script polls for its own elements on a 50ms timer with global `window.*Initialized`
+  flags. It works, it has no test coverage, and rewriting it as Stimulus controllers with
+  state as classes on `<body>` is the real fix whenever the page next grows.
 
 ### 5.4 Finishing something
 - `entries#complete` — toggles `UserEntry` completion; on completion advances the user's
@@ -245,8 +315,10 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
   `search` (in-list TMDB search), `list_search` (navbar), `mobile_search`,
   `episodes` (season/episode browser), `poster_selector`, `edit` (entry modal),
   `completed`, `sort`, `slider`, `view_toggle`, `randomize`, `trailer`, `hover_play`,
-  `link`, `button`, `entry_anchor`, `entries_sidebar`, `auto_advance` (**countdown
-  disabled in code**). Unused: `cinema`, `frame_loader`, `omdb`, `hello`.
+  `link`, `button`, `entry_anchor`, `entries_sidebar`, `watch_party`,
+  `player_progress` (position tracking), `cinema_fullscreen`, `cinema_navigation`
+  (§5.3b), `auto_advance` (the up-next countdown).
+  Unused: `cinema`, `frame_loader`, `omdb`, `hello`.
 - **Modals are page-level, never per card.** The trailer modal, the poster picker and
   the review modal are rendered **once** per list page (`shared/_trailer_modal`,
   `shared/_poster_selector_modal`, `entries/_review_modal_list`). Each is opened by a
@@ -373,7 +445,9 @@ neither needs a local Redis.
     or redirect to the player and write the user's position as a side effect of "I am
     watching this now". They are navigation targets, not actions.
   - The watch page sets `data-turbo="false"`, so its controls are `button_to` forms —
-    `data-turbo-method` links would silently fall back to GET there.
+    `data-turbo-method` links would silently fall back to GET there. Those forms are
+    also *intercepted* and replayed by fetch (§5.3b); they still work untouched if the
+    JavaScript never arrives.
 - `sources` (admin only), `/watch_now`, `/health`, `/letterboxd/*`.
 
 ---

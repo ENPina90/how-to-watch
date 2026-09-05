@@ -98,6 +98,35 @@
 </div>
 
 <script nonce="<%= content_security_policy_nonce %>">
+//
+// READ THIS BEFORE REPLACING A SIDEBAR ELEMENT FROM ANYWHERE ELSE.
+//
+// This script owns whether the two sidebars are open, and it owns it as *inline styles*
+// on the elements themselves, remembered in localStorage. The server has no idea: it
+// renders the entries sidebar shut every time -- `@entries_sidebar_collapsed` is set true
+// unconditionally in entries#watch -- and this opens it afterwards from what was last
+// chosen.
+//
+// So anything that swaps one of these elements for a freshly rendered copy throws that
+// away, and the sidebar closes with no error and no obvious cause. It has happened three
+// times. The player page moves between entries without reloading (see
+// cinema_navigation_controller.js), and it deals with this by replacing element
+// *contents* and carrying the data attributes across, never the elements themselves.
+//
+// The same reason the ring's offset below is written as a custom property rather than as
+// `right` directly: an inline !important is the one declaration no stylesheet can answer,
+// and fullscreen has to answer it.
+//
+// One more thing that moving in place changed: DOMContentLoaded now fires once for a whole
+// session of surfing rather than once per entry. Nothing here depends on that today,
+// because those elements are preserved -- but anything added here that expects to re-run
+// per page will not.
+//
+// None of this is good, it is just true. The real fix is Stimulus controllers with the
+// state as classes on <body>, which would also retire the 50ms polling below; it is
+// deliberately not being attempted while this works and has no tests.
+//
+
 // Global flag to prevent multiple initializations
 window.sidebarInitialized = false;
 
