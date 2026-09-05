@@ -18,3 +18,9 @@ close_abandoned_watch_parties:
   class: "CloseAbandonedWatchPartiesJob"
   queue: default
   description: "Close watch parties nobody has had open for a while."
+
+broken_poster_scan:
+  cron: "0 6 * * 1"   # Mondays at 06:00 UTC
+  class: "BrokenPosterScanJob"
+  queue: default
+  description: "Ask every entry's poster URL whether the image is still there, and tell admins about the ones that are not."
