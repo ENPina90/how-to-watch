@@ -67,10 +67,14 @@ export default class extends Controller {
     else this.stopWatchingForIdle()
   }
 
-  // The player is a cross-origin frame, so a mouse moving over the picture tells us
-  // nothing -- those events belong to its document. What does reach us is the mouse
-  // arriving anywhere else on the page, and any key. That is enough: the controls sit
-  // around the picture, so reaching for one is a move towards us.
+  // A mouse moving over the picture is invisible from here: pointer events inside a
+  // cross-origin frame belong to its document. In a window that hardly matters, because
+  // the page surrounds the picture -- but in fullscreen the picture is the whole screen,
+  // and there is nowhere else for the mouse to be.
+  //
+  // So while the chrome is hidden the frame stops taking pointer events (see the idle
+  // rule in _cinema.scss) and movement falls through to the screen, where this can see it.
+  // Removing the class hands them back in the same breath.
   startWatchingForIdle() {
     this.element.addEventListener("mousemove", this.wake)
     this.element.addEventListener("keydown", this.wake)

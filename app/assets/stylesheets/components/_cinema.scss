@@ -435,6 +435,19 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
 .cinema__screen:fullscreen.cinema__screen--idle {
   cursor: none;
 
+  /* While the chrome is hidden the player stops taking pointer events, and that is the
+     only way this page can see a mouse move at all. Pointer events inside a cross-origin
+     frame belong to its document and never reach ours -- and in fullscreen the picture is
+     the whole screen, so there is nowhere else for the mouse to be. Letting them fall
+     through to the screen underneath is what makes waking possible.
+
+     Handed straight back on the first movement, so the player is interactive again before
+     anybody could want it. The cost is one swallowed click, and only a click with no
+     movement before it. */
+  .cinema__frames {
+    pointer-events: none;
+  }
+
   .cinema__title,
   .cinema__control,
   .source-switcher,
