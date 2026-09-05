@@ -9,10 +9,14 @@ import { Controller } from "@hotwired/stimulus"
 //
 // So the move happens in place instead. The server still renders the whole page and still
 // records the position, exactly as before -- the difference is only that the answer is
-// fetched and pasted in rather than navigated to. Three things change: the frame's src,
-// the chrome that describes the entry, and the sidebar. The screen itself is untouched,
-// which is what lets fullscreen survive a change of channel: fullscreen belongs to an
-// element, and this leaves that element where it is.
+// fetched and pasted in rather than navigated to. The screen itself is untouched, which is
+// what lets fullscreen survive a change of channel: fullscreen belongs to an element, and
+// this leaves that element where it is.
+//
+// What does change is everything that names the entry being watched, and that reaches
+// outside the player page: the frame, the chrome around it, the entries sidebar, and the
+// Now Playing card, which the layout draws in the main sidebar from the same `@entry`.
+// A move that misses any of them leaves the page describing the film before this one.
 //
 // Everything is delegated from the screen rather than bound to the controls, because the
 // controls are inside the chrome and are replaced by every move.
@@ -110,6 +114,9 @@ export default class extends Controller {
 
     this.swap("cinema-chrome", page)
     this.swap("entriesSidebar", page)
+    // Contents rather than the element itself: the card is inside a panel the viewer can
+    // collapse, and that is their state to keep, not the server's to reset every move.
+    this.swapContents("nowPlayingContent", page)
 
     document.title = page.title
     history.pushState({}, "", url)
@@ -121,6 +128,12 @@ export default class extends Controller {
     // Stimulus notices the replacement itself, so the controllers inside come back
     // connected to the new entry's values.
     if (current && incoming) current.replaceWith(incoming)
+  }
+
+  swapContents(id, page) {
+    const current = document.getElementById(id)
+    const incoming = page.getElementById(id)
+    if (current && incoming) current.replaceChildren(...incoming.childNodes)
   }
 
   // The address bar was moved without a page load, so there is nothing in the document for
