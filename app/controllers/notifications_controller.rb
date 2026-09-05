@@ -15,6 +15,13 @@ class NotificationsController < ApplicationController
   def dismiss
     @notification.dismiss!
 
+    # "View" on a kind that clears when you follow it -- see notification_view_dismisses?.
+    # It is one button doing both halves so that a broken poster leaves the page the moment
+    # you go and deal with it, rather than waiting for the next scan to retire it.
+    if params[:view].present? && (target = helpers.notification_action_path(@notification))
+      return redirect_to(target)
+    end
+
     respond_to do |format|
       format.turbo_stream { render turbo_stream: turbo_stream.remove(@notification) }
       format.html { redirect_to notifications_path, notice: 'Dismissed.' }

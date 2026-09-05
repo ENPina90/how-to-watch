@@ -51,15 +51,20 @@ RSpec.describe 'JavaScript modules' do
       }
     end
 
+    # `async` is part of the definition, not of the name: without it here an async handler
+    # reads as a method the controller does not have, which is the opposite of the mistake
+    # this is looking for.
+    METHOD_DEFINITION = /^  (?:async\s+)?(\w+)\(/
+
     let(:mixin_methods) do
-      Rails.root.join('app/javascript/services/tmdb_search_behavior.js').read.scan(/^  (\w+)\(/).flatten
+      Rails.root.join('app/javascript/services/tmdb_search_behavior.js').read.scan(METHOD_DEFINITION).flatten
     end
 
     # The two controllers that take their shared methods from the mixin at load time.
     MIXED_IN = %w[list-search mobile-search].freeze
 
     def methods_on(identifier, file)
-      methods = file.read.scan(/^  (\w+)\(/).flatten
+      methods = file.read.scan(METHOD_DEFINITION).flatten
       methods += mixin_methods if MIXED_IN.include?(identifier)
       methods
     end

@@ -95,10 +95,12 @@ RSpec.describe 'Entry write verbs', :needs_provider, type: :request do
     end
 
     it 'still serves the poster lookup' do
-      # An entry with no external ids, so this stays a check on the verb rather than on
-      # TMDB/OMDB (PosterCandidates has its own specs).
+      # Stubbed out: the lookup searches the title as well as the ids now, so there is no
+      # such thing as an entry it asks nothing about. This is a check on the verb, and
+      # PosterCandidates has its own specs.
       idless = create(:entry, list: list, name: 'No ids', position: 2,
                               imdb: nil, tmdb: nil, series_imdb: nil)
+      allow(PosterCandidates).to receive(:new).and_return(instance_double(PosterCandidates, call: []))
 
       get fetch_posters_entry_path(idless)
 

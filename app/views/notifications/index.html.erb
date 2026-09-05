@@ -30,7 +30,14 @@
 
         <div class="notification__buttons">
           <% if (link = notification_action_path(notification)) %>
-            <%= link_to 'View', link, class: 'notification__link' %>
+            <% if notification_view_dismisses?(notification) %>
+              <%# A to-do rather than a warning: following it clears it. That is a write,
+                  so it goes over PATCH as a button and the controller does the redirect. %>
+              <%= button_to 'View', dismiss_notification_path(notification, view: true),
+                            method: :patch, class: 'notification__link' %>
+            <% else %>
+              <%= link_to 'View', link, class: 'notification__link' %>
+            <% end %>
           <% end %>
           <%= button_to 'Dismiss', dismiss_notification_path(notification), method: :patch,
                         class: 'notification__dismiss' %>
