@@ -502,6 +502,16 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   border: 0;
 }
 
+/* The warmed frame is covered completely, and it turns out that is not why it goes quiet.
+
+   It plays and fetches happily behind this one but never posts a PLAYER_EVENT, so the
+   pause we have for it is never delivered -- commands are dropped until a player has
+   spoken, and this one does not. Leaving a row of pixels of it showing changed nothing,
+   and neither did neutralising their anti-devtools script, so it is not being covered and
+   it is not the inspector. Measured 2026-09-05; the cause is still unknown.
+
+   The upshot is that the spare channel really is playing rather than merely buffered,
+   which is why switching to it is instant. See docs/guides/VIDSRC.md §6a. */
 .cinema__frame--live {
   z-index: 1;
 }
