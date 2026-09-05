@@ -86,8 +86,13 @@ export default class VidsrcPlayer {
     }
   }
 
-  play()  { this.send("play"); }
-  pause() { this.send("pause"); }
+  play()   { this.send("play"); }
+  pause()  { this.send("pause"); }
+  mute()   { this.send("mute"); }
+  // A player that started without anybody having touched the page is muted by the browser
+  // rather than by us -- see VIDSRC.md §4. This is how it gets its sound back once the
+  // viewer has asked for it.
+  unmute() { this.send("unmute"); }
 
   // The player matches `seek([+-]?)([0-9]+)`, so a fractional target silently does
   // nothing. Whole seconds are finer than the 5s heartbeat can justify anyway.
