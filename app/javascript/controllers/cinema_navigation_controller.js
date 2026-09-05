@@ -1,4 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
+import { playerAdapterFor, isControllable } from "services/player_adapter"
+
+// How long to leave the film alone before warming the next one. The preload is a second
+// video stream on the same connection, and the first seconds of the one being watched are
+// the ones that must not stutter.
+const PRELOAD_DELAY = 5000
 
 // Moving between entries without rebuilding the page.
 //
@@ -21,12 +27,24 @@ import { Controller } from "@hotwired/stimulus"
 // Everything is delegated from the screen rather than bound to the controls, because the
 // controls are inside the chrome and are replaced by every move.
 //
+// The channel below is warmed in advance, because that is the direction somebody surfing
+// travels: its page is fetched and its player built in a second frame stacked behind the
+// one being watched, then paused as soon as it will listen. Pressing down promotes that
+// frame and pastes in the page already fetched, so the move costs nothing -- no request,
+// no player to build, ~1.5s of embed load already spent. Every other direction still pays
+// it, which is the honest trade for one extra stream rather than five.
+//
+// The warmed frame is stacked behind rather than hidden. A frame the browser believes
+// nobody can see is a frame it feels free to stop buffering, which would leave it as cold
+// as no preload at all.
+//
 // Anything unexpected falls back to a real navigation. A channel with nothing in it
 // redirects to its own page, a session can lapse, a fetch can fail -- none of those
 // produce a player page to paste in, and all of them are somebody's ordinary business
 // rather than an error worth reporting.
 export default class extends Controller {
   static classes = ["moving"]
+  static values = { preload: Boolean }
 
   connect() {
     this.clicked = (event) => this.linkClicked(event)
@@ -36,12 +54,15 @@ export default class extends Controller {
     this.element.addEventListener("click", this.clicked)
     this.element.addEventListener("submit", this.submitted)
     window.addEventListener("popstate", this.wentBack)
+
+    this.scheduleWarming()
   }
 
   disconnect() {
     this.element.removeEventListener("click", this.clicked)
     this.element.removeEventListener("submit", this.submitted)
     window.removeEventListener("popstate", this.wentBack)
+    this.discardWarmed()
   }
 
   // Only the controls that say so. The channel name, the home button and anything else
@@ -51,6 +72,10 @@ export default class extends Controller {
     if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return
 
     event.preventDefault()
+
+    // The one direction that may already be waiting.
+    if (link.dataset.cinemaPreload !== undefined && this.warmed) return this.promote()
+
     this.moveTo(link.href)
   }
 
@@ -112,6 +137,16 @@ export default class extends Controller {
       frame.src = incoming.src
     }
 
+    this.applyChrome(page)
+    history.pushState({}, "", url)
+
+    // Whatever was warm was warm for the channel below the entry we have just left.
+    this.discardWarmed()
+    this.scheduleWarming()
+  }
+
+  // Everything except the frame: promoting a warmed frame has already dealt with that.
+  applyChrome(page) {
     this.swap("cinema-chrome", page)
     this.swap("entriesSidebar", page)
     // Contents rather than the element itself: the card is inside a panel the viewer can
@@ -119,7 +154,6 @@ export default class extends Controller {
     this.swapContents("nowPlayingContent", page)
 
     document.title = page.title
-    history.pushState({}, "", url)
   }
 
   swap(id, page) {
@@ -134,6 +168,117 @@ export default class extends Controller {
     const current = document.getElementById(id)
     const incoming = page.getElementById(id)
     if (current && incoming) current.replaceChildren(...incoming.childNodes)
+  }
+
+  // ---- warming the channel below --------------------------------------------------
+
+  // Not on a metered connection, not on a machine with little to spare, and not on a
+  // phone: this is a second video stream, and the point of it is a nicety.
+  get worthWarming() {
+    if (!this.preloadValue) return false
+    if (navigator.connection?.saveData) return false
+    if ((navigator.deviceMemory ?? 8) < 4) return false
+
+    return window.innerWidth >= 900
+  }
+
+  scheduleWarming() {
+    if (!this.worthWarming) return
+
+    this.warmingTimer = setTimeout(() => this.warm(), PRELOAD_DELAY)
+  }
+
+  async warm() {
+    const link = this.element.querySelector("a[data-cinema-move][data-cinema-preload]")
+    if (!link || this.warmed) return
+
+    try {
+      // Marked as speculative both ways: the header tells the server not to record a
+      // position for a channel nobody has opened, and the XHR header keeps it out of the
+      // visit count for the same reason.
+      const response = await fetch(link.href, {
+        headers: { Accept: "text/html", "X-Cinema-Preload": "1", "X-Requested-With": "XMLHttpRequest" }
+      })
+      if (!response.ok) return
+
+      const page = new DOMParser().parseFromString(await response.text(), "text/html")
+      const incoming = page.getElementById("cinema")
+      // Nothing to warm: an empty channel, or the same entry we are already watching.
+      if (!incoming || !incoming.src || incoming.src === document.getElementById("cinema")?.src) return
+
+      this.warmed = { page: page, url: response.url }
+      this.buildWarmedFrame(incoming)
+    } catch {
+      // A warm-up that fails costs the viewer nothing; the move it would have helped
+      // simply pays full price.
+    }
+  }
+
+  buildWarmedFrame(incoming) {
+    const frame = document.createElement("iframe")
+    frame.id = "cinema-next"
+    frame.className = "cinema__frame"
+    frame.title = incoming.title
+    frame.setAttribute("referrerpolicy", "origin")
+    // Autoplay, because a player that will not start is a player that buffers nothing --
+    // and it is stopped a moment later, before it has anything to show.
+    frame.setAttribute("allow", "autoplay")
+    frame.src = incoming.src
+    document.getElementById("cinema-frames").appendChild(frame)
+
+    // Stop it as soon as it will listen. Commands before the player's first report are
+    // dropped, so this waits for one -- which arrives well before the picture does.
+    const adapter = this.adapterFor(incoming)
+    if (!adapter) return
+
+    this.warmedPlayer = playerAdapterFor(adapter, frame, {
+      onState: () => {
+        if (this.warmedPaused) return
+        this.warmedPaused = true
+        this.warmedPlayer.pause()
+      }
+    })
+  }
+
+  adapterFor(incoming) {
+    const chrome = incoming.ownerDocument.getElementById("cinema-chrome")
+    const name = chrome?.dataset.playerProgressAdapterValue
+    return isControllable(name) ? name : null
+  }
+
+  // The move the warming was for: no request, no player to build.
+  promote() {
+    const { page, url } = this.warmed
+    const live = document.getElementById("cinema")
+    const next = document.getElementById("cinema-next")
+    if (!live || !next) return this.moveTo(url)
+
+    this.dispatch("leaving", { target: document })
+
+    live.remove()
+    next.id = "cinema"
+    next.classList.add("cinema__frame--live")
+    // It was stopped while it warmed; this is what it was warmed for.
+    this.warmedPlayer?.play()
+    this.warmedPlayer?.destroy()
+    this.warmedPlayer = null
+    this.warmedPaused = false
+    this.warmed = null
+
+    this.applyChrome(page)
+    history.pushState({}, "", url)
+
+    // And line up whatever is below the channel we just landed on.
+    this.scheduleWarming()
+  }
+
+  discardWarmed() {
+    clearTimeout(this.warmingTimer)
+    this.warmedPlayer?.destroy()
+    this.warmedPlayer = null
+    this.warmedPaused = false
+    this.warmed = null
+    document.getElementById("cinema-next")?.remove()
   }
 
   // The address bar was moved without a page load, so there is nothing in the document for

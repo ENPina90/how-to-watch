@@ -32,6 +32,58 @@ RSpec.describe 'Moving between entries in place', :needs_provider, type: :reques
     expect(home).not_to include('data-cinema-move')
   end
 
+  # The channel below is fetched before anybody asks for it, so that pressing down is
+  # instant. Nothing about that fetch may look like a visit, because none of it has
+  # happened yet as far as the viewer is concerned.
+  describe 'warming the channel below' do
+    let(:elsewhere) { create(:list, user: user, ordered: true) }
+    let!(:over_there) { create(:entry, list: elsewhere, media: 'movie', name: 'Over There', imdb: 'tt0071562', position: 1) }
+
+    def preload(path)
+      get path, headers: { 'X-Cinema-Preload' => '1', 'X-Requested-With' => 'XMLHttpRequest' }
+    end
+
+    it 'marks the down arrow as the one worth warming' do
+      get watch_entry_path(entry)
+
+      expect(response.body.scan('data-cinema-preload').length).to eq(1)
+    end
+
+    it 'still renders the page it is asked for' do
+      preload(watch_entry_path(over_there))
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('id="cinema-chrome"')
+    end
+
+    # The whole point. An ordinary visit records where you are up to; a fetch of somewhere
+    # you have not gone must not, or the app decides your place for you in a channel you
+    # never opened.
+    it 'does not move the viewer on in a channel they have not opened' do
+      expect { preload(watch_entry_path(over_there)) }
+        .not_to change { UserListPosition.where(user: user, list: elsewhere).count }.from(0)
+    end
+
+    it 'leaves a position that already exists where it was' do
+      position = elsewhere.position_for_user!(user)
+      position.update!(current_position: 99)
+
+      preload(watch_entry_path(over_there))
+
+      expect(position.reload.current_position).to eq(99)
+    end
+
+    it 'still records the position when somebody actually goes there' do
+      get watch_entry_path(over_there)
+
+      expect(elsewhere.position_for_user(user).current_position).to eq(over_there.position)
+    end
+
+    it 'is not counted as somebody arriving' do
+      expect { preload(watch_entry_path(over_there)) }.not_to change { Visit.count }
+    end
+  end
+
   describe 'the regions a move replaces' do
     it 'carries the chrome that describes this entry' do
       get watch_entry_path(entry)

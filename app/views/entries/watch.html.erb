@@ -52,7 +52,11 @@
      data-controller="cinema-fullscreen cinema-navigation"
      data-action="auto-advance:move@document->cinema-navigation#moveFromEvent"
      data-cinema-fullscreen-idle-class="cinema__screen--idle"
-     data-cinema-navigation-moving-class="cinema__screen--moving">
+     data-cinema-navigation-moving-class="cinema__screen--moving"
+     <%# Warming the channel below costs a second video stream, so it is a setting rather
+         than a given -- and the controller declines on its own for a metered connection,
+         a small machine or a narrow screen. %>
+     data-cinema-navigation-preload-value="<%= user_signed_in? %>">
 
   <div id="cinema-frames" class="cinema__frames">
   <%# No `allowfullscreen`, deliberately. Fullscreen belongs to the container above, which
@@ -62,10 +66,9 @@
       fullscreen cannot be taken back off the frame once granted. See
       cinema_fullscreen_controller.js. %>
   <iframe id="cinema"
+      class="cinema__frame cinema__frame--live"
       title="<%= @entry.name %>"
       referrerpolicy="origin"
-      width="100%"
-      height="100%"
       allow="autoplay"
       src="<%= @embed_url %>">
 
@@ -194,8 +197,10 @@
           <%= render 'entries/completion_status', entry: @entry, user: current_user %>
         </div>
       <% end %>
+      <%# Marked for warming as well as moving: this is the direction somebody surfing
+          travels, so it is the one worth having ready. %>
       <%= link_to list_watch_current_path(@channel.find_sibling(:next) || @channel),
-                  data: { cinema_move: true } do %>
+                  data: { cinema_move: true, cinema_preload: true } do %>
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
       <% if user_signed_in? %>

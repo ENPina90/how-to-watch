@@ -220,7 +220,7 @@ class EntriesController < ApplicationController
     # place in that channel all belong to it.
     @channel = watching_channel
 
-    if current_user
+    if current_user && !preloading?
       # Position is a number within the channel that owns the entry, so it is recorded
       # there. A borrowed entry has no position in the channel borrowing it.
       user_position = @entry.list.position_for_user!(current_user)
