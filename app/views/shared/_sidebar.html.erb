@@ -310,7 +310,7 @@ function initializeUnifiedSidebarControl() {
 
     const watchControls = document.getElementById('watchCinemaControls');
     if (watchControls) {
-      watchControls.style.setProperty('right', '390px', 'important');
+      watchControls.style.setProperty('--watch-controls-right', '390px');
     }
   } else if (areBothCollapsed) {
     console.log('Both sidebars collapsed on init - setting full width');
@@ -340,8 +340,7 @@ function initializeUnifiedSidebarControl() {
     // Ensure cinema controls are positioned correctly
     const watchControls = document.getElementById('watchCinemaControls');
     if (watchControls) {
-      watchControls.style.setProperty('right', '120px', 'important');
-      watchControls.style.setProperty('left', 'auto', 'important');
+      watchControls.style.setProperty('--watch-controls-right', '120px');
     }
   }
 
@@ -383,7 +382,7 @@ function initializeUnifiedSidebarControl() {
       // Adjust cinema controls
       const watchControls = document.getElementById('watchCinemaControls');
       if (watchControls) {
-        watchControls.style.setProperty('right', '120px', 'important');
+        watchControls.style.setProperty('--watch-controls-right', '120px');
       }
 
       // Save state to localStorage
@@ -426,7 +425,7 @@ function initializeUnifiedSidebarControl() {
       // Adjust cinema controls
       const watchControls = document.getElementById('watchCinemaControls');
       if (watchControls) {
-        watchControls.style.setProperty('right', '390px', 'important');
+        watchControls.style.setProperty('--watch-controls-right', '390px');
       }
 
       // Save state to localStorage
