@@ -448,10 +448,16 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
 
 /* The frame stack fills the screen behind everything else. Absolute rather than in flow
    so the player's own `height: 100%` has a resolved height to measure against, and so the
-   chrome -- which is absolutely positioned against the screen -- keeps sitting over it. */
+   chrome -- which is absolutely positioned against the screen -- keeps sitting over it.
+
+   The z-index is not decoration: it makes this a stacking context, which keeps the order
+   of the frames *inside* from meaning anything outside. Without it the live frame's own
+   z-index outranked every piece of chrome that had never needed one -- the control ring
+   has none and had always simply been painted later -- and the player swallowed them. */
 .cinema__frames {
   position: absolute;
   inset: 0;
+  z-index: 0;
 }
 
 /* A move is in flight. The frame is about to be replaced by one that takes a second or
