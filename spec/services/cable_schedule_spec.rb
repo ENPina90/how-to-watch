@@ -259,6 +259,74 @@ RSpec.describe CableSchedule do
     end
   end
 
+  describe 'the dial number' do
+    let!(:other) { create(:list, user: user, provider: provider, default: true, name: 'Two') }
+
+    it 'counts from one, in dial order' do
+      dial = described_class.channels.to_a
+
+      expect(described_class.dial_number(dial.first)).to eq(1)
+      expect(described_class.dial_number(dial.last)).to eq(dial.length)
+    end
+
+    it 'is nil for a channel that is not on the dial' do
+      off_dial = create(:list, user: user, provider: provider, default: false)
+
+      expect(described_class.dial_number(off_dial)).to be_nil
+    end
+
+    # The guide's rows and the banner's badge must agree, or the same channel is two
+    # different numbers depending on where you read it.
+    it 'agrees with the number the guide gives each row' do
+      film('One', 90, 1)
+      described_class.build_day!(channel, date)
+
+      rows = described_class.guide(at: midnight + 1.hour)
+
+      rows.each { |row| expect(row[:number]).to eq(described_class.dial_number(row[:channel])) }
+    end
+  end
+
+  describe 'the programmes either side of now' do
+    before do
+      film('Loop', 60, 1)
+      described_class.build_day!(channel, date)
+    end
+
+    it 'returns a run with what is on air among it' do
+      at = midnight + 6.hours
+      run = described_class.nearby(channel, at: at)
+      current = described_class.on_air(channel, at: at)
+
+      expect(run).to include(current)
+      expect(run).to eq(run.sort_by(&:starts_at))
+    end
+
+    it 'offers a little of the past and more of what is coming' do
+      at = midnight + 6.hours
+      run = described_class.nearby(channel, at: at)
+      current = described_class.on_air(channel, at: at)
+      at_index = run.index(current)
+
+      expect(at_index).to eq(described_class::NEARBY_BEFORE)
+      expect(run.length - at_index - 1).to eq(described_class::NEARBY_AFTER)
+    end
+
+    # Early in the day there is nothing behind it, and the run simply starts at the
+    # beginning rather than padding itself out.
+    it 'does not invent programmes before the schedule starts' do
+      run = described_class.nearby(channel, at: midnight + 10.minutes)
+
+      expect(run.first.starts_at).to eq(midnight)
+    end
+
+    it 'is empty for a channel that is off air' do
+      CableSlot.delete_all
+
+      expect(described_class.nearby(channel, at: midnight + 6.hours)).to be_empty
+    end
+  end
+
   describe 'pruning' do
     before do
       film('First', 60, 1)

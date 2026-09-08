@@ -53,6 +53,14 @@ module CableSchedule
   # in the dial, the way renaming a TV channel does not.
   def channels = List.where(default: true).order(:id)
 
+  # The number this channel answers to, counting from one. The guide's rows and the HUD's
+  # badge both show it, so it is worked out in one place rather than by whoever is counting.
+  def dial_number(channel)
+    at = channels.to_a.index { |list| list.id == channel.id }
+
+    at ? at + 1 : nil
+  end
+
   # The channel one step up or down the dial, wrapping at both ends. Nothing user-specific,
   # unlike List#find_sibling, which reads subscriptions and what you have already seen.
   def sibling(channel, direction)
@@ -67,6 +75,30 @@ module CableSchedule
   # renders as off air rather than as an error.
   def on_air(channel, at: Time.current)
     CableSlot.where(list: channel).on_air_at(at).includes(:entry, :subentry).first
+  end
+
+  # How much of the running order the HUD's arrows can step through without tuning: a
+  # little of what has been, more of what is coming, because that is the direction anybody
+  # asks about.
+  NEARBY_BEFORE = 3
+  NEARBY_AFTER = 5
+
+  # The programmes either side of the one on air, for the arrows that show what came before
+  # and what is on next. Returned as one run in order with the current programme among them,
+  # so the page can step along it rather than work out where the middle is.
+  def nearby(channel, at: Time.current)
+    current = on_air(channel, at: at)
+    return [] unless current
+
+    slots = CableSlot.where(list: channel)
+    before = slots.where(CableSlot.arel_table[:starts_at].lt(current.starts_at))
+                  .order(starts_at: :desc).limit(NEARBY_BEFORE)
+                  .includes(:entry, :subentry).to_a.reverse
+    after = slots.where(CableSlot.arel_table[:starts_at].gt(current.starts_at))
+                 .in_order.limit(NEARBY_AFTER)
+                 .includes(:entry, :subentry).to_a
+
+    before + [current] + after
   end
 
   # A full day of listings, scrollable. The visible width is a few hours; the rest is what
@@ -118,7 +150,7 @@ module CableSchedule
 
     dial.each_with_index.map do |channel, index|
       # The number on the dial rather than the row's id: a channel is "12" because of where
-      # it sits, and ids have gaps.
+      # it sits, and ids have gaps. Same numbering as the HUD badge, by construction.
       { channel: channel, number: index + 1, slots: by_channel.fetch(channel.id, []) }
     end
   end

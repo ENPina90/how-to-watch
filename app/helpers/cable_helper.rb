@@ -14,6 +14,34 @@ module CableHelper
     time.in_time_zone(zone).strftime("%-l:%M:%S")
   end
 
+  # The banner's headline: the episode's own name where there is one, since the show it
+  # belongs to is said underneath rather than folded into the title.
+  def cable_programme_headline(slot)
+    slot.subentry&.name.presence || slot.entry.name
+  end
+
+  # The line under it -- what show this is, and when it is from. Only says what the headline
+  # does not: a film gets its year, an episode gets the series it belongs to and its number.
+  def cable_programme_context(slot)
+    entry = slot.entry
+    parts = []
+
+    if slot.subentry
+      parts << entry.name
+      parts << if entry.media == "anime"
+                 "E#{slot.subentry.calculate_absolute_episode_number}"
+               else
+                 "S#{slot.subentry.season}E#{slot.subentry.episode}"
+               end
+    elsif entry.media == "episode" && entry.series.present?
+      parts << entry.series
+      parts << "S#{entry.season}E#{entry.episode}" if entry.season.present? && entry.episode.present?
+    end
+
+    parts << entry.year if entry.year.present?
+    parts.compact_blank.join(" · ")
+  end
+
   # What to call a programme in the listing: the episode where there is one, since "Veep"
   # three times in a row tells the viewer nothing about what is coming.
   def cable_programme_name(slot)

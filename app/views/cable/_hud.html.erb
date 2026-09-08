@@ -1,0 +1,92 @@
+<%# The channel banner: what you are watching, on what channel, at what time.
+
+    Built to look like the thing it is imitating -- a bevelled bar with the channel in a
+    lit-up badge at one end and a direction pad at the other. The pad is the whole of the
+    controls now: the ring of icons the watch page uses belongs to a page you work through,
+    and this is a television.
+
+    The arrows do two different jobs, which is how they were on the box too. Up and down
+    change the channel, and are ordinary cinema-move links. Left and right change nothing at
+    all -- they walk the banner along this channel's running order so you can see what you
+    missed and what is coming, and it falls back to what is actually on after a moment. %>
+<div class="cable-hud"
+     data-controller="cable-hud"
+     data-cable-hud-showing-class="cable-hud--peeking">
+
+  <%# The channel, in the corner the number always sat in. %>
+  <a class="cable-hud__badge" href="<%= list_path(channel) %>" title="Open <%= channel.name %>">
+    <span class="cable-hud__set">
+      <span class="cable-hud__aerial"></span>
+      <span class="cable-hud__number"><%= number %></span>
+    </span>
+  </a>
+
+  <div class="cable-hud__body">
+    <%# The channel's own page. The badge leads to the same place -- one is the number you
+        look at, the other the name you read, and both are the channel. %>
+    <a class="cable-hud__channel" href="<%= list_path(channel) %>"><%= channel.name %></a>
+
+    <%# The programme, and it is a link out of cable -- the same pair the guide's panel
+        offers: the channel to its own page, the title to the ordinary watch player, where
+        it plays from the beginning and counts towards what you have seen. %>
+    <a class="cable-hud__title" data-cable-hud-target="title" href="#"></a>
+    <p class="cable-hud__context" data-cable-hud-target="context"></p>
+    <p class="cable-hud__meta">
+      <span class="cable-hud__when" data-cable-hud-target="when"></span>
+      <span class="cable-hud__label" data-cable-hud-target="label"></span>
+    </p>
+  </div>
+
+  <%# Up and down tune; left and right only look. The two kinds are deliberately the same
+      shape, because on the remote they were. %>
+  <div class="cable-hud__pad">
+    <%= link_to cable_channel_path(CableSchedule.sibling(channel, :previous)),
+                class: "cable-hud__key cable-hud__key--up", title: "Channel up",
+                data: { cinema_move: true } do %>
+      <i class="fa-solid fa-caret-up"></i>
+    <% end %>
+
+    <button type="button" class="cable-hud__key cable-hud__key--left"
+            title="What was on before" data-action="click->cable-hud#earlier">
+      <i class="fa-solid fa-caret-left"></i>
+    </button>
+
+    <%# The middle of the pad, where SEL was. The one thing on this page that writes
+        anything, and only when somebody presses it. %>
+    <span class="cable-hud__sel">
+      <% if user %>
+        <%= render 'entries/completion_status', entry: entry, user: user, minimal: true %>
+      <% end %>
+    </span>
+
+    <button type="button" class="cable-hud__key cable-hud__key--right"
+            title="What is on next" data-action="click->cable-hud#later">
+      <i class="fa-solid fa-caret-right"></i>
+    </button>
+
+    <%= link_to cable_channel_path(CableSchedule.sibling(channel, :next)),
+                class: "cable-hud__key cable-hud__key--down", title: "Channel down",
+                data: { cinema_move: true, cinema_preload: true } do %>
+      <i class="fa-solid fa-caret-down"></i>
+    <% end %>
+  </div>
+
+  <%= link_to root_path, class: "cable-hud__home", title: "Home" do %>
+    <i class="fa-solid fa-house"></i>
+  <% end %>
+
+  <%# The running order the arrows walk, rendered rather than fetched: it is a handful of
+      rows the page already had, and the arrows should answer instantly. Hidden because it
+      is data, not a list anybody reads here -- the guide is where you read one. %>
+  <div class="cable-hud__schedule" hidden data-cable-hud-target="schedule">
+    <% nearby.each do |slot| %>
+      <span data-slot-start="<%= (slot.starts_at.to_f * 1000).round %>"
+            data-slot-end="<%= (slot.ends_at.to_f * 1000).round %>"
+            data-slot-title="<%= cable_programme_headline(slot) %>"
+            data-slot-context="<%= cable_programme_context(slot) %>"
+            data-slot-url="<%= watch_entry_path(slot.entry, channel: channel.id,
+                                                subentry: slot.subentry&.id) %>"
+            data-slot-current="<%= slot.id == current_slot.id %>"></span>
+    <% end %>
+  </div>
+</div>
