@@ -40,7 +40,12 @@ export default class extends Controller {
     document.removeEventListener("webkitfullscreenchange", this.fullscreenChanged)
   }
 
-  toggle() {
+  toggle(event) {
+    // The button keeps focus after a click, and the browser hands later key presses to the
+    // focused control before anything else sees them -- which is how space came to leave
+    // fullscreen instead of pausing the film. See player_keys_controller.js.
+    event?.currentTarget?.blur?.()
+
     if (this.fullscreen) this.exit()
     else this.enter()
   }

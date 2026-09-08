@@ -126,7 +126,9 @@ RSpec.describe 'Player progress', type: :request do
 
       get watch_entry_path(entry)
 
-      expect(response.body).to include('data-controller="player-progress"')
+      # Matched rather than compared: player-keys shares the attribute, and which order
+      # they are listed in is not what this is about.
+      expect(response.body).to match(/data-controller="[^"]*player-progress[^"]*"/)
       expect(response.body).to include(progress_entry_path(entry))
     end
 

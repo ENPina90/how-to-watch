@@ -85,8 +85,14 @@
   <div id="cinema-chrome"
        data-list-auto-next="<%= @channel.auto_next_for(current_user) %>"
        data-list-ordered="<%= @channel.ordered? %>"
+       <%# player-keys is not inside the signed-in branch: pausing and seeking with the
+           keyboard is watching, not tracking, and a visitor let in to watch gets it too.
+           Its shortcuts are the player's own, which stopped reaching it when fullscreen
+           moved to the container -- see player_keys_controller.js. %>
+       data-controller="player-keys<%= ' player-progress' if user_signed_in? %>"
+       data-player-keys-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
+       data-player-keys-frame-value="cinema"
        <% if user_signed_in? %>
-         data-controller="player-progress"
          <%# There is no unload on a move between entries, so the position has to be taken
              on the way past instead. %>
          data-action="cinema-navigation:leaving@document->player-progress#saveNow"
