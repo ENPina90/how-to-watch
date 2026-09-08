@@ -56,7 +56,13 @@ class User < ApplicationRecord
     window = [window, runtime * UserEntry::COMPLETION_FRACTION].min if runtime.positive?
     return nil unless window.positive?
 
-    rand * window
+    # Whole seconds, floored. The window is already held under the mark where an entry
+    # counts as watched, but the figure is rounded to a whole second before it reaches the
+    # player -- and rounding up can carry it past a boundary the value itself respected:
+    # 113.7s into a two-minute film becomes 114, which is exactly the completion mark, so
+    # the film would be marked seen without being watched. Flooring here keeps that
+    # promise where it is made, rather than asking every reader of it to round carefully.
+    (rand * window).floor
   end
 
   # READ. nil when this user has never tracked the entry -- see Entry#user_entry_for for
