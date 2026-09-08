@@ -19,4 +19,5 @@ export default class ManualPlayer {
   mute()   {}
   unmute() {}
   seek()   {}
+  seekBy() {}
 }

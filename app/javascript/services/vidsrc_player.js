@@ -97,4 +97,15 @@ export default class VidsrcPlayer {
   // The player matches `seek([+-]?)([0-9]+)`, so a fractional target silently does
   // nothing. Whole seconds are finer than the 5s heartbeat can justify anyway.
   seek(seconds) { this.send(`seek${Math.max(0, Math.round(seconds))}`); }
+
+  // Relative, against the player's own currentTime. Read off their handler on 2026-09-08
+  // rather than guessed: an unsigned target is absolute, `+n` and `-n` are applied to
+  // where the film actually is. That is exact, where seeking to a position computed here
+  // is only ever as good as the last progress report -- and those are five seconds apart.
+  seekBy(seconds) {
+    const delta = Math.round(seconds);
+    if (delta === 0) return;
+
+    this.send(`seek${delta > 0 ? "+" : "-"}${Math.abs(delta)}`);
+  }
 }
