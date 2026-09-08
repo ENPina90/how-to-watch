@@ -415,6 +415,7 @@
 .cinema__screen--guide .cinema__title,
 .cinema__screen--guide .cinema__control--watch,
 .cinema__screen--guide .cinema__fullscreen,
+.cinema__screen--guide .cinema__guide-button,
 .cinema__screen--guide .watch-party-start {
   display: none;
 }
@@ -448,6 +449,51 @@
   }
 }
 
+/* ---- the guide button ----------------------------------------------------------------
+ *
+ * Placed over the player's own play/pause button, exactly as .cinema__fullscreen is placed
+ * over their fullscreen one (_cinema.scss has the measurements and where they came from).
+ * Their bar is symmetrical, so the leftmost button's centre sits the same 10px padding plus
+ * half of a 40px button in from the left as the rightmost one does from the right, at the
+ * same height above the bottom.
+ *
+ * Covering it is not cosmetic here the way covering the fullscreen button was. There is no
+ * pausing a cable channel -- it plays to a clock, and the schedule does not wait -- so
+ * their control is not a dead button but a wrong one, and the safest place for a wrong
+ * button is underneath a right one.
+ */
+.cinema__screen {
+  --play-button-left: 30px;
+}
+
+.cinema__guide-button {
+  position: absolute;
+  left: calc(var(--play-button-left) - var(--fullscreen-button-size) / 2);
+  bottom: calc(var(--fullscreen-button-bottom) - var(--fullscreen-button-size) / 2);
+  width: var(--fullscreen-button-size);
+  height: var(--fullscreen-button-size);
+  /* Above the frame, so it masks what is behind it rather than sharing the space. */
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  /* Opaque, because the point is that nothing shows through. */
+  background: #000;
+  color: white;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.cinema__guide-button:hover,
+.cinema__guide-button:focus-visible {
+  opacity: 1;
+}
+
 /* ---- left alone -------------------------------------------------------------------
  *
  * The chrome fades out windowed as well as in fullscreen, which is what separates a
@@ -475,6 +521,7 @@ body.cable__mode .cinema__screen--idle:not(.cinema__screen--guide) {
   .cinema__title,
   .cinema__control--watch,
   .cinema__fullscreen,
+  .cinema__guide-button,
   .watch-party-start {
     opacity: 0;
     pointer-events: none;

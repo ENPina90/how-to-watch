@@ -67,12 +67,25 @@
     <i class="fa-solid fa-expand"></i>
   </button>
 
+  <%# The guide, sitting exactly on the player's own play/pause button at the other end of
+      its bar -- the same trick the fullscreen button above plays on theirs, and for a
+      firmer reason. There is no pausing a cable channel, so their button is not merely
+      redundant here, it is wrong; covering it puts something useful where the eye already
+      goes for a control. With the screen rather than the chrome, because it is the same
+      button whatever is playing and a change of channel should not replace it. %>
+  <button type="button" class="cinema__guide-button" title="TV Guide" aria-label="TV Guide"
+          data-action="click->cable-guide#toggle">
+    <i class="fa-solid fa-table-list"></i>
+  </button>
+
   <div id="cinema-chrome"
-       <%# player-keys but not player-progress. Pausing and seeking are the player's own
-           controls and a viewer may have them; where they got to is not recorded, because
-           on a cable channel where you got to is decided by the clock and is nobody's
-           property. %>
+       <%# player-keys, but with its transport switched off, and no player-progress at all.
+           A cable channel plays to a clock: pausing it does not pause the channel and
+           seeking within it does not move the channel, so both only put this viewer out of
+           step with the listing and with everyone else watching. What is left of the
+           keyboard is fullscreen and mute, neither of which touches the film. %>
        data-controller="player-keys cable-clock"
+       data-player-keys-transport-value="false"
        <%# Which adapter drives this page's player, for anything that needs to reach it --
            cinema-navigation reads it off the fetched page to know how to quieten the
            channel it is warming. Its own attribute rather than one controller's value,
@@ -113,14 +126,6 @@
           <i class="fa-solid fa-3x fa-caret-up position-absolute top-0 start-50 translate-middle-x"></i>
         <% end %>
 
-        <%# Where the shuffle is on the watch page. There is nothing to shuffle here -- the
-            running order is the schedule's -- and a listing is what that corner is worth on
-            a channel you cannot reorder. %>
-        <button type="button" class="p-0 border-0 bg-transparent cinema__guide-button"
-                title="TV Guide" aria-label="TV Guide"
-                data-action="click->cable-guide#toggle">
-          <i class="fa-solid fa-2x fa-table-list position-absolute top-0 end-0 translate-middle-y"></i>
-        </button>
 
         <%# Marking something watched is the one write on this page, and it is one the
             viewer asked for rather than a consequence of the channel having been on. Signed

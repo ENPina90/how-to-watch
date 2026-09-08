@@ -21,8 +21,18 @@ const SEEK_SECONDS = 5
 //               permission (cinema_fullscreen_controller.js)
 //   m           mute
 
+// Play, pause and the two seeks. A page can switch them off; the rest stay.
+const TRANSPORT_KEYS = [" ", "k", "ArrowLeft", "ArrowRight"]
+
 export default class extends Controller {
-  static values = { frame: String, adapter: String }
+  static values = {
+    frame: String,
+    adapter: String,
+    // Whether the viewer may drive the film at all. False on a cable channel, which plays
+    // to a clock: pausing or seeking there does not pause or seek the channel, it only puts
+    // this viewer out of step with everyone else on it and with the listing.
+    transport: { type: Boolean, default: true }
+  }
 
   connect() {
     if (!isControllable(this.adapterValue)) return
@@ -52,6 +62,15 @@ export default class extends Controller {
   handle(event) {
     if (!this.player || this.busyElsewhere(event)) return
     if (event.metaKey || event.ctrlKey || event.altKey) return
+
+    // Swallowed rather than merely ignored. Space would otherwise scroll the page or press
+    // whichever control still had focus, and the arrows would scroll it sideways -- so a
+    // key that has been taken away has to be taken away from the browser too, not just
+    // from the player. Fullscreen and mute are not transport and are left alone.
+    if (!this.transportValue && TRANSPORT_KEYS.includes(event.key)) {
+      event.preventDefault()
+      return
+    }
 
     switch (event.key) {
       case " ":
