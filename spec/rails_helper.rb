@@ -30,6 +30,9 @@ RSpec.configure do |config|
   config.include Devise::Test::IntegrationHelpers, type: :request
   config.include FactoryBot::Syntax::Methods
   config.include ControllerMacros, type: :controller
+  # `travel_to`, for the specs whose subject is what time it is -- the cable schedule is
+  # read entirely off the clock, so there is no way to test it without moving one.
+  config.include ActiveSupport::Testing::TimeHelpers
 
   config.infer_spec_type_from_file_location!
 
