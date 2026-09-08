@@ -13,6 +13,14 @@ import { playerAdapterFor, isControllable } from "services/player_adapter"
 // space left fullscreen instead of pausing.
 const SEEK_SECONDS = 5
 
+// Keys the player used to answer for itself:
+//
+//   space / k   play or pause
+//   left/right  seek five seconds
+//   f           fullscreen -- ours, not the player's, whose own `f` went dead with the
+//               permission (cinema_fullscreen_controller.js)
+//   m           mute
+
 export default class extends Controller {
   static values = { frame: String, adapter: String }
 
@@ -61,7 +69,35 @@ export default class extends Controller {
         return this.seekBy(-SEEK_SECONDS, event)
       case "ArrowRight":
         return this.seekBy(SEEK_SECONDS, event)
+      case "f":
+        return this.toggleFullscreen(event)
+      case "m":
+        return this.toggleMute(event)
     }
+  }
+
+  // Dispatched rather than called: fullscreen belongs to the screen element and its
+  // controller sits on that, not here. Synchronous, so the keystroke is still the user
+  // gesture the browser requires before it will grant the screen.
+  toggleFullscreen(event) {
+    event.preventDefault()
+    this.dispatch("fullscreen", { target: document })
+  }
+
+  // Tracked here because the player reports status, progress and duration and says nothing
+  // about volume, so there is no answer to ask for.
+  //
+  // Assumed to start unmuted, which is what it is: either the viewer pressed play, or the
+  // frame was warmed in the background and cinema-navigation unmuted it on the way in. A
+  // player left muted by the browser and never promoted is the one case where the first
+  // press is swallowed and the second takes effect.
+  toggleMute(event) {
+    event.preventDefault()
+
+    if (this.muted) this.player.unmute()
+    else this.player.mute()
+
+    this.muted = !this.muted
   }
 
   // Somewhere a keystroke means something else: a field being typed into, or an open

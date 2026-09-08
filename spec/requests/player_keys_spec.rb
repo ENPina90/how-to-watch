@@ -41,6 +41,16 @@ RSpec.describe 'Player keyboard control', :needs_provider do
 
   # Pausing and seeking is watching rather than tracking, so it is not behind an account
   # the way position saving is.
+  # `f` cannot call the fullscreen controller directly -- fullscreen belongs to the screen
+  # element and its controller sits there, not on the chrome with the keyboard.
+  it 'wires f through to the fullscreen controller on the screen' do
+    sign_in user
+
+    get watch_entry_path(entry)
+
+    expect(response.body).to include('player-keys:fullscreen@document->cinema-fullscreen#toggle')
+  end
+
   it 'gives a signed-out viewer the same keys when the site is open' do
     AppSetting.update_access_mode!('open')
 
