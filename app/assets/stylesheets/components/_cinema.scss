@@ -537,14 +537,34 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   z-index: 1;
 }
 
+/* The player's own settings panel opens from the right and runs the height of the frame.
+   The subtitle list is in it -- the panel people actually go looking for -- and anything of
+   ours inside that width is on top of it.
+
+   Measured 2026-09-08 at roughly 255px wide, plus air. Nothing of ours comes closer to the
+   right edge than this, whatever else is or is not on screen. */
+.cinema__screen {
+  --player-panel-clearance: 290px;
+}
+
 /* The player page's ring is placed to clear the entries sidebar on its right, and the
    sidebar's own script moves it as that sidebar opens and closes. It writes a variable
    rather than the property, so that this stays a stylesheet decision: an inline
-   !important is the one thing no rule can answer, and the fullscreen rule below has to. */
+   !important is the one thing no rule can answer, and the fullscreen rule below has to.
+   
+   The floor is what keeps it off the settings panel: with both sidebars collapsed the
+   script asks for 120px, which is inside it. With the entries sidebar open, 390px already
+   clears it and the max changes nothing. */
 .cinema__control--watch {
-  right: var(--watch-controls-right, 390px);
+  right: max(var(--watch-controls-right, 390px), var(--player-panel-clearance));
   top: 100px;
   left: auto;
+}
+
+/* Same clearance, for the same reason: the corner it sat in is the first thing the panel
+   covers. */
+.watch-party-start {
+  right: var(--player-panel-clearance);
 }
 
 /* Fullscreen is the screen and nothing else. The sidebars are outside the element that
@@ -564,8 +584,15 @@ body.cinema__mode .cinema__screen:fullscreen {
     padding-top: calc(var(--fullscreen-inset) + 16px);
   }
 
+  /* The inset pulls the chrome out to the edges, but the settings panel is over there in
+     fullscreen too, so the same floor applies. */
   .cinema__control--watch {
-    right: calc(var(--fullscreen-inset) + 40px);
+    right: max(calc(var(--fullscreen-inset) + 40px), var(--player-panel-clearance));
     top: calc(var(--fullscreen-inset) + 40px);
+  }
+
+  .watch-party-start {
+    right: max(calc(var(--fullscreen-inset) + 16px), var(--player-panel-clearance));
+    top: calc(var(--fullscreen-inset) + 16px);
   }
 }
