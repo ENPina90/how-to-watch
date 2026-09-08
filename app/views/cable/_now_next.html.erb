@@ -13,8 +13,11 @@
     <div class="cable__guide-bar">
       <div class="cable__guide-fill" data-cable-progress-target="fill"></div>
     </div>
+    <%# Rendered in the schedule's own zone and rewritten by the controller into the
+        viewer's. The server cannot know where they are, and a time on screen should be the
+        one on the clock beside them -- so this is what shows if the script never runs. %>
     <span class="cable__guide-time">
-      <%= cable_time(slot.starts_at) %> &ndash; <%= cable_time(slot.ends_at) %>
+      <span data-cable-progress-target="span"><%= cable_time(slot.starts_at) %> &ndash; <%= cable_time(slot.ends_at) %></span>
       <span data-cable-progress-target="remaining"></span>
     </span>
   </div>
@@ -23,7 +26,8 @@
     <ol class="cable__guide-next">
       <% upcoming.each do |next_slot| %>
         <li>
-          <span class="cable__guide-time"><%= cable_time(next_slot.starts_at) %></span>
+          <span class="cable__guide-time" data-cable-progress-target="upcoming"
+                data-at="<%= (next_slot.starts_at.to_f * 1000).round %>"><%= cable_time(next_slot.starts_at) %></span>
           <span class="cable__guide-name"><%= cable_programme_name(next_slot) %></span>
         </li>
       <% end %>

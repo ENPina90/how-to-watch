@@ -11,7 +11,7 @@ import { Controller } from "@hotwired/stimulus"
 const TICK = 10000
 
 export default class extends Controller {
-  static targets = ["fill", "remaining"]
+  static targets = ["fill", "remaining", "span", "upcoming"]
   static values = { startsAt: String, endsAt: String }
 
   connect() {
@@ -19,8 +19,26 @@ export default class extends Controller {
     this.endsAt = Date.parse(this.endsAtValue)
     if (Number.isNaN(this.startsAt) || Number.isNaN(this.endsAt)) return
 
+    this.localise()
     this.render()
     this.timer = setInterval(() => this.render(), TICK)
+  }
+
+  // The times are rendered in the schedule's zone, because the server cannot know where the
+  // viewer is. Here we do, so they are rewritten into local time -- a listing should agree
+  // with the clock in the room. The instants themselves never move; only how they read.
+  localise() {
+    const clock = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" })
+
+    if (this.hasSpanTarget) {
+      this.spanTarget.textContent =
+        `${clock.format(new Date(this.startsAt))} – ${clock.format(new Date(this.endsAt))}`
+    }
+
+    this.upcomingTargets.forEach((element) => {
+      const at = Number(element.dataset.at)
+      if (at) element.textContent = clock.format(new Date(at))
+    })
   }
 
   disconnect() {

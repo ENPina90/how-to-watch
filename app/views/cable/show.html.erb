@@ -165,10 +165,20 @@
           resized into this corner by the stylesheet instead; this is the hole it sits in. %>
       <div class="tvguide__preview"></div>
 
+      <%# What the panel describes follows the pointer around the grid, and falls back to
+          what is actually playing when the pointer stops or leaves. Both links lead out of
+          cable: the channel to its own page, the programme to the ordinary watch player,
+          where it plays from the beginning and counts towards what you have seen. Neither
+          carries data-cinema-move, so they are ordinary navigations rather than a tune. %>
       <div class="tvguide__detail">
-        <p class="tvguide__detail-channel" data-cable-guide-target="detailChannel"></p>
-        <h2 class="tvguide__detail-title" data-cable-guide-target="detailTitle"></h2>
+        <a class="tvguide__detail-channel" data-cable-guide-target="detailChannel" href="#"></a>
+        <h2 class="tvguide__detail-title">
+          <a data-cable-guide-target="detailTitle" href="#"></a>
+        </h2>
         <p class="tvguide__detail-meta" data-cable-guide-target="detailMeta"></p>
+        <p class="tvguide__detail-watched" data-cable-guide-target="detailWatched" hidden>
+          <i class="fa-solid fa-eye"></i> Watched
+        </p>
         <p class="tvguide__detail-plot" data-cable-guide-target="detailPlot"></p>
       </div>
     </div>

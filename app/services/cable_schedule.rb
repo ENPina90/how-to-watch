@@ -74,18 +74,36 @@ module CableSchedule
     CableSlot.where(list: channel).after(at).in_order.limit(limit).includes(:entry, :subentry)
   end
 
-  # How much of the evening the guide shows at once. Four hours is two screens' worth at
-  # the half-hour columns the old cable guides used, so there is something to scroll to.
-  GUIDE_HOURS = 4
+  # A full day of listings, scrollable. The visible width is a few hours; the rest is what
+  # you scroll to, which is what the guide is for.
+  GUIDE_HOURS = 24
 
-  # The guide always opens on a half hour, the way the printed listings did -- the columns
-  # are :00 and :30 and nothing else, so a window starting at 7:47 would label every one of
-  # them with a time nobody recognises. The clock in the corner says what time it really is.
-  def guide_window(at: Time.current)
-    local = at.in_time_zone(zone)
-    start = local.change(min: local.min < 30 ? 0 : 30, sec: 0, usec: 0)
+  # How much of the window sits behind the present. Enough to scroll back and see what you
+  # just missed, not so much that the day is mostly over before it starts.
+  GUIDE_LEAD_HOURS = 2
+
+  # The guide opens on a half hour, the way the printed listings did -- the columns are :00
+  # and :30 and nothing else, so a window starting at 7:47 would label every one of them
+  # with a time nobody recognises. The clock in the corner says what time it really is.
+  #
+  # In the viewer's own zone, not the schedule's. The schedule is a set of instants and is
+  # laid out in one fixed zone so that every viewer sees the same programme at once; what
+  # time that instant *is* belongs to whoever is looking. A listing whose columns disagreed
+  # with the clock on the wall would be no use to read.
+  def guide_window(at: Time.current, in_zone: zone)
+    local = at.in_time_zone(in_zone)
+    start = local.change(min: local.min < 30 ? 0 : 30, sec: 0, usec: 0) - GUIDE_LEAD_HOURS.hours
 
     start...(start + GUIDE_HOURS.hours)
+  end
+
+  # A viewer's zone name, or the schedule's own when it means nothing. Names come from the
+  # browser, so they are checked rather than trusted -- and an unknown one is somebody's
+  # unusual setup, not an error worth a page about.
+  def resolve_zone(name)
+    return zone if name.blank? || !name.match?(%r{\A[A-Za-z0-9_+\-/]{1,64}\z})
+
+    ActiveSupport::TimeZone[name] || zone
   end
 
   # Every channel on the dial and what each is showing across that window, in one query
@@ -93,8 +111,8 @@ module CableSchedule
   #
   # A programme counts if any part of it falls inside the window, so the one already
   # running when the window opens is included -- that is the row the viewer is on.
-  def guide(at: Time.current)
-    window = guide_window(at: at)
+  def guide(at: Time.current, in_zone: zone)
+    window = guide_window(at: at, in_zone: in_zone)
     dial = channels.to_a
     by_channel = CableSlot.where(list_id: dial.map(&:id))
                           .where(starts_at: ...window.end)
@@ -108,6 +126,15 @@ module CableSchedule
       # it sits, and ids have gaps.
       { channel: channel, number: index + 1, slots: by_channel.fetch(channel.id, []) }
     end
+  end
+
+  # The cable days a window touches. The window is in the viewer's zone and `airs_on` is a
+  # date in the schedule's, so the two have to be converted rather than compared.
+  def days_covered(window)
+    first = window.begin.in_time_zone(zone).to_date
+    last = window.end.in_time_zone(zone).to_date
+
+    (first..last).to_a
   end
 
   # Lay out one channel's day, replacing whatever was there. In a transaction because a

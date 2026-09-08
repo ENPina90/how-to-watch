@@ -4,14 +4,14 @@ module CableHelper
   # Times on a cable channel are read off a clock, so they are shown in the zone the
   # schedule was laid out in rather than the server's. Every viewer sees the listing the
   # channel was actually built against.
-  def cable_time(time)
-    time.in_time_zone(CableSchedule.zone).strftime("%-l:%M %p").downcase
+  def cable_time(time, zone = CableSchedule.zone)
+    time.in_time_zone(zone).strftime("%-l:%M %p").downcase
   end
 
   # The clock in the guide's corner cell, seconds and all -- the old guides ran one, and it
   # is the only thing on the grid that says what time it actually is.
-  def cable_clock(time)
-    time.in_time_zone(CableSchedule.zone).strftime("%-l:%M:%S")
+  def cable_clock(time, zone = CableSchedule.zone)
+    time.in_time_zone(zone).strftime("%-l:%M:%S")
   end
 
   # What to call a programme in the listing: the episode where there is one, since "Veep"

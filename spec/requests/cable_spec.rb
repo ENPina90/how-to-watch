@@ -4,6 +4,8 @@ require 'rails_helper'
 # rather than a playlist: it joins the programme partway through, at the point the clock
 # says, and it records nothing about the viewer for having been on.
 RSpec.describe 'Cable', type: :request do
+  include CableHelper
+
   let(:user) { create(:user) }
 
   let!(:provider) do
@@ -174,6 +176,66 @@ RSpec.describe 'Cable', type: :request do
       travel_to(midnight + 11.minutes) { get cable_guide_path }
 
       expect(counts.call).to eq(before_counts)
+    end
+
+    # The columns and the clock are labelled in the viewer's zone, so the listing agrees
+    # with the clock in the room they are sitting in. The schedule itself does not move --
+    # these are the same instants, read from somewhere else.
+    it 'labels the listing in the zone the viewer says they are in' do
+      sign_in user
+      travel_to(midnight + 11.minutes) do
+        get cable_guide_path, params: { tz: 'Europe/Berlin' }
+      end
+
+      berlin = CableSchedule.guide_window(at: midnight + 11.minutes,
+                                          in_zone: ActiveSupport::TimeZone['Europe/Berlin'])
+      expect(response.body).to include(cable_time(berlin.begin, ActiveSupport::TimeZone['Europe/Berlin']).upcase)
+    end
+
+    it 'falls back to the schedule zone when the browser sends nonsense' do
+      sign_in user
+      travel_to(midnight + 11.minutes) { get cable_guide_path, params: { tz: 'Mars/Olympus' } }
+
+      expect(response).to be_successful
+    end
+
+    # The grid is fetched once and read for as long as somebody leaves it up, so the cells
+    # have to carry their own times -- the clock, the line across the grid and the cell it
+    # marks are all worked out in the browser from these.
+    it 'gives every programme the marks the clock needs' do
+      sign_in user
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      expect(response.body).to include('data-guide-start=').and include('data-guide-end=')
+      expect(response.body).to include('data-window-start=')
+    end
+
+    it 'says which programmes this viewer has already seen' do
+      entry.mark_completed_by!(user)
+
+      sign_in user
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      expect(response.body).to include('data-guide-watched="true"')
+      expect(response.body).to include('data-guide-watched="false"')
+    end
+
+    it 'tells a signed-out visitor nothing about what anyone has seen' do
+      AppSetting.update_access_mode!('open')
+      entry.mark_completed_by!(user)
+
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      expect(response).to be_successful
+      expect(response.body).not_to include('data-guide-watched="true"')
+    end
+
+    it 'links each programme out to its own page and its channel' do
+      sign_in user
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      expect(response.body).to include("data-guide-watch-url=\"#{watch_entry_path(entry, channel: channel.id)}")
+      expect(response.body).to include("data-guide-channel-url=\"#{list_path(channel)}\"")
     end
   end
 
