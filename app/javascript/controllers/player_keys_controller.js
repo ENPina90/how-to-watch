@@ -46,15 +46,7 @@ export default class extends Controller {
   }
 
   playerReported(state) {
-    this.progress = state.progress
-    this.reportedAt = Date.now()
     this.playing = state.status === "playing"
-
-    // Once it reports back from somewhere near where it was sent, the seek has landed and
-    // the player's own position is the better one again.
-    if (this.assumed != null && Math.abs(state.progress - this.assumed) < SEEK_SECONDS) {
-      this.assumed = null
-    }
   }
 
   handle(event) {
@@ -132,31 +124,10 @@ export default class extends Controller {
     if (focused instanceof HTMLElement && focused !== document.body) focused.blur()
   }
 
+  // Relative, so the player applies it to where the film actually is. Successive taps
+  // accumulate on their side and nothing here has to guess at a position between reports.
   seekBy(delta, event) {
     event.preventDefault()
-
-    const target = Math.max(0, this.positionNow() + delta)
-    // The protocol's seek is absolute, so successive presses have to accumulate here.
-    // Reports arrive about every five seconds, and three taps inside one of them would
-    // otherwise all seek from the same place and move the film five seconds in total.
-    //
-    // The player's own handler matches `seek([+-]?)([0-9]+)`, so it may well take a
-    // relative `seek-5` and make all of this unnecessary. The sign has never been tried,
-    // and guessing wrong would jump the film to five seconds in rather than back five.
-    this.assumed = target
-    this.assumedAt = Date.now()
-    this.player.seek(target)
-  }
-
-  // Where the film is now: the last position it reported, carried forward by the clock if
-  // it has been playing since. Seeking from a five-second-old position lands somewhere
-  // nobody asked for.
-  positionNow() {
-    const base = this.assumed ?? this.progress
-    if (base == null) return 0
-
-    const since = this.playing ? (Date.now() - (this.assumed != null ? this.assumedAt : this.reportedAt)) / 1000 : 0
-
-    return base + since
+    this.player.seekBy(delta)
   }
 }
