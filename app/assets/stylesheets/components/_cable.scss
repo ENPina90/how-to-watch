@@ -27,6 +27,18 @@
  * and only the surface is dated. A grid is a grid.
  */
 
+/* The picture's corner of the guide. Named once because five things depend on it: the
+   header's height, the hole the player sits in, the frame stack resized into that hole,
+   and the two buttons that have to land on the player's own controls inside it.
+
+   On the screen rather than on the guide, because the frame stack is the guide's *sibling*
+   -- both are children of the screen -- so a variable set on the guide would never reach
+   it, and the two would drift apart at the one breakpoint that changes the width. */
+body.cable__mode .cinema__screen {
+  --guide-preview-width: 50%;
+  --guide-preview-height: 50vh;
+}
+
 .tvguide {
   position: absolute;
   inset: 0;
@@ -55,7 +67,7 @@
    describing it the top-right. The grid gets the half below. */
 .tvguide__head {
   display: flex;
-  height: 50vh;
+  height: var(--guide-preview-height);
   flex: 0 0 auto;
 }
 
@@ -63,7 +75,7 @@
    space by the rule further down rather than moved into this element, because moving an
    iframe in the DOM reloads it and the film would stop to make way for a grid about it. */
 .tvguide__preview {
-  width: 50%;
+  width: var(--guide-preview-width);
   flex: 0 0 auto;
 }
 
@@ -438,17 +450,41 @@
  */
 .cinema__screen--guide .cinema__frames {
   inset: 0 auto auto 0;
-  width: 50%;
-  height: 50vh;
+  /* The same box the guide reserves for it, read from the guide's own variables -- the
+     frame is a sibling of the panel, not a child, so it has to be told the same numbers. */
+  width: var(--guide-preview-width);
+  height: var(--guide-preview-height);
   z-index: 31;
 }
 
 /* Everything that describes the channel behind the guide. The guide says all of it, in its
    own panel, and the two sets of type on top of each other is what the old ones never had. */
-.cinema__screen--guide .cable-hud,
-.cinema__screen--guide .cinema__fullscreen,
-.cinema__screen--guide .cinema__guide-button {
+.cinema__screen--guide .cable-hud {
   display: none;
+}
+
+/* The two buttons follow the picture into its corner rather than going away with the
+   banner, because the player's own controls follow it too: shrunk into the top-left
+   quarter, its bar is still there with a play button at one end and a dead fullscreen
+   button at the other, and both were showing through.
+   
+   So they are covered here as well, by the same two buttons that cover them full size --
+   the guide button over their play, the fullscreen button over their fullscreen. What
+   ours do changes to suit: pressing either closes the guide, and the fullscreen one goes
+   on to take the screen.
+
+   The offsets are the full-size ones measured from the preview's edges instead of the
+   screen's: the frame's bottom sits a preview-height up from the bottom of the screen, and
+   its right edge a preview-width in from the right. */
+.cinema__screen--guide .cinema__guide-button,
+.cinema__screen--guide .cinema__fullscreen {
+  /* Over the frame, which is itself lifted above the guide panel. */
+  z-index: 32;
+  bottom: calc(100% - var(--guide-preview-height) + var(--fullscreen-button-bottom) - var(--fullscreen-button-size) / 2);
+}
+
+.cinema__screen--guide .cinema__fullscreen {
+  right: calc(100% - var(--guide-preview-width) + var(--fullscreen-button-right) - var(--fullscreen-button-size) / 2);
 }
 
 /* The gradient the player page lays over the top of the frame for legible titles. There are
@@ -460,9 +496,8 @@
 /* A narrow window: the gutter and the split both give, rather than the grid scrolling
    sideways before it has shown a single full programme. */
 @media (max-width: 1100px) {
-  .tvguide__preview,
-  .cinema__screen--guide .cinema__frames {
-    width: 42%;
+  body.cable__mode .cinema__screen {
+    --guide-preview-width: 42%;
   }
 
   .tvguide__corner,
