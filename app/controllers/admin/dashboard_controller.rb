@@ -48,6 +48,23 @@ module Admin
       redirect_to admin_dashboard_path, notice: reset_summary(result, source)
     end
 
+    # The weekly sweeps, run by hand. Enqueued rather than run here: between them they make
+    # a few hundred outbound requests and take minutes, which is not a request cycle. What
+    # they find lands in notifications either way, which is where it lands on a Monday too.
+    def run_poster_scan
+      BrokenPosterScanJob.perform_later
+
+      redirect_to admin_dashboard_path,
+                  notice: 'Poster scan started. Broken posters will appear in your notifications.'
+    end
+
+    def run_embed_scan
+      EmbedAvailabilityScanJob.perform_later
+
+      redirect_to admin_dashboard_path,
+                  notice: 'Stream check started. Unplayable entries will appear in your notifications.'
+    end
+
     private
 
     def reset_summary(result, source)
