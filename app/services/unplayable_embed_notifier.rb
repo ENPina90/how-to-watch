@@ -11,23 +11,24 @@
 # different id, or a series at a different episode, is a new question and a new
 # notification.
 class UnplayableEmbedNotifier
-  Result = Struct.new(:checked, :missing, :created, :removed, keyword_init: true)
+  Result = Struct.new(:created, :removed, keyword_init: true)
 
   def self.call(...) = new(...).call
 
-  def initialize(audit: EmbedAvailabilityAudit.new)
-    @audit = audit
+  # Takes the rows rather than running the audit: the scan asks VidSrc once and then both
+  # marks the entries and raises the notifications off the same answer.
+  def initialize(missing:)
+    @missing = missing
   end
 
   def call
-    audit = @audit.call
     created = 0
     removed = 0
 
     ActiveRecord::Base.transaction do
       admins.each do |admin|
-        created += create_missing(admin, audit.missing)
-        removed += remove_stale(admin, audit.missing)
+        created += create_missing(admin, @missing)
+        removed += remove_stale(admin, @missing)
       end
 
       removed += Notification.where(kind: Notification::UNPLAYABLE_EMBED)
@@ -35,7 +36,7 @@ class UnplayableEmbedNotifier
                              .delete_all
     end
 
-    Result.new(checked: audit.checked, missing: audit.missing.size, created: created, removed: removed)
+    Result.new(created: created, removed: removed)
   end
 
   private

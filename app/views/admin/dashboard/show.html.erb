@@ -279,4 +279,37 @@
       their channel from then on.
     </p>
   </section>
+
+  <section class="admin-section">
+    <h2 class="admin-section__title">Maintenance sweeps</h2>
+
+    <p class="admin-note">
+      Both run on their own each week — posters on Mondays, streams on Tuesdays. These are
+      the same jobs, for when you would rather not wait. Each takes a few minutes and works
+      in the background, so nothing here waits for them; what they find arrives in
+      <%= link_to 'your notifications', notifications_path %>.
+    </p>
+
+    <div class="admin-sweeps">
+      <%= form_with url: run_poster_scan_admin_dashboard_path, method: :post do |f| %>
+        <%= f.submit "Check posters", class: "admin-save" %>
+      <% end %>
+
+      <%= form_with url: run_embed_scan_admin_dashboard_path, method: :post do |f| %>
+        <%= f.submit "Check streams", class: "admin-save" %>
+      <% end %>
+    </div>
+
+    <p class="admin-note">
+      <strong>Posters</strong> asks every entry's poster URL whether the image is still
+      there — a poster that has gone missing at Cloudinary still looks present in every
+      column, and only shows itself as a blank frame on a channel row.
+      <br>
+      <strong>Streams</strong> asks VidSrc which entries it actually holds a file for. An
+      entry it has never held still answers 200 and frames up before saying the media is
+      unavailable, so nothing else catches these. Anything it finds is marked with the same
+      red link as the "report broken link" button — and that mark is left alone once set,
+      so a link you reported by hand stays reported.
+    </p>
+  </section>
 </div>
