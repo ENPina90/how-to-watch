@@ -15,15 +15,26 @@
       else
         false
       end
-      # Link to watch_current if on watch page, otherwise to list show
-      link_path = defined?(@entry) && @entry && @entry.persisted? ? list_watch_current_path(list) : list_path(list)
     %>
-    <%= link_to link_path, class: "list-group-item list-group-item-action bg-transparent text-white border-0 py-2 px-0 mb-1 #{'active-list' if is_current}", style: "border-radius: 6px; #{is_current ? 'background-color: rgba(255, 255, 255, 0.15) !important;' : ''}" do %>
-      <div class="d-flex align-items-center">
-        <i class="fa-solid fa-list me-3 text-muted"></i>
-        <span class="text-truncate"><%= list.name %></span>
-      </div>
-    <% end %>
+    <%# Two destinations, so two links. The row plays the channel wherever you are -- it
+        used to open the channel page unless you were already on a player, which meant the
+        same row did different things depending on where you clicked it from. The icon,
+        which only appears under the pointer, is the way to the channel page. %>
+    <div class="sidebar-channel">
+      <%= link_to list_watch_current_path(list),
+                  class: "list-group-item list-group-item-action bg-transparent text-white border-0 py-2 px-0 mb-1 #{'active-list' if is_current}",
+                  style: "border-radius: 6px;",
+                  data: (is_current ? { 'sidebar-autoscroll-target': 'active' } : {}) do %>
+        <div class="d-flex align-items-center">
+          <span class="text-truncate"><%= list.name %></span>
+        </div>
+      <% end %>
+      <%= link_to list_path(list), class: "sidebar-channel__open",
+                  title: "Open #{list.name}",
+                  aria: { label: "Open #{list.name}" } do %>
+        <i class="fa-solid fa-list"></i>
+      <% end %>
+    </div>
   <% end %>
 
   <% if channels.empty? %>
