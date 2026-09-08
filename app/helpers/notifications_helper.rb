@@ -11,7 +11,7 @@ module NotificationsHelper
     case notification.kind
     when Notification::SOURCE_EXPIRING
       expired?(notification) ? :urgent : :warn
-    when Notification::BROKEN_POSTER
+    when Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED
       :warn
     else
       :info
@@ -25,6 +25,8 @@ module NotificationsHelper
       expired?(notification) ? "#{name} has expired" : "#{name} is about to expire"
     when Notification::BROKEN_POSTER
       "#{notification.data['name'].presence || 'An entry'} has no poster"
+    when Notification::UNPLAYABLE_EMBED
+      "#{notification.data['name'].presence || 'An entry'} will not play"
     else
       notification.kind.humanize
     end
@@ -34,6 +36,7 @@ module NotificationsHelper
     case notification.kind
     when Notification::SOURCE_EXPIRING then source_expiry_detail(notification)
     when Notification::BROKEN_POSTER then broken_poster_detail(notification)
+    when Notification::UNPLAYABLE_EMBED then unplayable_embed_detail(notification)
     else ''
     end
   end
@@ -44,7 +47,8 @@ module NotificationsHelper
     when Notification::SOURCE_EXPIRING then sources_path
     # nil once the entry is gone. The next scan retires the row anyway; until then the
     # card still reads correctly from `data`, it just has nowhere to send you.
-    when Notification::BROKEN_POSTER then notification.subject && entry_path(notification.subject)
+    when Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED
+      notification.subject && entry_path(notification.subject)
     end
   end
 
@@ -54,7 +58,7 @@ module NotificationsHelper
   # being sent somewhere to fix something, and the card has done its job once you are
   # there. An expiry warning is the other sort -- it should outlive being looked at.
   def notification_view_dismisses?(notification)
-    notification.kind == Notification::BROKEN_POSTER
+    [Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED].include?(notification.kind)
   end
 
   private
@@ -68,6 +72,16 @@ module NotificationsHelper
   def expired?(notification)
     date = expiry_date(notification)
     date.present? && date < Date.current
+  end
+
+  def unplayable_embed_detail(notification)
+    asked = [notification.data['imdb'], notification.data['episode']].compact_blank.join(' ')
+    where = notification.data['list'].presence
+    provider = notification.data['provider'].presence
+
+    "#{provider || 'The provider'} has no file for #{asked.presence || 'it'}" \
+      "#{where ? " -- in #{where}" : ''}. It frames up and says the media is unavailable. " \
+      'Point it at another id, or take it out.'
   end
 
   def broken_poster_detail(notification)

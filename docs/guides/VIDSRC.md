@@ -450,8 +450,8 @@ Full ID dumps live at `/ids/`, one per line, updated daily, CORS enabled:
 (`tt0944947_1x1`), `eps_tmdb.txt` (`314541_1x3`). Note the filenames are `movie_*`, not
 `mov_*` — a community member lost time to that.
 
-These would answer "can VidSrc actually play this entry?" without a request per title, which
-is worth remembering if entry validation ever comes up.
+These answer "can VidSrc actually play this entry?" without a request per title. Entry
+validation did come up, and §9 is what came of it.
 
 ---
 
@@ -481,3 +481,63 @@ is worth remembering if entry validation ever comes up.
    linked to, so nothing has moved onto it yet. Repointing them is a data migration.
 3. ~~Delete the `/lab` direct-embed experiment~~ — **done 2026-09-04**. Its findings live
    in §4a; the code is gone, and the custom domain is the supported route to the same end.
+
+---
+
+## 9. Whether a title will actually play
+
+**Nothing in front of the data API knows.** Measured 2026-09-06 on `tt0177242` (absent) and
+`tt0172495` (present):
+
+| Hop | Answer for a title VidSrc does not have |
+|---|---|
+| `GET /embed/movie?imdb=<id>` | `200`, and a byte-identical 54KB shell |
+| `GET /vs_src.php?type=movie&id=<id>` | `200`, and a signed `src` URL, minted either way |
+| the inner player at that `src` | `200`, another generic shell |
+| `GET data.vidsrcme.ru/api.php?...` | **`{"status_code":404}`** |
+
+"This media is unavailable" is drawn by the innermost player *after* it asks that last
+endpoint. So an availability check has to reach it; everything nearer is a 200 regardless.
+This is why `Entry#check_source`, which reads the page `<title>`, calls these entries
+healthy — it is looking at the shell.
+
+### The endpoint
+
+```
+data.vidsrcme.ru/api.php?type=movie&imdb=tt0172495
+data.vidsrcme.ru/api.php?type=tv&imdb=tt0041038&season=1&episode=1
+```
+
+`type=tv` for an episode — **not** `type=episode`, which 404s for everything, and not the
+`tt0041038_1x1` composite the ID dumps use. Present returns `{"status_code":"200","data":{…}}`;
+absent returns `{"status_code":404}`. Note the quoting differs between the two.
+
+The host is not one of ours and is in no template. It is discovered from the player chain,
+and `vidsrcme` is on the at-risk list in §1 — `VidsrcAvailability::DEFAULT_HOST` is where it
+is written down, and re-walking the chain is how to find its replacement.
+
+### Why the check has two stages
+
+`EmbedAvailabilityAudit` screens against the §8 ID dumps first, then confirms each suspect
+against the API. Measured over the whole catalogue on 2026-09-06:
+
+| | |
+|---|---|
+| Entries on a VidSrc provider | 2,856 |
+| Doubted by the dumps | 218 |
+| Confirmed unplayable | **168** |
+| Dumps wrong (playable after all) | **45** — a fifth of what they doubted |
+
+So the dumps are a screen, not a verdict: reporting straight off them would have been 45
+false accusations. In the other direction they were reliable, so what they vouch for is
+never asked about again — 2,856 entries for 3 downloads plus 218 requests, in ~53s.
+
+**A failure must report nothing, not everything.** If the dumps come back empty or the API
+goes quiet, every entry looks unplayable. `VidsrcCatalog` rejects a dump under 1,000 ids,
+`VidsrcAvailability` has a third state for "no answer" that is never treated as missing, and
+the audit refuses to run at all unless both are healthy.
+
+The sweep is `EmbedAvailabilityScanJob`, Tuesdays 06:00 UTC, raising an admin notification
+per entry. `rails embeds:audit` is the same check on demand. Neither writes `entries.stream`
+— that column carries the "report broken link" button's human judgement, and a sweep should
+not overrule a person.
