@@ -62,8 +62,12 @@
             src="<%= @embed_url %>"></iframe>
   </div>
 
+  <%# Closes the guide on the way, so this always leaves you looking at the picture full
+      size. With the guide up it sits over the player's own fullscreen button, which is dead
+      -- the frame has no fullscreen permission -- so the one that works is on top of the
+      one that does not. %>
   <button type="button" class="cinema__fullscreen" title="Fullscreen"
-          data-action="click->cinema-fullscreen#toggle">
+          data-action="click->cable-guide#close click->cinema-fullscreen#toggle">
     <i class="fa-solid fa-expand"></i>
   </button>
 
