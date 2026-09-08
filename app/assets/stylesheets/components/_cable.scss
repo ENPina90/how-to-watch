@@ -1,86 +1,5 @@
-/* /cable -- the listing and the off-air card. The player, the ring and fullscreen are all
+/* /cable -- the off-air card and the TV guide. The player, the ring and fullscreen are all
    the watch page's, in _cinema.scss; only what is new to cable is here. */
-
-/* The listing sits inside the title block and flows under it, so it clears a one-line
-   film title and a four-line episode alike. Everything positional -- where the block sits,
-   and the shift when the left sidebar opens -- belongs to .cinema__title in _cinema.scss;
-   this only says how wide the listing is and how loud. */
-.cable__guide {
-  margin-top: 18px;
-  max-width: 340px;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.85rem;
-  transition: opacity 0.3s ease;
-  /* Quiet until looked at: it is a listing, not a control, and it sits over the picture. */
-  opacity: 0.6;
-
-  &:hover {
-    opacity: 1;
-  }
-}
-
-/* Idle in fullscreen hides the pointer and the controls; the listing goes with them. */
-.cinema__screen--idle .cable__guide {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.cable__guide-label {
-  display: block;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.75);
-  margin-bottom: 6px;
-}
-
-.cable__guide-bar {
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-  overflow: hidden;
-}
-
-.cable__guide-fill {
-  height: 100%;
-  width: 0;
-  border-radius: 999px;
-  background: #1a936f;
-  transition: width 1s linear;
-}
-
-.cable__guide-time {
-  display: inline-block;
-  margin-top: 6px;
-  font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.75rem;
-}
-
-.cable__guide-next {
-  list-style: none;
-  margin: 14px 0 0;
-  padding: 0;
-
-  li {
-    display: flex;
-    gap: 10px;
-    padding: 3px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .cable__guide-time {
-    margin-top: 0;
-    flex: 0 0 4.5em;
-  }
-
-  .cable__guide-name {
-    color: rgba(255, 255, 255, 0.75);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
 
 /* A channel with nothing to play. Centred on the screen it would have filled. */
 .cable__off-air {
@@ -95,17 +14,6 @@
 .cable__off-air-card {
   max-width: 460px;
   padding: 40px;
-}
-
-/* The sidebar toggle. The watch page puts its equivalent in the top right, above the ring,
-   because its own title fills the top left -- but that is the *unified* button, whose
-   script requires an entries sidebar to drive and would retry forever on a page with none.
-   So cable keeps the plain button, which its script does handle, and borrows the position:
-   cinema mode otherwise pins it to the top left, on top of the channel name. */
-body.cable__mode #sidebarCollapseBtn {
-  left: auto !important;
-  right: 16px !important;
-  top: 16px !important;
 }
 
 /* ---- The TV guide -------------------------------------------------------------------
@@ -502,15 +410,6 @@ body.cable__mode #sidebarCollapseBtn {
   z-index: 31;
 }
 
-/* The furniture of the page underneath. The guide is a takeover -- it covers the picture
-   and speaks for the channel itself -- so the sidebar and its toggle go with the rest.
-   On the body because both sit outside the cinema screen and no rule inside it can reach
-   them; the controller puts the class there for exactly this. */
-body.cable-guide-open #mainSidebar,
-body.cable-guide-open #sidebarCollapseBtn {
-  display: none !important;
-}
-
 /* Everything that describes the channel behind the guide. The guide says all of it, in its
    own panel, and the two sets of type on top of each other is what the old ones never had. */
 .cinema__screen--guide .cinema__title,
@@ -547,4 +446,45 @@ body.cable-guide-open #sidebarCollapseBtn {
   .tvguide__grid {
     --guide-hour-width: 340px;
   }
+}
+
+/* ---- left alone -------------------------------------------------------------------
+ *
+ * The chrome fades out windowed as well as in fullscreen, which is what separates a
+ * channel playing in a room from a page being worked through. The fullscreen version of
+ * this lives in _cinema.scss and is the watch page's too; this is the windowed one, and it
+ * is cable's alone.
+ *
+ * Opacity rather than display, so nothing reflows and the fade reads as the picture being
+ * left alone. Pointer events go with it: a control faded to nothing must not still be
+ * clickable.
+ */
+body.cable__mode .cinema__screen--idle:not(.cinema__screen--guide) {
+  cursor: none;
+
+  /* The only way this page can see the mouse move at all once the chrome is gone. Pointer
+     events inside a cross-origin frame belong to its document and never reach ours, so
+     while the chrome is hidden the frame stops taking them and movement falls through to
+     the screen underneath, where the controller is listening. Handed straight back on the
+     first movement. The cost is one swallowed click, and only a click with no movement
+     before it. */
+  .cinema__frames {
+    pointer-events: none;
+  }
+
+  .cinema__title,
+  .cinema__control--watch,
+  .cinema__fullscreen,
+  .watch-party-start {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+}
+
+/* The guide is not chrome over the picture -- it is a thing the viewer opened and is
+   reading, and it has its own idea of being left alone (it scrolls back to now). Reading a
+   listing involves not moving the mouse, so it must not fade while it is up. */
+body.cable__mode .cinema__screen--guide {
+  cursor: auto;
 }

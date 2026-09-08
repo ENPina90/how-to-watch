@@ -53,7 +53,6 @@ export default class extends Controller {
 
   disconnect() {
     document.removeEventListener("keydown", this.keyed, true)
-    document.body.classList.remove("cable-guide-open")
     this.stopTicking()
     this.clearIdleTimers()
   }
@@ -69,10 +68,6 @@ export default class extends Controller {
   async show() {
     this.panelTarget.hidden = false
     this.element.classList.add(...this.openClasses)
-    // The sidebar and its toggle sit outside the cinema screen, so no rule inside it can
-    // reach them -- and both would otherwise sit on top of a guide that has taken the
-    // screen over. This is what the stylesheet hides them by.
-    document.body.classList.add("cable-guide-open")
 
     if (this.stale) await this.load()
 
@@ -84,7 +79,6 @@ export default class extends Controller {
   close() {
     this.panelTarget.hidden = true
     this.element.classList.remove(...this.openClasses)
-    document.body.classList.remove("cable-guide-open")
     this.stopTicking()
     this.clearIdleTimers()
   }

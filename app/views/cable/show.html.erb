@@ -39,6 +39,12 @@
      data-cable-guide-zone-value="<%= CableSchedule.zone.tzinfo.name %>"
      data-cable-guide-open-class="cinema__screen--guide"
      data-cinema-fullscreen-idle-class="cinema__screen--idle"
+     <%# Unlike the watch page, the chrome here goes away windowed as well. A cable channel
+         is something playing in a room rather than a page being worked through, and its
+         title and ring are a caption that has said its piece -- ten seconds is long enough
+         to read them and short enough that the picture is not permanently framed. %>
+     data-cinema-fullscreen-always-value="true"
+     data-cinema-fullscreen-idle-delay-value="10000"
      data-cinema-navigation-moving-class="cinema__screen--moving"
      data-cinema-navigation-preload-value="true"
      <%# What the entries sidebar's script writes on the watch page. Nothing writes it here,
@@ -94,13 +100,6 @@
       <% elsif @entry.media == 'episode' %>
         <h3><%= @entry.series %> - S<%= @entry.season %>E<%= @entry.episode %></h3>
       <% end %>
-
-      <%# Inside the title rather than beside it: the title is one line for a film and four
-          for an episode of a series, so a listing placed at a fixed offset below it sits on
-          the episode name half the time. Flowing under it also means it inherits the one
-          rule that moves the title when the left sidebar opens, instead of needing a copy
-          of that rule that can drift from it. %>
-      <%= render 'cable/now_next', slot: @slot, upcoming: @upcoming, now: @now %>
     </div>
 
     <%# The watch page's ring, with the four controls that mean something here. There is no

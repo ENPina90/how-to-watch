@@ -19,12 +19,25 @@ import { Controller } from "@hotwired/stimulus"
 // their button's click belongs to their document. So the permission has to be withheld up
 // front rather than corrected later.
 //
-// Idle hiding only applies in fullscreen: windowed, this page has always shown its
-// controls and there is no reason to start hiding them.
+// Idle hiding in fullscreen: the picture is the whole screen, so anything of ours on top
+// of it is in the way once nobody is using it.
+//
+// Windowed it is off by default -- the watch page has always shown its controls there and
+// there is no reason to start hiding them -- but a page can ask for it. /cable does: it is
+// a channel playing to a room rather than a page being worked through, so its chrome is a
+// caption that has said its piece, not a set of controls somebody is about to reach for.
+// Such a page sets its own delay, because the two cases are not the same wait: in
+// fullscreen you have just moved the mouse to get there, and windowed you may be reading.
 const IDLE_DELAY = 2500
 
 export default class extends Controller {
   static classes = ["idle"]
+  static values = {
+    // Hide the chrome windowed too, not only in fullscreen.
+    always: Boolean,
+    // How long to leave it before hiding, in milliseconds. Zero means the built-in wait.
+    idleDelay: Number
+  }
 
   connect() {
     this.wake = () => this.stirred()
@@ -32,6 +45,12 @@ export default class extends Controller {
 
     document.addEventListener("fullscreenchange", this.fullscreenChanged)
     document.addEventListener("webkitfullscreenchange", this.fullscreenChanged)
+
+    if (this.alwaysValue) this.startWatchingForIdle()
+  }
+
+  get delay() {
+    return this.idleDelayValue > 0 ? this.idleDelayValue : IDLE_DELAY
   }
 
   disconnect() {
@@ -68,7 +87,9 @@ export default class extends Controller {
   }
 
   fullscreenMoved() {
-    if (this.fullscreen) this.startWatchingForIdle()
+    // A page that hides its chrome windowed as well never stops watching -- leaving
+    // fullscreen is not a reason to bring it back and keep it there.
+    if (this.fullscreen || this.alwaysValue) this.startWatchingForIdle()
     else this.stopWatchingForIdle()
   }
 
@@ -81,12 +102,16 @@ export default class extends Controller {
   // rule in _cinema.scss) and movement falls through to the screen, where this can see it.
   // Removing the class hands them back in the same breath.
   startWatchingForIdle() {
+    if (this.watching) return
+    this.watching = true
+
     this.element.addEventListener("mousemove", this.wake)
     this.element.addEventListener("keydown", this.wake)
     this.stirred()
   }
 
   stopWatchingForIdle() {
+    this.watching = false
     this.element.removeEventListener("mousemove", this.wake)
     this.element.removeEventListener("keydown", this.wake)
     clearTimeout(this.idleTimer)
@@ -96,6 +121,6 @@ export default class extends Controller {
   stirred() {
     clearTimeout(this.idleTimer)
     this.element.classList.remove(...this.idleClasses)
-    this.idleTimer = setTimeout(() => this.element.classList.add(...this.idleClasses), IDLE_DELAY)
+    this.idleTimer = setTimeout(() => this.element.classList.add(...this.idleClasses), this.delay)
   }
 }

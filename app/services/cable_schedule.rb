@@ -69,11 +69,6 @@ module CableSchedule
     CableSlot.where(list: channel).on_air_at(at).includes(:entry, :subentry).first
   end
 
-  # What follows it, for the now-and-next strip.
-  def upcoming(channel, at: Time.current, limit: 3)
-    CableSlot.where(list: channel).after(at).in_order.limit(limit).includes(:entry, :subentry)
-  end
-
   # A full day of listings, scrollable. The visible width is a few hours; the rest is what
   # you scroll to, which is what the guide is for.
   GUIDE_HOURS = 24
