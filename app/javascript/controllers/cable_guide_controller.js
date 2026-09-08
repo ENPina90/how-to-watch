@@ -34,6 +34,10 @@ const RECENTER_AFTER = 5 * 60 * 1000
 // screen and most of the width is what has not happened yet.
 const NOW_AT = 1 / 3
 
+// Keys the guide takes over while it is up, so that moving around the grid does not also
+// scroll the page under it. The film is not at risk from them -- a cable channel has no
+// transport at all, see player-keys' `transport` value -- but the browser's own use of the
+// arrows and Enter still has to be taken away while the grid has them.
 const CLAIMED_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape", "Enter"]
 
 export default class extends Controller {
