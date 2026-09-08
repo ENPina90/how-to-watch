@@ -50,10 +50,14 @@ export default class extends Controller {
     this.clicked = (event) => this.linkClicked(event)
     this.submitted = (event) => this.formSubmitted(event)
     this.wentBack = () => this.historyMoved()
+    this.keyed = (event) => this.keyPressed(event)
 
     this.element.addEventListener("click", this.clicked)
     this.element.addEventListener("submit", this.submitted)
     window.addEventListener("popstate", this.wentBack)
+    // On the document, not on this element: a keystroke goes to whatever has focus, which
+    // after a page load is the body and is never inside the frame the film is in.
+    document.addEventListener("keydown", this.keyed)
 
     this.scheduleWarming()
   }
@@ -62,7 +66,40 @@ export default class extends Controller {
     this.element.removeEventListener("click", this.clicked)
     this.element.removeEventListener("submit", this.submitted)
     window.removeEventListener("popstate", this.wentBack)
+    document.removeEventListener("keydown", this.keyed)
     this.discardWarmed()
+  }
+
+  // Up and down the dial from the keyboard, which is how anybody who has held a remote
+  // expects to change channel.
+  //
+  // It presses the arrow rather than moving on its own. Everything the click path already
+  // knows -- that down may have a channel warmed and waiting, that a second move must not
+  // race the first, what to do when the answer is not a player page -- would otherwise have
+  // to be repeated here and kept in step with itself.
+  keyPressed(event) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
+    if (this.busyElsewhere(event)) return
+
+    const arrow = this.element.querySelector(
+      `a[data-cinema-channel="${event.key === "ArrowUp" ? "up" : "down"}"]`
+    )
+    // Signed out, or a page with nowhere to go. Leave the keystroke to the browser.
+    if (!arrow) return
+
+    event.preventDefault()
+    arrow.click()
+  }
+
+  // Somewhere the arrows already mean something: a field being typed into, a select being
+  // stepped through, or an open dialog -- the review prompt, the up-next card, the guide,
+  // any of which is a question being asked that the channel behind it should not answer.
+  busyElsewhere({ target }) {
+    if (target instanceof HTMLElement && target.isContentEditable) return true
+    if (target instanceof HTMLElement && /^(input|textarea|select)$/i.test(target.tagName)) return true
+
+    return Boolean(document.querySelector(".modal.show"))
   }
 
   // Only the controls that say so. The channel name, the home button and anything else

@@ -145,6 +145,46 @@ RSpec.describe 'Moving between entries in place', :needs_provider, type: :reques
     end
   end
 
+  # Up and down the dial from the keyboard. The controller presses the arrow rather than
+  # moving on its own, so it has to be able to find it -- and direction cannot be inferred
+  # from the markup, because on the cable page every cell of the guide is a cinema-move
+  # link too and only two of them are the channel above and below.
+  describe 'naming the two channel arrows' do
+    it 'marks them on the watch page' do
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('data-cinema-channel="up"')
+      expect(response.body).to include('data-cinema-channel="down"')
+    end
+
+    it 'marks them on the cable page' do
+      channel.update!(default: true)
+      CableSchedule.build_day!(channel, CableSchedule.today)
+
+      get cable_channel_path(channel)
+
+      expect(response.body).to include('data-cinema-channel="up"')
+      expect(response.body).to include('data-cinema-channel="down"')
+    end
+
+    # One of each, or the keyboard picks whichever the document happened to reach first.
+    it 'names exactly one arrow in each direction' do
+      get watch_entry_path(entry)
+
+      expect(response.body.scan('data-cinema-channel="up"').length).to eq(1)
+      expect(response.body.scan('data-cinema-channel="down"').length).to eq(1)
+    end
+
+    # Down is still the direction worth warming, and pressing the key goes through the same
+    # click path -- so the keyboard gets the warmed channel for free.
+    it 'leaves the warmed direction on the down arrow' do
+      get watch_entry_path(entry)
+
+      down = response.body[/<a[^>]*data-cinema-channel="down"[^>]*>/]
+      expect(down).to include('data-cinema-preload')
+    end
+  end
+
   describe 'the regions a move replaces' do
     it 'carries the chrome that describes this entry' do
       get watch_entry_path(entry)
