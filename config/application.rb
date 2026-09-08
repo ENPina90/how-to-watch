@@ -22,5 +22,12 @@ module HowToWatch
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # Action Cable's default mount path is /cable, and it is Rack middleware -- it answers
+    # that path before the router is ever consulted, so it took the whole of the /cable
+    # channel surfing feature with it (a 404 on /cable, while /cable/:id routed fine).
+    # The socket has no reason to own a word a person would type; the watch-party consumer
+    # is told the same path explicitly in watch_party_controller.js.
+    config.action_cable.mount_path = "/websocket"
   end
 end
