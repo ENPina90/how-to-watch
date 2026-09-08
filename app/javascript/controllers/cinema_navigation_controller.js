@@ -251,7 +251,7 @@ export default class extends Controller {
     const adapter = this.adapterFor(incoming)
     if (!adapter) return
 
-    // Ask it to stop on every report until it actually does.
+    // Ask it to shut up and stop, on every report until it actually does.
     //
     // One ask is not enough: a pause sent on the player's first report -- about four
     // seconds after the frame is built -- is ignored, while the same message a few seconds
@@ -259,18 +259,32 @@ export default class extends Controller {
     // starts listening, so there is nothing to wait for exactly. Asking again each time it
     // says it has moved needs no such moment: it costs one message per five seconds, and
     // it stops of its own accord, because a player that has stopped stops reporting.
+    //
+    // Muted as well as paused, because there are seconds between the frame starting and
+    // the first report it will act on, and something has to cover them. That used to be
+    // the browser's own doing -- autoplay on a document nobody has touched is muted
+    // whatever the page asks for -- but that is a policy about the document, not a promise
+    // to us, and it lapses the moment the viewer clicks anything. On a cable channel they
+    // usually have. promote() unmutes, which is what it was always for.
     this.warmedPlayer = playerAdapterFor(adapter, frame, {
       onState: (state) => {
         if (this.warmedAt === state.progress) return
         this.warmedAt = state.progress
+        this.warmedPlayer?.mute()
         this.warmedPlayer?.pause()
       }
     })
   }
 
+  // Which adapter drives the incoming page's player. Read from an attribute of its own
+  // rather than off player-progress's value, which is what this used to do: that
+  // controller is only on the page for somebody signed in, and it is not on the cable page
+  // at all -- so the lookup came back empty and the warmed frame was built with nothing to
+  // stop it. A frame nobody can pause is a frame playing out loud behind the one being
+  // watched. The adapter belongs to the page's player, not to one of its readers.
   adapterFor(incoming) {
     const chrome = incoming.ownerDocument.getElementById("cinema-chrome")
-    const name = chrome?.dataset.playerProgressAdapterValue
+    const name = chrome?.dataset.playerAdapter
     return isControllable(name) ? name : null
   }
 

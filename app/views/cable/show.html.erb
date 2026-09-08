@@ -60,6 +60,11 @@
            on a cable channel where you got to is decided by the clock and is nobody's
            property. %>
        data-controller="player-keys cable-clock"
+       <%# Which adapter drives this page's player, for anything that needs to reach it --
+           cinema-navigation reads it off the fetched page to know how to quieten the
+           channel it is warming. Its own attribute rather than one controller's value,
+           because it describes the player and not any one reader of it. %>
+       data-player-adapter="<%= @entry.resolved_source&.sync_adapter %>"
        data-player-keys-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
        data-player-keys-frame-value="cinema"
        data-cable-clock-frame-value="cinema"
