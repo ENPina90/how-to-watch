@@ -4,7 +4,7 @@
 <% eligible = @entry.eligible_sources %>
 <% active_source = @entry.resolved_source %>
 
-<div class="source-switcher d-flex align-items-center gap-2 flex-wrap justify-content-center">
+<div class="source-switcher d-flex align-items-center gap-2 flex-nowrap justify-content-center">
   <% eligible.each_with_index do |source, index| %>
     <%= button_to set_source_entry_path(@entry, source_id: source.id, mode: 'watch'),
           method: :patch,
