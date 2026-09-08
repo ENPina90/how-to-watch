@@ -109,11 +109,27 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   transform: translateX(-50%);
   z-index: 20;
   max-width: 90%;
-  padding: 6px 12px;
+  padding: 3px 10px;
   background: rgba(0, 0, 0, 0.6);
   border-radius: 999px;
   opacity: 0.35;
   transition: opacity 0.2s ease;
+  /* One line, always. A second row of buttons appearing when a film has six sources
+     rather than four is how this ends up over the picture -- and it grows upwards, into
+     the subtitles, which is the half of the frame with no room to give. Past the width it
+     has, the row scrolls sideways instead. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.source-switcher::-webkit-scrollbar {
+  display: none;
+}
+
+/* The buttons keep their own width in a row that no longer wraps; without this they are
+   squeezed thinner and thinner as sources are added. */
+.source-switcher .btn {
+  flex-shrink: 0;
 }
 
 .source-switcher:hover {
@@ -153,6 +169,11 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
 
 .source-switcher .btn {
   white-space: nowrap;
+  /* Shorter than btn-sm draws them. This sits over the film, a few pixels above the
+     player's own controls, and every pixel of height is one taken off the picture. */
+  padding-top: 1px;
+  padding-bottom: 1px;
+  line-height: 1.35;
 }
 
 /* High-contrast switcher buttons (don't rely on Bootstrap btn-light, which the

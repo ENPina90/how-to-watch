@@ -313,3 +313,8 @@
   gap: 12px;
   margin: 16px 0;
 }
+
+// A percentage, so it needs room for three digits and a decimal and no more.
+.admin-up-next__field {
+  width: 7rem;
+}

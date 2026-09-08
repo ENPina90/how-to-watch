@@ -38,10 +38,14 @@ import { playerAdapterFor, isControllable } from "services/player_adapter";
 // page, and leaving the page saves.
 const SAVE_INTERVAL = 2000;
 
-// When to hand the screen back. Deliberately later than the completion mark: a film counts
-// as watched once the credits start, but a stinger after them is still the film, and
-// taking the screen off somebody waiting for one is worse than leaving it a minute longer.
-const CREDITS_FRACTION = 0.98;
+// When to hand the screen back, if the page did not say. Deliberately later than the
+// completion mark: a film counts as watched once the credits start, but a stinger after
+// them is still the film, and taking the screen off somebody waiting for one is worse than
+// leaving it a minute longer.
+//
+// The live value is AppSetting#up_next_fraction, passed in as `credits` -- this is only the
+// fallback for a page rendered without it.
+const DEFAULT_CREDITS_FRACTION = 0.98;
 
 // How much faster than wall-clock the position may move and still count as playback. The
 // player reports about every five seconds and a film advances about a second per second,
@@ -59,6 +63,10 @@ export default class extends Controller {
     runtime: Number,
     // UserEntry::COMPLETION_FRACTION, passed rather than repeated so there is one of it.
     fraction: Number,
+    // AppSetting#up_next_fraction: how far through the film the up-next card appears.
+    // Adjustable from the admin dashboard, which is why it arrives from the page rather
+    // than living here as a constant.
+    credits: Number,
     // This player was warmed in the background before anybody flipped to it, so it has
     // been running with nobody in front of it and may already be past the point that
     // counts as watched. Set by cinema-navigation when it promotes a warmed frame.
@@ -134,7 +142,7 @@ export default class extends Controller {
     const crossedWatched = finished || (watched && !this.watched && played);
     this.watched = watched;
 
-    const credits = finished || this.past(state, CREDITS_FRACTION);
+    const credits = finished || this.past(state, this.creditsFraction);
     const crossedCredits = finished || (credits && !this.credits && played);
     this.credits = credits;
 
@@ -150,6 +158,15 @@ export default class extends Controller {
 
     if (crossedWatched) return this.save({ finished: finished, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
+  }
+
+  // The configured mark, or the built-in one for a page that did not pass a usable value.
+  // Guarded rather than trusted: a 0 here would raise the up-next card the moment the
+  // player reported anything at all.
+  get creditsFraction() {
+    const configured = this.creditsValue;
+
+    return configured > 0 && configured <= 1 ? configured : DEFAULT_CREDITS_FRACTION;
   }
 
   // Has the position moved the way playing moves it -- forward, at about the speed of the
