@@ -50,7 +50,10 @@
     with the new entry's values. %>
 <div class="cinema__screen"
      data-controller="cinema-fullscreen cinema-navigation"
-     data-action="auto-advance:move@document->cinema-navigation#moveFromEvent"
+     <%# `f` is handled by player-keys, which has the keyboard, but fullscreen belongs to
+         this element and its controller. Dispatched across rather than reached into. %>
+     data-action="auto-advance:move@document->cinema-navigation#moveFromEvent
+                  player-keys:fullscreen@document->cinema-fullscreen#toggle"
      data-cinema-fullscreen-idle-class="cinema__screen--idle"
      data-cinema-navigation-moving-class="cinema__screen--moving"
      <%# Warming the channel below costs a second video stream, so it is a setting rather
