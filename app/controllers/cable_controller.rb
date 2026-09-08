@@ -15,7 +15,28 @@
 # entries#complete route -- that is a thing the viewer chose to do, not a side effect of the
 # page having been rendered.
 class CableController < ApplicationController
-  before_action :set_channel
+  before_action :set_channel, except: :guide
+
+  # The listing behind the guide button: the whole dial at once, a few hours of it.
+  #
+  # Fetched when the guide is opened rather than rendered into every page. It is only ever
+  # wanted on purpose, it is the same for everybody so it answers the same way each time,
+  # and a grid built into the page would go stale sitting there while a channel played.
+  def guide
+    @window = CableSchedule.guide_window
+    # The window runs four hours and so reaches into tomorrow every evening. Both days have
+    # to exist or the grid stops dead at midnight; the job lays tomorrow out at noon, and
+    # this covers the days before it has ever run.
+    [@window.begin.to_date, @window.end.to_date].uniq.each do |date|
+      CableSchedule.channels.each { |channel| CableSchedule.ensure_day!(channel, date) }
+    end
+
+    @now = Time.current
+    @rows = CableSchedule.guide(at: @now)
+    @playing = List.find_by(id: params[:channel])
+
+    render partial: "cable/guide", formats: [:html]
+  end
 
   def show
     # A day nobody laid out -- the first visit after a deploy, a channel marked default

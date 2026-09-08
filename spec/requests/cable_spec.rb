@@ -114,6 +114,69 @@ RSpec.describe 'Cable', type: :request do
     end
   end
 
+  describe 'the guide' do
+    let!(:second_channel) do
+      create(:list, user: user, provider: provider, default: true, name: 'Channel Two')
+    end
+    let!(:second_entry) do
+      create(:entry, list: second_channel, name: 'Something Else', media: 'movie',
+                     length: 45, position: 1, imdb: 'tt0000002')
+    end
+
+    before { CableSchedule.build_day!(second_channel, date) }
+
+    # "guide" is a word, and /cable/:id takes anything. Without the guide route declared
+    # first the word is cast to a channel id, comes back as nothing, and the dial's first
+    # channel is served instead -- a page, with no error, that is simply not the guide.
+    it 'is the guide rather than a channel called "guide"' do
+      sign_in user
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      expect(response).to be_successful
+      expect(response.body).to include('tvguide__grid')
+      expect(response.body).not_to include('cinema-chrome')
+    end
+
+    it 'lists every channel on the dial with its dial number' do
+      sign_in user
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      expect(response.body).to include('Channel One').and include('Channel Two')
+      expect(response.body).to include('The Death of Harvey').and include('Something Else')
+    end
+
+    it 'marks the channel it was opened from' do
+      sign_in user
+      travel_to(midnight + 11.minutes) do
+        get cable_guide_path, params: { channel: second_channel.id }
+      end
+
+      expect(response.body).to include('tvguide__row--tuned')
+    end
+
+    # The window runs four hours, so from mid-evening it reaches into tomorrow. A grid that
+    # stopped dead at midnight would be the guide going blank exactly when it is most used.
+    it 'lays out tomorrow when the window reaches into it' do
+      late = CableSchedule.zone.local(2026, 9, 10, 22, 30)
+
+      sign_in user
+      expect { travel_to(late) { get cable_guide_path } }
+        .to change { CableSlot.where(airs_on: date + 1).count }.from(0)
+
+      expect(response).to be_successful
+    end
+
+    it 'records nothing about the viewer' do
+      sign_in user
+      counts = -> { [UserListPosition.count, UserEntry.count, UserEntryPosition.count] }
+      before_counts = counts.call
+
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      expect(counts.call).to eq(before_counts)
+    end
+  end
+
   describe 'a channel with nothing it can play' do
     it 'says it is off air and still offers the rest of the dial' do
       CableSlot.delete_all

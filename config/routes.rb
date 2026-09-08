@@ -62,6 +62,9 @@ Rails.application.routes.draw do
   # entry to name, since what is playing is whatever the schedule says at this second.
   # Both are GETs and neither writes: /cable records nothing about the viewer.
   get 'cable', to: 'cable#show', as: :cable
+  # Before the :id route, and it has to stay there -- "guide" would otherwise be read as a
+  # channel id, cast to nothing, and quietly serve channel one.
+  get 'cable/guide', to: 'cable#guide', as: :cable_guide
   get 'cable/:id', to: 'cable#show', as: :cable_channel
 
   # Health check endpoint for Railway

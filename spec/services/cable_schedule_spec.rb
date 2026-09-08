@@ -156,6 +156,68 @@ RSpec.describe CableSchedule do
     end
   end
 
+  describe 'the guide window' do
+    it 'opens on the half hour containing now, not on now' do
+      window = described_class.guide_window(at: midnight + 7.hours + 47.minutes)
+
+      expect(window.begin).to eq(midnight + 7.hours + 30.minutes)
+      expect(window.end).to eq(window.begin + described_class::GUIDE_HOURS.hours)
+    end
+
+    it 'opens on the hour when now is in its first half' do
+      window = described_class.guide_window(at: midnight + 7.hours + 12.minutes)
+
+      expect(window.begin).to eq(midnight + 7.hours)
+    end
+  end
+
+  describe 'the guide' do
+    let!(:other) { create(:list, user: user, provider: provider, default: true, name: 'Two') }
+
+    before do
+      film('Long One', 90, 1)
+      create(:entry, list: other, name: 'Short One', media: 'movie', length: 30,
+                     position: 1, imdb: 'tt9999999')
+      described_class.build_day!(channel, date)
+      described_class.build_day!(other, date)
+    end
+
+    it 'numbers channels by where they sit on the dial, not by id' do
+      rows = described_class.guide(at: midnight + 1.hour)
+
+      expect(rows.map { |row| row[:number] }).to eq([1, 2])
+      expect(rows.map { |row| row[:channel] }).to eq(described_class.channels.to_a)
+    end
+
+    it 'includes the programme already running when the window opens' do
+      # The window opens at 01:00 and this channel runs one 90-minute film on a loop, so the
+      # one starting at midnight is still on when the guide opens. Looked up by channel
+      # rather than taken as the first row: the dial is ordered by id, and which of these
+      # two got the lower one is an accident of how the spec is written.
+      rows = described_class.guide(at: midnight + 1.hour)
+      row = rows.find { |candidate| candidate[:channel] == channel }
+      first = row[:slots].first
+
+      expect(first.starts_at).to eq(midnight)
+      expect(first.ends_at).to be > (midnight + 1.hour)
+    end
+
+    it 'stops at the end of the window' do
+      window = described_class.guide_window(at: midnight + 1.hour)
+      rows = described_class.guide(at: midnight + 1.hour)
+
+      expect(rows.flat_map { |row| row[:slots] }).to all(have_attributes(starts_at: be < window.end))
+    end
+
+    it 'gives every channel on the dial a row, including one with nothing scheduled' do
+      empty = create(:list, user: user, provider: provider, default: true, name: 'Empty')
+      rows = described_class.guide(at: midnight + 1.hour)
+
+      expect(rows.map { |row| row[:channel] }).to include(empty)
+      expect(rows.find { |row| row[:channel] == empty }[:slots]).to be_empty
+    end
+  end
+
   describe 'pruning' do
     before do
       film('First', 60, 1)
