@@ -90,12 +90,17 @@ export default class extends Controller {
     this.moveTo(form.action, { method: "POST", body: new FormData(form) })
   }
 
-  // The up-next card asking to advance. It offers rather than navigates, so that it still
-  // works if this controller is not around to answer.
+  // Something on the page asking to advance -- the up-next card on the watch page, the
+  // schedule running out on a cable channel. Both offer rather than navigate, so that they
+  // still work if this controller is not around to answer.
+  //
+  // With a body it is the card, whose move records a position and so is a POST carrying its
+  // own CSRF token. Without one it is a plain read of somewhere else, and posting to it
+  // would not route.
   moveFromEvent(event) {
     const { url, body } = event.detail
     event.preventDefault()
-    this.moveTo(url, { method: "POST", body: body })
+    this.moveTo(url, body ? { method: "POST", body: body } : {})
   }
 
   async moveTo(url, options = {}) {
