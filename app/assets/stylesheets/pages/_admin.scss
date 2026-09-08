@@ -304,3 +304,12 @@
 .admin-section .admin-stat__value {
   overflow-wrap: anywhere;
 }
+
+// The two maintenance sweeps sit side by side rather than stacking: they are the same
+// kind of thing, and neither is the primary one.
+.admin-sweeps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0;
+}

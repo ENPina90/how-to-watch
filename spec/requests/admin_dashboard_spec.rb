@@ -224,4 +224,41 @@ RSpec.describe 'The admin dashboard', type: :request do
       expect(response).to redirect_to(new_user_session_path)
     end
   end
+  # The two weekly sweeps, on demand. They are enqueued rather than run in the request:
+  # between them they make a few hundred outbound requests.
+  describe 'the maintenance sweeps' do
+    it 'offers both buttons to an admin' do
+      sign_in admin
+
+      get admin_dashboard_path
+
+      expect(response.body).to include(run_poster_scan_admin_dashboard_path)
+      expect(response.body).to include(run_embed_scan_admin_dashboard_path)
+    end
+
+    it 'enqueues the poster scan rather than running it' do
+      sign_in admin
+
+      expect { post run_poster_scan_admin_dashboard_path }
+        .to have_enqueued_job(BrokenPosterScanJob)
+      expect(response).to redirect_to(admin_dashboard_path)
+    end
+
+    it 'enqueues the stream check' do
+      sign_in admin
+
+      expect { post run_embed_scan_admin_dashboard_path }
+        .to have_enqueued_job(EmbedAvailabilityScanJob)
+    end
+
+    it 'turns away a user who is not an admin' do
+      sign_in create(:user)
+
+      expect { post run_embed_scan_admin_dashboard_path }.not_to have_enqueued_job(EmbedAvailabilityScanJob)
+    end
+
+    it 'turns away a signed-out visitor' do
+      expect { post run_poster_scan_admin_dashboard_path }.not_to have_enqueued_job(BrokenPosterScanJob)
+    end
+  end
 end

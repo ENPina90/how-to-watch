@@ -22,6 +22,10 @@ Rails.application.routes.draw do
       # itself: it rewrites rows across two tables and has nothing to do with the settings
       # row that `update` edits.
       post :reset_source
+      # The two sweeps, on demand. POST because they enqueue work; they are the same jobs
+      # the weekly schedule runs, so there is one implementation and one set of results.
+      post :run_poster_scan
+      post :run_embed_scan
     end
   end
 
