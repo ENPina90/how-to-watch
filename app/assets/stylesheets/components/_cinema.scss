@@ -537,14 +537,60 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   z-index: 1;
 }
 
+/* The player's own settings panel opens from the right and runs the height of the frame.
+   The subtitle list is in it -- the panel people actually go looking for -- and anything of
+   ours inside that width is on top of it.
+
+   Measured 2026-09-08 at roughly 255px wide, plus air. Nothing of ours comes closer to the
+   right edge than this, whatever else is or is not on screen. */
+.cinema__screen {
+  --player-panel-clearance: 290px;
+  /* How far in the chrome sits: whichever is further, what the sidebar asks for or the
+     width of the panel. Both the ring and the Watch together button read it, which is why
+     the sidebar's script writes its half onto the screen rather than onto the ring --
+     a variable on the ring is one the button cannot see, and the two drifted 100px apart
+     whenever the entries sidebar was open. */
+  --watch-chrome-right: max(var(--watch-controls-right, 390px), var(--player-panel-clearance));
+  /* Both the button and the ring are in that column now, one above the other, so the ring
+     is placed under the button rather than at a height of its own. Two independent tops
+     are one edit away from sitting on each other again, which is exactly what happened
+     when the button came in off the right edge.
+
+     The drop covers the button, the air beneath it, and the half-icon that the ring's eye
+     and shuffle hang above their own 80px box. */
+  --watch-party-top: 16px;
+  --watch-chrome-drop: 108px;
+}
+
 /* The player page's ring is placed to clear the entries sidebar on its right, and the
    sidebar's own script moves it as that sidebar opens and closes. It writes a variable
    rather than the property, so that this stays a stylesheet decision: an inline
-   !important is the one thing no rule can answer, and the fullscreen rule below has to. */
+   !important is the one thing no rule can answer, and the fullscreen rule below has to.
+   
+   The floor is what keeps it off the settings panel: with both sidebars collapsed the
+   script asks for 120px, which is inside it. With the entries sidebar open, 390px already
+   clears it and the max changes nothing. */
 .cinema__control--watch {
-  right: var(--watch-controls-right, 390px);
-  top: 100px;
+  right: var(--watch-chrome-right);
+  top: calc(var(--watch-party-top) + var(--watch-chrome-drop));
   left: auto;
+}
+
+/* Same clearance, for the same reason: the corner it sat in is the first thing the panel
+   covers. */
+/* Centred over the ring rather than sharing its right edge. The pill is better than twice
+   the ring's width, so matching the edges throws its other end out toward the middle of the
+   picture. The ring's box is 80px, so its centre is 40px in from where it is anchored, and
+   the transform hangs the pill's own centre there. */
+.watch-party-start {
+  /* Fixed, like the ring it hangs over. Absolute resolved this against .cinema__screen,
+     which the entries sidebar insets by its own 350px, while the ring measures from the
+     viewport -- so the same offset put the two 350px apart and only agreed when that
+     sidebar was shut. */
+  position: fixed;
+  right: calc(var(--watch-chrome-right) + 40px);
+  transform: translateX(50%);
+  top: var(--watch-party-top);
 }
 
 /* Fullscreen is the screen and nothing else. The sidebars are outside the element that
@@ -557,6 +603,10 @@ body.cinema__mode .cinema__screen:fullscreen {
      absorb an edge, and fullscreen the picture reaches every side, so the same offsets
      that read as tidy in a window read as cramped over a film. */
   --fullscreen-inset: 56px;
+  /* Moving these moves everything hung off them: the ring below the button, and the
+     button centred over the ring. */
+  --watch-party-top: calc(var(--fullscreen-inset) + 16px);
+  --watch-chrome-right: max(calc(var(--fullscreen-inset) + 40px), var(--player-panel-clearance));
 
   .cinema__title {
     left: var(--fullscreen-inset);
@@ -564,8 +614,6 @@ body.cinema__mode .cinema__screen:fullscreen {
     padding-top: calc(var(--fullscreen-inset) + 16px);
   }
 
-  .cinema__control--watch {
-    right: calc(var(--fullscreen-inset) + 40px);
-    top: calc(var(--fullscreen-inset) + 40px);
-  }
+  /* Nothing to set per element: both read --watch-chrome-right and --watch-party-top,
+     and the inset has already moved both of those. */
 }
