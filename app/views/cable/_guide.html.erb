@@ -94,9 +94,11 @@
                data-guide-plot="<%= slot.entry.plot %>"
                data-guide-watched="<%= @watched.include?(slot.entry_id) %>"
                style="left: <%= track.call(left) %>; width: <%= track.call(width) %>">
-              <% if runs_in %><span class="tvguide__arrow">&#9664;</span><% end %>
+              <%# Pinned to the cell's own edges rather than sitting in the flow, so the
+                  title between them is free to slide as the day scrolls past. %>
+              <% if runs_in %><span class="tvguide__arrow tvguide__arrow--in">&#9664;</span><% end %>
               <span class="tvguide__name"><%= cable_programme_name(slot) %></span>
-              <% if runs_on %><span class="tvguide__arrow">&#9654;</span><% end %>
+              <% if runs_on %><span class="tvguide__arrow tvguide__arrow--out">&#9654;</span><% end %>
             </a>
           <% end %>
         </div>
