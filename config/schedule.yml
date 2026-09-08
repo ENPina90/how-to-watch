@@ -39,3 +39,9 @@ cable_schedule:
   class: "CableScheduleJob"
   queue: default
   description: "Lay out tomorrow's programme for every cable channel, and fill today's if it is empty."
+
+missing_runtime_scan:
+  cron: "0 6 * * 3"   # Wednesdays at 06:00 UTC
+  class: "MissingRuntimeScanJob"
+  queue: default
+  description: "Find the scheduled entries cable has to guess a runtime for, and tell admins about them."

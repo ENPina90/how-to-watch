@@ -304,10 +304,15 @@ module CableSchedule
     entry.subentries.to_a.sample
   end
 
-  def runtime(entry)
-    minutes = entry.length.to_i
-    minutes = FALLBACK_MINUTES.fetch(entry.media, FALLBACK_MINUTES_DEFAULT) if minutes < MIN_MINUTES
+  def runtime(entry) = fallback_minutes(entry).minutes
 
-    minutes.minutes
+  # How long this entry is taken to run, in minutes -- its own where the catalogue has one,
+  # and a flat guess where it does not. Public because the guess is worth naming: a warning
+  # about a missing runtime is more use if it says what is being assumed in its place.
+  def fallback_minutes(entry)
+    minutes = entry.length.to_i
+    return minutes if minutes >= MIN_MINUTES
+
+    FALLBACK_MINUTES.fetch(entry.media, FALLBACK_MINUTES_DEFAULT)
   end
 end
