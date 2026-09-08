@@ -45,7 +45,9 @@ export default class extends Controller {
       onState: (state) => this.playerReported(state),
     });
 
-    this.consumer = createConsumer();
+    // Named rather than defaulted: the default is /cable, which is a page in this app
+    // (config/application.rb moved the socket off it).
+    this.consumer = createConsumer("/websocket");
     this.subscription = this.consumer.subscriptions.create(
       { channel: "WatchPartyChannel", token: this.tokenValue },
       {
