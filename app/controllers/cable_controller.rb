@@ -23,17 +23,23 @@ class CableController < ApplicationController
   # wanted on purpose, it is the same for everybody so it answers the same way each time,
   # and a grid built into the page would go stale sitting there while a channel played.
   def guide
-    @window = CableSchedule.guide_window
-    # The window runs four hours and so reaches into tomorrow every evening. Both days have
-    # to exist or the grid stops dead at midnight; the job lays tomorrow out at noon, and
-    # this covers the days before it has ever run.
-    [@window.begin.to_date, @window.end.to_date].uniq.each do |date|
+    # Times are shown in the viewer's own zone. The schedule itself is a set of instants,
+    # pinned in one fixed zone so everybody sees the same programme at the same moment --
+    # but what time that moment *is* belongs to whoever is reading the listing.
+    @zone = CableSchedule.resolve_zone(params[:tz])
+    @window = CableSchedule.guide_window(in_zone: @zone)
+
+    # A day of listings spans two or three cable days, and a day nobody laid out is a gap
+    # in the middle of the grid. The job lays tomorrow out at noon; this covers the days
+    # before it has ever run, and the day after tomorrow for a window that reaches it.
+    CableSchedule.days_covered(@window).each do |date|
       CableSchedule.channels.each { |channel| CableSchedule.ensure_day!(channel, date) }
     end
 
     @now = Time.current
-    @rows = CableSchedule.guide(at: @now)
+    @rows = CableSchedule.guide(at: @now, in_zone: @zone)
     @playing = List.find_by(id: params[:channel])
+    @watched = watched_entry_ids(@rows)
 
     render partial: "cable/guide", formats: [:html]
   end
@@ -81,6 +87,21 @@ class CableController < ApplicationController
   end
 
   private
+
+  # Which of the entries in the listing this viewer has already seen, as one query for the
+  # lot. Asking each entry in turn would be a query per cell, and a day of listings across
+  # six channels runs to a few hundred.
+  #
+  # A read, and it stays one: nothing here creates a tracking row for an entry somebody has
+  # merely seen the name of in a grid.
+  def watched_entry_ids(rows)
+    return Set.new unless current_user
+
+    ids = rows.flat_map { |row| row[:slots].map(&:entry_id) }.uniq
+    return Set.new if ids.empty?
+
+    Set.new(UserEntry.where(user: current_user, entry_id: ids, completed: true).pluck(:entry_id))
+  end
 
   # The dial is the default channels and nothing else. An id that is not on it -- a channel
   # that stopped being default, a hand-edited URL -- lands on channel one rather than 404s,

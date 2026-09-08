@@ -157,17 +157,58 @@ RSpec.describe CableSchedule do
   end
 
   describe 'the guide window' do
-    it 'opens on the half hour containing now, not on now' do
+    # It runs a full day, opening a couple of hours behind the present so there is
+    # something to scroll back to, and it always opens on a half hour -- the columns are
+    # :00 and :30, and a window starting at 7:47 would label every one of them oddly.
+    let(:lead) { described_class::GUIDE_LEAD_HOURS.hours }
+
+    it 'opens on the half hour containing now, less the lead-in' do
       window = described_class.guide_window(at: midnight + 7.hours + 47.minutes)
 
-      expect(window.begin).to eq(midnight + 7.hours + 30.minutes)
+      expect(window.begin).to eq(midnight + 7.hours + 30.minutes - lead)
       expect(window.end).to eq(window.begin + described_class::GUIDE_HOURS.hours)
     end
 
     it 'opens on the hour when now is in its first half' do
       window = described_class.guide_window(at: midnight + 7.hours + 12.minutes)
 
-      expect(window.begin).to eq(midnight + 7.hours)
+      expect(window.begin).to eq(midnight + 7.hours - lead)
+    end
+
+    it 'covers a whole day' do
+      window = described_class.guide_window(at: midnight + 7.hours)
+
+      expect(window.end - window.begin).to eq(24.hours)
+    end
+
+    it 'keeps the present inside it, with the past behind and the rest ahead' do
+      at = midnight + 7.hours + 47.minutes
+      window = described_class.guide_window(at: at)
+
+      expect(window).to cover(at)
+      expect(at - window.begin).to be_within(30.minutes).of(lead)
+    end
+
+    # The schedule is one fixed zone so that everybody sees the same programme at once, but
+    # what time that is belongs to whoever is reading the listing.
+    it 'opens on the viewer\'s half hour, not the schedule\'s' do
+      berlin = ActiveSupport::TimeZone['Europe/Berlin']
+      window = described_class.guide_window(at: midnight + 7.hours, in_zone: berlin)
+
+      expect(window.begin.time_zone).to eq(berlin)
+      expect(window.begin.min).to eq(0).or eq(30)
+    end
+  end
+
+  describe 'resolving a viewer\'s zone' do
+    it 'takes a zone the browser knows' do
+      expect(described_class.resolve_zone('Europe/Berlin').name).to eq('Europe/Berlin')
+    end
+
+    it 'falls back to the schedule\'s own for anything it does not recognise' do
+      ['', nil, 'Mars/Olympus', '../../etc/passwd', 'a' * 200].each do |bad|
+        expect(described_class.resolve_zone(bad)).to eq(described_class.zone)
+      end
     end
   end
 

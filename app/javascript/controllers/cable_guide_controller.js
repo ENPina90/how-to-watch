@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
-// The TV guide: the whole dial across a few hours, over the channel you are watching.
+// The TV guide: the whole dial across a day, over the channel you are watching.
 //
 // It sits on the cinema screen rather than in the chrome, because tuning a channel from it
 // should not close it -- cinema-navigation replaces the chrome on every move, and a listing
@@ -11,20 +11,38 @@ import { Controller } from "@hotwired/stimulus"
 // would stop the film to show you a grid about the film; the stylesheet resizes the frame
 // stack into the corner instead and the player never knows.
 //
-// The grid is fetched when the guide is first opened. It is only ever wanted deliberately,
-// it is identical for everybody, and one built into the page would sit there going stale
-// while a two-hour film played.
+// Everything time-shaped is worked out here rather than baked into the markup. The grid is
+// fetched once and then sits there for as long as somebody reads it, and in that time the
+// programme it says is on will end and the next one will start. So the line marking now
+// moves, the cell it marks moves with it, and the panel follows -- all off the clock, none
+// of it off the render.
 const STALE_AFTER = 5 * 60 * 1000
 
-// Keys the guide takes over while it is up. The arrows are the point: player-keys seeks
-// with left and right, and a viewer moving around a grid does not expect the film
-// underneath to jump five seconds every time.
+// How often the clock is consulted. A cell boundary is a whole minute wide at any sane
+// zoom, so this is about the line moving smoothly rather than about catching the change.
+const TICK = 5000
+
+// The panel follows the pointer, and goes back to what is actually playing when the
+// pointer stops. Long enough to read a synopsis without it snatching the text away.
+const REVERT_AFTER = 8000
+
+// Left alone this long, the guide scrolls itself back to now. Somebody who wandered off
+// down tomorrow afternoon and came back should not have to find their way home.
+const RECENTER_AFTER = 5 * 60 * 1000
+
+// Where the line sits after a recentre: a third in, so there is a little of the past on
+// screen and most of the width is what has not happened yet.
+const NOW_AT = 1 / 3
+
 const CLAIMED_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape", "Enter"]
 
 export default class extends Controller {
-  static targets = ["panel", "body", "clock", "detailChannel", "detailTitle", "detailMeta", "detailPlot"]
+  static targets = [
+    "panel", "body", "grid", "clock", "nowLine",
+    "detailChannel", "detailTitle", "detailMeta", "detailPlot", "detailWatched"
+  ]
   static classes = ["open"]
-  static values = { url: String, channel: String, zone: String }
+  static values = { url: String, channel: String }
 
   connect() {
     this.keyed = (event) => this.handleKey(event)
@@ -36,7 +54,8 @@ export default class extends Controller {
   disconnect() {
     document.removeEventListener("keydown", this.keyed, true)
     document.body.classList.remove("cable-guide-open")
-    this.stopClock()
+    this.stopTicking()
+    this.clearIdleTimers()
   }
 
   toggle() {
@@ -56,34 +75,48 @@ export default class extends Controller {
     document.body.classList.add("cable-guide-open")
 
     if (this.stale) await this.load()
-    this.startClock()
+
+    this.startTicking()
+    this.recentre({ smooth: false })
+    this.rest()
   }
 
   close() {
     this.panelTarget.hidden = true
     this.element.classList.remove(...this.openClasses)
     document.body.classList.remove("cable-guide-open")
-    this.stopClock()
+    this.stopTicking()
+    this.clearIdleTimers()
   }
 
   get stale() {
     return !this.loadedAt || Date.now() - this.loadedAt > STALE_AFTER
   }
 
-  // The window the grid covers is decided by the server from the clock, so a guide opened
-  // an hour later is a different four hours and has to be asked for again.
+  // The window the grid covers is worked out by the server from the clock and from the
+  // zone the viewer is in, so a guide opened an hour later is a different day and has to be
+  // asked for again.
   async load() {
+    const query = new URLSearchParams({ channel: this.channelValue, tz: this.timeZone })
+
     try {
-      const response = await fetch(`${this.urlValue}?channel=${encodeURIComponent(this.channelValue)}`,
-                                   { headers: { Accept: "text/html" } })
+      const response = await fetch(`${this.urlValue}?${query}`, { headers: { Accept: "text/html" } })
       if (!response.ok) return this.failed()
 
       this.bodyTarget.innerHTML = await response.text()
       this.loadedAt = Date.now()
-      this.describe(this.bodyTarget.querySelector(".tvguide__programme--live"))
-      this.scrollToTuned()
     } catch {
       this.failed()
+    }
+  }
+
+  // Whatever the browser believes it is in. The server takes it as a hint and falls back to
+  // the schedule's own zone if it does not recognise it.
+  get timeZone() {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone ?? ""
+    } catch {
+      return ""
     }
   }
 
@@ -94,30 +127,132 @@ export default class extends Controller {
     this.loadedAt = null
   }
 
-  // The row you are on, brought into view. A dial of six fits; a longer one will not.
-  scrollToTuned() {
-    this.bodyTarget.querySelector(".tvguide__row--tuned")
-      ?.scrollIntoView({ block: "nearest" })
+  // ---- the clock ------------------------------------------------------------------
+
+  startTicking() {
+    this.tick()
+    this.ticker = setInterval(() => this.tick(), TICK)
   }
+
+  stopTicking() {
+    clearInterval(this.ticker)
+  }
+
+  // Everything that depends on what time it is, in one place and on one schedule: the
+  // corner clock, the line across the grid, and which cell that line is inside.
+  tick() {
+    const now = new Date()
+    this.showClock(now)
+    this.placeNowLine(now)
+    this.markLive(now)
+    // Only when nothing is being pointed at -- otherwise the programme that just started
+    // would yank the panel out from under somebody reading about a different one.
+    if (!this.previewing) this.describeCurrent()
+  }
+
+  showClock(now) {
+    if (!this.hasClockTarget) return
+
+    this.clockTarget.textContent = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true
+    }).format(now).replace(/\s?[AP]M$/i, "")
+  }
+
+  // In hours from the left edge of the track, which is the unit everything on the grid is
+  // placed in -- so the line lands on the same scale as the cells whatever the zoom.
+  placeNowLine(now) {
+    if (!this.hasNowLineTarget || !this.hasGridTarget) return
+
+    const hours = (now.getTime() - this.windowStart) / 3600000
+    const outside = hours < 0 || hours > this.windowHours
+
+    this.nowLineTarget.hidden = outside
+    if (!outside) this.nowLineTarget.style.setProperty("--guide-now-hours", hours.toFixed(5))
+  }
+
+  get windowStart() {
+    return Number(this.gridTarget?.dataset.windowStart ?? 0)
+  }
+
+  get windowHours() {
+    return Number(this.gridTarget?.dataset.windowHours ?? 0)
+  }
+
+  // The cell the line is inside, on the channel being watched. It moves twice: when the
+  // clock crosses into the next programme, and when the viewer tunes somewhere else.
+  markLive(now = new Date()) {
+    if (!this.hasBodyTarget) return
+
+    const was = this.bodyTarget.querySelector(".tvguide__programme--live")
+    const is = this.currentCell(now)
+    if (was === is) return
+
+    was?.classList.remove("tvguide__programme--live")
+    is?.classList.add("tvguide__programme--live")
+  }
+
+  currentCell(now = new Date()) {
+    const row = this.bodyTarget?.querySelector(".tvguide__row--tuned")
+    if (!row) return null
+
+    const at = now.getTime()
+    return [...row.querySelectorAll(".tvguide__programme")].find((cell) => {
+      return Number(cell.dataset.guideStart) <= at && Number(cell.dataset.guideEnd) > at
+    }) ?? null
+  }
+
+  // ---- the panel ------------------------------------------------------------------
 
   // Hovering or focusing a programme fills the panel beside the picture. Mouseover rather
   // than mouseenter so one listener on the grid serves every cell in it.
   preview(event) {
-    this.describe(event.target.closest(".tvguide__programme"))
+    const programme = event.target.closest(".tvguide__programme")
+    if (!programme) return
+
+    this.previewing = true
+    this.describe(programme)
+    this.rest()
+  }
+
+  // The pointer has left the grid entirely.
+  released() {
+    this.previewing = false
+    this.describeCurrent()
+  }
+
+  // Back to what is actually on. The panel is a caption for the picture beside it, and the
+  // picture is what is playing -- so that is where it settles when nobody is pointing.
+  describeCurrent() {
+    this.previewing = false
+    this.describe(this.currentCell())
   }
 
   describe(programme) {
     if (!programme) return
 
-    const { guideChannel, guideNumber, guideTitle, guideTimes, guideYear, guidePlot } = programme.dataset
+    const data = programme.dataset
 
-    this.detailChannelTarget.textContent = guideChannel ?? ""
-    this.detailTitleTarget.textContent = guideTitle ? `“${guideTitle}”` : ""
-    this.detailMetaTarget.textContent =
-      [guideTimes, guideYear, guideNumber && `Ch ${guideNumber} - ${guideChannel}`]
-        .filter(Boolean).join("  ·  ")
-    this.detailPlotTarget.textContent = guidePlot ?? ""
+    this.detailChannelTarget.textContent = data.guideChannel ?? ""
+    this.detailChannelTarget.href = data.guideChannelUrl ?? "#"
+    this.detailTitleTarget.textContent = data.guideTitle ? `“${data.guideTitle}”` : ""
+    this.detailTitleTarget.href = data.guideWatchUrl ?? "#"
+    this.detailMetaTarget.textContent = [
+      this.span(data), data.guideYear, data.guideNumber && `Ch ${data.guideNumber} - ${data.guideChannel}`
+    ].filter(Boolean).join("  ·  ")
+    this.detailPlotTarget.textContent = data.guidePlot ?? ""
+    this.detailWatchedTarget.hidden = data.guideWatched !== "true"
   }
+
+  // The programme's own hours, in the viewer's zone -- the same reading the grid's columns
+  // are labelled with, because both are formatted from the same instants by the browser.
+  span({ guideStart, guideEnd }) {
+    if (!guideStart || !guideEnd) return null
+
+    const clock = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" })
+    return `${clock.format(new Date(Number(guideStart)))} - ${clock.format(new Date(Number(guideEnd)))}`
+  }
+
+  // ---- tuning ---------------------------------------------------------------------
 
   // Tuning happens through cinema-navigation, which is on the same element: the cells carry
   // data-cinema-move, so its own click handler answers them and the channel changes in
@@ -135,12 +270,49 @@ export default class extends Controller {
     // the one the page was first rendered for -- and the next refetch would light the wrong
     // row. Nothing else reads it, but a value that lies is worth not keeping.
     this.channelValue = programme.dataset.cableGuideTune
+
+    // What is live has moved to another row, and the picture is about to change to match.
+    this.markLive()
+    this.describeCurrent()
   }
+
+  // ---- being left alone -----------------------------------------------------------
+
+  // Any sign of life. Two things are waiting on it: the panel, which goes back to what is
+  // playing shortly after the pointer stops, and the grid, which finds its way back to now
+  // after rather longer.
+  rest() {
+    this.clearIdleTimers()
+    this.revertTimer = setTimeout(() => this.describeCurrent(), REVERT_AFTER)
+    this.recentreTimer = setTimeout(() => {
+      this.recentre({ smooth: true })
+      this.describeCurrent()
+      this.rest()
+    }, RECENTER_AFTER)
+  }
+
+  clearIdleTimers() {
+    clearTimeout(this.revertTimer)
+    clearTimeout(this.recentreTimer)
+  }
+
+  // Put the line marking now a third of the way across, so there is a little of what has
+  // been and plenty of what is coming.
+  recentre({ smooth }) {
+    if (!this.hasBodyTarget || !this.hasNowLineTarget || this.nowLineTarget.hidden) return
+
+    const line = this.nowLineTarget.offsetLeft
+    const left = Math.max(line - this.bodyTarget.clientWidth * NOW_AT, 0)
+
+    this.bodyTarget.scrollTo({ left: left, behavior: smooth ? "smooth" : "auto" })
+  }
+
+  // ---- the keyboard ---------------------------------------------------------------
 
   handleKey(event) {
     if (!this.open || !CLAIMED_KEYS.includes(event.key)) return
     // Typing somewhere is typing somewhere, even with the guide up.
-    if (event.target.matches("input, textarea, select")) return
+    if (event.target instanceof Element && event.target.matches("input, textarea, select")) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -149,6 +321,7 @@ export default class extends Controller {
     if (event.key === "Enter") return this.focused?.click()
 
     this.move(event.key)
+    this.rest()
   }
 
   // Up and down change channel, left and right step along a row -- which is how a cable
@@ -176,42 +349,19 @@ export default class extends Controller {
 
     if (!next) return
     this.focused = next
+    this.previewing = true
     next.focus({ preventScroll: false })
     this.describe(next)
   }
 
-  // The cell in a row whose span covers where the current one starts.
+  // The cell in a row whose span covers where the current one starts. Falls back to the one
+  // the line is in, so entering the grid from nowhere lands on what is on.
   nearest(row, current) {
     const cells = [...row.querySelectorAll(".tvguide__programme")]
-    if (cells.length === 0 || !current) return cells[0]
+    if (cells.length === 0) return null
+    if (!current) return this.currentCell() ?? cells[0]
 
-    const want = parseFloat(current.style.left) || 0
-    return cells.find((cell) => {
-      const left = parseFloat(cell.style.left) || 0
-      return left + (parseFloat(cell.style.width) || 0) > want
-    }) ?? cells[cells.length - 1]
-  }
-
-  // The corner clock, which is the only thing on the grid that says what time it is now.
-  startClock() {
-    this.tick()
-    this.clockTimer = setInterval(() => this.tick(), 1000)
-  }
-
-  stopClock() {
-    clearInterval(this.clockTimer)
-  }
-
-  // In the schedule's zone, not the viewer's. Every time on the grid is a cable time, so a
-  // clock running locally would disagree with the column beside it for anybody watching
-  // from somewhere else -- and the whole grid is built on the two agreeing.
-  tick() {
-    if (!this.hasClockTarget) return
-
-    const options = { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true }
-    if (this.zoneValue) options.timeZone = this.zoneValue
-
-    this.clockTarget.textContent = new Intl.DateTimeFormat("en-US", options)
-      .format(new Date()).replace(/\s?[AP]M$/i, "")
+    const want = current.getBoundingClientRect().left
+    return cells.find((cell) => cell.getBoundingClientRect().right > want) ?? cells[cells.length - 1]
   }
 }

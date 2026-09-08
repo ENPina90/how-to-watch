@@ -143,10 +143,11 @@ body.cable__mode #sidebarCollapseBtn {
   display: none;
 }
 
-/* The top third: the picture on the left, what it is on the right. */
+/* The top half: the picture is the top-left quarter of the screen and the panel
+   describing it the top-right. The grid gets the half below. */
 .tvguide__head {
   display: flex;
-  height: 40vh;
+  height: 50vh;
   flex: 0 0 auto;
 }
 
@@ -168,11 +169,35 @@ body.cable__mode #sidebarCollapseBtn {
   border-left: 3px solid #000;
 }
 
+/* Both headings lead out of cable -- the channel to its own page, the programme to the
+   ordinary watch player. Colours are restated on hover because the stylesheet has a global
+   green for a hovered link, which is right for the rest of the site and wrong on a panel
+   that is meant to look like broadcast equipment. Underlined only under the pointer: a
+   listing is mostly read, and two permanently underlined headings make it a page of links. */
+.tvguide__detail-channel,
+.tvguide__detail-title a {
+  text-decoration: none;
+}
+
+.tvguide__detail-channel:hover,
+.tvguide__detail-title a:hover,
+.tvguide__detail-channel:focus-visible,
+.tvguide__detail-title a:focus-visible {
+  text-decoration: underline;
+}
+
 .tvguide__detail-channel {
+  display: block;
   margin: 0 0 6px;
   font-size: 1.9rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+}
+
+.tvguide__detail-channel,
+.tvguide__detail-channel:hover,
+.tvguide__detail-channel:focus-visible {
+  color: #fff;
 }
 
 /* The programme, in quotes and in yellow, as every one of these did it. */
@@ -180,8 +205,13 @@ body.cable__mode #sidebarCollapseBtn {
   margin: 0 0 10px;
   font-size: 1.45rem;
   font-weight: 700;
-  color: #ffd42a;
   line-height: 1.25;
+}
+
+.tvguide__detail-title a,
+.tvguide__detail-title a:hover,
+.tvguide__detail-title a:focus-visible {
+  color: #ffd42a;
 }
 
 .tvguide__detail-meta {
@@ -189,6 +219,14 @@ body.cable__mode #sidebarCollapseBtn {
   font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.85);
   font-variant-numeric: tabular-nums;
+}
+
+.tvguide__detail-watched {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6ff09a;
 }
 
 .tvguide__detail-plot {
@@ -222,10 +260,16 @@ body.cable__mode #sidebarCollapseBtn {
   color: #ffd42a;
 }
 
+/* The window onto the track. A day of listings is far wider than the screen, so this
+   scrolls both ways: sideways through the day, and down through the dial if it ever grows
+   past the height. The gutter and the time header stay put while it does, which is the
+   whole reason they are sticky rather than merely first. */
 .tvguide__body {
   flex: 1 1 auto;
   overflow: auto;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
+  scrollbar-color: #4a4ac8 #05052e;
 }
 
 .tvguide__loading {
@@ -235,6 +279,13 @@ body.cable__mode #sidebarCollapseBtn {
 
 .tvguide__grid {
   position: relative;
+  /* One hour of listings. Everything on the grid is a multiple of it -- the columns, every
+     cell's offset and width, and the line marking now -- so the zoom is this one number.
+     Half an hour at 210px is about as narrow as a programme title can be set and still be
+     worth reading. */
+  --guide-hour-width: 420px;
+  /* Wide enough to hold the whole day plus the gutter that sits over its left edge. */
+  width: calc(var(--guide-gutter, 180px) + var(--guide-track));
   min-height: 100%;
 }
 
@@ -244,7 +295,8 @@ body.cable__mode #sidebarCollapseBtn {
   display: flex;
   position: sticky;
   top: 0;
-  z-index: 2;
+  /* Over the rows, which scroll under it, but below the gutter, which crosses it. */
+  z-index: 3;
   background: #05052e;
 }
 
@@ -255,7 +307,12 @@ body.cable__mode #sidebarCollapseBtn {
   width: var(--guide-gutter, 180px);
 }
 
+/* The one cell that has to hold still in both directions, so it outranks everything. */
 .tvguide__corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #05052e;
   padding: 7px 10px;
   color: #ffd42a;
   font-weight: 700;
@@ -282,6 +339,10 @@ body.cable__mode #sidebarCollapseBtn {
 
 /* ---- the channel rows ---- */
 
+.tvguide__rows {
+  position: relative;
+}
+
 .tvguide__row {
   display: flex;
   height: 54px;
@@ -299,7 +360,13 @@ body.cable__mode #sidebarCollapseBtn {
   --row-bg-hover: #8a2742;
 }
 
+/* Held against the left edge while the day scrolls past it: a row of programme names with
+   no channel against it is unreadable, and the numbers are how the grid is navigated.
+   Above the programmes and the line marking now, both of which pass underneath. */
 .tvguide__channel {
+  position: sticky;
+  left: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -383,6 +450,10 @@ body.cable__mode #sidebarCollapseBtn {
   border-color: #ffd42a;
 }
 
+/* A title in a cell that is half off the left edge scrolls off with it, rather than
+   holding station against the gutter. Pinning it needs the cell to stop clipping, which
+   makes the cell the sticky container's parent and lets long titles spill into the next
+   programme -- a worse fault than a clipped one. Left as it is. */
 .tvguide__name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -400,12 +471,16 @@ body.cable__mode #sidebarCollapseBtn {
   font-size: 0.75rem;
 }
 
-/* Now, across every channel at once -- it is a fact about the time, not about a row. */
+/* Now, across every channel at once -- it is a fact about the time, not about a row.
+
+   Placed in the same track units as the cells, from a variable the controller rewrites
+   every few seconds. It is drawn by the clock rather than by the render, so it goes on
+   moving for as long as the guide is open, and the cell it is inside moves with it. */
 .tvguide__now {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: calc(var(--guide-gutter, 180px) + (100% - var(--guide-gutter, 180px)) * var(--guide-now) / 100%);
+  left: calc(var(--guide-gutter, 180px) + var(--guide-hour-width) * var(--guide-now-hours, 0));
   width: 2px;
   background: #ff2d2d;
   box-shadow: 0 0 6px rgba(255, 45, 45, 0.8);
@@ -423,7 +498,7 @@ body.cable__mode #sidebarCollapseBtn {
 .cinema__screen--guide .cinema__frames {
   inset: 0 auto auto 0;
   width: 50%;
-  height: 40vh;
+  height: 50vh;
   z-index: 31;
 }
 
@@ -467,5 +542,9 @@ body.cable-guide-open #sidebarCollapseBtn {
 
   .tvguide {
     --guide-gutter: 120px;
+  }
+
+  .tvguide__grid {
+    --guide-hour-width: 340px;
   }
 }
