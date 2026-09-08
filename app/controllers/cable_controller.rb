@@ -77,7 +77,12 @@ class CableController < ApplicationController
     # break feel like it belongs to the channel. `filler` is the player saying the film has
     # finished early: a real channel cuts to the adverts rather than sitting on a black
     # frame until the clock catches up.
-    @in_break = @slot.break? && (@slot.break_at?(@now) || params[:filler].present?)
+    # `filler` is the page saying the film is over -- either the player announced it, or the
+    # file turned out to be shorter than the catalogue claimed and the schedule is asking for
+    # a point past its end. A real channel cuts to the adverts; it does not play the last
+    # minutes again from the top, which is what the player does when handed a start position
+    # it cannot reach.
+    @in_break = @slot.break_at?(@now) || params[:filler].present?
 
     if @in_break
       # A period we hold no reel for still gets its gap; the page puts a caption over it

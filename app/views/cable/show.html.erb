@@ -116,6 +116,10 @@
        <%# The next time this channel shows something different, which is not always the end
            of the slot: a programme with a break after it changes twice. %>
        data-cable-clock-ends-at-value="<%= @next_change_at.utc.iso8601 %>"
+       <%# Where the schedule thinks the film is, for comparing against the length the
+           player reports -- a file shorter than the catalogue claims cannot be spotted any
+           other way, and the player answers such a request by starting over. %>
+       data-cable-clock-programme-starts-at-value="<%= @slot.starts_at.utc.iso8601 %>"
        <% unless @in_break %>
          <%# Where to go when the film runs out before the clock says it should. Absent once
              the break has started -- there is nothing after the adverts but the next slot. %>

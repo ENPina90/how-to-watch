@@ -34,9 +34,12 @@ export default class extends Controller {
     // is that it is wrong by the same amount for the whole page.
     endsAt: String,
     // Where to go when the film ends before the clock says it should -- the same channel,
-    // asked to cut to the adverts. Absent through the break itself, and absent on a slot
-    // with no break, in which case an early ending moves to the next programme as before.
+    // asked to cut to the adverts. Absent through the break itself, when there is nothing
+    // after the adverts but the next programme.
     fillerUrl: String,
+    // When this programme started, in UTC. Used to work out where the schedule thinks the
+    // film should be, so that a file shorter than the catalogue claims can be spotted.
+    programmeStartsAt: String,
     adapter: String,
     frame: String
   }
@@ -73,9 +76,33 @@ export default class extends Controller {
     const iframe = document.getElementById(this.frameValue)
     if (!iframe) return
 
+    this.startedAt = Date.parse(this.programmeStartsAtValue)
+
     this.player = playerAdapterFor(this.adapterValue, iframe, {
-      onState: (state) => { if (state.event === "completed") this.move({ early: true }) }
+      onState: (state) => this.playerReported(state)
     })
+  }
+
+  playerReported(state) {
+    if (state.event === "completed") return this.move({ early: true })
+    if (this.overrunning(state)) return this.move({ early: true })
+  }
+
+  // Is the schedule asking for a point this file does not have?
+  //
+  // The catalogue's runtime is a claim rather than a measurement: it is missing for a fair
+  // number of entries -- which get a guess -- and merely wrong for others, and the provider
+  // may hold a different cut in any case. Handed a start position past the end, the player
+  // does not refuse and does not stop: it quietly starts from the beginning and plays the
+  // film again, which is how this showed up. Measured 2026-09-09 against a 1354s episode
+  // asked to start at 99999.
+  //
+  // The player is the only thing that knows the real length, and it says so in every
+  // report. Where the schedule wants to be past that, the programme is over.
+  overrunning({ duration }) {
+    if (!duration || duration <= 0 || Number.isNaN(this.startedAt)) return false
+
+    return (Date.now() - this.startedAt) / 1000 >= duration
   }
 
   // Once. The player's `completed` and the clock can both arrive, and a second move while

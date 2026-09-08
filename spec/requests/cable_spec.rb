@@ -193,6 +193,30 @@ RSpec.describe 'Cable', type: :request do
       expect(response).to be_successful
     end
 
+    # The bug this was written for: arriving after the file has ended but before the slot
+    # has. The player, handed a start position past the end, does not refuse and does not
+    # stop -- it starts the film again from the beginning. The page spots the overrun from
+    # the length the player reports and asks for filler; this is the answer it gets.
+    it 'serves adverts on a slot with no scheduled gap when the page asks for filler' do
+      entry.update!(year: 1998, length: 45)
+      CableSchedule.build_day!(channel, date)
+      expect(CableSlot.where(list: channel).in_order.first.break_starts_at).to be_nil
+
+      travel_to(midnight + 30.minutes) { get cable_channel_path(channel, filler: 1) }
+
+      expect(response.body).to include("youtube.com/embed/#{reel.youtube_id}")
+    end
+
+    # Without it the page has no way to tell where the schedule thinks the film is, and so
+    # no way to notice that the file is shorter than the catalogue claims.
+    it 'tells the page where the programme started' do
+      travel_to(midnight + 40.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include(
+        %(data-cable-clock-programme-starts-at-value="#{slot.starts_at.utc.iso8601}")
+      )
+    end
+
     it 'moves on to the next programme when the break is over' do
       travel_to(midnight + 51.minutes) { get cable_channel_path(channel) }
 

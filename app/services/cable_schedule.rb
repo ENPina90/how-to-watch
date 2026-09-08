@@ -283,13 +283,17 @@ module CableSchedule
   # caption over it rather than a dead frame, which is what a channel with nothing to play
   # in the break would put up.
   def commercial_break(entry, content_end, finish)
-    return { break_starts_at: nil, break_reel_id: nil, break_offset: nil } if finish <= content_end
-
+    gap = (finish - content_end).to_i
     reel = CommercialReel.for_year(entry.year) if entry.year.present?
 
-    { break_starts_at: content_end,
+    # A reel is chosen for every slot, not only for the ones with a gap after them. The
+    # catalogue's runtime is a claim, not a measurement -- it is missing for a good few
+    # entries and simply wrong for others, and either way the film can end well before the
+    # slot does. When that happens the page needs somewhere to go, and adverts from the
+    # right year are a better answer than the last minutes of a film played twice.
+    { break_starts_at: (content_end if gap.positive?),
       break_reel_id: reel&.id,
-      break_offset: reel&.random_offset_for(finish - content_end) }
+      break_offset: reel&.random_offset_for(gap) }
   end
 
   # Which episode of a series is on. Random, like everything else in the running order --
