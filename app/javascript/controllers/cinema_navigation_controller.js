@@ -148,6 +148,11 @@ export default class extends Controller {
   // Everything except the frame: promoting a warmed frame has already dealt with that.
   applyChrome(page) {
     this.swap("cinema-chrome", page)
+    // The channel list, whose highlight is on whichever channel is playing -- a move
+    // between channels moves it. Replaced rather than filled, so the autoscroll controller
+    // on it connects again and brings the newly marked channel into view; its scroll
+    // position is the one thing here that should not survive a move.
+    this.swap("sidebarChannelsPanel", page)
     // Contents rather than the elements themselves. Both of these are panels whose open
     // or shut state is the viewer's, held on the element by scripts that ran once at page
     // load -- the entries sidebar is rendered shut every time and opened afterwards from
