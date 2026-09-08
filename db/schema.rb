@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_08_122057) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_09_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -47,6 +47,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_122057) do
     t.datetime "created_at", null: false
     t.float "up_next_fraction", default: 0.98, null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "cable_slots", force: :cascade do |t|
+    t.date "airs_on", null: false
+    t.integer "break_offset"
+    t.bigint "break_reel_id"
+    t.datetime "break_starts_at"
+    t.datetime "created_at", null: false
+    t.datetime "ends_at", null: false
+    t.bigint "entry_id", null: false
+    t.bigint "list_id", null: false
+    t.integer "position", null: false
+    t.datetime "starts_at", null: false
+    t.bigint "subentry_id"
+    t.datetime "updated_at", null: false
+    t.index ["break_reel_id"], name: "index_cable_slots_on_break_reel_id"
+    t.index ["entry_id"], name: "index_cable_slots_on_entry_id"
+    t.index ["list_id", "airs_on", "position"], name: "index_cable_slots_on_list_id_and_airs_on_and_position", unique: true
+    t.index ["list_id", "starts_at", "ends_at"], name: "index_cable_slots_on_list_id_and_starts_at_and_ends_at"
+    t.index ["list_id"], name: "index_cable_slots_on_list_id"
+    t.index ["subentry_id"], name: "index_cable_slots_on_subentry_id"
+  end
+
+  create_table "commercial_reels", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "duration_seconds"
+    t.integer "ends_year", null: false
+    t.string "label", null: false
+    t.integer "starts_year", null: false
+    t.datetime "updated_at", null: false
+    t.string "youtube_id", null: false
+    t.index ["starts_year", "ends_year"], name: "index_commercial_reels_on_starts_year_and_ends_year"
+    t.index ["youtube_id"], name: "index_commercial_reels_on_youtube_id", unique: true
   end
 
   create_table "entries", force: :cascade do |t|
@@ -349,6 +382,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_122057) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "cable_slots", "commercial_reels", column: "break_reel_id", on_delete: :nullify
+  add_foreign_key "cable_slots", "entries", on_delete: :cascade
+  add_foreign_key "cable_slots", "lists", on_delete: :cascade
+  add_foreign_key "cable_slots", "subentries", on_delete: :cascade
   add_foreign_key "entries", "lists"
   add_foreign_key "entries", "sources", column: "provider_id"
   add_foreign_key "entries", "subentries", column: "current_id"

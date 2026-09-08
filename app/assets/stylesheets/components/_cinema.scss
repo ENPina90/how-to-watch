@@ -453,7 +453,12 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
    there is no reason to start hiding them. Opacity rather than display so nothing reflows
    and the fade reads as the picture being left alone, and pointer-events so a control
    faded to nothing cannot still be clicked. */
-.cinema__screen:fullscreen.cinema__screen--idle {
+/* The guide is exempt, in fullscreen as it is windowed: it is not chrome over the picture
+   but a listing somebody opened and is reading, and reading one consists largely of not
+   moving the mouse. Fading it -- or taking the pointer events off the frame under it --
+   would put the guide's own buttons out of reach mid-read. The class only ever appears on
+   the cable page; the watch page never wears it, so this changes nothing there. */
+.cinema__screen:fullscreen.cinema__screen--idle:not(.cinema__screen--guide) {
   cursor: none;
 
   /* While the chrome is hidden the player stops taking pointer events, and that is the

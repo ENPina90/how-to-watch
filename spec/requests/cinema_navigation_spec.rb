@@ -108,6 +108,83 @@ RSpec.describe 'Moving between entries in place', :needs_provider, type: :reques
     end
   end
 
+  # How the warmed frame is quietened. cinema-navigation fetches the channel below, builds
+  # its player in a second frame, and then has to stop it -- and it works out how from an
+  # attribute on the fetched page. When that lookup comes back empty the frame is built
+  # with nothing to drive it, so it plays on, out loud, behind the film being watched.
+  #
+  # It used to read player-progress's copy of the adapter name, which is only on the page
+  # for somebody signed in and is not on the cable page at all. Nothing failed; the sound
+  # just doubled. Hence an attribute of the player's own, on every page that has one.
+  describe 'naming the adapter that drives the player' do
+    it 'is on the watch page chrome' do
+      get watch_entry_path(entry)
+
+      expect(response.body).to include(%(data-player-adapter="#{playable_provider.sync_adapter}"))
+    end
+
+    it 'is on the cable page chrome' do
+      channel.update!(default: true)
+      CableSchedule.build_day!(channel, CableSchedule.today)
+
+      get cable_channel_path(channel)
+
+      expect(response.body).to include(%(data-player-adapter="#{playable_provider.sync_adapter}"))
+    end
+
+    # The reason it broke: it was inside the signed-in branch, next to the things that
+    # record a position. Quietening a second player has nothing to do with having an
+    # account, and a channel warmed by a signed-out visitor is just as loud.
+    it 'is on the watch page for a visitor with no account' do
+      sign_out user
+      AppSetting.update_access_mode!('open')
+
+      get watch_entry_path(entry)
+
+      expect(response.body).to include(%(data-player-adapter="#{playable_provider.sync_adapter}"))
+    end
+  end
+
+  # Up and down the dial from the keyboard. The controller presses the arrow rather than
+  # moving on its own, so it has to be able to find it -- and direction cannot be inferred
+  # from the markup, because on the cable page every cell of the guide is a cinema-move
+  # link too and only two of them are the channel above and below.
+  describe 'naming the two channel arrows' do
+    it 'marks them on the watch page' do
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('data-cinema-channel="up"')
+      expect(response.body).to include('data-cinema-channel="down"')
+    end
+
+    it 'marks them on the cable page' do
+      channel.update!(default: true)
+      CableSchedule.build_day!(channel, CableSchedule.today)
+
+      get cable_channel_path(channel)
+
+      expect(response.body).to include('data-cinema-channel="up"')
+      expect(response.body).to include('data-cinema-channel="down"')
+    end
+
+    # One of each, or the keyboard picks whichever the document happened to reach first.
+    it 'names exactly one arrow in each direction' do
+      get watch_entry_path(entry)
+
+      expect(response.body.scan('data-cinema-channel="up"').length).to eq(1)
+      expect(response.body.scan('data-cinema-channel="down"').length).to eq(1)
+    end
+
+    # Down is still the direction worth warming, and pressing the key goes through the same
+    # click path -- so the keyboard gets the warmed channel for free.
+    it 'leaves the warmed direction on the down arrow' do
+      get watch_entry_path(entry)
+
+      down = response.body[/<a[^>]*data-cinema-channel="down"[^>]*>/]
+      expect(down).to include('data-cinema-preload')
+    end
+  end
+
   describe 'the regions a move replaces' do
     it 'carries the chrome that describes this entry' do
       get watch_entry_path(entry)

@@ -1,0 +1,174 @@
+<%= render 'shared/player_preconnect', url: @embed_url, source: @entry.resolved_source %>
+
+<script nonce="<%= content_security_policy_nonce %>">
+  // Same two guards the watch page keeps, and for the same reasons: the embed is a third
+  // party's page and will open windows and navigate its parent given the chance.
+  window.open = function () { return null; };
+
+  window.addEventListener('beforeunload', function (e) {
+    if (window.leavingOnPurpose) return;
+
+    if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  });
+</script>
+
+<%# The same three parts as the watch page, and the same reasons for the split (see
+    entries/watch.html.erb): the screen is what goes fullscreen and must survive a change of
+    channel, the frame stack holds the player, and the chrome is everything that describes
+    what is on right now and is replaced wholesale when the channel changes.
+
+    The ids are the watch page's ids on purpose. cinema-navigation finds its frame and its
+    chrome by name, so changing channel here costs exactly what it costs there -- including
+    the channel below being warmed in a second frame -- with no cable-specific copy of it. %>
+<div class="cinema__screen"
+     data-controller="cinema-fullscreen cinema-navigation cable-guide"
+     <%# The clock asking to move on is answered the same way the up-next card is on the
+         watch page: the navigation controller fetches the next page and pastes it in, so
+         the player's frame and any fullscreen survive the change of programme. %>
+     data-action="cable-clock:move@document->cinema-navigation#moveFromEvent
+                  player-keys:fullscreen@document->cinema-fullscreen#toggle"
+     data-cable-guide-url-value="<%= cable_guide_path %>"
+     data-cable-guide-channel-value="<%= @channel.id %>"
+     <%# The clock in the guide has to run in the zone the schedule was written in, not the
+         viewer's. Every time on the grid is a cable time; a clock ticking in local time
+         would disagree with the column right next to it for anybody not in that zone. %>
+     data-cable-guide-zone-value="<%= CableSchedule.zone.tzinfo.name %>"
+     data-cable-guide-open-class="cinema__screen--guide"
+     data-cinema-fullscreen-idle-class="cinema__screen--idle"
+     <%# Unlike the watch page, the chrome here goes away windowed as well. A cable channel
+         is something playing in a room rather than a page being worked through, and its
+         banner is a caption that has said its piece -- long enough to read what is on, and
+         short enough that the picture is not permanently framed. %>
+     data-cinema-fullscreen-always-value="true"
+     data-cinema-fullscreen-idle-delay-value="4000"
+     data-cinema-navigation-moving-class="cinema__screen--moving"
+     data-cinema-navigation-preload-value="true"
+     <%# What the entries sidebar's script writes on the watch page. Nothing writes it here,
+         and the unset default is placed for a sidebar this page does not have. %>
+     style="--watch-controls-right: 120px;">
+
+  <div id="cinema-frames" class="cinema__frames">
+    <%# No `allowfullscreen`: fullscreen belongs to the container, exactly as on the watch
+        page. See cinema_fullscreen_controller.js. %>
+    <iframe id="cinema"
+            class="cinema__frame cinema__frame--live"
+            title="<%= @entry.name %>"
+            referrerpolicy="origin"
+            allow="autoplay"
+            src="<%= @embed_url.presence || 'about:blank' %>"></iframe>
+  </div>
+
+  <%# Closes the guide on the way, so this always leaves you looking at the picture full
+      size. With the guide up it sits over the player's own fullscreen button, which is dead
+      -- the frame has no fullscreen permission -- so the one that works is on top of the
+      one that does not. %>
+  <%# A break we have no adverts for. Better than a dead frame, and it is what a channel
+      with nothing to fill the gap would put up. %>
+  <% if @in_break && @embed_url.blank? %>
+    <div class="cable-interlude">
+      <p class="cable-interlude__card">We&rsquo;ll be right back</p>
+    </div>
+  <% end %>
+
+  <button type="button" class="cinema__fullscreen" title="Fullscreen"
+          data-action="click->cable-guide#close click->cinema-fullscreen#toggle">
+    <i class="fa-solid fa-expand"></i>
+  </button>
+
+  <%# The guide, sitting exactly on the player's own play/pause button at the other end of
+      its bar -- the same trick the fullscreen button above plays on theirs, and for a
+      firmer reason. There is no pausing a cable channel, so their button is not merely
+      redundant here, it is wrong; covering it puts something useful where the eye already
+      goes for a control. With the screen rather than the chrome, because it is the same
+      button whatever is playing and a change of channel should not replace it. %>
+  <button type="button" class="cinema__guide-button" title="TV Guide" aria-label="TV Guide"
+          data-action="click->cable-guide#toggle">
+    <i class="fa-solid fa-table-list"></i>
+  </button>
+
+  <div id="cinema-chrome"
+       <%# player-keys, but with its transport switched off, and no player-progress at all.
+           A cable channel plays to a clock: pausing it does not pause the channel and
+           seeking within it does not move the channel, so both only put this viewer out of
+           step with the listing and with everyone else watching. What is left of the
+           keyboard is fullscreen and mute, neither of which touches the film. %>
+       data-controller="player-keys cable-clock"
+       data-player-keys-transport-value="false"
+       <%# Which adapter drives this page's player, for anything that needs to reach it --
+           cinema-navigation reads it off the fetched page to know how to quieten the
+           channel it is warming. Its own attribute rather than one controller's value,
+           because it describes the player and not any one reader of it. %>
+       <%# Nil through a commercial break: the frame is YouTube's then, not the film's
+           provider, and nothing here can drive it. Saying so keeps every listener honest --
+           and stops the channel below being warmed into a player nobody can quieten. %>
+       data-player-adapter="<%= @in_break ? nil : @entry.resolved_source&.sync_adapter %>"
+       data-player-keys-adapter-value="<%= @in_break ? nil : @entry.resolved_source&.sync_adapter %>"
+       data-player-keys-frame-value="cinema"
+       data-cable-clock-frame-value="cinema"
+       data-cable-clock-adapter-value="<%= @in_break ? nil : @entry.resolved_source&.sync_adapter %>"
+       <%# Where to go when this programme is over: the channel itself, which answers with
+           whatever the schedule says is on by the time the request lands. %>
+       data-cable-clock-url-value="<%= cable_channel_path(@channel) %>"
+       <%# The next time this channel shows something different, which is not always the end
+           of the slot: a programme with a break after it changes twice. %>
+       data-cable-clock-ends-at-value="<%= @next_change_at.utc.iso8601 %>"
+       <% unless @in_break %>
+         <%# Where to go when the film runs out before the clock says it should. Absent once
+             the break has started -- there is nothing after the adverts but the next slot. %>
+         data-cable-clock-filler-url-value="<%= cable_channel_path(@channel, filler: 1) %>"
+       <% end %>>
+
+    <%= render 'cable/hud', channel: @channel, entry: @entry, user: current_user,
+                            number: @channel_number, nearby: @nearby, current_slot: @slot %>
+
+    <%# Marking a reviewable channel's film watched opens this, exactly as on the watch
+        page -- _completion_status points both at the same #reviewModal. %>
+    <% if user_signed_in? %>
+      <%= render 'entries/review_modal' %>
+    <% end %>
+  </div>
+
+  <%# The guide. Outside the chrome deliberately: changing channel replaces the chrome, and
+      a listing that vanished every time you tuned from it would be no use as a listing. It
+      stays up, the picture in its corner changes, and the highlight moves.
+
+      Empty until it is opened. The grid is fetched then, because it is only ever wanted on
+      purpose and because a grid built into the page would go stale while a film played. %>
+  <div class="tvguide" data-cable-guide-target="panel" hidden>
+    <div class="tvguide__head">
+      <%# The player is not moved into here -- moving an iframe in the DOM reloads it, and
+          the whole point is that what you were watching keeps playing. The frame stack is
+          resized into this corner by the stylesheet instead; this is the hole it sits in. %>
+      <div class="tvguide__preview"></div>
+
+      <%# What the panel describes follows the pointer around the grid, and falls back to
+          what is actually playing when the pointer stops or leaves. Both links lead out of
+          cable: the channel to its own page, the programme to the ordinary watch player,
+          where it plays from the beginning and counts towards what you have seen. Neither
+          carries data-cinema-move, so they are ordinary navigations rather than a tune. %>
+      <div class="tvguide__detail">
+        <a class="tvguide__detail-channel" data-cable-guide-target="detailChannel" href="#"></a>
+        <h2 class="tvguide__detail-title">
+          <a data-cable-guide-target="detailTitle" href="#"></a>
+        </h2>
+        <p class="tvguide__detail-meta" data-cable-guide-target="detailMeta"></p>
+        <p class="tvguide__detail-watched" data-cable-guide-target="detailWatched" hidden>
+          <i class="fa-solid fa-eye"></i> Watched
+        </p>
+        <p class="tvguide__detail-plot" data-cable-guide-target="detailPlot"></p>
+      </div>
+    </div>
+
+    <button type="button" class="tvguide__hide" data-action="click->cable-guide#close">
+      <i class="fa-solid fa-compress-alt"></i> Hide Guide
+    </button>
+
+    <div class="tvguide__body" data-cable-guide-target="body">
+      <p class="tvguide__loading">Loading listings&hellip;</p>
+    </div>
+  </div>
+</div>

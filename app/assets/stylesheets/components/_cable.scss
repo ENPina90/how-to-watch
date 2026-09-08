@@ -1,0 +1,924 @@
+/* /cable -- the off-air card and the TV guide. The player, the ring and fullscreen are all
+   the watch page's, in _cinema.scss; only what is new to cable is here. */
+
+/* A channel with nothing to play. Centred on the screen it would have filled. */
+.cable__off-air {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: white;
+  text-align: center;
+}
+
+.cable__off-air-card {
+  max-width: 460px;
+  padding: 40px;
+}
+
+/* ---- The TV guide -------------------------------------------------------------------
+ *
+ * Cable listings as they looked when they were burned into a scan line: a hard blue field,
+ * yellow for anything that is a time or a number, chunky bevelled cells, and text with a
+ * black shadow a pixel down and right, because that is what a character generator did to
+ * keep type legible over whatever was behind it.
+ *
+ * The layout follows a modern guide -- picture and detail across the top, grid beneath --
+ * and only the surface is dated. A grid is a grid.
+ */
+
+/* The picture's corner of the guide. Named once because five things depend on it: the
+   header's height, the hole the player sits in, the frame stack resized into that hole,
+   and the two buttons that have to land on the player's own controls inside it.
+
+   On the screen rather than on the guide, because the frame stack is the guide's *sibling*
+   -- both are children of the screen -- so a variable set on the guide would never reach
+   it, and the two would drift apart at the one breakpoint that changes the width. */
+body.cable__mode .cinema__screen {
+  --guide-preview-width: 50%;
+  --guide-preview-height: 50vh;
+}
+
+.tvguide {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  /* The classic field: not flat, but nearly. A steep gradient reads as a web page; this
+     reads as a video signal. */
+  background: linear-gradient(180deg, #12126e 0%, #0a0a4a 55%, #05052e 100%);
+  color: #fff;
+  /* Condensed, because every one of these fit four hours of listings across a 640px frame.
+     No web font -- what shipped on the box is what it should look like. */
+  font-family: "Arial Narrow", "Helvetica Neue", "Liberation Sans Narrow", "DejaVu Sans Condensed", system-ui, sans-serif;
+  font-stretch: condensed;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.85);
+}
+
+/* Said here rather than left to Bootstrap's reboot, which happens to carry an !important
+   copy of the same rule. `display: flex` above outranks the browser's own [hidden], so
+   without this the guide's own stylesheet would be relying on another one to stay shut. */
+.tvguide[hidden] {
+  display: none;
+}
+
+/* The top half: the picture is the top-left quarter of the screen and the panel
+   describing it the top-right. The grid gets the half below. */
+.tvguide__head {
+  display: flex;
+  height: var(--guide-preview-height);
+  flex: 0 0 auto;
+}
+
+/* The hole the player sits in. Empty on purpose -- the frame stack is resized into this
+   space by the rule further down rather than moved into this element, because moving an
+   iframe in the DOM reloads it and the film would stop to make way for a grid about it. */
+.tvguide__preview {
+  width: var(--guide-preview-width);
+  flex: 0 0 auto;
+}
+
+.tvguide__detail {
+  flex: 1 1 auto;
+  padding: 28px 32px;
+  overflow: hidden;
+  /* Solid, the way the info panel always was: the picture has the left half and this has
+     the right, and nothing bleeds between them. */
+  background: #17179c;
+  border-left: 3px solid #000;
+}
+
+/* Both headings lead out of cable -- the channel to its own page, the programme to the
+   ordinary watch player. Colours are restated on hover because the stylesheet has a global
+   green for a hovered link, which is right for the rest of the site and wrong on a panel
+   that is meant to look like broadcast equipment. Underlined only under the pointer: a
+   listing is mostly read, and two permanently underlined headings make it a page of links. */
+.tvguide__detail-channel,
+.tvguide__detail-title a {
+  text-decoration: none;
+}
+
+.tvguide__detail-channel:hover,
+.tvguide__detail-title a:hover,
+.tvguide__detail-channel:focus-visible,
+.tvguide__detail-title a:focus-visible {
+  text-decoration: underline;
+}
+
+.tvguide__detail-channel {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.tvguide__detail-channel,
+.tvguide__detail-channel:hover,
+.tvguide__detail-channel:focus-visible {
+  color: #fff;
+}
+
+/* The programme, in quotes and in yellow, as every one of these did it. */
+.tvguide__detail-title {
+  margin: 0 0 10px;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.tvguide__detail-title a,
+.tvguide__detail-title a:hover,
+.tvguide__detail-title a:focus-visible {
+  color: #ffd42a;
+}
+
+.tvguide__detail-meta {
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.tvguide__detail-watched {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6ff09a;
+}
+
+.tvguide__detail-plot {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.72);
+  /* Four lines and then stop: the panel is a fixed height and a long synopsis would push
+     the rest of it out of the box. */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The bar between the picture and the grid, which is where these always put it. */
+.tvguide__hide {
+  flex: 0 0 auto;
+  padding: 5px;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #cfd4ff;
+  background: #05052e;
+  border-top: 2px solid #3a3aa8;
+  border-bottom: 2px solid #000;
+  cursor: pointer;
+}
+
+.tvguide__hide:hover {
+  color: #ffd42a;
+}
+
+/* The window onto the track. A day of listings is far wider than the screen, so this
+   scrolls both ways: sideways through the day, and down through the dial if it ever grows
+   past the height. The gutter and the time header stay put while it does, which is the
+   whole reason they are sticky rather than merely first. */
+.tvguide__body {
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #4a4ac8 #05052e;
+}
+
+.tvguide__loading {
+  padding: 28px 32px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tvguide__grid {
+  position: relative;
+  /* One hour of listings. Everything on the grid is a multiple of it -- the columns, every
+     cell's offset and width, and the line marking now -- so the zoom is this one number.
+     Half an hour at 210px is about as narrow as a programme title can be set and still be
+     worth reading. */
+  --guide-hour-width: 420px;
+  /* Wide enough to hold the whole day plus the gutter that sits over its left edge. */
+  width: calc(var(--guide-gutter, 180px) + var(--guide-track));
+  min-height: 100%;
+}
+
+/* ---- the time header ---- */
+
+.tvguide__times {
+  display: flex;
+  position: sticky;
+  top: 0;
+  /* Over the rows, which scroll under it, but below the gutter, which crosses it. */
+  z-index: 3;
+  background: #05052e;
+}
+
+/* The running clock, in the corner cell the channel numbers sit under. */
+.tvguide__corner,
+.tvguide__channel {
+  flex: 0 0 var(--guide-gutter, 180px);
+  width: var(--guide-gutter, 180px);
+}
+
+/* The one cell that has to hold still in both directions, so it outranks everything. */
+.tvguide__corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #05052e;
+  padding: 7px 10px;
+  color: #ffd42a;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border: 2px solid;
+  /* The bevel: light where a light above would catch it, dark where it would not. Two
+     borders and no gradient, which is all the hardware could do and all this needs. */
+  border-color: #4a4ac8 #000 #000 #4a4ac8;
+}
+
+.tvguide__columns {
+  display: flex;
+  flex: 1 1 auto;
+}
+
+.tvguide__column {
+  padding: 7px 10px;
+  color: #ffd42a;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border: 2px solid;
+  border-color: #4a4ac8 #000 #000 #4a4ac8;
+}
+
+/* ---- the channel rows ---- */
+
+.tvguide__rows {
+  position: relative;
+}
+
+.tvguide__row {
+  display: flex;
+  height: 54px;
+}
+
+/* Alternating bands. Straight from the printed listings, and the reason a row is followable
+   across four hours of cells without a rule under it. */
+.tvguide__row:nth-child(odd) {
+  --row-bg: #1e2f8e;
+  --row-bg-hover: #2a3fae;
+}
+
+.tvguide__row:nth-child(even) {
+  --row-bg: #6b1d33;
+  --row-bg-hover: #8a2742;
+}
+
+/* Held against the left edge while the day scrolls past it: a row of programme names with
+   no channel against it is unreadable, and the numbers are how the grid is navigated.
+   Above the programmes and the line marking now, both of which pass underneath. */
+.tvguide__channel {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4px 10px;
+  background: #05052e;
+  border: 2px solid;
+  border-color: #4a4ac8 #000 #000 #4a4ac8;
+  text-decoration: none;
+  overflow: hidden;
+}
+
+.tvguide__number {
+  color: #ffd42a;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tvguide__callsign {
+  color: #cfd4ff;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The row the picture is currently coming from. */
+.tvguide__row--tuned .tvguide__channel {
+  background: #ffd42a;
+}
+
+.tvguide__row--tuned .tvguide__number {
+  color: #05052e;
+  text-shadow: none;
+}
+
+.tvguide__row--tuned .tvguide__callsign {
+  color: #23237a;
+  text-shadow: none;
+}
+
+/* The track a row's programmes are placed along. Positioned rather than flowed: a cell's
+   width is how long the programme runs, and two channels' boundaries line up because they
+   happen at the same moment. */
+.tvguide__programmes {
+  position: relative;
+  flex: 1 1 auto;
+}
+
+.tvguide__programme {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--row-bg);
+  border: 2px solid;
+  border-color: #4a4ac8 #000 #000 #4a4ac8;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-decoration: none;
+  /* `clip`, not `hidden`, and the difference is the whole reason the title below can
+     follow the scroll. `overflow: hidden` makes an element a scroll container, and a
+     scroll container between a sticky element and the real scrollport is what a sticky
+     element sticks to -- so the title would have stuck to a box that never scrolls, which
+     is a long way of saying it would not have moved at all. `clip` clips without
+     scrolling, so the scrollport stays the guide's own.
+
+     `hidden` first as the fallback: a browser too old for `clip` drops that line and keeps
+     this one, which clips just as well and merely leaves the title where it was rendered.
+     Without it such a browser would fall all the way back to `visible` and let every long
+     title run across its neighbours. */
+  overflow: hidden;
+  overflow: clip;
+}
+
+.tvguide__programme:hover,
+.tvguide__programme:focus-visible {
+  background: var(--row-bg-hover);
+  color: #ffd42a;
+  outline: none;
+}
+
+/* What is on right now, on the channel being watched. */
+.tvguide__programme--live {
+  color: #ffd42a;
+  border-color: #ffd42a;
+}
+
+/* The title holds station against the channel gutter as the day scrolls past it, so a
+   three-hour film half off the left edge still says what it is instead of showing the tail
+   of its own name -- and stops at the right-hand edge of its own block, because sticky
+   cannot move an element outside the box that contains it.
+   
+   Two things have to be true for that, and missing either leaves it inert:
+   
+   the cell must not be a scroll container (see `overflow: clip` above), or the title
+   sticks to the cell instead of to the guide;
+   
+   and the title must be narrower than the cell, which is why it is sized to its text
+   rather than stretched. A flex child filling the cell has nowhere to slide to. */
+.tvguide__name {
+  position: sticky;
+  /* Clear of the gutter, which is itself pinned at the left edge -- anything at 0 would
+     slide underneath it. */
+  left: calc(var(--guide-gutter, 180px) + 8px);
+  flex: 0 1 auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Two lines in a 54px row, which is what fits a long episode title without a cell
+     growing to hold it. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* A programme clipped by the edge of the day says so, as these always did. Pinned to the
+   cell's own edges rather than sitting either side of the title in the flow: the title
+   slides, and an arrow travelling with it would stop meaning "there is more this way". */
+.tvguide__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ffd42a;
+  font-size: 0.75rem;
+}
+
+.tvguide__arrow--in  { left: 5px; }
+.tvguide__arrow--out { right: 5px; }
+
+/* Now, across every channel at once -- it is a fact about the time, not about a row.
+
+   Placed in the same track units as the cells, from a variable the controller rewrites
+   every few seconds. It is drawn by the clock rather than by the render, so it goes on
+   moving for as long as the guide is open, and the cell it is inside moves with it. */
+.tvguide__now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--guide-gutter, 180px) + var(--guide-hour-width) * var(--guide-now-hours, 0));
+  width: 2px;
+  background: #ff2d2d;
+  box-shadow: 0 0 6px rgba(255, 45, 45, 0.8);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ---- the player, while the guide is up ----
+ *
+ * The frame stack is resized into the guide's top-left corner. Nothing is moved and nothing
+ * is reloaded: the iframe stays exactly where it is in the document and only its box
+ * changes, which is the difference between the film carrying on and the film starting
+ * again. Above the guide's own background, below its detail panel.
+ */
+.cinema__screen--guide .cinema__frames {
+  inset: 0 auto auto 0;
+  /* The same box the guide reserves for it, read from the guide's own variables -- the
+     frame is a sibling of the panel, not a child, so it has to be told the same numbers. */
+  width: var(--guide-preview-width);
+  height: var(--guide-preview-height);
+  z-index: 31;
+}
+
+/* Everything that describes the channel behind the guide. The guide says all of it, in its
+   own panel, and the two sets of type on top of each other is what the old ones never had. */
+.cinema__screen--guide .cable-hud {
+  display: none;
+}
+
+/* The two buttons follow the picture into its corner rather than going away with the
+   banner, because the player's own controls follow it too: shrunk into the top-left
+   quarter, its bar is still there with a play button at one end and a dead fullscreen
+   button at the other, and both were showing through.
+   
+   So they are covered here as well, by the same two buttons that cover them full size --
+   the guide button over their play, the fullscreen button over their fullscreen. What
+   ours do changes to suit: pressing either closes the guide, and the fullscreen one goes
+   on to take the screen.
+
+   The offsets are the full-size ones measured from the preview's edges instead of the
+   screen's: the frame's bottom sits a preview-height up from the bottom of the screen, and
+   its right edge a preview-width in from the right. */
+.cinema__screen--guide .cinema__guide-button,
+.cinema__screen--guide .cinema__fullscreen {
+  /* Over the frame, which is itself lifted above the guide panel. */
+  z-index: 32;
+  bottom: calc(100% - var(--guide-preview-height) + var(--fullscreen-button-bottom) - var(--fullscreen-button-size) / 2);
+}
+
+.cinema__screen--guide .cinema__fullscreen {
+  right: calc(100% - var(--guide-preview-width) + var(--fullscreen-button-right) - var(--fullscreen-button-size) / 2);
+}
+
+/* The gradient the player page lays over the top of the frame for legible titles. There are
+   no titles over the picture now, and it darkens the guide's own header. */
+.cinema__screen--guide::before {
+  display: none;
+}
+
+/* A narrow window: the gutter and the split both give, rather than the grid scrolling
+   sideways before it has shown a single full programme. */
+@media (max-width: 1100px) {
+  body.cable__mode .cinema__screen {
+    --guide-preview-width: 42%;
+  }
+
+  .tvguide__corner,
+  .tvguide__channel {
+    flex-basis: 120px;
+    width: 120px;
+  }
+
+  .tvguide {
+    --guide-gutter: 120px;
+  }
+
+  .tvguide__grid {
+    --guide-hour-width: 340px;
+  }
+}
+
+/* ---- the guide button ----------------------------------------------------------------
+ *
+ * Placed over the player's own play/pause button, exactly as .cinema__fullscreen is placed
+ * over their fullscreen one (_cinema.scss has the measurements and where they came from).
+ * Their bar is symmetrical, so the leftmost button's centre sits the same 10px padding plus
+ * half of a 40px button in from the left as the rightmost one does from the right, at the
+ * same height above the bottom.
+ *
+ * Covering it is not cosmetic here the way covering the fullscreen button was. There is no
+ * pausing a cable channel -- it plays to a clock, and the schedule does not wait -- so
+ * their control is not a dead button but a wrong one, and the safest place for a wrong
+ * button is underneath a right one.
+ */
+.cinema__screen {
+  --play-button-left: 30px;
+}
+
+.cinema__guide-button {
+  position: absolute;
+  left: calc(var(--play-button-left) - var(--fullscreen-button-size) / 2);
+  bottom: calc(var(--fullscreen-button-bottom) - var(--fullscreen-button-size) / 2);
+  width: var(--fullscreen-button-size);
+  height: var(--fullscreen-button-size);
+  /* Above the frame, so it masks what is behind it rather than sharing the space. */
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  /* Opaque, because the point is that nothing shows through. */
+  background: #000;
+  color: white;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.cinema__guide-button:hover,
+.cinema__guide-button:focus-visible {
+  opacity: 1;
+}
+
+/* ---- left alone -------------------------------------------------------------------
+ *
+ * The chrome fades out windowed as well as in fullscreen, which is what separates a
+ * channel playing in a room from a page being worked through. The fullscreen version of
+ * this lives in _cinema.scss and is the watch page's too; this is the windowed one, and it
+ * is cable's alone.
+ *
+ * Opacity rather than display, so nothing reflows and the fade reads as the picture being
+ * left alone. Pointer events go with it: a control faded to nothing must not still be
+ * clickable.
+ */
+body.cable__mode .cinema__screen--idle:not(.cinema__screen--guide) {
+  cursor: none;
+
+  /* The only way this page can see the mouse move at all once the chrome is gone. Pointer
+     events inside a cross-origin frame belong to its document and never reach ours, so
+     while the chrome is hidden the frame stops taking them and movement falls through to
+     the screen underneath, where the controller is listening. Handed straight back on the
+     first movement. The cost is one swallowed click, and only a click with no movement
+     before it. */
+  .cinema__frames {
+    pointer-events: none;
+  }
+
+  .cable-hud,
+  .cinema__fullscreen,
+  .cinema__guide-button {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+}
+
+/* The guide is not chrome over the picture -- it is a thing the viewer opened and is
+   reading, and it has its own idea of being left alone (it scrolls back to now). Reading a
+   listing involves not moving the mouse, so it must not fade while it is up. */
+body.cable__mode .cinema__screen--guide {
+  cursor: auto;
+}
+
+/* ---- the channel banner ---------------------------------------------------------------
+ *
+ * What is on, on which channel, at what time -- in the shape the box put it in: a bevelled
+ * bar with the channel lit up in a badge at one end and a direction pad at the other.
+ *
+ * It replaces both the plain title and the ring of icons the watch page uses. That ring is
+ * right for a page you work through, where every icon is something to do next; a cable
+ * channel has two things you can do to it and one of them is change the channel, so it gets
+ * a remote instead.
+ */
+.cable-hud {
+  position: fixed;
+  /* Into the corner rather than floating clear of it. The player draws its own title in
+     exactly this spot -- the film's name and year, in grey, at the top left of the frame --
+     and an inset banner left a band of it showing above and to the left. There is no
+     reaching into a cross-origin frame to turn that off, so it is covered instead, the same
+     answer the fullscreen and guide buttons give to their own controls.
+
+     Flush also reads right: these banners sat in the corner of the picture rather than
+     hovering over the middle of it. */
+  top: 0;
+  left: 0;
+  z-index: 12;
+  display: flex;
+  align-items: stretch;
+  max-width: min(880px, 100vw);
+  border: 3px solid #e8e8e8;
+  /* Square where it meets the corner, rounded where it does not. A 16px curve at the top
+     left would leave a sliver of the player's title showing through the arc, which is the
+     one place it must not. */
+  border-radius: 0 16px 16px 16px;
+  /* Not flat, but nearly -- a steep gradient reads as a web page, this reads as a signal. */
+  background: linear-gradient(180deg, #2f52a4 0%, #223e7d 100%);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-family: "Arial Narrow", "Helvetica Neue", "Liberation Sans Narrow", "DejaVu Sans Condensed", system-ui, sans-serif;
+  font-stretch: condensed;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  transition: opacity 0.4s ease;
+}
+
+/* The channel number, in the corner it always sat in. */
+.cable-hud__badge {
+  flex: 0 0 auto;
+  width: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #101f52;
+  border-right: 3px solid #e8e8e8;
+  text-decoration: none;
+}
+
+.cable-hud__badge:hover .cable-hud__number {
+  background: #5cc45c;
+}
+
+.cable-hud__set {
+  position: relative;
+  display: block;
+  padding-top: 12px;
+}
+
+/* Two rabbit ears over the set. Drawn rather than fetched -- it is two rotated bars, and a
+   picture of an aerial would be a request for eight hundred bytes of nostalgia. */
+.cable-hud__aerial::before,
+.cable-hud__aerial::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 15px;
+  background: #e8e8e8;
+}
+
+.cable-hud__aerial::before {
+  transform-origin: bottom center;
+  transform: rotate(-32deg);
+}
+
+.cable-hud__aerial::after {
+  transform-origin: bottom center;
+  transform: rotate(32deg);
+}
+
+.cable-hud__number {
+  display: block;
+  min-width: 44px;
+  padding: 2px 6px;
+  background: #47a447;
+  border: 3px solid #e8e8e8;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  transition: background 0.2s ease;
+}
+
+.cable-hud__body {
+  flex: 1 1 auto;
+  /* Room for a title before it starts ellipsing, but still allowed to shrink on a narrow
+     screen -- min-width on a flex child is what stops it collapsing to its content. */
+  min-width: 0;
+  width: 380px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 18px;
+}
+
+.cable-hud__channel,
+.cable-hud__channel:hover,
+.cable-hud__channel:focus-visible {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #b9c8ef;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cable-hud__channel:hover,
+.cable-hud__channel:focus-visible {
+  text-decoration: underline;
+}
+
+/* The programme, in quotes and in yellow, the way the listings did it -- and a link out of
+   cable to the ordinary player, the same pair the guide's panel offers. */
+.cable-hud__title,
+.cable-hud__title:hover,
+.cable-hud__title:focus-visible {
+  display: block;
+  color: #ffd42a;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cable-hud__title:hover,
+.cable-hud__title:focus-visible {
+  text-decoration: underline;
+}
+
+/* The show this belongs to, where the headline alone does not say. */
+.cable-hud__context {
+  margin: 1px 0 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cable-hud__context:empty {
+  display: none;
+}
+
+.cable-hud__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 3px 0 0;
+  font-size: 0.88rem;
+}
+
+.cable-hud__when {
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Which way you are looking. It is never absent, so a time on its own is never mistaken
+   for the time now. */
+.cable-hud__label {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: 3px;
+  background: #47a447;
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-shadow: none;
+}
+
+/* Looking up or down the running order rather than at what is playing. */
+.cable-hud--peeking .cable-hud__label {
+  background: #ffd42a;
+  color: #17306b;
+}
+
+.cable-hud--peeking .cable-hud__title {
+  color: #fff;
+}
+
+/* The pad. Up and down tune, left and right only look -- the same shape for both, because
+   on the remote they were the same shape. */
+.cable-hud__pad {
+  flex: 0 0 auto;
+  width: 104px;
+  display: grid;
+  grid-template-areas:
+    ".    up    ."
+    "left sel right"
+    ".    down  .";
+  align-items: center;
+  justify-items: center;
+  padding: 8px 4px;
+  row-gap: 2px;
+  background: linear-gradient(180deg, #d8ded6 0%, #b9c1b7 100%);
+  border-left: 3px solid #e8e8e8;
+}
+
+.cable-hud__key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #17306b;
+  font-size: 1rem;
+  line-height: 1;
+  text-shadow: none;
+  cursor: pointer;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.cable-hud__key:hover,
+.cable-hud__key:focus-visible {
+  color: #0a1637;
+}
+
+/* Nothing further rendered in that direction. */
+.cable-hud__key:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.cable-hud__key--up    { grid-area: up; }
+.cable-hud__key--down  { grid-area: down; }
+.cable-hud__key--left  { grid-area: left; }
+.cable-hud__key--right { grid-area: right; }
+
+/* Where SEL sat. The one control on this page that writes anything. */
+.cable-hud__sel {
+  grid-area: sel;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #e8e8e8;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #4d8ade 0%, #1f4f9c 70%);
+}
+
+.cable-hud__sel .completion-status i {
+  color: #fff;
+  font-size: 0.95rem;
+  text-shadow: none;
+}
+
+.cable-hud__home {
+  flex: 0 0 auto;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #101f52;
+  border-left: 3px solid #e8e8e8;
+  color: #cfd9f5;
+  font-size: 1rem;
+}
+
+.cable-hud__home:hover {
+  color: #ffd42a;
+}
+
+@media (max-width: 900px) {
+  .cable-hud__badge { width: 68px; }
+  .cable-hud__title { font-size: 1.15rem; }
+}
+
+/* A commercial break with no adverts behind it -- a period we hold no reel for, or a film
+   with no year to match one against. The gap is still the gap; this is what goes in it,
+   which is what a channel with nothing to play would put up rather than a dead frame. */
+.cable-interlude {
+  position: absolute;
+  inset: 0;
+  /* Above the frame, which is showing nothing, and below the banner and the buttons. */
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #05052e;
+}
+
+.cable-interlude__card {
+  margin: 0;
+  color: #ffd42a;
+  font-family: "Arial Narrow", "Helvetica Neue", "Liberation Sans Narrow", "DejaVu Sans Condensed", system-ui, sans-serif;
+  font-stretch: condensed;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+}

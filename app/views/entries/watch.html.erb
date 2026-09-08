@@ -93,6 +93,11 @@
            Its shortcuts are the player's own, which stopped reaching it when fullscreen
            moved to the container -- see player_keys_controller.js. %>
        data-controller="player-keys<%= ' player-progress' if user_signed_in? %>"
+       <%# Which adapter drives this page's player. Outside the signed-in branch below on
+           purpose: cinema-navigation reads this off the fetched page to know how to
+           quieten the channel it is warming, and that has nothing to do with whether
+           there is an account to record a position against. %>
+       data-player-adapter="<%= @entry.resolved_source&.sync_adapter %>"
        data-player-keys-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
        data-player-keys-frame-value="cinema"
        <% if user_signed_in? %>
@@ -179,8 +184,11 @@
       thing a stylesheet cannot answer back to. %>
   <div id="watchCinemaControls" class="d-flex justify-content-center cinema__control cinema__control--watch">
     <div class="position-relative" style="width: 80px; height: 80px;">
+      <%# Named as the way up the dial, so the keyboard can find it. Inferring direction from
+          the markup would not do: on the cable page every cell of the guide is a
+          cinema-move link too, and only these two are the channel above and below. %>
       <%= link_to list_watch_current_path(@channel.find_sibling(:previous) || @channel),
-                  data: { cinema_move: true } do %>
+                  data: { cinema_move: true, cinema_channel: 'up' } do %>
         <i class="fa-solid fa-3x fa-caret-up position-absolute top-0 start-50 translate-middle-x"></i>
       <% end %>
       <%# Everything in the ring except the channel arrows and the way home writes
@@ -215,7 +223,7 @@
       <%# Marked for warming as well as moving: this is the direction somebody surfing
           travels, so it is the one worth having ready. %>
       <%= link_to list_watch_current_path(@channel.find_sibling(:next) || @channel),
-                  data: { cinema_move: true, cinema_preload: true } do %>
+                  data: { cinema_move: true, cinema_preload: true, cinema_channel: 'down' } do %>
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
       <% if user_signed_in? %>

@@ -1,0 +1,22 @@
+<%# A channel with nothing it can play: no entries with a runtime and a working provider,
+    or a schedule that has run out. The rest of the dial still works, which is why this is a
+    page on the channel rather than a redirect away from it. %>
+<div class="cinema__screen" data-controller="cinema-navigation">
+  <div id="cinema-chrome" class="cable__off-air">
+    <div class="cable__off-air-card">
+      <h1><%= @channel.name %></h1>
+      <p class="text-muted">Off air.</p>
+      <p class="text-muted small">
+        Nothing is scheduled on this channel right now. Its programme is laid out once a
+        day; a channel with no playable entries stays dark until it has some.
+      </p>
+      <div class="d-flex gap-3 justify-content-center mt-4">
+        <%= link_to "Previous channel", cable_channel_path(CableSchedule.sibling(@channel, :previous)),
+                    class: "btn btn-outline-light" %>
+        <%= link_to "Next channel", cable_channel_path(CableSchedule.sibling(@channel, :next)),
+                    class: "btn btn-outline-light" %>
+        <%= link_to "Home", root_path, class: "btn btn-outline-light" %>
+      </div>
+    </div>
+  </div>
+</div>

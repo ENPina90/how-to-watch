@@ -50,10 +50,14 @@ export default class extends Controller {
     this.clicked = (event) => this.linkClicked(event)
     this.submitted = (event) => this.formSubmitted(event)
     this.wentBack = () => this.historyMoved()
+    this.keyed = (event) => this.keyPressed(event)
 
     this.element.addEventListener("click", this.clicked)
     this.element.addEventListener("submit", this.submitted)
     window.addEventListener("popstate", this.wentBack)
+    // On the document, not on this element: a keystroke goes to whatever has focus, which
+    // after a page load is the body and is never inside the frame the film is in.
+    document.addEventListener("keydown", this.keyed)
 
     this.scheduleWarming()
   }
@@ -62,7 +66,40 @@ export default class extends Controller {
     this.element.removeEventListener("click", this.clicked)
     this.element.removeEventListener("submit", this.submitted)
     window.removeEventListener("popstate", this.wentBack)
+    document.removeEventListener("keydown", this.keyed)
     this.discardWarmed()
+  }
+
+  // Up and down the dial from the keyboard, which is how anybody who has held a remote
+  // expects to change channel.
+  //
+  // It presses the arrow rather than moving on its own. Everything the click path already
+  // knows -- that down may have a channel warmed and waiting, that a second move must not
+  // race the first, what to do when the answer is not a player page -- would otherwise have
+  // to be repeated here and kept in step with itself.
+  keyPressed(event) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
+    if (this.busyElsewhere(event)) return
+
+    const arrow = this.element.querySelector(
+      `a[data-cinema-channel="${event.key === "ArrowUp" ? "up" : "down"}"]`
+    )
+    // Signed out, or a page with nowhere to go. Leave the keystroke to the browser.
+    if (!arrow) return
+
+    event.preventDefault()
+    arrow.click()
+  }
+
+  // Somewhere the arrows already mean something: a field being typed into, a select being
+  // stepped through, or an open dialog -- the review prompt, the up-next card, the guide,
+  // any of which is a question being asked that the channel behind it should not answer.
+  busyElsewhere({ target }) {
+    if (target instanceof HTMLElement && target.isContentEditable) return true
+    if (target instanceof HTMLElement && /^(input|textarea|select)$/i.test(target.tagName)) return true
+
+    return Boolean(document.querySelector(".modal.show"))
   }
 
   // Only the controls that say so. The channel name, the home button and anything else
@@ -90,12 +127,17 @@ export default class extends Controller {
     this.moveTo(form.action, { method: "POST", body: new FormData(form) })
   }
 
-  // The up-next card asking to advance. It offers rather than navigates, so that it still
-  // works if this controller is not around to answer.
+  // Something on the page asking to advance -- the up-next card on the watch page, the
+  // schedule running out on a cable channel. Both offer rather than navigate, so that they
+  // still work if this controller is not around to answer.
+  //
+  // With a body it is the card, whose move records a position and so is a POST carrying its
+  // own CSRF token. Without one it is a plain read of somewhere else, and posting to it
+  // would not route.
   moveFromEvent(event) {
     const { url, body } = event.detail
     event.preventDefault()
-    this.moveTo(url, { method: "POST", body: body })
+    this.moveTo(url, body ? { method: "POST", body: body } : {})
   }
 
   async moveTo(url, options = {}) {
@@ -222,14 +264,21 @@ export default class extends Controller {
       if (!incoming || !incoming.src || incoming.src === document.getElementById("cinema")?.src) return
 
       this.warmed = { page: page, url: response.url }
-      this.buildWarmedFrame(incoming)
+
+      // Only warm a player this page can drive. A frame it cannot pause is a frame playing
+      // out loud behind the one being watched -- which is what a channel in its commercial
+      // break is, since the adverts come from YouTube rather than from the film's provider.
+      // The fetched page is kept either way: pressing down then costs no request, only the
+      // ~1.5s of embed load the warming would have spent.
+      const adapter = this.adapterFor(incoming)
+      if (adapter) this.buildWarmedFrame(incoming, adapter)
     } catch {
       // A warm-up that fails costs the viewer nothing; the move it would have helped
       // simply pays full price.
     }
   }
 
-  buildWarmedFrame(incoming) {
+  buildWarmedFrame(incoming, adapter) {
     const frame = document.createElement("iframe")
     frame.id = "cinema-next"
     frame.className = "cinema__frame"
@@ -243,10 +292,7 @@ export default class extends Controller {
 
     // Stop it as soon as it will listen. Commands before the player's first report are
     // dropped, so this waits for one -- which arrives well before the picture does.
-    const adapter = this.adapterFor(incoming)
-    if (!adapter) return
-
-    // Ask it to stop on every report until it actually does.
+    // Ask it to shut up and stop, on every report until it actually does.
     //
     // One ask is not enough: a pause sent on the player's first report -- about four
     // seconds after the frame is built -- is ignored, while the same message a few seconds
@@ -254,18 +300,32 @@ export default class extends Controller {
     // starts listening, so there is nothing to wait for exactly. Asking again each time it
     // says it has moved needs no such moment: it costs one message per five seconds, and
     // it stops of its own accord, because a player that has stopped stops reporting.
+    //
+    // Muted as well as paused, because there are seconds between the frame starting and
+    // the first report it will act on, and something has to cover them. That used to be
+    // the browser's own doing -- autoplay on a document nobody has touched is muted
+    // whatever the page asks for -- but that is a policy about the document, not a promise
+    // to us, and it lapses the moment the viewer clicks anything. On a cable channel they
+    // usually have. promote() unmutes, which is what it was always for.
     this.warmedPlayer = playerAdapterFor(adapter, frame, {
       onState: (state) => {
         if (this.warmedAt === state.progress) return
         this.warmedAt = state.progress
+        this.warmedPlayer?.mute()
         this.warmedPlayer?.pause()
       }
     })
   }
 
+  // Which adapter drives the incoming page's player. Read from an attribute of its own
+  // rather than off player-progress's value, which is what this used to do: that
+  // controller is only on the page for somebody signed in, and it is not on the cable page
+  // at all -- so the lookup came back empty and the warmed frame was built with nothing to
+  // stop it. A frame nobody can pause is a frame playing out loud behind the one being
+  // watched. The adapter belongs to the page's player, not to one of its readers.
   adapterFor(incoming) {
     const chrome = incoming.ownerDocument.getElementById("cinema-chrome")
-    const name = chrome?.dataset.playerProgressAdapterValue
+    const name = chrome?.dataset.playerAdapter
     return isControllable(name) ? name : null
   }
 
@@ -274,9 +334,12 @@ export default class extends Controller {
     const { page, url } = this.warmed
     const live = document.getElementById("cinema")
     const next = document.getElementById("cinema-next")
-    if (!live || !next) return this.moveTo(url)
 
     this.dispatch("leaving", { target: document })
+
+    // Fetched but never started, because nothing here could have stopped it once it began.
+    // The page is still fresh, so this is an ordinary move with the request already paid.
+    if (!live || !next) return this.apply(page, url)
 
     live.remove()
     next.id = "cinema"
