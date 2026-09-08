@@ -108,6 +108,43 @@ RSpec.describe 'Moving between entries in place', :needs_provider, type: :reques
     end
   end
 
+  # How the warmed frame is quietened. cinema-navigation fetches the channel below, builds
+  # its player in a second frame, and then has to stop it -- and it works out how from an
+  # attribute on the fetched page. When that lookup comes back empty the frame is built
+  # with nothing to drive it, so it plays on, out loud, behind the film being watched.
+  #
+  # It used to read player-progress's copy of the adapter name, which is only on the page
+  # for somebody signed in and is not on the cable page at all. Nothing failed; the sound
+  # just doubled. Hence an attribute of the player's own, on every page that has one.
+  describe 'naming the adapter that drives the player' do
+    it 'is on the watch page chrome' do
+      get watch_entry_path(entry)
+
+      expect(response.body).to include(%(data-player-adapter="#{playable_provider.sync_adapter}"))
+    end
+
+    it 'is on the cable page chrome' do
+      channel.update!(default: true)
+      CableSchedule.build_day!(channel, CableSchedule.today)
+
+      get cable_channel_path(channel)
+
+      expect(response.body).to include(%(data-player-adapter="#{playable_provider.sync_adapter}"))
+    end
+
+    # The reason it broke: it was inside the signed-in branch, next to the things that
+    # record a position. Quietening a second player has nothing to do with having an
+    # account, and a channel warmed by a signed-out visitor is just as loud.
+    it 'is on the watch page for a visitor with no account' do
+      sign_out user
+      AppSetting.update_access_mode!('open')
+
+      get watch_entry_path(entry)
+
+      expect(response.body).to include(%(data-player-adapter="#{playable_provider.sync_adapter}"))
+    end
+  end
+
   describe 'the regions a move replaces' do
     it 'carries the chrome that describes this entry' do
       get watch_entry_path(entry)

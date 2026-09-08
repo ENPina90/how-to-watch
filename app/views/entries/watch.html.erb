@@ -93,6 +93,11 @@
            Its shortcuts are the player's own, which stopped reaching it when fullscreen
            moved to the container -- see player_keys_controller.js. %>
        data-controller="player-keys<%= ' player-progress' if user_signed_in? %>"
+       <%# Which adapter drives this page's player. Outside the signed-in branch below on
+           purpose: cinema-navigation reads this off the fetched page to know how to
+           quieten the channel it is warming, and that has nothing to do with whether
+           there is an account to record a position against. %>
+       data-player-adapter="<%= @entry.resolved_source&.sync_adapter %>"
        data-player-keys-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
        data-player-keys-frame-value="cinema"
        <% if user_signed_in? %>
