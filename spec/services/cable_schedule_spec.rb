@@ -156,6 +156,105 @@ RSpec.describe CableSchedule do
     end
   end
 
+  # Programmes end on the clock rather than when the film happens to stop: a slot runs to
+  # the next five-minute mark, and the gap after the film is a commercial break. Which also
+  # means every slot starts on a five-minute mark, and the listing reads like a listing.
+  describe 'padding a programme out to the clock' do
+    let!(:reel) do
+      CommercialReel.create!(label: '1987', starts_year: 1987, ends_year: 1987, youtube_id: 'abc')
+    end
+
+    def odd_film(minutes, position, year: 1987)
+      create(:entry, list: channel, name: "Film #{position}", media: 'movie', length: minutes,
+                     year: year, position: position, imdb: "tt000#{position.to_s.rjust(4, '0')}")
+    end
+
+    it 'starts every programme on a five-minute mark' do
+      odd_film(47, 1)
+      described_class.build_day!(channel, date)
+
+      CableSlot.where(list: channel).in_order.each do |slot|
+        local = slot.starts_at.in_time_zone(described_class.zone)
+        expect(local.min % 5).to eq(0)
+        expect(local.sec).to eq(0)
+      end
+    end
+
+    it 'leaves no gap between one slot and the next' do
+      odd_film(47, 1)
+      described_class.build_day!(channel, date)
+
+      CableSlot.where(list: channel).in_order.each_cons(2) do |a, b|
+        expect(b.starts_at).to eq(a.ends_at)
+      end
+    end
+
+    it 'marks the leftover as a commercial break' do
+      odd_film(47, 1)
+      described_class.build_day!(channel, date)
+      slot = CableSlot.where(list: channel).in_order.first
+
+      # 47 minutes from midnight ends at 00:47; the slot runs to 00:50.
+      expect(slot.break_starts_at).to eq(midnight + 47.minutes)
+      expect(slot.ends_at).to eq(midnight + 50.minutes)
+      expect(slot.programme_duration).to eq(47 * 60)
+    end
+
+    # Runtimes are whole minutes and slots start on the mark, so a break is 1, 2, 3 or 4
+    # minutes exactly -- never a stray number of seconds.
+    it 'makes breaks a whole number of minutes, and never more than four' do
+      odd_film(47, 1)
+      odd_film(23, 2)
+      odd_film(101, 3)
+      described_class.build_day!(channel, date)
+
+      CableSlot.where(list: channel).where.not(break_starts_at: nil).each do |slot|
+        gap = (slot.ends_at - slot.break_starts_at).to_i
+        expect(gap % 60).to eq(0)
+        expect(gap).to be_between(60, 4 * 60).inclusive
+      end
+    end
+
+    it 'gives a film that ends on the mark no break at all' do
+      odd_film(45, 1)
+      described_class.build_day!(channel, date)
+
+      expect(CableSlot.where(list: channel).where.not(break_starts_at: nil)).to be_empty
+    end
+
+    it 'fills the break with adverts from the film\'s own year' do
+      odd_film(47, 1, year: 1987)
+      described_class.build_day!(channel, date)
+      slot = CableSlot.where(list: channel).in_order.first
+
+      expect(slot.break_reel).to eq(reel)
+      expect(slot.break_offset).to be_present
+    end
+
+    # The break is still the break. The page puts a caption over it rather than a dead frame.
+    it 'still leaves the gap when there are no adverts to put in it' do
+      CommercialReel.delete_all
+      odd_film(47, 1)
+      described_class.build_day!(channel, date)
+      slot = CableSlot.where(list: channel).in_order.first
+
+      expect(slot.break_starts_at).to be_present
+      expect(slot.break_reel).to be_nil
+    end
+
+    # Everybody on the channel has to be at the same advert, for the same reason they are
+    # at the same point of the same film.
+    it 'settles on one reel and one starting point when the day is laid out' do
+      odd_film(47, 1)
+      described_class.build_day!(channel, date)
+      slot = CableSlot.where(list: channel).in_order.first
+
+      at = slot.break_starts_at + 30.seconds
+      expect(slot.reel_position_at(at)).to eq(slot.break_offset + 30)
+      expect(slot.reel_position_at(at)).to eq(slot.reload.reel_position_at(at))
+    end
+  end
+
   describe 'the guide window' do
     # It runs a full day, opening a couple of hours behind the present so there is
     # something to scroll back to, and it always opens on a half hour -- the columns are

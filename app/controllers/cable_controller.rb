@@ -72,9 +72,26 @@ class CableController < ApplicationController
     # Joining midway is the entire point: the programme started at a clock time, and this
     # is how far it has got by now. Autoplay is on regardless of the channel's own setting
     # -- a cable channel that waits for a click is not a cable channel.
-    @embed_url = @entry.embed_url(subentry: @current_subentry, autoplay: true,
-                                  start_at: @slot.offset_at(@now))
-    return render :off_air, layout: "special_layout" if @embed_url.blank?
+    # After the film ends the slot runs on to the next five-minute mark, and the gap is a
+    # commercial break -- adverts from the film's own year, which is most of what makes the
+    # break feel like it belongs to the channel. `filler` is the player saying the film has
+    # finished early: a real channel cuts to the adverts rather than sitting on a black
+    # frame until the clock catches up.
+    @in_break = @slot.break? && (@slot.break_at?(@now) || params[:filler].present?)
+
+    if @in_break
+      # A period we hold no reel for still gets its gap; the page puts a caption over it
+      # rather than a dead frame.
+      @embed_url = @slot.break_reel&.embed_url(start_at: @slot.reel_position_at(@now))
+    else
+      @embed_url = @entry.embed_url(subentry: @current_subentry, autoplay: true,
+                                    start_at: @slot.offset_at(@now))
+      return render :off_air, layout: "special_layout" if @embed_url.blank?
+    end
+
+    # When this channel next shows something else: the start of the break, or the start of
+    # the next programme.
+    @next_change_at = @in_break ? @slot.ends_at : @slot.next_change_after(@now)
 
     # No sidebars at all. There is no list to step through on the right, and the channel
     # list on the left is what the guide is for -- a permanent panel naming the same six

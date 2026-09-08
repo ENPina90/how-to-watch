@@ -896,3 +896,29 @@ body.cable__mode .cinema__screen--guide {
   .cable-hud__badge { width: 68px; }
   .cable-hud__title { font-size: 1.15rem; }
 }
+
+/* A commercial break with no adverts behind it -- a period we hold no reel for, or a film
+   with no year to match one against. The gap is still the gap; this is what goes in it,
+   which is what a channel with nothing to play would put up rather than a dead frame. */
+.cable-interlude {
+  position: absolute;
+  inset: 0;
+  /* Above the frame, which is showing nothing, and below the banner and the buttons. */
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #05052e;
+}
+
+.cable-interlude__card {
+  margin: 0;
+  color: #ffd42a;
+  font-family: "Arial Narrow", "Helvetica Neue", "Liberation Sans Narrow", "DejaVu Sans Condensed", system-ui, sans-serif;
+  font-stretch: condensed;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+}
