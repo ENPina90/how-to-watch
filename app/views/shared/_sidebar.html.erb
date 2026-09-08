@@ -13,7 +13,7 @@
 <div id="mainSidebar" class="sidebar-left bg-dark text-white <%= 'd-none' if @sidebar_collapsed %>" style="width: 280px; position: fixed; left: 0; top: 80px; height: calc(100vh - 80px); display: flex; flex-direction: column; z-index: 1020;">
   <!-- Sidebar Header -->
   <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center" style="flex: 0 0 auto;">
-    <h5 class="mb-0"><%= @cable_lineup ? "Cable" : "Your Subscriptions" %></h5>
+    <h5 class="mb-0">Your Subscriptions</h5>
     <% if defined?(@entries_sidebar_collapsed) %>
       <button class="unified-collapse-btn btn btn-sm btn-outline-light">
         <i class="fa-solid fa-bars"></i>
@@ -33,9 +33,7 @@
        class="p-3" style="flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;"
        data-controller="sidebar-autoscroll">
     <h6 class="text-muted mb-3" style="font-size: 0.75rem; text-transform: uppercase;">Channels</h6>
-    <%# /cable sets the line-up; every other page leaves it nil and gets subscriptions. %>
-    <%= render 'shared/sidebar_channels', user: current_user,
-               channels: @cable_lineup, cable: @cable_lineup.present?, active_list: (@cable_lineup && @channel) %>
+    <%= render 'shared/sidebar_channels', user: current_user %>
   </div>
 
   <!-- Now Playing Section (Fixed at Bottom) -->
@@ -75,14 +73,13 @@
         end
       %>
       <% if now_playing && now_playing.persisted? %>
-        <% now_playing_path = @cable_lineup ? cable_channel_path(@channel) : watch_entry_path(now_playing) %>
-        <%= link_to now_playing_path, class: "text-decoration-none now-playing-card" do %>
+        <%= link_to watch_entry_path(now_playing), class: "text-decoration-none now-playing-card" do %>
           <div class="d-flex flex-column align-items-center text-center">
             <div class="now-playing-poster-container" style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); position: relative;">
               <%= entry_poster_image_tag(now_playing, class: 'img-fluid', style: 'width: 100%; height: 100%; object-fit: cover;') %>
               <div class="now-playing-overlay">
                 <div class="overlay-content">
-                  <p class="mb-1"><strong><%= (@cable_lineup ? @channel : now_playing.list).name %></strong></p>
+                  <p class="mb-1"><strong><%= now_playing.list.name %></strong></p>
                   <% if now_playing.series.present? %>
                     <p class="mb-1 text-muted small"><%= now_playing.series %></p>
                   <% end %>

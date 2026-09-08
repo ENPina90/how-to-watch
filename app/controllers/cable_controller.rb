@@ -62,7 +62,6 @@ class CableController < ApplicationController
 
     @entry = @slot.entry
     @current_subentry = @slot.subentry
-    @upcoming = CableSchedule.upcoming(@channel, at: @slot.ends_at)
 
     # Joining midway is the entire point: the programme started at a clock time, and this
     # is how far it has got by now. Autoplay is on regardless of the channel's own setting
@@ -71,17 +70,12 @@ class CableController < ApplicationController
                                   start_at: @slot.offset_at(@now))
     return render :off_air, layout: "special_layout" if @embed_url.blank?
 
-    # The line-up in the sidebar, rather than this viewer's subscriptions: /cable is the
-    # same set of channels for everybody.
-    @cable_lineup = CableSchedule.channels.to_a
-
-    # There is no entries sidebar here -- there is no list to step through -- so the layout
-    # must not inset the page for one, and the collapse button must not sit where the watch
-    # page's title-free corner lets it.
+    # No sidebars at all. There is no list to step through on the right, and the channel
+    # list on the left is what the guide is for -- a permanent panel naming the same six
+    # channels is furniture over a picture. What is left is the picture and the ring.
     @cable = true
     @sidebar_collapsed = true
-    @hide_sidebar = false
-    @now_playing_collapsed = false
+    @hide_sidebar = true
 
     render layout: "special_layout"
   end
