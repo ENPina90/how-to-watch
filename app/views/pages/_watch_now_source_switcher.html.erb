@@ -3,7 +3,7 @@
     numbered rather than named -- the provider's name is the tooltip. %>
 <% imdb_sources = Source.active.where(kind: 'imdb').order(:position) %>
 
-<div class="source-switcher source-switcher--watch-now d-flex align-items-center gap-2 flex-wrap justify-content-center">
+<div class="source-switcher source-switcher--watch-now d-flex align-items-center gap-2 flex-nowrap justify-content-center">
   <% rendered = 0 %>
   <% imdb_sources.each do |source| %>
     <% url = source.build_url(@source_media_key, @source_vars, autoplay: true) %>
