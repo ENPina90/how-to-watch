@@ -116,6 +116,90 @@ RSpec.describe 'Cable', type: :request do
     end
   end
 
+  # The gap after a film, filled with adverts from its own year. The guide and the banner
+  # both go on naming the programme -- the break falls under it, which is what keeps the
+  # listing's start times tidy and is how a channel has always described itself.
+  describe 'a commercial break' do
+    let!(:youtube) do
+      Source.create!(name: 'YouTube', slug: 'youtube', kind: 'direct', active: true, position: 9,
+                     templates: { 'default' => 'https://www.youtube.com/embed/%{source_key}' })
+    end
+    let!(:reel) do
+      CommercialReel.create!(label: '1998', starts_year: 1998, ends_year: 1998, youtube_id: 'reel98')
+    end
+
+    # A film ending at 00:47 in a slot that runs to 00:50.
+    let(:slot) { CableSlot.where(list: channel).in_order.first }
+
+    before do
+      entry.update!(year: 1998, length: 47)
+      CableSchedule.build_day!(channel, date)
+      sign_in user
+    end
+
+    it 'plays the film before the break' do
+      travel_to(midnight + 40.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('framerelay').or include('p.test')
+      expect(response.body).not_to include('youtube.com/embed')
+    end
+
+    it 'plays the adverts once the film has ended' do
+      travel_to(midnight + 48.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include("youtube.com/embed/#{reel.youtube_id}")
+      # One minute into the break, one minute further into the reel.
+      expect(response.body).to include("start=#{slot.break_offset + 60}")
+    end
+
+    it 'goes on naming the programme, not the adverts' do
+      travel_to(midnight + 48.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include(entry.name)
+      expect(response.body).not_to include('1998 commercials')
+    end
+
+    # Nothing here can drive a YouTube embed, and saying otherwise would leave the channel
+    # below warmed into a player nobody can quieten.
+    it 'claims no player adapter through the break' do
+      travel_to(midnight + 48.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('data-player-adapter=""')
+    end
+
+    it 'sets the clock to the start of the break, then to the next programme' do
+      travel_to(midnight + 40.minutes) { get cable_channel_path(channel) }
+      expect(response.body).to include(slot.break_starts_at.utc.iso8601)
+
+      travel_to(midnight + 48.minutes) { get cable_channel_path(channel) }
+      expect(response.body).to include(slot.ends_at.utc.iso8601)
+    end
+
+    # A real channel cuts to the adverts rather than sitting on a finished player until the
+    # clock catches up.
+    it 'cuts to the adverts when the player says the film finished early' do
+      travel_to(midnight + 40.minutes) { get cable_channel_path(channel, filler: 1) }
+
+      expect(response.body).to include("youtube.com/embed/#{reel.youtube_id}")
+    end
+
+    it 'puts a caption up when the period has no adverts' do
+      CommercialReel.delete_all
+      CableSchedule.build_day!(channel, date)
+
+      travel_to(midnight + 48.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('cable-interlude')
+      expect(response).to be_successful
+    end
+
+    it 'moves on to the next programme when the break is over' do
+      travel_to(midnight + 51.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).not_to include("youtube.com/embed/#{reel.youtube_id}")
+    end
+  end
+
   describe 'the channel banner' do
     before { sign_in user }
 

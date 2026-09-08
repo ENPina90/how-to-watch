@@ -264,14 +264,21 @@ export default class extends Controller {
       if (!incoming || !incoming.src || incoming.src === document.getElementById("cinema")?.src) return
 
       this.warmed = { page: page, url: response.url }
-      this.buildWarmedFrame(incoming)
+
+      // Only warm a player this page can drive. A frame it cannot pause is a frame playing
+      // out loud behind the one being watched -- which is what a channel in its commercial
+      // break is, since the adverts come from YouTube rather than from the film's provider.
+      // The fetched page is kept either way: pressing down then costs no request, only the
+      // ~1.5s of embed load the warming would have spent.
+      const adapter = this.adapterFor(incoming)
+      if (adapter) this.buildWarmedFrame(incoming, adapter)
     } catch {
       // A warm-up that fails costs the viewer nothing; the move it would have helped
       // simply pays full price.
     }
   }
 
-  buildWarmedFrame(incoming) {
+  buildWarmedFrame(incoming, adapter) {
     const frame = document.createElement("iframe")
     frame.id = "cinema-next"
     frame.className = "cinema__frame"
@@ -285,9 +292,6 @@ export default class extends Controller {
 
     // Stop it as soon as it will listen. Commands before the player's first report are
     // dropped, so this waits for one -- which arrives well before the picture does.
-    const adapter = this.adapterFor(incoming)
-    if (!adapter) return
-
     // Ask it to shut up and stop, on every report until it actually does.
     //
     // One ask is not enough: a pause sent on the player's first report -- about four
@@ -330,9 +334,12 @@ export default class extends Controller {
     const { page, url } = this.warmed
     const live = document.getElementById("cinema")
     const next = document.getElementById("cinema-next")
-    if (!live || !next) return this.moveTo(url)
 
     this.dispatch("leaving", { target: document })
+
+    // Fetched but never started, because nothing here could have stopped it once it began.
+    // The page is still fresh, so this is an ordinary move with the request already paid.
+    if (!live || !next) return this.apply(page, url)
 
     live.remove()
     next.id = "cinema"

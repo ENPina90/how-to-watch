@@ -8,6 +8,10 @@ class CableSlot < ApplicationRecord
   belongs_to :list
   belongs_to :entry
   belongs_to :subentry, optional: true
+  # The adverts that fill the gap between this programme and the next. Optional twice over:
+  # a slot whose film ends exactly on the five-minute mark has no gap, and a period we hold
+  # no reel for has a gap with nothing to put in it.
+  belongs_to :break_reel, class_name: "CommercialReel", optional: true
 
   # The row covering an instant. Half-open at the end so the moment one programme ends is
   # the moment the next begins, and never both.
@@ -22,11 +26,38 @@ class CableSlot < ApplicationRecord
 
   def duration = (ends_at - starts_at).to_i
 
+  # The slot runs past the film, to the next five-minute mark. These two are the film's own
+  # span; `duration` and `ends_at` are the slot's, which is what the listing shows.
+  def programme_ends_at = break_starts_at || ends_at
+
+  def programme_duration = (programme_ends_at - starts_at).to_i
+
+  def break? = break_starts_at.present?
+
+  # Is the channel in its commercial break at this moment?
+  def break_at?(time) = break? && time >= break_starts_at
+
+  # Where in the reel the break has reached. Counted from the moment the break began rather
+  # than from when this viewer arrived, so everybody watching is at the same advert.
+  def reel_position_at(time)
+    return nil unless break? && break_reel
+
+    break_offset.to_i + [(time - break_starts_at).to_i, 0].max
+  end
+
+  # The next moment this channel shows something different: the start of the break, or the
+  # start of the next programme. What the page sets its timer by.
+  def next_change_after(time)
+    return break_starts_at if break? && time < break_starts_at
+
+    ends_at
+  end
+
   # How far into the programme somebody turning on now has arrived. Clamped at both ends:
   # before it starts is the beginning, and a request that lands a hair past the end -- a
   # timer firing a moment early, a slow page -- is not asked to seek past the credits.
   def offset_at(time)
-    [[(time - starts_at).to_i, 0].max, duration].min
+    [[(time - starts_at).to_i, 0].max, programme_duration].min
   end
 
   # A programme runs until it ends. This is what the page sets its timer by.

@@ -28,9 +28,15 @@ export default class extends Controller {
     // whatever is on by then -- so a tab left open overnight catches up in one request
     // rather than stepping through everything it slept through.
     url: String,
-    // When this programme ends, from the server, in UTC. The client's clock may be wrong;
-    // what matters is that it is wrong by the same amount for the whole page.
+    // When this channel next shows something different, from the server, in UTC. Not always
+    // the end of the slot: a programme with a commercial break after it changes twice, once
+    // into the adverts and once out of them. The client's clock may be wrong; what matters
+    // is that it is wrong by the same amount for the whole page.
     endsAt: String,
+    // Where to go when the film ends before the clock says it should -- the same channel,
+    // asked to cut to the adverts. Absent through the break itself, and absent on a slot
+    // with no break, in which case an early ending moves to the next programme as before.
+    fillerUrl: String,
     adapter: String,
     frame: String
   }
@@ -68,25 +74,31 @@ export default class extends Controller {
     if (!iframe) return
 
     this.player = playerAdapterFor(this.adapterValue, iframe, {
-      onState: (state) => { if (state.event === "completed") this.move() }
+      onState: (state) => { if (state.event === "completed") this.move({ early: true }) }
     })
   }
 
   // Once. The player's `completed` and the clock can both arrive, and a second move while
   // the first is in flight would race two programmes into the same page.
-  move() {
+  //
+  // A film that ends early cuts to the adverts rather than to the next programme: the
+  // schedule has not moved, and sitting on a finished player until it catches up is the one
+  // thing a channel never does. Where there is no break to cut to, this is the ordinary
+  // move it always was.
+  move({ early = false } = {}) {
     if (this.moved) return
     this.moved = true
     clearTimeout(this.timer)
 
+    const url = (early && this.fillerUrlValue) || this.urlValue
     const asked = this.dispatch("move", {
-      target: document, cancelable: true, detail: { url: this.urlValue }
+      target: document, cancelable: true, detail: { url: url }
     })
     if (asked.defaultPrevented) return
 
     // Nothing answered. The page asks "did you mean to leave?" whenever the frame has
     // focus, which it has for most of a programme, so say this is deliberate first.
     window.leavingOnPurpose = true
-    window.location.assign(this.urlValue)
+    window.location.assign(url)
   }
 }

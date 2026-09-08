@@ -33,6 +33,15 @@ module CableSchedule
   # nothing reads.
   RETAIN_DAYS = 2
 
+  # Programmes end on the clock, not when the film happens to stop. A slot runs to the next
+  # five-minute mark and whatever is left after the film has ended is a commercial break --
+  # which means every slot also *starts* on a five-minute mark, and the listing reads the
+  # way a listing should instead of 8:07, 9:53, 11:26.
+  #
+  # Runtimes are whole minutes and days start on the hour, so a break is 0, 1, 2, 3 or 4
+  # minutes exactly. Never seconds, and never long enough to be worth showing in the guide.
+  BREAK_GRID = 5.minutes
+
   # A day is filled by taking entries from a shuffled bag and refilling it when it empties.
   # This caps how many programmes one day may hold, so a channel of two-minute clips that
   # slipped past MIN_MINUTES cannot write rows until the job times out.
@@ -220,12 +229,14 @@ module CableSchedule
       # the episode is not chosen until the slot is.
       next if entry.embed_url(subentry: subentry).blank?
 
-      finish = [cursor + runtime(entry), day_end].min
-      rows << {
-        list_id: channel.id, entry_id: entry.id, subentry_id: subentry&.id,
-        airs_on: date, starts_at: cursor, ends_at: finish,
-        position: rows.length, created_at: Time.current, updated_at: Time.current
-      }
+      # Where the film stops, and where the slot stops -- the same instant only when the
+      # runtime happens to land on the grid.
+      content_end = [cursor + runtime(entry), day_end].min
+      finish = [next_break_mark(content_end), day_end].min
+      rows << { list_id: channel.id, entry_id: entry.id, subentry_id: subentry&.id,
+                airs_on: date, starts_at: cursor, ends_at: finish,
+                position: rows.length, created_at: Time.current, updated_at: Time.current }
+        .merge(commercial_break(entry, content_end, finish))
 
       last = entry
       cursor = finish
@@ -253,6 +264,32 @@ module CableSchedule
     bag.push(bag.shift) if bag.length > 1 && bag.first == last
 
     bag
+  end
+
+  # The next five-minute mark, or this one when the film ends exactly on it.
+  def next_break_mark(time)
+    step = BREAK_GRID.to_i / 60
+    over = time.min % step
+    return time if over.zero? && time.sec.zero?
+
+    time.change(min: time.min - over, sec: 0) + step.minutes
+  end
+
+  # The gap after the film, and what fills it. Both the reel and the point it starts from
+  # are decided here rather than when somebody tunes in: two people on the same channel at
+  # the same second have to see the same advert, for the same reason they see the same film.
+  #
+  # A period with no reel -- or a film with no year -- still gets the gap. The page shows a
+  # caption over it rather than a dead frame, which is what a channel with nothing to play
+  # in the break would put up.
+  def commercial_break(entry, content_end, finish)
+    return { break_starts_at: nil, break_reel_id: nil, break_offset: nil } if finish <= content_end
+
+    reel = CommercialReel.for_year(entry.year) if entry.year.present?
+
+    { break_starts_at: content_end,
+      break_reel_id: reel&.id,
+      break_offset: reel&.random_offset_for(finish - content_end) }
   end
 
   # Which episode of a series is on. Random, like everything else in the running order --

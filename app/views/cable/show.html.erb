@@ -59,13 +59,21 @@
             title="<%= @entry.name %>"
             referrerpolicy="origin"
             allow="autoplay"
-            src="<%= @embed_url %>"></iframe>
+            src="<%= @embed_url.presence || 'about:blank' %>"></iframe>
   </div>
 
   <%# Closes the guide on the way, so this always leaves you looking at the picture full
       size. With the guide up it sits over the player's own fullscreen button, which is dead
       -- the frame has no fullscreen permission -- so the one that works is on top of the
       one that does not. %>
+  <%# A break we have no adverts for. Better than a dead frame, and it is what a channel
+      with nothing to fill the gap would put up. %>
+  <% if @in_break && @embed_url.blank? %>
+    <div class="cable-interlude">
+      <p class="cable-interlude__card">We&rsquo;ll be right back</p>
+    </div>
+  <% end %>
+
   <button type="button" class="cinema__fullscreen" title="Fullscreen"
           data-action="click->cable-guide#close click->cinema-fullscreen#toggle">
     <i class="fa-solid fa-expand"></i>
@@ -94,15 +102,25 @@
            cinema-navigation reads it off the fetched page to know how to quieten the
            channel it is warming. Its own attribute rather than one controller's value,
            because it describes the player and not any one reader of it. %>
-       data-player-adapter="<%= @entry.resolved_source&.sync_adapter %>"
-       data-player-keys-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
+       <%# Nil through a commercial break: the frame is YouTube's then, not the film's
+           provider, and nothing here can drive it. Saying so keeps every listener honest --
+           and stops the channel below being warmed into a player nobody can quieten. %>
+       data-player-adapter="<%= @in_break ? nil : @entry.resolved_source&.sync_adapter %>"
+       data-player-keys-adapter-value="<%= @in_break ? nil : @entry.resolved_source&.sync_adapter %>"
        data-player-keys-frame-value="cinema"
        data-cable-clock-frame-value="cinema"
-       data-cable-clock-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
+       data-cable-clock-adapter-value="<%= @in_break ? nil : @entry.resolved_source&.sync_adapter %>"
        <%# Where to go when this programme is over: the channel itself, which answers with
            whatever the schedule says is on by the time the request lands. %>
        data-cable-clock-url-value="<%= cable_channel_path(@channel) %>"
-       data-cable-clock-ends-at-value="<%= @slot.ends_at.utc.iso8601 %>">
+       <%# The next time this channel shows something different, which is not always the end
+           of the slot: a programme with a break after it changes twice. %>
+       data-cable-clock-ends-at-value="<%= @next_change_at.utc.iso8601 %>"
+       <% unless @in_break %>
+         <%# Where to go when the film runs out before the clock says it should. Absent once
+             the break has started -- there is nothing after the adverts but the next slot. %>
+         data-cable-clock-filler-url-value="<%= cable_channel_path(@channel, filler: 1) %>"
+       <% end %>>
 
     <%= render 'cable/hud', channel: @channel, entry: @entry, user: current_user,
                             number: @channel_number, nearby: @nearby, current_slot: @slot %>
