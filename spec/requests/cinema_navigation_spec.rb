@@ -135,5 +135,14 @@ RSpec.describe 'Moving between entries in place', :needs_provider, type: :reques
       expect(response.body).to include('id="nowPlayingContent"')
       expect(response.body).to include(entry.name)
     end
+
+    # Also in the main sidebar and also drawn from @entry: it is the channel list, and the
+    # highlight on it is on whichever channel is playing. A move between channels that
+    # forgets this leaves the mark on the channel you just left.
+    it 'carries the channel list, whose highlight follows the channel' do
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('id="sidebarChannelsPanel"')
+    end
   end
 end

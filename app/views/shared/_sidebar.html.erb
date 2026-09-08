@@ -26,7 +26,12 @@
   </div>
 
   <!-- Channels Section (Scrollable) -->
-  <div class="p-3" style="flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;">
+  <%# The scrolling element, so the controller has something to scroll. Named because a
+      channel move swaps this whole panel: the highlight has to follow the move, and
+      replacing the element is also what gets the scroll to run again. %>
+  <div id="sidebarChannelsPanel"
+       class="p-3" style="flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;"
+       data-controller="sidebar-autoscroll">
     <h6 class="text-muted mb-3" style="font-size: 0.75rem; text-transform: uppercase;">Channels</h6>
     <%= render 'shared/sidebar_channels', user: current_user %>
   </div>

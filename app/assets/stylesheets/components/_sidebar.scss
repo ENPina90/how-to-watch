@@ -44,11 +44,14 @@ body.cinema__mode #sidebarCollapseBtn {
   transition: all 0.2s ease;
 }
 
-/* Active list styling */
+/* The channel being watched, marked the same way the entries sidebar marks the entry
+   being watched: the background and the weight, and nothing else. The green rule down the
+   left was this sidebar's alone, and being a border it also shifted the row's contents
+   three pixels out of line with every other row. */
 .list-group-item-action.active-list {
   background-color: rgba(255, 255, 255, 0.15) !important;
-  border-left: 3px solid #1db954 !important;
   font-weight: 600;
+  border-radius: 6px !important;
 }
 
 .list-group-item-action.active-list:hover {
@@ -112,4 +115,46 @@ body:not(.has-sidebar) #pageContainer,
 body:not(.has-sidebar) .page-container {
   margin-left: 0 !important;
   width: 100% !important;
+}
+
+/* A channel row is two links in one: the row plays the channel, and the icon that appears
+   on hover opens it. Nested <a>s are not a thing, so the icon is a sibling laid over the
+   row rather than a child of it. */
+.sidebar-channel {
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+/* The lift belongs to the row and the icon together, or the text slides out from under an
+   icon that stayed put. */
+.sidebar-channel:hover {
+  transform: translateX(4px);
+}
+
+.sidebar-channel .list-group-item-action:hover {
+  transform: none;
+}
+
+.sidebar-channel__open {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.75) !important;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+/* Shown on hover, and on focus so it can be reached without a mouse. */
+.sidebar-channel:hover .sidebar-channel__open,
+.sidebar-channel__open:focus {
+  opacity: 1;
+}
+
+.sidebar-channel__open:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff !important;
 }
