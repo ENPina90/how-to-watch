@@ -1,0 +1,91 @@
+<%# The listing grid: the whole dial across a few hours, laid out the way cable guides were.
+
+    Programmes are placed by time rather than flowed, because that is what the grid means --
+    a wide cell is a long film, and two channels' boundaries line up because they happen at
+    the same moment. Each one is positioned as a percentage of the window, so the row needs
+    no knowledge of how wide it will be drawn.
+
+    Everything here is the same for every viewer, like the rest of /cable. %>
+<%
+  window_start = @window.begin
+  window_span = @window.end - @window.begin
+  # Where a moment falls across the window, 0 to 100.
+  at = ->(time) { ((time - window_start) / window_span * 100).clamp(0, 100) }
+  columns = (0...(window_span / 30.minutes)).map { |i| window_start + (i * 30.minutes) }
+%>
+<%# The actions are bound here rather than per cell: this markup is fetched and inserted,
+    and one delegating listener on the grid serves however many programmes come back.
+    Tuning itself is not handled here at all -- the cells carry data-cinema-move, and
+    cinema-navigation is on the same screen element, so it answers the click and changes
+    channel in place. This only follows it. %>
+<div class="tvguide__grid"
+     data-action="mouseover->cable-guide#preview
+                  focusin->cable-guide#preview
+                  click->cable-guide#tuned"
+     style="--guide-now: <%= at.call(@now).round(4) %>%">
+
+  <div class="tvguide__times">
+    <%# The corner cell is a running clock, as it was on the real thing -- the columns are
+        half hours and none of them says what time it is now. %>
+    <div class="tvguide__corner" data-cable-guide-target="clock"><%= cable_clock(@now) %></div>
+    <div class="tvguide__columns">
+      <% columns.each do |column| %>
+        <div class="tvguide__column" style="width: <%= (100.0 / columns.length).round(4) %>%">
+          <%= cable_time(column).upcase %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="tvguide__rows">
+    <% @rows.each do |row| %>
+      <%
+        channel = row[:channel]
+        playing_here = @playing && @playing.id == channel.id
+      %>
+      <div class="tvguide__row <%= 'tvguide__row--tuned' if playing_here %>">
+        <%# The dial number and the channel's name, in the gutter the listings always had. %>
+        <a class="tvguide__channel" href="<%= cable_channel_path(channel) %>"
+           data-cinema-move="true" data-cable-guide-tune="<%= channel.id %>">
+          <span class="tvguide__number"><%= row[:number] %></span>
+          <span class="tvguide__callsign"><%= channel.name %></span>
+        </a>
+
+        <div class="tvguide__programmes">
+          <% row[:slots].each do |slot| %>
+            <%
+              left = at.call(slot.starts_at)
+              width = at.call(slot.ends_at) - left
+              # A programme already running when the window opened, or still running when it
+              # closes, is clipped -- the arrows say so, the way they did on cable.
+              runs_in = slot.starts_at < window_start
+              runs_on = slot.ends_at > @window.end
+              on_now = slot.starts_at <= @now && slot.ends_at > @now
+            %>
+            <%# Too narrow to hold anything legible. Kept in the grid rather than dropped so
+                the times either side of it still line up. %>
+            <a class="tvguide__programme <%= 'tvguide__programme--live' if on_now && playing_here %>"
+               href="<%= cable_channel_path(channel) %>"
+               data-cinema-move="true"
+               data-cable-guide-tune="<%= channel.id %>"
+               data-guide-channel="<%= channel.name %>"
+               data-guide-number="<%= row[:number] %>"
+               data-guide-title="<%= cable_programme_name(slot) %>"
+               data-guide-times="<%= cable_time(slot.starts_at) %> - <%= cable_time(slot.ends_at) %>"
+               data-guide-year="<%= slot.entry.year %>"
+               data-guide-plot="<%= slot.entry.plot %>"
+               style="left: <%= left.round(4) %>%; width: <%= width.round(4) %>%">
+              <% if runs_in %><span class="tvguide__arrow">&#9664;</span><% end %>
+              <span class="tvguide__name"><%= cable_programme_name(slot) %></span>
+              <% if runs_on %><span class="tvguide__arrow">&#9654;</span><% end %>
+            </a>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Where we are in the window. Drawn over the rows rather than in one of them, because it
+      is a fact about the time and crosses every channel at once. %>
+  <div class="tvguide__now"></div>
+</div>

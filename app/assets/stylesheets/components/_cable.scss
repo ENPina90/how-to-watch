@@ -107,3 +107,365 @@ body.cable__mode #sidebarCollapseBtn {
   right: 16px !important;
   top: 16px !important;
 }
+
+/* ---- The TV guide -------------------------------------------------------------------
+ *
+ * Cable listings as they looked when they were burned into a scan line: a hard blue field,
+ * yellow for anything that is a time or a number, chunky bevelled cells, and text with a
+ * black shadow a pixel down and right, because that is what a character generator did to
+ * keep type legible over whatever was behind it.
+ *
+ * The layout follows a modern guide -- picture and detail across the top, grid beneath --
+ * and only the surface is dated. A grid is a grid.
+ */
+
+.tvguide {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  /* The classic field: not flat, but nearly. A steep gradient reads as a web page; this
+     reads as a video signal. */
+  background: linear-gradient(180deg, #12126e 0%, #0a0a4a 55%, #05052e 100%);
+  color: #fff;
+  /* Condensed, because every one of these fit four hours of listings across a 640px frame.
+     No web font -- what shipped on the box is what it should look like. */
+  font-family: "Arial Narrow", "Helvetica Neue", "Liberation Sans Narrow", "DejaVu Sans Condensed", system-ui, sans-serif;
+  font-stretch: condensed;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.85);
+}
+
+/* Said here rather than left to Bootstrap's reboot, which happens to carry an !important
+   copy of the same rule. `display: flex` above outranks the browser's own [hidden], so
+   without this the guide's own stylesheet would be relying on another one to stay shut. */
+.tvguide[hidden] {
+  display: none;
+}
+
+/* The top third: the picture on the left, what it is on the right. */
+.tvguide__head {
+  display: flex;
+  height: 40vh;
+  flex: 0 0 auto;
+}
+
+/* The hole the player sits in. Empty on purpose -- the frame stack is resized into this
+   space by the rule further down rather than moved into this element, because moving an
+   iframe in the DOM reloads it and the film would stop to make way for a grid about it. */
+.tvguide__preview {
+  width: 50%;
+  flex: 0 0 auto;
+}
+
+.tvguide__detail {
+  flex: 1 1 auto;
+  padding: 28px 32px;
+  overflow: hidden;
+  /* Solid, the way the info panel always was: the picture has the left half and this has
+     the right, and nothing bleeds between them. */
+  background: #17179c;
+  border-left: 3px solid #000;
+}
+
+.tvguide__detail-channel {
+  margin: 0 0 6px;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* The programme, in quotes and in yellow, as every one of these did it. */
+.tvguide__detail-title {
+  margin: 0 0 10px;
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #ffd42a;
+  line-height: 1.25;
+}
+
+.tvguide__detail-meta {
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.tvguide__detail-plot {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.72);
+  /* Four lines and then stop: the panel is a fixed height and a long synopsis would push
+     the rest of it out of the box. */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The bar between the picture and the grid, which is where these always put it. */
+.tvguide__hide {
+  flex: 0 0 auto;
+  padding: 5px;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #cfd4ff;
+  background: #05052e;
+  border-top: 2px solid #3a3aa8;
+  border-bottom: 2px solid #000;
+  cursor: pointer;
+}
+
+.tvguide__hide:hover {
+  color: #ffd42a;
+}
+
+.tvguide__body {
+  flex: 1 1 auto;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.tvguide__loading {
+  padding: 28px 32px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tvguide__grid {
+  position: relative;
+  min-height: 100%;
+}
+
+/* ---- the time header ---- */
+
+.tvguide__times {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #05052e;
+}
+
+/* The running clock, in the corner cell the channel numbers sit under. */
+.tvguide__corner,
+.tvguide__channel {
+  flex: 0 0 var(--guide-gutter, 180px);
+  width: var(--guide-gutter, 180px);
+}
+
+.tvguide__corner {
+  padding: 7px 10px;
+  color: #ffd42a;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border: 2px solid;
+  /* The bevel: light where a light above would catch it, dark where it would not. Two
+     borders and no gradient, which is all the hardware could do and all this needs. */
+  border-color: #4a4ac8 #000 #000 #4a4ac8;
+}
+
+.tvguide__columns {
+  display: flex;
+  flex: 1 1 auto;
+}
+
+.tvguide__column {
+  padding: 7px 10px;
+  color: #ffd42a;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border: 2px solid;
+  border-color: #4a4ac8 #000 #000 #4a4ac8;
+}
+
+/* ---- the channel rows ---- */
+
+.tvguide__row {
+  display: flex;
+  height: 54px;
+}
+
+/* Alternating bands. Straight from the printed listings, and the reason a row is followable
+   across four hours of cells without a rule under it. */
+.tvguide__row:nth-child(odd) {
+  --row-bg: #1e2f8e;
+  --row-bg-hover: #2a3fae;
+}
+
+.tvguide__row:nth-child(even) {
+  --row-bg: #6b1d33;
+  --row-bg-hover: #8a2742;
+}
+
+.tvguide__channel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4px 10px;
+  background: #05052e;
+  border: 2px solid;
+  border-color: #4a4ac8 #000 #000 #4a4ac8;
+  text-decoration: none;
+  overflow: hidden;
+}
+
+.tvguide__number {
+  color: #ffd42a;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tvguide__callsign {
+  color: #cfd4ff;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The row the picture is currently coming from. */
+.tvguide__row--tuned .tvguide__channel {
+  background: #ffd42a;
+}
+
+.tvguide__row--tuned .tvguide__number {
+  color: #05052e;
+  text-shadow: none;
+}
+
+.tvguide__row--tuned .tvguide__callsign {
+  color: #23237a;
+  text-shadow: none;
+}
+
+/* The track a row's programmes are placed along. Positioned rather than flowed: a cell's
+   width is how long the programme runs, and two channels' boundaries line up because they
+   happen at the same moment. */
+.tvguide__programmes {
+  position: relative;
+  flex: 1 1 auto;
+}
+
+.tvguide__programme {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--row-bg);
+  border: 2px solid;
+  border-color: #4a4ac8 #000 #000 #4a4ac8;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-decoration: none;
+  overflow: hidden;
+}
+
+.tvguide__programme:hover,
+.tvguide__programme:focus-visible {
+  background: var(--row-bg-hover);
+  color: #ffd42a;
+  outline: none;
+}
+
+/* What is on right now, on the channel being watched. */
+.tvguide__programme--live {
+  color: #ffd42a;
+  border-color: #ffd42a;
+}
+
+.tvguide__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Two lines in a 54px row, which is what fits a long episode title without a cell
+     growing to hold it. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* A programme clipped by the edge of the window says so, as these always did. */
+.tvguide__arrow {
+  flex: 0 0 auto;
+  color: #ffd42a;
+  font-size: 0.75rem;
+}
+
+/* Now, across every channel at once -- it is a fact about the time, not about a row. */
+.tvguide__now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--guide-gutter, 180px) + (100% - var(--guide-gutter, 180px)) * var(--guide-now) / 100%);
+  width: 2px;
+  background: #ff2d2d;
+  box-shadow: 0 0 6px rgba(255, 45, 45, 0.8);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ---- the player, while the guide is up ----
+ *
+ * The frame stack is resized into the guide's top-left corner. Nothing is moved and nothing
+ * is reloaded: the iframe stays exactly where it is in the document and only its box
+ * changes, which is the difference between the film carrying on and the film starting
+ * again. Above the guide's own background, below its detail panel.
+ */
+.cinema__screen--guide .cinema__frames {
+  inset: 0 auto auto 0;
+  width: 50%;
+  height: 40vh;
+  z-index: 31;
+}
+
+/* The furniture of the page underneath. The guide is a takeover -- it covers the picture
+   and speaks for the channel itself -- so the sidebar and its toggle go with the rest.
+   On the body because both sit outside the cinema screen and no rule inside it can reach
+   them; the controller puts the class there for exactly this. */
+body.cable-guide-open #mainSidebar,
+body.cable-guide-open #sidebarCollapseBtn {
+  display: none !important;
+}
+
+/* Everything that describes the channel behind the guide. The guide says all of it, in its
+   own panel, and the two sets of type on top of each other is what the old ones never had. */
+.cinema__screen--guide .cinema__title,
+.cinema__screen--guide .cinema__control--watch,
+.cinema__screen--guide .cinema__fullscreen,
+.cinema__screen--guide .watch-party-start {
+  display: none;
+}
+
+/* The gradient the player page lays over the top of the frame for legible titles. There are
+   no titles over the picture now, and it darkens the guide's own header. */
+.cinema__screen--guide::before {
+  display: none;
+}
+
+/* A narrow window: the gutter and the split both give, rather than the grid scrolling
+   sideways before it has shown a single full programme. */
+@media (max-width: 1100px) {
+  .tvguide__preview,
+  .cinema__screen--guide .cinema__frames {
+    width: 42%;
+  }
+
+  .tvguide__corner,
+  .tvguide__channel {
+    flex-basis: 120px;
+    width: 120px;
+  }
+
+  .tvguide {
+    --guide-gutter: 120px;
+  }
+}

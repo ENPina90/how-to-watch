@@ -74,6 +74,42 @@ module CableSchedule
     CableSlot.where(list: channel).after(at).in_order.limit(limit).includes(:entry, :subentry)
   end
 
+  # How much of the evening the guide shows at once. Four hours is two screens' worth at
+  # the half-hour columns the old cable guides used, so there is something to scroll to.
+  GUIDE_HOURS = 4
+
+  # The guide always opens on a half hour, the way the printed listings did -- the columns
+  # are :00 and :30 and nothing else, so a window starting at 7:47 would label every one of
+  # them with a time nobody recognises. The clock in the corner says what time it really is.
+  def guide_window(at: Time.current)
+    local = at.in_time_zone(zone)
+    start = local.change(min: local.min < 30 ? 0 : 30, sec: 0, usec: 0)
+
+    start...(start + GUIDE_HOURS.hours)
+  end
+
+  # Every channel on the dial and what each is showing across that window, in one query
+  # rather than one per channel: the whole point of the guide is seeing them together.
+  #
+  # A programme counts if any part of it falls inside the window, so the one already
+  # running when the window opens is included -- that is the row the viewer is on.
+  def guide(at: Time.current)
+    window = guide_window(at: at)
+    dial = channels.to_a
+    by_channel = CableSlot.where(list_id: dial.map(&:id))
+                          .where(starts_at: ...window.end)
+                          .where(CableSlot.arel_table[:ends_at].gt(window.begin))
+                          .includes(:entry, :subentry)
+                          .in_order
+                          .group_by(&:list_id)
+
+    dial.each_with_index.map do |channel, index|
+      # The number on the dial rather than the row's id: a channel is "12" because of where
+      # it sits, and ids have gaps.
+      { channel: channel, number: index + 1, slots: by_channel.fetch(channel.id, []) }
+    end
+  end
+
   # Lay out one channel's day, replacing whatever was there. In a transaction because a
   # half-written day is worse than no day: the delete would have taken the old schedule off
   # air and left nothing in its place.

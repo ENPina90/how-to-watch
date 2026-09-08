@@ -25,12 +25,19 @@
     chrome by name, so changing channel here costs exactly what it costs there -- including
     the channel below being warmed in a second frame -- with no cable-specific copy of it. %>
 <div class="cinema__screen"
-     data-controller="cinema-fullscreen cinema-navigation"
+     data-controller="cinema-fullscreen cinema-navigation cable-guide"
      <%# The clock asking to move on is answered the same way the up-next card is on the
          watch page: the navigation controller fetches the next page and pastes it in, so
          the player's frame and any fullscreen survive the change of programme. %>
      data-action="cable-clock:move@document->cinema-navigation#moveFromEvent
                   player-keys:fullscreen@document->cinema-fullscreen#toggle"
+     data-cable-guide-url-value="<%= cable_guide_path %>"
+     data-cable-guide-channel-value="<%= @channel.id %>"
+     <%# The clock in the guide has to run in the zone the schedule was written in, not the
+         viewer's. Every time on the grid is a cable time; a clock ticking in local time
+         would disagree with the column right next to it for anybody not in that zone. %>
+     data-cable-guide-zone-value="<%= CableSchedule.zone.tzinfo.name %>"
+     data-cable-guide-open-class="cinema__screen--guide"
      data-cinema-fullscreen-idle-class="cinema__screen--idle"
      data-cinema-navigation-moving-class="cinema__screen--moving"
      data-cinema-navigation-preload-value="true"
@@ -107,6 +114,15 @@
           <i class="fa-solid fa-3x fa-caret-up position-absolute top-0 start-50 translate-middle-x"></i>
         <% end %>
 
+        <%# Where the shuffle is on the watch page. There is nothing to shuffle here -- the
+            running order is the schedule's -- and a listing is what that corner is worth on
+            a channel you cannot reorder. %>
+        <button type="button" class="p-0 border-0 bg-transparent cinema__guide-button"
+                title="TV Guide" aria-label="TV Guide"
+                data-action="click->cable-guide#toggle">
+          <i class="fa-solid fa-2x fa-table-list position-absolute top-0 end-0 translate-middle-y"></i>
+        </button>
+
         <%# Marking something watched is the one write on this page, and it is one the
             viewer asked for rather than a consequence of the channel having been on. Signed
             out there is no account to mark it against, so the control is left out. %>
@@ -134,5 +150,35 @@
     <% if user_signed_in? %>
       <%= render 'entries/review_modal' %>
     <% end %>
+  </div>
+
+  <%# The guide. Outside the chrome deliberately: changing channel replaces the chrome, and
+      a listing that vanished every time you tuned from it would be no use as a listing. It
+      stays up, the picture in its corner changes, and the highlight moves.
+
+      Empty until it is opened. The grid is fetched then, because it is only ever wanted on
+      purpose and because a grid built into the page would go stale while a film played. %>
+  <div class="tvguide" data-cable-guide-target="panel" hidden>
+    <div class="tvguide__head">
+      <%# The player is not moved into here -- moving an iframe in the DOM reloads it, and
+          the whole point is that what you were watching keeps playing. The frame stack is
+          resized into this corner by the stylesheet instead; this is the hole it sits in. %>
+      <div class="tvguide__preview"></div>
+
+      <div class="tvguide__detail">
+        <p class="tvguide__detail-channel" data-cable-guide-target="detailChannel"></p>
+        <h2 class="tvguide__detail-title" data-cable-guide-target="detailTitle"></h2>
+        <p class="tvguide__detail-meta" data-cable-guide-target="detailMeta"></p>
+        <p class="tvguide__detail-plot" data-cable-guide-target="detailPlot"></p>
+      </div>
+    </div>
+
+    <button type="button" class="tvguide__hide" data-action="click->cable-guide#close">
+      <i class="fa-solid fa-compress-alt"></i> Hide Guide
+    </button>
+
+    <div class="tvguide__body" data-cable-guide-target="body">
+      <p class="tvguide__loading">Loading listings&hellip;</p>
+    </div>
   </div>
 </div>

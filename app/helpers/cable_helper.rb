@@ -8,6 +8,12 @@ module CableHelper
     time.in_time_zone(CableSchedule.zone).strftime("%-l:%M %p").downcase
   end
 
+  # The clock in the guide's corner cell, seconds and all -- the old guides ran one, and it
+  # is the only thing on the grid that says what time it actually is.
+  def cable_clock(time)
+    time.in_time_zone(CableSchedule.zone).strftime("%-l:%M:%S")
+  end
+
   # What to call a programme in the listing: the episode where there is one, since "Veep"
   # three times in a row tells the viewer nothing about what is coming.
   def cable_programme_name(slot)
