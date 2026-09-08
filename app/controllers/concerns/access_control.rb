@@ -28,7 +28,10 @@ module AccessControl
   WATCH = {
     'entries' => %w[watch show],
     'pages' => %w[watch_now],
-    'lists' => %w[watch_current]
+    'lists' => %w[watch_current],
+    # A cable channel is a public shelf playing itself. There is nothing per-viewer on the
+    # page to withhold, and the action writes nothing -- see CableController.
+    'cable' => %w[show]
   }.freeze
 
   GUEST_ACTIONS = {

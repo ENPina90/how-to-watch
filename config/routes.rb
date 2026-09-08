@@ -57,6 +57,13 @@ Rails.application.routes.draw do
   root to: "lists#index"
   get 'watch_now', to: 'pages#watch_now'
 
+  # Cable: channels that are already running when you turn them on. The channel is in the
+  # path rather than a query parameter because it is the whole address here -- there is no
+  # entry to name, since what is playing is whatever the schedule says at this second.
+  # Both are GETs and neither writes: /cable records nothing about the viewer.
+  get 'cable', to: 'cable#show', as: :cable
+  get 'cable/:id', to: 'cable#show', as: :cable_channel
+
   # Health check endpoint for Railway
   get '/health', to: 'application#health'
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

@@ -3,12 +3,19 @@
     stream cannot render it two different ways. %>
 <%# Read once and rendered from that: asking the association again for the empty case let
     the message disagree with the rows above it. %>
-<% channels = user.subscribed_lists.order(:name).to_a %>
+<%# On a cable channel the list is the dial rather than this viewer's subscriptions --
+    /cable offers the same channels to everybody -- and each row tunes to a channel instead
+    of resuming one. Both come in as locals so the partial renders one way per page. %>
+<% channels = local_assigns[:channels] || user.subscribed_lists.order(:name).to_a %>
+<% cable = local_assigns[:cable] %>
+<% active_id = local_assigns[:active_list]&.id %>
 <div id="sidebarChannels" class="list-group list-group-flush">
   <% channels.each do |list| %>
     <%
       # Check if this is the current entry's list (for watch page)
-      is_current = if defined?(@entry) && @entry && @entry.list
+      is_current = if active_id
+        active_id == list.id
+      elsif defined?(@entry) && @entry && @entry.list
         @entry.list.id == list.id
       elsif @list && @list.persisted?
         @list.id == list.id
@@ -21,10 +28,10 @@
         same row did different things depending on where you clicked it from. The icon,
         which only appears under the pointer, is the way to the channel page. %>
     <div class="sidebar-channel">
-      <%= link_to list_watch_current_path(list),
+      <%= link_to(cable ? cable_channel_path(list) : list_watch_current_path(list),
                   class: "list-group-item list-group-item-action bg-transparent text-white border-0 py-2 px-0 mb-1 #{'active-list' if is_current}",
                   style: "border-radius: 6px;",
-                  data: (is_current ? { 'sidebar-autoscroll-target': 'active' } : {}) do %>
+                  data: (is_current ? { 'sidebar-autoscroll-target': 'active' } : {})) do %>
         <div class="d-flex align-items-center">
           <span class="text-truncate"><%= list.name %></span>
         </div>
@@ -38,6 +45,6 @@
   <% end %>
 
   <% if channels.empty? %>
-    <p class="text-muted small mb-0">Nothing subscribed yet.</p>
+    <p class="text-muted small mb-0"><%= cable ? "No channels on air." : "Nothing subscribed yet." %></p>
   <% end %>
 </div>

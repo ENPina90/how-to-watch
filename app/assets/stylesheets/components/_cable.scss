@@ -1,0 +1,109 @@
+/* /cable -- the listing and the off-air card. The player, the ring and fullscreen are all
+   the watch page's, in _cinema.scss; only what is new to cable is here. */
+
+/* The listing sits inside the title block and flows under it, so it clears a one-line
+   film title and a four-line episode alike. Everything positional -- where the block sits,
+   and the shift when the left sidebar opens -- belongs to .cinema__title in _cinema.scss;
+   this only says how wide the listing is and how loud. */
+.cable__guide {
+  margin-top: 18px;
+  max-width: 340px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  transition: opacity 0.3s ease;
+  /* Quiet until looked at: it is a listing, not a control, and it sits over the picture. */
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+/* Idle in fullscreen hides the pointer and the controls; the listing goes with them. */
+.cinema__screen--idle .cable__guide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cable__guide-label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 6px;
+}
+
+.cable__guide-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.cable__guide-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: #1a936f;
+  transition: width 1s linear;
+}
+
+.cable__guide-time {
+  display: inline-block;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+}
+
+.cable__guide-next {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .cable__guide-time {
+    margin-top: 0;
+    flex: 0 0 4.5em;
+  }
+
+  .cable__guide-name {
+    color: rgba(255, 255, 255, 0.75);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* A channel with nothing to play. Centred on the screen it would have filled. */
+.cable__off-air {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: white;
+  text-align: center;
+}
+
+.cable__off-air-card {
+  max-width: 460px;
+  padding: 40px;
+}
+
+/* The sidebar toggle. The watch page puts its equivalent in the top right, above the ring,
+   because its own title fills the top left -- but that is the *unified* button, whose
+   script requires an entries sidebar to drive and would retry forever on a page with none.
+   So cable keeps the plain button, which its script does handle, and borrows the position:
+   cinema mode otherwise pins it to the top left, on top of the channel name. */
+body.cable__mode #sidebarCollapseBtn {
+  left: auto !important;
+  right: 16px !important;
+  top: 16px !important;
+}
