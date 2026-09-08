@@ -62,6 +62,12 @@ class CableController < ApplicationController
 
     @entry = @slot.entry
     @current_subentry = @slot.subentry
+    # What the HUD's arrows step through. They only change what the banner says, never what
+    # is playing, so this is the running order either side of now and nothing more.
+    @nearby = CableSchedule.nearby(@channel, at: @now)
+    # Where this channel sits on the dial, which is what the badge shows. A channel is "3"
+    # because of its place in the line-up, not because of its row id.
+    @channel_number = CableSchedule.dial_number(@channel)
 
     # Joining midway is the entire point: the programme started at a clock time, and this
     # is how far it has got by now. Autoplay is on regardless of the channel's own setting

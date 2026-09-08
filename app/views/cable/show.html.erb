@@ -100,54 +100,8 @@
        data-cable-clock-url-value="<%= cable_channel_path(@channel) %>"
        data-cable-clock-ends-at-value="<%= @slot.ends_at.utc.iso8601 %>">
 
-    <div class="cinema__title">
-      <h3 class="d-flex align-items-center">
-        <%= link_to @channel.name, list_path(@channel), class: 'text-white text-decoration-none me-2' %>
-      </h3>
-      <h1><%= @entry.name %></h1>
-      <% if @current_subentry && @entry.media == 'anime' %>
-        <h3>E<%= @current_subentry.calculate_absolute_episode_number %> - <%= @current_subentry.name %></h3>
-      <% elsif @current_subentry %>
-        <h3><%= @entry.series.presence || @entry.name %></h3>
-        <h3>S<%= @current_subentry.season %>E<%= @current_subentry.episode %> - <%= @current_subentry.name %></h3>
-      <% elsif @entry.media == 'episode' %>
-        <h3><%= @entry.series %> - S<%= @entry.season %>E<%= @entry.episode %></h3>
-      <% end %>
-    </div>
-
-    <%# The watch page's ring, with the four controls that mean something here. There is no
-        next or previous entry to move to -- the running order is the schedule's, not the
-        viewer's -- so the left and right arrows and the shuffle are gone, and the up and
-        down arrows change channel as they do there. %>
-    <div id="watchCinemaControls" class="d-flex justify-content-center cinema__control cinema__control--watch">
-      <div class="position-relative" style="width: 80px; height: 80px;">
-        <%= link_to cable_channel_path(CableSchedule.sibling(@channel, :previous)),
-                    data: { cinema_move: true } do %>
-          <i class="fa-solid fa-3x fa-caret-up position-absolute top-0 start-50 translate-middle-x"></i>
-        <% end %>
-
-
-        <%# Marking something watched is the one write on this page, and it is one the
-            viewer asked for rather than a consequence of the channel having been on. Signed
-            out there is no account to mark it against, so the control is left out. %>
-        <% if user_signed_in? %>
-          <div class="position-absolute top-0 start-0 translate-middle-y">
-            <%= render 'entries/completion_status', entry: @entry, user: current_user %>
-          </div>
-        <% end %>
-
-        <%# Warmed as well as moved, the same as on the watch page: down the dial is the
-            direction somebody surfing travels. %>
-        <%= link_to cable_channel_path(CableSchedule.sibling(@channel, :next)),
-                    data: { cinema_move: true, cinema_preload: true } do %>
-          <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
-        <% end %>
-
-        <%= link_to root_path, class: 'text-decoration-none' do %>
-          <i class="fa-solid fa-house fa-2x position-absolute top-50 start-50 translate-middle"></i>
-        <% end %>
-      </div>
-    </div>
+    <%= render 'cable/hud', channel: @channel, entry: @entry, user: current_user,
+                            number: @channel_number, nearby: @nearby, current_slot: @slot %>
 
     <%# Marking a reviewable channel's film watched opens this, exactly as on the watch
         page -- _completion_status points both at the same #reviewModal. %>

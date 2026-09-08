@@ -412,11 +412,9 @@
 
 /* Everything that describes the channel behind the guide. The guide says all of it, in its
    own panel, and the two sets of type on top of each other is what the old ones never had. */
-.cinema__screen--guide .cinema__title,
-.cinema__screen--guide .cinema__control--watch,
+.cinema__screen--guide .cable-hud,
 .cinema__screen--guide .cinema__fullscreen,
-.cinema__screen--guide .cinema__guide-button,
-.cinema__screen--guide .watch-party-start {
+.cinema__screen--guide .cinema__guide-button {
   display: none;
 }
 
@@ -518,11 +516,9 @@ body.cable__mode .cinema__screen--idle:not(.cinema__screen--guide) {
     pointer-events: none;
   }
 
-  .cinema__title,
-  .cinema__control--watch,
+  .cable-hud,
   .cinema__fullscreen,
-  .cinema__guide-button,
-  .watch-party-start {
+  .cinema__guide-button {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s ease;
@@ -534,4 +530,290 @@ body.cable__mode .cinema__screen--idle:not(.cinema__screen--guide) {
    listing involves not moving the mouse, so it must not fade while it is up. */
 body.cable__mode .cinema__screen--guide {
   cursor: auto;
+}
+
+/* ---- the channel banner ---------------------------------------------------------------
+ *
+ * What is on, on which channel, at what time -- in the shape the box put it in: a bevelled
+ * bar with the channel lit up in a badge at one end and a direction pad at the other.
+ *
+ * It replaces both the plain title and the ring of icons the watch page uses. That ring is
+ * right for a page you work through, where every icon is something to do next; a cable
+ * channel has two things you can do to it and one of them is change the channel, so it gets
+ * a remote instead.
+ */
+.cable-hud {
+  position: fixed;
+  top: 22px;
+  left: 22px;
+  z-index: 12;
+  display: flex;
+  align-items: stretch;
+  max-width: min(880px, calc(100vw - 44px));
+  border: 3px solid #e8e8e8;
+  border-radius: 16px;
+  /* Not flat, but nearly -- a steep gradient reads as a web page, this reads as a signal. */
+  background: linear-gradient(180deg, #2f52a4 0%, #223e7d 100%);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-family: "Arial Narrow", "Helvetica Neue", "Liberation Sans Narrow", "DejaVu Sans Condensed", system-ui, sans-serif;
+  font-stretch: condensed;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  transition: opacity 0.4s ease;
+}
+
+/* The channel number, in the corner it always sat in. */
+.cable-hud__badge {
+  flex: 0 0 auto;
+  width: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #101f52;
+  border-right: 3px solid #e8e8e8;
+  text-decoration: none;
+}
+
+.cable-hud__badge:hover .cable-hud__number {
+  background: #5cc45c;
+}
+
+.cable-hud__set {
+  position: relative;
+  display: block;
+  padding-top: 12px;
+}
+
+/* Two rabbit ears over the set. Drawn rather than fetched -- it is two rotated bars, and a
+   picture of an aerial would be a request for eight hundred bytes of nostalgia. */
+.cable-hud__aerial::before,
+.cable-hud__aerial::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 15px;
+  background: #e8e8e8;
+}
+
+.cable-hud__aerial::before {
+  transform-origin: bottom center;
+  transform: rotate(-32deg);
+}
+
+.cable-hud__aerial::after {
+  transform-origin: bottom center;
+  transform: rotate(32deg);
+}
+
+.cable-hud__number {
+  display: block;
+  min-width: 44px;
+  padding: 2px 6px;
+  background: #47a447;
+  border: 3px solid #e8e8e8;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  transition: background 0.2s ease;
+}
+
+.cable-hud__body {
+  flex: 1 1 auto;
+  /* Room for a title before it starts ellipsing, but still allowed to shrink on a narrow
+     screen -- min-width on a flex child is what stops it collapsing to its content. */
+  min-width: 0;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 18px;
+}
+
+.cable-hud__channel,
+.cable-hud__channel:hover,
+.cable-hud__channel:focus-visible {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #b9c8ef;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cable-hud__channel:hover,
+.cable-hud__channel:focus-visible {
+  text-decoration: underline;
+}
+
+/* The programme, in quotes and in yellow, the way the listings did it -- and a link out of
+   cable to the ordinary player, the same pair the guide's panel offers. */
+.cable-hud__title,
+.cable-hud__title:hover,
+.cable-hud__title:focus-visible {
+  display: block;
+  color: #ffd42a;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cable-hud__title:hover,
+.cable-hud__title:focus-visible {
+  text-decoration: underline;
+}
+
+/* The show this belongs to, where the headline alone does not say. */
+.cable-hud__context {
+  margin: 1px 0 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cable-hud__context:empty {
+  display: none;
+}
+
+.cable-hud__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 3px 0 0;
+  font-size: 0.88rem;
+}
+
+.cable-hud__when {
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Which way you are looking. It is never absent, so a time on its own is never mistaken
+   for the time now. */
+.cable-hud__label {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: 3px;
+  background: #47a447;
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-shadow: none;
+}
+
+/* Looking up or down the running order rather than at what is playing. */
+.cable-hud--peeking .cable-hud__label {
+  background: #ffd42a;
+  color: #17306b;
+}
+
+.cable-hud--peeking .cable-hud__title {
+  color: #fff;
+}
+
+/* The pad. Up and down tune, left and right only look -- the same shape for both, because
+   on the remote they were the same shape. */
+.cable-hud__pad {
+  flex: 0 0 auto;
+  width: 104px;
+  display: grid;
+  grid-template-areas:
+    ".    up    ."
+    "left sel right"
+    ".    down  .";
+  align-items: center;
+  justify-items: center;
+  padding: 8px 4px;
+  row-gap: 2px;
+  background: linear-gradient(180deg, #d8ded6 0%, #b9c1b7 100%);
+  border-left: 3px solid #e8e8e8;
+}
+
+.cable-hud__key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #17306b;
+  font-size: 1rem;
+  line-height: 1;
+  text-shadow: none;
+  cursor: pointer;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.cable-hud__key:hover,
+.cable-hud__key:focus-visible {
+  color: #0a1637;
+}
+
+/* Nothing further rendered in that direction. */
+.cable-hud__key:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.cable-hud__key--up    { grid-area: up; }
+.cable-hud__key--down  { grid-area: down; }
+.cable-hud__key--left  { grid-area: left; }
+.cable-hud__key--right { grid-area: right; }
+
+/* Where SEL sat. The one control on this page that writes anything. */
+.cable-hud__sel {
+  grid-area: sel;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #e8e8e8;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #4d8ade 0%, #1f4f9c 70%);
+}
+
+.cable-hud__sel .completion-status i {
+  color: #fff;
+  font-size: 0.95rem;
+  text-shadow: none;
+}
+
+.cable-hud__home {
+  flex: 0 0 auto;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #101f52;
+  border-left: 3px solid #e8e8e8;
+  color: #cfd9f5;
+  font-size: 1rem;
+}
+
+.cable-hud__home:hover {
+  color: #ffd42a;
+}
+
+@media (max-width: 900px) {
+  .cable-hud__badge { width: 68px; }
+  .cable-hud__title { font-size: 1.15rem; }
 }

@@ -116,6 +116,64 @@ RSpec.describe 'Cable', type: :request do
     end
   end
 
+  describe 'the channel banner' do
+    before { sign_in user }
+
+    it 'shows the channel by its dial number' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('cable-hud__number')
+      expect(response.body).to include(">#{CableSchedule.dial_number(channel)}<")
+    end
+
+    # The same pair the guide's panel offers: the channel to its own page, the programme to
+    # the ordinary player, where it plays from the beginning and counts as watched.
+    it 'links the channel to its page and the programme to the watch player' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include(%(class="cable-hud__channel" href="#{list_path(channel)}"))
+      expect(response.body).to include(watch_entry_path(entry, channel: channel.id))
+    end
+
+    it 'carries the running order the peek arrows walk' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('data-slot-start=').and include('data-slot-current="true"')
+    end
+
+    # The whole point of the left and right arrows: they say what came before and what is
+    # coming, and they change nothing. A cinema-move on either would tune the channel, which
+    # is exactly what a schedule means you cannot do.
+    it 'gives the peek arrows no way to tune' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      peeks = response.body.scan(%r{<button[^>]*cable-hud__key--(?:left|right)[^>]*>})
+      expect(peeks.length).to eq(2)
+      peeks.each do |arrow|
+        expect(arrow).not_to include('data-cinema-move')
+        expect(arrow).not_to include('href')
+      end
+    end
+
+    # Up and down still do, and down is still the one worth warming.
+    it 'keeps the channel arrows as moves' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include(cable_channel_path(CableSchedule.sibling(channel, :next)))
+      expect(response.body).to include('data-cinema-preload')
+    end
+
+    it 'gives a signed-out visitor no way to mark anything watched' do
+      sign_out user
+      AppSetting.update_access_mode!('open')
+
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response).to be_successful
+      expect(response.body).not_to include('completion-status')
+    end
+  end
+
   describe 'the guide' do
     let!(:second_channel) do
       create(:list, user: user, provider: provider, default: true, name: 'Channel Two')
