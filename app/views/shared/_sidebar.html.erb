@@ -308,7 +308,7 @@ function initializeUnifiedSidebarControl() {
       pageContainer.style.width = 'calc(100% - 630px)';
     }
 
-    const watchControls = document.getElementById('watchCinemaControls');
+    const watchControls = document.querySelector('.cinema__screen');
     if (watchControls) {
       watchControls.style.setProperty('--watch-controls-right', '390px');
     }
@@ -338,7 +338,7 @@ function initializeUnifiedSidebarControl() {
     }
 
     // Ensure cinema controls are positioned correctly
-    const watchControls = document.getElementById('watchCinemaControls');
+    const watchControls = document.querySelector('.cinema__screen');
     if (watchControls) {
       watchControls.style.setProperty('--watch-controls-right', '120px');
     }
@@ -380,7 +380,7 @@ function initializeUnifiedSidebarControl() {
       }
 
       // Adjust cinema controls
-      const watchControls = document.getElementById('watchCinemaControls');
+      const watchControls = document.querySelector('.cinema__screen');
       if (watchControls) {
         watchControls.style.setProperty('--watch-controls-right', '120px');
       }
@@ -423,7 +423,7 @@ function initializeUnifiedSidebarControl() {
       }
 
       // Adjust cinema controls
-      const watchControls = document.getElementById('watchCinemaControls');
+      const watchControls = document.querySelector('.cinema__screen');
       if (watchControls) {
         watchControls.style.setProperty('--watch-controls-right', '390px');
       }

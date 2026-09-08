@@ -325,11 +325,27 @@ indistinguishable; anything driving our own auto-next wants `event`.
 `player_info` carries `season` and `episode`, which is how we can keep our own position
 record even when `autonext` advances episodes behind our back (§7).
 
-**The downward protocol is undocumented and reverse-engineered**:
-`{ player: true, action: "play" | "pause" | "mute" | "unmute" | "seek<N>" }`. The player
-matches `seek([+-]?)([0-9]+)`, so a fractional target silently does nothing. Commands sent
-before the first `PLAYER_EVENT` are dropped, which is why `VidsrcPlayer` sends nothing until
-the player has spoken.
+**The downward protocol is undocumented.** Read off the player's own handler on
+2026-09-08 (`/embed/iframe_player/assets/player.js`), so this list is complete rather than
+merely what we have tried:
+
+```js
+{ player: true, action: "play" | "pause" | "mute" | "unmute" | "seek<N>" }
+{ type: "TV_SET", season: <n>, episode: <n> }   // switches episode, TV only
+```
+
+**`seek` takes a sign, and it is relative.** `seek120` goes to 2:00; `seek+5` and `seek-5`
+are applied against the player's own `currentTime`. That is what the arrow keys send — a
+relative nudge is exact, where seeking to a position computed on our side is only as good
+as the last progress report, and those are five seconds apart. A fractional target matches
+nothing and silently does nothing.
+
+The two middle frames relay anything from the parent straight down, so a command reaches
+the real player untouched. Commands sent before the first `PLAYER_EVENT` are dropped, which
+is why `VidsrcPlayer` sends nothing until the player has spoken.
+
+**There is nothing else.** The handler answers those two messages and ignores everything
+else — no volume, no quality, no captions, no subtitle timing.
 
 ---
 
@@ -425,6 +441,21 @@ with a blocker on will see a dead frame that looks like our bug.
 
 **Subtitles reportedly only load over a VPN** for some users (2026-08-14, 2026-08-15). No
 resolution posted.
+
+### Subtitle timing is theirs, and only theirs
+
+The player has a sync control built in: **settings → Subtitle timing**, a −/+ pair stepping
+0.25s up to ±60s, with "Reset timing" beside it. The value is stored per media id
+(`vsub_offset_<mediaId>` in localStorage), so a mis-synced release stays corrected across
+reloads and across episodes of the same show.
+
+**It cannot be driven from this app**, and it is worth writing down why so the question is
+not reopened. `subtitles.js` registers no `message` listener and no `keydown` listener; the
+offset moves only when its own buttons are clicked. `player.js`'s handler ignores anything
+that is not `play`/`pause`/`mute`/`unmute`/`seek`/`TV_SET` (§6). Their localStorage is on
+their origin. All three routes are closed, so a hotkey of ours could only work by rendering
+our own subtitle track over the frame and syncing it to `player_progress` — a real feature,
+not a shortcut, and one that would duplicate their picker.
 
 **`sub_url` was broken** as of 2026-08-09; the admin said it and the quality selector would
 be fixed. Unverified since.
