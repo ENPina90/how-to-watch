@@ -577,14 +577,25 @@ body.cable__mode .cinema__screen--guide {
  */
 .cable-hud {
   position: fixed;
-  top: 22px;
-  left: 22px;
+  /* Into the corner rather than floating clear of it. The player draws its own title in
+     exactly this spot -- the film's name and year, in grey, at the top left of the frame --
+     and an inset banner left a band of it showing above and to the left. There is no
+     reaching into a cross-origin frame to turn that off, so it is covered instead, the same
+     answer the fullscreen and guide buttons give to their own controls.
+
+     Flush also reads right: these banners sat in the corner of the picture rather than
+     hovering over the middle of it. */
+  top: 0;
+  left: 0;
   z-index: 12;
   display: flex;
   align-items: stretch;
-  max-width: min(880px, calc(100vw - 44px));
+  max-width: min(880px, 100vw);
   border: 3px solid #e8e8e8;
-  border-radius: 16px;
+  /* Square where it meets the corner, rounded where it does not. A 16px curve at the top
+     left would leave a sliver of the player's title showing through the arc, which is the
+     one place it must not. */
+  border-radius: 0 16px 16px 16px;
   /* Not flat, but nearly -- a steep gradient reads as a web page, this reads as a signal. */
   background: linear-gradient(180deg, #2f52a4 0%, #223e7d 100%);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
@@ -661,7 +672,7 @@ body.cable__mode .cinema__screen--guide {
   /* Room for a title before it starts ellipsing, but still allowed to shrink on a narrow
      screen -- min-width on a flex child is what stops it collapsing to its content. */
   min-width: 0;
-  width: 340px;
+  width: 380px;
   display: flex;
   flex-direction: column;
   justify-content: center;
