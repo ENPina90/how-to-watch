@@ -583,6 +583,11 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
    picture. The ring's box is 80px, so its centre is 40px in from where it is anchored, and
    the transform hangs the pill's own centre there. */
 .watch-party-start {
+  /* Fixed, like the ring it hangs over. Absolute resolved this against .cinema__screen,
+     which the entries sidebar insets by its own 350px, while the ring measures from the
+     viewport -- so the same offset put the two 350px apart and only agreed when that
+     sidebar was shut. */
+  position: fixed;
   right: calc(var(--watch-chrome-right) + 40px);
   transform: translateX(50%);
   top: var(--watch-party-top);
