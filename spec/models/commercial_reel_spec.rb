@@ -75,6 +75,12 @@ RSpec.describe CommercialReel do
       expect(eighty_seven.embed_url).to include('controls=0').and include('disablekb=1')
     end
 
+    # Without it the player refuses in silence and the viewer watches YouTube's own error
+    # card for the length of the break.
+    it 'asks the player to report back so a refusal can be heard' do
+      expect(eighty_seven.embed_url).to include('enablejsapi=1')
+    end
+
     it 'is nothing at all when the provider is gone' do
       youtube.update!(active: false)
 

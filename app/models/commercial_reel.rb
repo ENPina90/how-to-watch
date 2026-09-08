@@ -62,7 +62,11 @@ class CommercialReel < ApplicationRecord
 
     options = {
       autoplay: 1, start: start_at.to_i, controls: 0, disablekb: 1,
-      modestbranding: 1, rel: 0, playsinline: 1, iv_load_policy: 3
+      modestbranding: 1, rel: 0, playsinline: 1, iv_load_policy: 3,
+      # So the page can hear the player refuse. A YouTube embed that will not play says so
+      # only to whoever asked it to listen -- everyone else gets a black rectangle reading
+      # "This video is unavailable" for the length of the break. See cable_filler.
+      enablejsapi: 1
     }
     "#{base}#{base.include?('?') ? '&' : '?'}#{options.to_query}"
   end
