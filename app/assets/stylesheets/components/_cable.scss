@@ -342,7 +342,19 @@
   font-weight: 700;
   line-height: 1.15;
   text-decoration: none;
+  /* `clip`, not `hidden`, and the difference is the whole reason the title below can
+     follow the scroll. `overflow: hidden` makes an element a scroll container, and a
+     scroll container between a sticky element and the real scrollport is what a sticky
+     element sticks to -- so the title would have stuck to a box that never scrolls, which
+     is a long way of saying it would not have moved at all. `clip` clips without
+     scrolling, so the scrollport stays the guide's own.
+
+     `hidden` first as the fallback: a browser too old for `clip` drops that line and keeps
+     this one, which clips just as well and merely leaves the title where it was rendered.
+     Without it such a browser would fall all the way back to `visible` and let every long
+     title run across its neighbours. */
   overflow: hidden;
+  overflow: clip;
 }
 
 .tvguide__programme:hover,
@@ -358,11 +370,25 @@
   border-color: #ffd42a;
 }
 
-/* A title in a cell that is half off the left edge scrolls off with it, rather than
-   holding station against the gutter. Pinning it needs the cell to stop clipping, which
-   makes the cell the sticky container's parent and lets long titles spill into the next
-   programme -- a worse fault than a clipped one. Left as it is. */
+/* The title holds station against the channel gutter as the day scrolls past it, so a
+   three-hour film half off the left edge still says what it is instead of showing the tail
+   of its own name -- and stops at the right-hand edge of its own block, because sticky
+   cannot move an element outside the box that contains it.
+   
+   Two things have to be true for that, and missing either leaves it inert:
+   
+   the cell must not be a scroll container (see `overflow: clip` above), or the title
+   sticks to the cell instead of to the guide;
+   
+   and the title must be narrower than the cell, which is why it is sized to its text
+   rather than stretched. A flex child filling the cell has nowhere to slide to. */
 .tvguide__name {
+  position: sticky;
+  /* Clear of the gutter, which is itself pinned at the left edge -- anything at 0 would
+     slide underneath it. */
+  left: calc(var(--guide-gutter, 180px) + 8px);
+  flex: 0 1 auto;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   /* Two lines in a 54px row, which is what fits a long episode title without a cell
@@ -372,12 +398,19 @@
   -webkit-box-orient: vertical;
 }
 
-/* A programme clipped by the edge of the window says so, as these always did. */
+/* A programme clipped by the edge of the day says so, as these always did. Pinned to the
+   cell's own edges rather than sitting either side of the title in the flow: the title
+   slides, and an arrow travelling with it would stop meaning "there is more this way". */
 .tvguide__arrow {
-  flex: 0 0 auto;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   color: #ffd42a;
   font-size: 0.75rem;
 }
+
+.tvguide__arrow--in  { left: 5px; }
+.tvguide__arrow--out { right: 5px; }
 
 /* Now, across every channel at once -- it is a fact about the time, not about a row.
 
