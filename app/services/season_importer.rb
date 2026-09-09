@@ -83,6 +83,11 @@ class SeasonImporter
           # subentry's own id is never read, so it is not worth a request per episode.
           imdb: @series_imdb_id,
           rating: episode_data['vote_average'],
+          # An episode's runtime belongs to the episode, not to the show -- and TMDB hands
+          # it over in this very payload. It was being dropped, which left the cable
+          # schedule with nothing to lay a series out by except a flat guess, so a
+          # forty-minute episode went out in a thirty-minute slot and was cut off.
+          length: episode_data['runtime'],
           completed: false
         )
         added += 1
