@@ -70,6 +70,65 @@ RSpec.describe 'Uploading a poster' do
     expect(entry.reload.poster).not_to be_attached
   end
 
+  # The other half of "none of these is any good": a picture found in a browser tab is a
+  # link long before it is a file on disk. The server fetches it and keeps a copy rather
+  # than the page pointing at somebody else's host forever.
+  describe 'pasting a link' do
+    before { allow(Resolv).to receive(:getaddresses).and_return(['93.184.216.34']) }
+
+    def paste(url, as: owner)
+      sign_in as
+      patch update_poster_entry_path(entry), params: { poster_url: url }
+    end
+
+    it 'fetches the image and attaches a copy' do
+      stub_request(:get, 'http://images.test/poster.png').to_return(status: 200, body: png_bytes)
+
+      paste('http://images.test/poster.png')
+
+      expect(response).to be_successful
+      expect(entry.reload.poster).to be_attached
+      expect(entry.poster.blob.content_type).to eq('image/png')
+    end
+
+    # The extension comes from the sniffed type, not the path: a URL ending .jpg is not a
+    # promise, and this name is what the file is served back under.
+    it 'names the file from what the bytes turned out to be' do
+      stub_request(:get, 'http://images.test/poster.jpg').to_return(status: 200, body: png_bytes)
+
+      paste('http://images.test/poster.jpg')
+
+      expect(entry.reload.poster.filename.to_s).to end_with('.png')
+    end
+
+    it 'says why when there was no image at that address' do
+      stub_request(:get, 'http://images.test/poster.png').to_return(status: 404)
+
+      paste('http://images.test/poster.png')
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body['error']).to be_present
+      expect(entry.reload.poster).not_to be_attached
+    end
+
+    # The field lets somebody choose where the server connects to, so it is not only the
+    # image that has to be checked. RemoteImage covers the rest; this is the wiring.
+    it 'refuses to fetch from somewhere only the server can reach' do
+      paste('http://169.254.169.254/latest/meta-data/')
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(entry.reload.poster).not_to be_attached
+      expect(WebMock).not_to have_requested(:get, %r{169\.254\.169\.254})
+    end
+
+    it 'refuses to read a file off the server instead' do
+      paste('/etc/passwd')
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(entry.reload.poster).not_to be_attached
+    end
+  end
+
   # Same gate as every other write on an entry: update_poster is in check_edit_permissions.
   it 'does not let somebody else replace the poster' do
     upload(png_bytes, filename: 'my-poster.png', as: create(:user))

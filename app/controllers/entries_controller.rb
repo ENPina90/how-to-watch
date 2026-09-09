@@ -668,19 +668,24 @@ class EntriesController < ApplicationController
       { error: 'Failed to save that image' }
     end
 
+    # A link, either one of the candidates the picker found or one somebody pasted. Since
+    # the second of those lets the user choose where the server connects to, the fetching is
+    # RemoteImage's job -- see the note there for what it refuses and why.
+    #
+    # The extension comes from the sniffed type rather than from the path: a URL ending
+    # .jpg is not a promise, and this name is what the file is served under.
     def attach_poster_from_url(poster_url)
-      downloaded_image = URI.open(poster_url)
-      extension = File.extname(URI.parse(poster_url).path).delete('.').presence || 'jpg'
+      image = RemoteImage.fetch(poster_url, max_bytes: MAX_POSTER_BYTES, accept: POSTER_CONTENT_TYPES)
+      return { error: image.error } unless image.ok?
 
       @entry.poster.attach(
-        io: downloaded_image,
-        filename: poster_filename(extension),
-        content_type: downloaded_image.content_type || 'image/jpeg'
+        io: image.io,
+        filename: poster_filename(image.content_type.split('/').last),
+        content_type: image.content_type
       )
       {}
     rescue StandardError => e
-      Rails.logger.error "Error updating poster: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
+      Rails.logger.error "Error updating poster for entry #{@entry.id}: #{e.message}"
       { error: 'Failed to update poster' }
     end
 
