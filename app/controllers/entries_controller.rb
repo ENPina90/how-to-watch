@@ -233,7 +233,11 @@ class EntriesController < ApplicationController
       # rest of this -- the embed url, the season and episode in the sidebar -- follows
       # from the same place a normal visit reads, rather than being patched in afterwards.
       chosen = @entry.subentries.find_by(id: params[:subentry]) if params[:subentry].present?
-      @entry.update_user_subentry!(current_user, chosen) if chosen
+      # Not while merely warming. Warming the next episode asks for it by id, and a
+      # speculative fetch must not move the viewer's place in a series they have not
+      # reached yet -- the page still renders the episode it was asked for, it simply does
+      # not remember it.
+      @entry.update_user_subentry!(current_user, chosen) if chosen && !preloading?
 
       # Use user's current episode position instead of global entry.current. Signed out
       # there is nowhere to record the choice, so it holds for this request alone -- which
@@ -272,6 +276,11 @@ class EntriesController < ApplicationController
       flash[:alert] = "No video source available for this entry"
       redirect_to list_path(@entry.list) and return
     end
+
+    # Where auto-advance will land, so the page can warm it as the film runs out. Only
+    # where it can be known: an unordered channel picks at random when it advances, and
+    # there is no warming a coin toss.
+    @next_url = auto_advance_destination
 
     # Set episode sidebar variables
     @tmdb_id = @entry.tmdb
@@ -664,6 +673,23 @@ class EntriesController < ApplicationController
     # for somebody who has never played this entry.
     def resume_position
       current_user&.user_entry_for(@entry)&.resume_position
+    end
+
+    # What the up-next card will move to, as a plain GET of the player page. Mirrors what
+    # increment_current does, and is nil wherever that is not predictable.
+    def auto_advance_destination
+      return nil unless current_user
+
+      if @entry.media == 'series' || @entry.media == 'anime'
+        following = @entry.subentry_after(@current_subentry)
+        return following && watch_entry_path(@entry, channel: @channel.id, subentry: following.id)
+      end
+
+      # An unordered channel shuffles instead of stepping, and the shuffle is random.
+      return nil unless @channel.ordered?
+
+      following = neighbour_in_channel(:next)
+      following && watch_entry_path(following, channel: @channel.id)
     end
 
     def watching_channel

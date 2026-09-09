@@ -29,7 +29,11 @@
      <%# The clock asking to move on is answered the same way the up-next card is on the
          watch page: the navigation controller fetches the next page and pastes it in, so
          the player's frame and any fullscreen survive the change of programme. %>
+     <%# The clock gives the warming its cue here: there is no up-next card on a cable
+         channel, and what comes next is not at an address of its own -- it is this same
+         channel, asked what will be on at the moment it changes. %>
      data-action="cable-clock:move@document->cinema-navigation#moveFromEvent
+                  cable-clock:warm@document->cinema-navigation#warmNext
                   player-keys:fullscreen@document->cinema-fullscreen#toggle"
      data-cable-guide-url-value="<%= cable_guide_path %>"
      data-cable-guide-channel-value="<%= @channel.id %>"
@@ -121,6 +125,8 @@
        data-cable-clock-adapter-value="<%= @in_break ? nil : @entry.resolved_source&.sync_adapter %>"
        <%# Where to go when this programme is over: the channel itself, which answers with
            whatever the schedule says is on by the time the request lands. %>
+       <%# This channel as it will be the moment it changes, for warming ahead of the change. %>
+       data-cinema-next-url="<%= @next_url %>"
        data-cable-clock-url-value="<%= cable_channel_path(@channel) %>"
        <%# The next time this channel shows something different, which is not always the end
            of the slot: a programme with a break after it changes twice. %>

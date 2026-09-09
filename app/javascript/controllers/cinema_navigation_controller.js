@@ -110,8 +110,10 @@ export default class extends Controller {
 
     event.preventDefault()
 
-    // The one direction that may already be waiting.
-    if (link.dataset.cinemaPreload !== undefined && this.warmed) return this.promote()
+    // The one direction that may already be waiting -- but only when it is still what is
+    // warm. Late in a programme the spare is re-aimed at whatever comes next on this
+    // channel, and promoting that for a press of "down" would land on the wrong thing.
+    if (this.warmed?.request === link.href) return this.promote()
 
     this.moveTo(link.href)
   }
@@ -172,19 +174,59 @@ export default class extends Controller {
     // is instant, so it should not wait behind them.
     const frame = document.getElementById("cinema")
     const incoming = page.getElementById("cinema")
+
     if (frame && incoming && frame.src !== incoming.src) {
-      // The title is what a screen reader calls the frame, so it has to move with the src
-      // or the player is announced as whatever was playing before.
-      frame.title = incoming.title
-      frame.src = incoming.src
+      // Already warm and playing? Then the move costs nothing at all -- no request left to
+      // make and no embed left to build. Matched on the address rather than on which
+      // control was pressed, so it works however the move was started: the up-next card
+      // posts a position first and lands here with the answer, and its answer is the same
+      // page that was warmed.
+      if (this.adoptWarmed(incoming)) {
+        // Said before the chrome goes in, so the controller inside it connects already
+        // knowing: this player has been running with nobody in front of it, and wherever it
+        // has reached is not somewhere anybody watched it reach.
+        page.getElementById("cinema-chrome")?.setAttribute("data-player-progress-warmed-value", "true")
+      } else {
+        // The title is what a screen reader calls the frame, so it has to move with the src
+        // or the player is announced as whatever was playing before.
+        frame.title = incoming.title
+        frame.src = incoming.src
+      }
     }
 
     this.applyChrome(page)
     history.pushState({}, "", url)
 
-    // Whatever was warm was warm for the channel below the entry we have just left.
+    // Whatever was warm was warm for where we were, not for where we have arrived.
     this.discardWarmed()
     this.scheduleWarming()
+  }
+
+  // Swap the spare frame in for the live one, when the spare is already showing what we are
+  // moving to. Returns false when there is nothing to adopt, and the caller loads the src
+  // the ordinary way.
+  adoptWarmed(incoming) {
+    const spare = document.getElementById("cinema-next")
+    const live = document.getElementById("cinema")
+    if (!spare || !live || !incoming?.src || spare.src !== incoming.src) return false
+
+    live.remove()
+    spare.id = "cinema"
+    spare.classList.add("cinema__frame--live")
+
+    // It was stopped while it warmed; this is what it was warmed for.
+    //
+    // Unmuted as well as played. Nobody had touched the page when the warmed frame started,
+    // so the browser started it muted -- which is what kept it quiet behind the film being
+    // watched, and would otherwise leave the viewer landing on a silent channel. By now
+    // somebody has touched the page, or a countdown they watched has run out.
+    this.warmedPlayer?.unmute()
+    this.warmedPlayer?.play()
+    this.warmedPlayer?.destroy()
+    this.warmedPlayer = null
+    this.warmedAt = null
+
+    return true
   }
 
   // Everything except the frame: promoting a warmed frame has already dealt with that.
@@ -239,31 +281,61 @@ export default class extends Controller {
     return window.innerWidth >= 900
   }
 
+  get channelBelow() {
+    return this.element.querySelector("a[data-cinema-move][data-cinema-preload]")?.href
+  }
+
   scheduleWarming() {
     if (!this.worthWarming) return
 
     this.warmingTimer = setTimeout(() => this.warm(), PRELOAD_DELAY)
   }
 
-  async warm() {
-    const link = this.element.querySelector("a[data-cinema-move][data-cinema-preload]")
-    if (!link || this.warmed) return
+  // What comes next on this channel, warmed as the current programme runs out.
+  //
+  // Until now the one warmed frame was always the channel below, because that is where
+  // somebody surfing goes. Somebody who has sat through a whole film is not surfing: they
+  // are about to be moved on by the up-next card or by the schedule, and that is the move
+  // worth having ready. So the warm is re-aimed rather than doubled -- a second spare frame
+  // would be a third video stream, which is the cost this has always declined to pay.
+  //
+  // The page says where next is, because only the page knows: the watch page's next entry,
+  // or the cable page's next programme. Where it does not say -- an unordered channel picks
+  // at random, and there is no warming a coin toss -- nothing happens and the move pays
+  // full price, exactly as it did before.
+  warmNext() {
+    const url = document.getElementById("cinema-chrome")?.dataset.cinemaNextUrl
+    if (!url || !this.worthWarming || this.warmed?.request === url) return
+
+    this.discardWarmed()
+    this.warm(url)
+  }
+
+  async warm(url = this.channelBelow) {
+    if (!url || this.warmed) return
 
     try {
       // Marked as speculative both ways: the header tells the server not to record a
       // position for a channel nobody has opened, and the XHR header keeps it out of the
       // visit count for the same reason.
-      const response = await fetch(link.href, {
+      const response = await fetch(url, {
         headers: { Accept: "text/html", "X-Cinema-Preload": "1", "X-Requested-With": "XMLHttpRequest" }
       })
       if (!response.ok) return
 
       const page = new DOMParser().parseFromString(await response.text(), "text/html")
       const incoming = page.getElementById("cinema")
-      // Nothing to warm: an empty channel, or the same entry we are already watching.
-      if (!incoming || !incoming.src || incoming.src === document.getElementById("cinema")?.src) return
+      // Nothing to warm: an empty channel, or what we are already watching. Compared with
+      // the resume position taken out, because that is not what makes two embeds different
+      // things -- asking for what is on next a little too early answers with the programme
+      // already playing, a few seconds further in, and warming that would be a second
+      // stream of the film we are already watching.
+      if (!incoming?.src || this.samePlaying(incoming.src, document.getElementById("cinema")?.src)) return
 
-      this.warmed = { page: page, url: response.url }
+      // Both the address asked for and the one it landed on: the first is how a control is
+      // recognised as pointing at what is already warm, the second is what the history gets.
+      // They differ whenever the server redirects, which "play this channel" always does.
+      this.warmed = { request: url, page: page, url: response.url }
 
       // Only warm a player this page can drive. A frame it cannot pause is a frame playing
       // out loud behind the one being watched -- which is what a channel in its commercial
@@ -323,6 +395,25 @@ export default class extends Controller {
   // at all -- so the lookup came back empty and the warmed frame was built with nothing to
   // stop it. A frame nobody can pause is a frame playing out loud behind the one being
   // watched. The adapter belongs to the page's player, not to one of its readers.
+  // Two embeds are the same thing playing when they differ only in where they would start.
+  // Every provider spells that differently, hence the list; an address this cannot parse
+  // falls back to comparing it whole, which is the old behaviour.
+  samePlaying(a, b) {
+    if (!a || !b) return false
+
+    const withoutResume = (address) => {
+      try {
+        const url = new URL(address)
+        ;["startAt", "start", "t"].forEach((param) => url.searchParams.delete(param))
+        return url.toString()
+      } catch {
+        return address
+      }
+    }
+
+    return withoutResume(a) === withoutResume(b)
+  }
+
   adapterFor(incoming) {
     const chrome = incoming.ownerDocument.getElementById("cinema-chrome")
     const name = chrome?.dataset.playerAdapter
@@ -330,43 +421,15 @@ export default class extends Controller {
   }
 
   // The move the warming was for: no request, no player to build.
+  // The move the warming was for: no request, and no player to build. `apply` does the
+  // adopting now, so this only has to say we are leaving and hand it the page it already
+  // has -- and it stays correct when the spare was fetched but never started, which is what
+  // happens for a player this page cannot drive.
   promote() {
     const { page, url } = this.warmed
-    const live = document.getElementById("cinema")
-    const next = document.getElementById("cinema-next")
 
     this.dispatch("leaving", { target: document })
-
-    // Fetched but never started, because nothing here could have stopped it once it began.
-    // The page is still fresh, so this is an ordinary move with the request already paid.
-    if (!live || !next) return this.apply(page, url)
-
-    live.remove()
-    next.id = "cinema"
-    next.classList.add("cinema__frame--live")
-    // It was stopped while it warmed; this is what it was warmed for.
-    //
-    // Unmuted as well as played. Nobody had touched the page when the warmed frame
-    // started, so the browser started it muted -- which is what kept it quiet behind the
-    // film being watched, and would otherwise leave the viewer landing on a silent
-    // channel. Somebody has touched the page now: they pressed down.
-    this.warmedPlayer?.unmute()
-    this.warmedPlayer?.play()
-    this.warmedPlayer?.destroy()
-    this.warmedPlayer = null
-    this.warmedAt = null
-    this.warmed = null
-
-    // Said before the chrome goes in, so the controller inside it is already connected
-    // knowing this: the player it is about to adopt has been running with nobody in front
-    // of it, and wherever it has reached is not somewhere anybody watched it reach.
-    page.getElementById("cinema-chrome")?.setAttribute("data-player-progress-warmed-value", "true")
-
-    this.applyChrome(page)
-    history.pushState({}, "", url)
-
-    // And line up whatever is below the channel we just landed on.
-    this.scheduleWarming()
+    this.apply(page, url)
   }
 
   discardWarmed() {

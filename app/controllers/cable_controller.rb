@@ -53,7 +53,11 @@ class CableController < ApplicationController
     # decides a whole day's programme.
     CableSchedule.ensure_day!(@channel, CableSchedule.today) unless preloading?
 
-    @now = Time.current
+    # Normally now, but the page may ask what will be on in a moment -- that is how it warms
+    # the next programme before it starts, since unlike the watch page the thing coming next
+    # is not at an address of its own. Bounded to the near future because that is all it is
+    # for, and read-only either way: this decides what to render and writes nothing.
+    @now = requested_time || Time.current
     @slot = CableSchedule.on_air(@channel, at: @now)
 
     # Off air: the channel has nothing that can be played at all. The view says so and
@@ -98,6 +102,10 @@ class CableController < ApplicationController
     # the next programme.
     @next_change_at = @in_break ? @slot.ends_at : @slot.next_change_after(@now)
 
+    # The same page as it will be the moment that happens, for warming what comes next while
+    # the current programme runs out.
+    @next_url = cable_channel_path(@channel, at: @next_change_at.to_i)
+
     # No sidebars at all. There is no list to step through on the right, and the channel
     # list on the left is what the guide is for -- a permanent panel naming the same six
     # channels is furniture over a picture. What is left is the picture and the ring.
@@ -109,6 +117,18 @@ class CableController < ApplicationController
   end
 
   private
+
+  # How far ahead the page may ask to see. Long enough to cover warming the next programme,
+  # short enough that this stays a warming affordance rather than a way to browse the
+  # schedule -- the guide is what does that, and it says so on every row.
+  WARM_WINDOW = 15.minutes
+
+  def requested_time
+    at = params[:at].presence and at = Time.zone.at(at.to_i)
+    return nil if at.nil? || !at.between?(Time.current, WARM_WINDOW.from_now)
+
+    at
+  end
 
   # Which of the entries in the listing this viewer has already seen, as one query for the
   # lot. Asking each entry in turn would be a query per cell, and a day of listings across

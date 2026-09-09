@@ -185,6 +185,83 @@ RSpec.describe 'Moving between entries in place', :needs_provider, type: :reques
     end
   end
 
+  # The one spare frame is aimed at the channel below, because that is where somebody
+  # surfing goes. Somebody who has sat through a whole film is not surfing -- they are about
+  # to be moved on -- so late in a programme the page re-aims it at what comes next. It can
+  # only do that where the page says what next is.
+  describe 'naming what comes next on this channel' do
+    it 'points at the next entry on an ordered channel' do
+      get watch_entry_path(entry)
+
+      expect(response.body).to include(
+        %(data-cinema-next-url="#{watch_entry_path(next_entry, channel: channel.id)}")
+      )
+    end
+
+    # An unordered channel advances by shuffling, and the shuffle is random. There is no
+    # warming a coin toss, so the page says nothing and the move pays full price.
+    it 'says nothing on an unordered channel' do
+      channel.update!(ordered: false)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).not_to include('data-cinema-next-url')
+    end
+
+    # A series advances by episode rather than by entry, so what comes next is the same
+    # entry with the following episode.
+    it 'points at the next episode of a series' do
+      series = create(:entry, list: channel, media: 'series', name: 'Trek', imdb: 'tt0060028', position: 9)
+      first = series.subentries.create!(season: 1, episode: 1, name: 'One')
+      second = series.subentries.create!(season: 1, episode: 2, name: 'Two')
+      series.update_user_subentry!(user, first)
+
+      get watch_entry_path(series)
+
+      # Escaped as the view writes it: two parameters means an `&`, which HTML-escapes.
+      # The browser un-escapes it reading the dataset, so this is only about the markup.
+      wanted = CGI.escapeHTML(watch_entry_path(series, channel: channel.id, subentry: second.id))
+      expect(response.body).to include(%(data-cinema-next-url="#{wanted}"))
+    end
+
+    it 'says nothing on the last episode there is' do
+      series = create(:entry, list: channel, media: 'series', name: 'Trek', imdb: 'tt0060028', position: 9)
+      only = series.subentries.create!(season: 1, episode: 1, name: 'One')
+      series.update_user_subentry!(user, only)
+
+      get watch_entry_path(series)
+
+      expect(response.body).not_to include('data-cinema-next-url')
+    end
+
+    # Warming the next episode asks for it by id, and the watch action records the episode
+    # it is asked for. A speculative fetch must not move somebody's place in a series they
+    # have not reached -- the page renders that episode, it just does not remember it.
+    it 'does not move the viewer\'s episode while merely warming it' do
+      series = create(:entry, list: channel, media: 'series', name: 'Trek', imdb: 'tt0060028', position: 9)
+      first = series.subentries.create!(season: 1, episode: 1, name: 'One')
+      second = series.subentries.create!(season: 1, episode: 2, name: 'Two')
+      series.update_user_subentry!(user, first)
+
+      get watch_entry_path(series, subentry: second.id),
+          headers: { 'X-Cinema-Preload' => '1', 'X-Requested-With' => 'XMLHttpRequest' }
+
+      expect(response).to be_successful
+      expect(series.current_subentry_for_user(user)).to eq(first)
+    end
+
+    it 'still records the episode when somebody actually opens it' do
+      series = create(:entry, list: channel, media: 'series', name: 'Trek', imdb: 'tt0060028', position: 9)
+      first = series.subentries.create!(season: 1, episode: 1, name: 'One')
+      second = series.subentries.create!(season: 1, episode: 2, name: 'Two')
+      series.update_user_subentry!(user, first)
+
+      get watch_entry_path(series, subentry: second.id)
+
+      expect(series.current_subentry_for_user(user)).to eq(second)
+    end
+  end
+
   describe 'the regions a move replaces' do
     it 'carries the chrome that describes this entry' do
       get watch_entry_path(entry)
