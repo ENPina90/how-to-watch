@@ -242,6 +242,28 @@ RSpec.describe CableSchedule do
       expect(slot.break_reel).to be_nil
     end
 
+    # The catalogue's runtime is a claim, not a measurement. It is missing for a fair number
+    # of entries and simply wrong for others, so a film can end well before its slot does --
+    # and a slot with no scheduled gap still needs somewhere to go when that happens.
+    it 'chooses adverts for every slot, gap or no gap' do
+      odd_film(45, 1)
+      described_class.build_day!(channel, date)
+
+      slots = CableSlot.where(list: channel)
+      expect(slots.where(break_starts_at: nil)).to be_any
+      expect(slots.where(break_reel_id: nil)).to be_empty
+    end
+
+    it 'starts a gapless slot\'s reel where it was told, steadily' do
+      odd_film(45, 1)
+      described_class.build_day!(channel, date)
+      slot = CableSlot.where(list: channel).in_order.first
+
+      expect(slot.break_starts_at).to be_nil
+      expect(slot.reel_position_at(slot.starts_at + 5.minutes)).to eq(slot.break_offset)
+      expect(slot.reel_position_at(slot.starts_at + 20.minutes)).to eq(slot.break_offset)
+    end
+
     # Everybody on the channel has to be at the same advert, for the same reason they are
     # at the same point of the same film.
     it 'settles on one reel and one starting point when the day is laid out' do

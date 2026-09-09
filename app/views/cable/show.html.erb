@@ -66,10 +66,13 @@
       size. With the guide up it sits over the player's own fullscreen button, which is dead
       -- the frame has no fullscreen permission -- so the one that works is on top of the
       one that does not. %>
-  <%# A break we have no adverts for. Better than a dead frame, and it is what a channel
-      with nothing to fill the gap would put up. %>
-  <% if @in_break && @embed_url.blank? %>
-    <div class="cable-interlude">
+  <%# A break with nothing to show. Rendered for every break rather than only the ones that
+      start out empty, because a reel can refuse at any point -- taken down, made private,
+      embedding switched off -- and cable-filler uncovers this when it hears the player say
+      so. Better than a dead frame either way, and it is what a channel with nothing to fill
+      the gap would put up. %>
+  <% if @in_break %>
+    <div id="cableInterlude" class="cable-interlude" <%= 'hidden' if @embed_url.present? %>>
       <p class="cable-interlude__card">We&rsquo;ll be right back</p>
     </div>
   <% end %>
@@ -96,7 +99,13 @@
            seeking within it does not move the channel, so both only put this viewer out of
            step with the listing and with everyone else watching. What is left of the
            keyboard is fullscreen and mute, neither of which touches the film. %>
-       data-controller="player-keys cable-clock"
+       <%# cable-filler only through a break, and only then: it is watching one particular
+           embed for one particular refusal. %>
+       data-controller="player-keys cable-clock<%= ' cable-filler' if @in_break %>"
+       <% if @in_break %>
+         data-cable-filler-frame-value="cinema"
+         data-cable-filler-card-value="cableInterlude"
+       <% end %>
        data-player-keys-transport-value="false"
        <%# Which adapter drives this page's player, for anything that needs to reach it --
            cinema-navigation reads it off the fetched page to know how to quieten the
@@ -116,6 +125,10 @@
        <%# The next time this channel shows something different, which is not always the end
            of the slot: a programme with a break after it changes twice. %>
        data-cable-clock-ends-at-value="<%= @next_change_at.utc.iso8601 %>"
+       <%# Where the schedule thinks the film is, for comparing against the length the
+           player reports -- a file shorter than the catalogue claims cannot be spotted any
+           other way, and the player answers such a request by starting over. %>
+       data-cable-clock-programme-starts-at-value="<%= @slot.starts_at.utc.iso8601 %>"
        <% unless @in_break %>
          <%# Where to go when the film runs out before the clock says it should. Absent once
              the break has started -- there is nothing after the adverts but the next slot. %>

@@ -19,11 +19,12 @@ class Notification < ApplicationRecord
   SOURCE_EXPIRING = 'source_expiring'
   BROKEN_POSTER = 'broken_poster'
   UNPLAYABLE_EMBED = 'unplayable_embed'
+  MISSING_RUNTIME = 'missing_runtime'
 
   # Kinds only an admin should ever see. Enforced at creation -- the notifier only writes
   # them for admins -- and again on read, so an account that loses its admin flag stops
   # seeing them without needing a sweep.
-  ADMIN_ONLY_KINDS = [SOURCE_EXPIRING, BROKEN_POSTER, UNPLAYABLE_EMBED].freeze
+  ADMIN_ONLY_KINDS = [SOURCE_EXPIRING, BROKEN_POSTER, UNPLAYABLE_EMBED, MISSING_RUNTIME].freeze
 
   validates :kind, presence: true
   validates :dedupe_key, presence: true, uniqueness: { scope: :user_id }

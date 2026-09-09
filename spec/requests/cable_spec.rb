@@ -183,6 +183,33 @@ RSpec.describe 'Cable', type: :request do
       expect(response.body).to include("youtube.com/embed/#{reel.youtube_id}")
     end
 
+    # A reel can stop being playable between one break and the next -- taken down, made
+    # private, embedding switched off, or simply refused for the moment. The player says so
+    # only to whoever asks it to listen; without that the viewer gets a black rectangle
+    # reading "This video is unavailable" for the length of the break.
+    it 'asks the reel to report back, so a refusal can be heard' do
+      travel_to(midnight + 48.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('enablejsapi=1')
+      expect(response.body).to include('cable-filler')
+    end
+
+    # Rendered for every break rather than only the ones that start out empty: it is what
+    # the page uncovers when the reel refuses, so it has to already be there.
+    it 'carries the caption through every break, ready but hidden' do
+      travel_to(midnight + 48.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('id="cableInterlude"')
+      expect(response.body[/<div id="cableInterlude"[^>]*>/]).to include('hidden')
+    end
+
+    it 'watches for a refusal only while a break is running' do
+      travel_to(midnight + 40.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).not_to include('cable-filler')
+      expect(response.body).not_to include('id="cableInterlude"')
+    end
+
     it 'puts a caption up when the period has no adverts' do
       CommercialReel.delete_all
       CableSchedule.build_day!(channel, date)
@@ -190,7 +217,33 @@ RSpec.describe 'Cable', type: :request do
       travel_to(midnight + 48.minutes) { get cable_channel_path(channel) }
 
       expect(response.body).to include('cable-interlude')
+      # Shown from the start this time -- there was never anything to hide it behind.
+      expect(response.body[/<div id="cableInterlude"[^>]*>/]).not_to include('hidden')
       expect(response).to be_successful
+    end
+
+    # The bug this was written for: arriving after the file has ended but before the slot
+    # has. The player, handed a start position past the end, does not refuse and does not
+    # stop -- it starts the film again from the beginning. The page spots the overrun from
+    # the length the player reports and asks for filler; this is the answer it gets.
+    it 'serves adverts on a slot with no scheduled gap when the page asks for filler' do
+      entry.update!(year: 1998, length: 45)
+      CableSchedule.build_day!(channel, date)
+      expect(CableSlot.where(list: channel).in_order.first.break_starts_at).to be_nil
+
+      travel_to(midnight + 30.minutes) { get cable_channel_path(channel, filler: 1) }
+
+      expect(response.body).to include("youtube.com/embed/#{reel.youtube_id}")
+    end
+
+    # Without it the page has no way to tell where the schedule thinks the film is, and so
+    # no way to notice that the file is shorter than the catalogue claims.
+    it 'tells the page where the programme started' do
+      travel_to(midnight + 40.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include(
+        %(data-cable-clock-programme-starts-at-value="#{slot.starts_at.utc.iso8601}")
+      )
     end
 
     it 'moves on to the next programme when the break is over' do

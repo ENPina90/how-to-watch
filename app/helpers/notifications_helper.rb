@@ -13,6 +13,10 @@ module NotificationsHelper
       expired?(notification) ? :urgent : :warn
     when Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED
       :warn
+    # Nothing is broken yet -- the guess may even be right. It is a job to do, not a fault
+    # to put right in a hurry.
+    when Notification::MISSING_RUNTIME
+      :info
     else
       :info
     end
@@ -27,6 +31,8 @@ module NotificationsHelper
       "#{notification.data['name'].presence || 'An entry'} has no poster"
     when Notification::UNPLAYABLE_EMBED
       "#{notification.data['name'].presence || 'An entry'} will not play"
+    when Notification::MISSING_RUNTIME
+      "#{notification.data['name'].presence || 'An entry'} has no runtime"
     else
       notification.kind.humanize
     end
@@ -37,6 +43,7 @@ module NotificationsHelper
     when Notification::SOURCE_EXPIRING then source_expiry_detail(notification)
     when Notification::BROKEN_POSTER then broken_poster_detail(notification)
     when Notification::UNPLAYABLE_EMBED then unplayable_embed_detail(notification)
+    when Notification::MISSING_RUNTIME then missing_runtime_detail(notification)
     else ''
     end
   end
@@ -47,7 +54,7 @@ module NotificationsHelper
     when Notification::SOURCE_EXPIRING then sources_path
     # nil once the entry is gone. The next scan retires the row anyway; until then the
     # card still reads correctly from `data`, it just has nowhere to send you.
-    when Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED
+    when Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED, Notification::MISSING_RUNTIME
       notification.subject && entry_path(notification.subject)
     end
   end
@@ -58,7 +65,8 @@ module NotificationsHelper
   # being sent somewhere to fix something, and the card has done its job once you are
   # there. An expiry warning is the other sort -- it should outlive being looked at.
   def notification_view_dismisses?(notification)
-    [Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED].include?(notification.kind)
+    [Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED,
+     Notification::MISSING_RUNTIME].include?(notification.kind)
   end
 
   private
@@ -82,6 +90,16 @@ module NotificationsHelper
     "#{provider || 'The provider'} has no file for #{asked.presence || 'it'}" \
       "#{where ? " -- in #{where}" : ''}. It frames up and says the media is unavailable. " \
       'Point it at another id, or take it out.'
+  end
+
+  def missing_runtime_detail(notification)
+    channel = notification.data['channel'].presence
+    guess = notification.data['guess']
+
+    "It is scheduled on #{channel || 'the dial'} with no runtime recorded, so cable assumes " \
+      "#{guess ? pluralize(guess, 'minute') : 'a flat guess'}. Where the guess is longer than " \
+      'the file, the slot outlasts the programme and the player starts it again from the ' \
+      'beginning. Open it and set the runtime.'
   end
 
   def broken_poster_detail(notification)

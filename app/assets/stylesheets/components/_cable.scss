@@ -900,6 +900,12 @@ body.cable__mode .cinema__screen--guide {
 /* A commercial break with no adverts behind it -- a period we hold no reel for, or a film
    with no year to match one against. The gap is still the gap; this is what goes in it,
    which is what a channel with nothing to play would put up rather than a dead frame. */
+/* Uncovered by cable-filler when a reel refuses, so it has to obey `hidden` -- `display:
+   flex` below would otherwise win, exactly as it does for the guide panel. */
+.cable-interlude[hidden] {
+  display: none;
+}
+
 .cable-interlude {
   position: absolute;
   inset: 0;

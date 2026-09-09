@@ -39,10 +39,17 @@ class CableSlot < ApplicationRecord
 
   # Where in the reel the break has reached. Counted from the moment the break began rather
   # than from when this viewer arrived, so everybody watching is at the same advert.
+  #
+  # A slot with no scheduled gap can still need adverts -- the film may end before the
+  # catalogue said it would -- and there is no such moment to count from then, so the reel
+  # simply starts where it was told to. Still the same point for everybody, which is what
+  # matters; it just does not creep forward with the clock.
   def reel_position_at(time)
-    return nil unless break? && break_reel
+    return nil unless break_reel
 
-    break_offset.to_i + [(time - break_starts_at).to_i, 0].max
+    started = break_starts_at || ends_at
+
+    break_offset.to_i + [(time - started).to_i, 0].max
   end
 
   # The next moment this channel shows something different: the start of the break, or the

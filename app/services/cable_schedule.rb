@@ -283,13 +283,17 @@ module CableSchedule
   # caption over it rather than a dead frame, which is what a channel with nothing to play
   # in the break would put up.
   def commercial_break(entry, content_end, finish)
-    return { break_starts_at: nil, break_reel_id: nil, break_offset: nil } if finish <= content_end
-
+    gap = (finish - content_end).to_i
     reel = CommercialReel.for_year(entry.year) if entry.year.present?
 
-    { break_starts_at: content_end,
+    # A reel is chosen for every slot, not only for the ones with a gap after them. The
+    # catalogue's runtime is a claim, not a measurement -- it is missing for a good few
+    # entries and simply wrong for others, and either way the film can end well before the
+    # slot does. When that happens the page needs somewhere to go, and adverts from the
+    # right year are a better answer than the last minutes of a film played twice.
+    { break_starts_at: (content_end if gap.positive?),
       break_reel_id: reel&.id,
-      break_offset: reel&.random_offset_for(finish - content_end) }
+      break_offset: reel&.random_offset_for(gap) }
   end
 
   # Which episode of a series is on. Random, like everything else in the running order --
@@ -300,10 +304,15 @@ module CableSchedule
     entry.subentries.to_a.sample
   end
 
-  def runtime(entry)
-    minutes = entry.length.to_i
-    minutes = FALLBACK_MINUTES.fetch(entry.media, FALLBACK_MINUTES_DEFAULT) if minutes < MIN_MINUTES
+  def runtime(entry) = fallback_minutes(entry).minutes
 
-    minutes.minutes
+  # How long this entry is taken to run, in minutes -- its own where the catalogue has one,
+  # and a flat guess where it does not. Public because the guess is worth naming: a warning
+  # about a missing runtime is more use if it says what is being assumed in its place.
+  def fallback_minutes(entry)
+    minutes = entry.length.to_i
+    return minutes if minutes >= MIN_MINUTES
+
+    FALLBACK_MINUTES.fetch(entry.media, FALLBACK_MINUTES_DEFAULT)
   end
 end
