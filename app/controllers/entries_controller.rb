@@ -321,13 +321,18 @@ class EntriesController < ApplicationController
   # is a considered value and not ours to correct from whichever cut a provider happens to
   # be serving today. Silent either way -- nothing on the page waits on the answer.
   def runtime
-    seconds = params[:seconds].to_i
-    minutes = (seconds / 60.0).round
+    minutes = (params[:seconds].to_i / 60.0).round
+    return head :no_content unless minutes.positive?
 
-    if @entry.length.to_i.zero? && minutes.positive?
-      @entry.update_column(:length, minutes)
-      Rails.logger.info("Runtime learned for entry #{@entry.id} (#{@entry.name}): #{minutes} min")
-    end
+    # An episode's runtime belongs to the episode. A show does not have one -- a season of
+    # forty-minute episodes and a season of twenty-minute ones can sit under the same entry,
+    # and writing either figure onto the show would be wrong for the other.
+    subject = @entry.subentries.find_by(id: params[:subentry]) || @entry
+    return head :no_content unless subject.length.to_i.zero?
+
+    subject.update_column(:length, minutes)
+    Rails.logger.info("Runtime learned for #{subject.class.name.downcase} #{subject.id} " \
+                      "(#{@entry.name}): #{minutes} min")
 
     head :no_content
   end

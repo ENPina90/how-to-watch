@@ -354,6 +354,28 @@ RSpec.describe 'Cable', type: :request do
       expect(response.body).to include(%(data-cable-clock-runtime-value="#{entry.length * 60}"))
     end
 
+    # The slot was laid out by the episode's runtime, so that is the figure the page has to
+    # carry -- and the address has to name the episode, or a correction lands on the show.
+    it 'carries the episode\'s runtime where an episode is playing' do
+      series = create(:entry, list: channel, media: 'series', name: 'Show', length: nil,
+                              position: 2, imdb: 'tt0000002')
+      provider.update!(
+        templates: provider.templates.merge('series' => 'https://p.test/tv?imdb=%<imdb>s')
+      )
+      episode = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot',
+                                 length: 53)
+      series.update!(current: episode)
+      entry.destroy!
+      CableSlot.delete_all
+      CableSchedule.build_day!(channel, date)
+      sign_in user
+
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include(%(data-cable-clock-runtime-value="#{53 * 60}"))
+      expect(response.body).to include(runtime_entry_path(series, subentry: episode.id))
+    end
+
     # Correcting the catalogue is a write, and a guest has no way to make one.
     it 'offers a visitor with no account nowhere to send it' do
       AppSetting.update_access_mode!('open')

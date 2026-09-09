@@ -157,9 +157,11 @@
        <%# What the catalogue claims, and where to correct it. Zero means it claims nothing
            and the schedule is guessing -- see EntriesController#runtime. Signed in only,
            because correcting the catalogue is a write and guests do not get one. %>
-       data-cable-clock-runtime-value="<%= @entry.length.to_i * 60 %>"
+       <%# The episode's runtime where an episode is playing, since that is the figure the
+           schedule lays the slot out by. Zero means nothing is recorded and it is guessing. %>
+       data-cable-clock-runtime-value="<%= (@current_subentry&.length.presence || @entry.length).to_i * 60 %>"
        <% if user_signed_in? %>
-         data-cable-clock-runtime-url-value="<%= runtime_entry_path(@entry) %>"
+         data-cable-clock-runtime-url-value="<%= runtime_entry_path(@entry, subentry: @current_subentry&.id) %>"
          data-cable-clock-token-value="<%= form_authenticity_token %>"
        <% end %>
        <% unless @in_break %>
