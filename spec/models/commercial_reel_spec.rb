@@ -35,24 +35,50 @@ RSpec.describe CommercialReel do
   end
 
   describe 'where in a reel a break starts' do
-    it 'never starts so late that the reel runs out mid-break' do
-      eighty_seven.update!(duration_seconds: 600)
+    # Across the whole reel, not the first few minutes of it. Starting a break somewhere in
+    # the first four minutes every time is how a channel ends up replaying the same adverts
+    # all evening, which is what having the real runtimes is for.
+    it 'ranges over the whole reel, not just the beginning' do
+      eighty_seven.update!(duration_seconds: 60.minutes.to_i)
 
-      200.times { expect(eighty_seven.random_offset_for(240)).to be_between(0, 360).inclusive }
+      offsets = 400.times.map { eighty_seven.random_offset_for(120) }
+
+      expect(offsets.max).to be > 30.minutes.to_i
+      expect(offsets.uniq.length).to be > 100
     end
 
-    # Every compilation is a quarter of an hour at the least, so the first few minutes are
-    # safe to start in without knowing the runtime.
-    it 'keeps to a safe window when the runtime is unknown' do
-      expect(eighty_seven.duration_seconds).to be_nil
+    # The compilations open with their channel's own titles, and a commercial break that
+    # begins with somebody's YouTube intro gives the whole thing away.
+    it 'never starts inside the opening titles' do
+      eighty_seven.update!(duration_seconds: 60.minutes.to_i)
 
-      200.times do
-        expect(eighty_seven.random_offset_for(240))
-          .to be_between(0, described_class::BLIND_WINDOW.to_i - 240).inclusive
+      400.times { expect(eighty_seven.random_offset_for(120)).to be >= described_class::INTRO_SKIP }
+    end
+
+    it 'never starts so late that the break outlasts the reel' do
+      eighty_seven.update!(duration_seconds: 10.minutes.to_i)
+
+      400.times do
+        offset = eighty_seven.random_offset_for(240)
+        expect(offset + 240).to be <= eighty_seven.duration_seconds - described_class::TAIL_MARGIN
       end
     end
 
-    it 'starts at the beginning when the break is longer than the window' do
+    # A reel with no runtime recorded leaves only a conservative guess to spend, so there is
+    # no room to skip the titles and still fit the break. Starting as late as it safely can
+    # is the better of the two bad options -- the titles are the part worth missing.
+    it 'starts as late as it safely can when there is no room to do better' do
+      expect(eighty_seven.duration_seconds).to be_nil
+
+      offset = eighty_seven.random_offset_for(240)
+
+      expect(offset).to be_positive
+      expect(offset + 240).to be <= described_class::BLIND_WINDOW.to_i
+    end
+
+    it 'starts at the beginning only when the break is longer than the reel' do
+      eighty_seven.update!(duration_seconds: 60)
+
       expect(eighty_seven.random_offset_for(1.hour.to_i)).to eq(0)
     end
   end

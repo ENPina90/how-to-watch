@@ -12,6 +12,35 @@ namespace :commercials do
     puts "Commercial reels: #{result.summary}."
   end
 
+  # How long each reel actually runs, read off the watch page.
+  #
+  # Without it a break can only start somewhere in the first few minutes, because there is
+  # no telling how much reel there is to spend -- so every break on a channel opens with
+  # roughly the same adverts. With it, a break can begin anywhere in an hour of them.
+  #
+  # `lengthSeconds` is not a documented API and could move, which is why a reel it cannot
+  # read is left alone rather than blanked: a runtime already known is better than none.
+  desc "Fill in how long each commercial reel runs"
+  task durations: :environment do
+    agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
+            "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+
+    CommercialReel.in_order.find_each do |reel|
+      body = HTTParty.get("https://www.youtube.com/watch?v=#{reel.youtube_id}",
+                          headers: { "User-Agent" => agent }, timeout: 20).body.to_s
+      seconds = body[/"lengthSeconds":"(\d+)"/, 1]&.to_i
+
+      if seconds&.positive?
+        reel.update!(duration_seconds: seconds)
+        puts "✅ #{reel.label.ljust(10)} #{(seconds / 60.0).round(1)} min"
+      else
+        puts "❔ #{reel.label.ljust(10)} could not read a runtime -- left as #{reel.duration_seconds.inspect}"
+      end
+    rescue StandardError => e
+      puts "⚠️  #{reel.label.ljust(10)} #{e.class}: #{e.message.truncate(50)}"
+    end
+  end
+
   # Whether YouTube will still hand each reel over. A compilation can be taken down, made
   # private, or have embedding switched off by its uploader, and any of those is a dead frame
   # in the middle of a break rather than an error anybody sees.

@@ -104,7 +104,11 @@ class CableController < ApplicationController
 
     # The same page as it will be the moment that happens, for warming what comes next while
     # the current programme runs out.
-    @next_url = cable_channel_path(@channel, at: @next_change_at.to_i)
+    # Rounded up, not truncated. `to_i` drops any fraction of a second, which would land
+    # this an instant *before* the change -- and the answer to "what is on then" would be
+    # the programme already playing, so nothing would be warmed. Slots are built on whole
+    # seconds so it does not arise today, but a boundary is a poor thing to miss by 0.07s.
+    @next_url = cable_channel_path(@channel, at: @next_change_at.to_f.ceil)
 
     # No sidebars at all. There is no list to step through on the right, and the channel
     # list on the left is what the guide is for -- a permanent panel naming the same six
