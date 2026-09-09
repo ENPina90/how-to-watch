@@ -129,6 +129,64 @@ RSpec.describe 'Uploading a poster' do
     end
   end
 
+  # The same thing from the entry edit form, which is where somebody is already standing
+  # when they notice the poster is wrong.
+  describe 'pasting a link into the edit form' do
+    before { allow(Resolv).to receive(:getaddresses).and_return(['93.184.216.34']) }
+
+    it 'fetches the image and attaches a copy' do
+      stub_request(:get, 'http://images.test/poster.png').to_return(status: 200, body: png_bytes)
+      sign_in owner
+
+      patch entry_path(entry), params: { entry: { poster_url: 'http://images.test/poster.png' } }
+
+      expect(entry.reload.poster).to be_attached
+      expect(entry.poster.blob.content_type).to eq('image/png')
+    end
+
+    # An address with nothing behind it should not throw away the name and the runtime that
+    # were typed in the same breath.
+    it 'still saves the rest of the form when the image cannot be fetched' do
+      stub_request(:get, 'http://images.test/poster.png').to_return(status: 404)
+      sign_in owner
+
+      patch entry_path(entry), params: {
+        entry: { name: 'Renamed', length: '92', poster_url: 'http://images.test/poster.png' }
+      }
+
+      expect(entry.reload.name).to eq('Renamed')
+      expect(entry.length).to eq(92)
+      expect(entry.poster).not_to be_attached
+    end
+
+    it 'says so rather than failing quietly' do
+      stub_request(:get, 'http://images.test/poster.png').to_return(status: 404)
+      sign_in owner
+
+      patch entry_path(entry), params: { entry: { poster_url: 'http://images.test/poster.png' } }
+
+      expect(flash[:alert]).to be_present
+    end
+
+    it 'leaves the poster alone when the field is left empty' do
+      sign_in owner
+
+      patch entry_path(entry), params: { entry: { name: 'Renamed', poster_url: '' } }
+
+      expect(entry.reload.name).to eq('Renamed')
+      expect(entry.poster).not_to be_attached
+    end
+
+    it 'refuses to fetch from somewhere only the server can reach' do
+      sign_in owner
+
+      patch entry_path(entry), params: { entry: { poster_url: 'http://127.0.0.1/poster.png' } }
+
+      expect(entry.reload.poster).not_to be_attached
+      expect(flash[:alert]).to be_present
+    end
+  end
+
   # Same gate as every other write on an entry: update_poster is in check_edit_permissions.
   it 'does not let somebody else replace the poster' do
     upload(png_bytes, filename: 'my-poster.png', as: create(:user))

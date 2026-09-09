@@ -23,7 +23,13 @@
       <%= f.input :source_key,
             label: "Source key / URL",
             hint: "Direct providers only: Drive file id, mega key#fragment, YouTube id, or full URL for Custom. Leave blank for imdb providers." %>
-      <%= f.input :pic, label: "Poster URL (or upload below)" %>
+      <%# Three ways to the same picture, and they are not the same thing. `pic` points at
+          somebody else's host for as long as it stays up -- which is what the broken-poster
+          audit spends its time finding out about -- while the two below keep a copy. %>
+      <%= f.input :pic, label: "Poster URL (linked, not stored)" %>
+      <%= f.input :poster_url, as: :url, label: "Fetch a poster from a link",
+            input_html: { value: nil, placeholder: "https://…" },
+            hint: "Downloads the image and keeps a copy, so it does not go dead later. Replaces the current poster." %>
 
       <% if entry.poster.attached? %>
         <div class="mb-3">

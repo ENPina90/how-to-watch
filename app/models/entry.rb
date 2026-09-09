@@ -27,6 +27,11 @@ class Entry < ApplicationRecord
 
   accepts_nested_attributes_for :subentries, allow_destroy: true
 
+  # An image link the edit form offers to fetch and keep a copy of, as against `pic`, which
+  # is a URL the page points at forever and which the broken-poster audit exists to catch
+  # going dead. Not a column: nothing is worth storing once the image itself is attached.
+  attr_accessor :poster_url
+
   # Episodes in the order somebody reading the edit form expects them, with the blank row
   # the form offers for adding one kept at the end rather than sorted to the top by its
   # empty season and episode. Sorted in Ruby rather than by the database because that blank

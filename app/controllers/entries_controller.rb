@@ -146,17 +146,29 @@ class EntriesController < ApplicationController
       attrs[:_destroy] = '1' if attrs[:name].blank? && attrs[:season].blank? && attrs[:episode].blank?
     end
 
+    # Fetched after the rest of the entry has saved, and not allowed to take the rest down
+    # with it: an address that turns out not to have an image behind it should not throw
+    # away the name and the runtime that were typed in the same breath. It is reported
+    # rather than swallowed, because nothing else on the page would show it had failed.
+    poster_url = cleaned_params.delete(:poster_url)
+
     cleaned_params.merge!(list: @entry.list)
     if @entry.update(cleaned_params)
       if old_position != new_position
         shift_positions(@entry, new_position)
       end
+      poster_error = poster_url.present? ? attach_poster_from_url(poster_url)[:error] : nil
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(dom_id(@entry), partial: "entries/entry_#{@entry.media.downcase}", locals: { entry: @entry })
-          turbo_stream.after(dom_id(@entry), "<turbo-frame id='modal-success'></turbo-frame>")
+          flash.now[:alert] = poster_error if poster_error
+          streams = [turbo_stream.replace(dom_id(@entry), partial: "entries/entry_#{@entry.media.downcase}", locals: { entry: @entry })]
+          streams << turbo_stream.replace('flash', partial: 'shared/flashes') if poster_error
+          render turbo_stream: streams
         end
-        format.html { redirect_to list_path(@entry.list, anchor: @entry.imdb) }
+        format.html do
+          flash[:alert] = poster_error if poster_error
+          redirect_to list_path(@entry.list, anchor: @entry.imdb)
+        end
       end
     else
       render :edit
@@ -906,6 +918,7 @@ class EntriesController < ApplicationController
         :year,
         :pic,
         :poster,
+        :poster_url,
         :genre,
         :director,
         :writer,
