@@ -47,7 +47,13 @@ export default class extends Controller {
     // film should be, so that a file shorter than the catalogue claims can be spotted.
     programmeStartsAt: String,
     adapter: String,
-    frame: String
+    frame: String,
+    // What the catalogue claims this programme runs to, in seconds, and where to say
+    // otherwise. Zero means it claims nothing, which is the case worth reporting: the
+    // schedule is guessing, and the player is the only thing that knows.
+    runtime: Number,
+    runtimeUrl: String,
+    token: String
   }
 
   connect() {
@@ -96,8 +102,35 @@ export default class extends Controller {
   }
 
   playerReported(state) {
+    this.learnRuntime(state)
+
     if (state.event === "completed") return this.move({ early: true })
     if (this.overrunning(state)) return this.move({ early: true })
+  }
+
+  // Tell the server how long the file really is, where the catalogue does not say.
+  //
+  // A schedule built on a guess is wrong in one of two ways, and both are visible: a guess
+  // that is short cuts the programme off partway through, and one that is long leaves the
+  // slot running after the film has ended. Neither can be seen from the server -- only the
+  // player knows what it is holding.
+  //
+  // Once per page, and only where there is a gap to fill. It does not fix the programme
+  // being watched, whose slot was laid out yesterday; it fixes every one after it.
+  learnRuntime({ duration }) {
+    if (this.told || !duration || duration <= 0) return
+    if (this.runtimeValue > 0 || !this.runtimeUrlValue) return
+
+    this.told = true
+
+    const body = new FormData()
+    body.append("_method", "patch")
+    body.append("seconds", Math.round(duration))
+    body.append("authenticity_token", this.tokenValue)
+
+    // Nothing on the page waits on this, and a correction that does not arrive is simply a
+    // schedule that stays as wrong as it was.
+    fetch(this.runtimeUrlValue, { method: "POST", body: body }).catch(() => {})
   }
 
   // Is the schedule asking for a point this file does not have?

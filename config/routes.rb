@@ -133,6 +133,9 @@ Rails.application.routes.draw do
       # POST rather than PATCH because navigator.sendBeacon -- how the position is saved
       # as the page goes away -- can only send POST.
       post :progress
+      # What the player says the file actually runs to. A correction to the catalogue, so a
+      # write, so not a GET.
+      patch :runtime
       # Reads stay GET: `watch` renders the player page and `fetch_posters` is a lookup.
       get :watch
       get :fetch_posters

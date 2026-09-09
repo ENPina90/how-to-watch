@@ -7,7 +7,7 @@ require 'json'
 class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime]
   # Everything here writes state shared by everyone who can see the entry -- its position
   # in the list, its provider, its poster, the `stream` flag. The per-user actions
   # (complete, review, shuffle_current and friends) are deliberately absent: they write
@@ -307,6 +307,29 @@ class EntriesController < ApplicationController
     @entries_sidebar_collapsed = true # Right entries sidebar collapsed by default
 
     render layout: 'special_layout'
+  end
+
+  # How long this entry really runs, as reported by the player showing it.
+  #
+  # `entries.length` is the catalogue's claim, and for a good few entries there is no claim
+  # at all -- OMDB had none, and the cable schedule falls back to a flat guess. A guess that
+  # is short cuts a programme off partway through; one that is long leaves the slot running
+  # after the film has ended. Neither is visible from the server: only the player knows what
+  # it is holding, and it says so in every report.
+  #
+  # Fills a gap and never overwrites. A runtime somebody has set by hand, or one OMDB gave,
+  # is a considered value and not ours to correct from whichever cut a provider happens to
+  # be serving today. Silent either way -- nothing on the page waits on the answer.
+  def runtime
+    seconds = params[:seconds].to_i
+    minutes = (seconds / 60.0).round
+
+    if @entry.length.to_i.zero? && minutes.positive?
+      @entry.update_column(:length, minutes)
+      Rails.logger.info("Runtime learned for entry #{@entry.id} (#{@entry.name}): #{minutes} min")
+    end
+
+    head :no_content
   end
 
   def decrement_current

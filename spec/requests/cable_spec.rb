@@ -331,6 +331,42 @@ RSpec.describe 'Cable', type: :request do
     end
   end
 
+  # The schedule is only as good as the runtimes it is laid out from, and it cannot see them
+  # for itself. The page carries what the catalogue claims and, where it claims nothing, the
+  # address to say otherwise.
+  describe 'correcting a runtime the catalogue does not have' do
+    it 'offers the correction when the catalogue is silent' do
+      entry.update!(length: nil)
+      CableSchedule.build_day!(channel, date)
+      sign_in user
+
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('data-cable-clock-runtime-value="0"')
+      expect(response.body).to include(runtime_entry_path(entry))
+    end
+
+    it 'says what the catalogue claims when it has one' do
+      sign_in user
+
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include(%(data-cable-clock-runtime-value="#{entry.length * 60}"))
+    end
+
+    # Correcting the catalogue is a write, and a guest has no way to make one.
+    it 'offers a visitor with no account nowhere to send it' do
+      AppSetting.update_access_mode!('open')
+      entry.update!(length: nil)
+      CableSchedule.build_day!(channel, date)
+
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response).to be_successful
+      expect(response.body).not_to include('data-cable-clock-runtime-url-value')
+    end
+  end
+
   describe 'the channel banner' do
     before { sign_in user }
 
