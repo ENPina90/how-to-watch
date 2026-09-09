@@ -27,6 +27,18 @@ Rails.application.routes.draw do
       post :run_poster_scan
       post :run_embed_scan
     end
+
+    # The adverts that fill the gap between programmes on /cable. Admin-only and nowhere
+    # else in the app, so they live under /admin rather than beside /sources.
+    resources :commercial_reels, except: :show do
+      member do
+        # What it looks like when it comes up in a break -- the same embed, at the same
+        # sort of offset. A GET because it only plays something.
+        get :preview
+        # Reads the runtime off YouTube. PATCH because it writes one.
+        patch :fetch_duration
+      end
+    end
   end
 
   # Does this Letterboxd handle have a readable diary? Reachable signed out: the sign-up

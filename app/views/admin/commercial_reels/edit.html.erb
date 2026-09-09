@@ -1,0 +1,12 @@
+<div class="admin-dashboard reel-admin">
+  <header class="admin-header">
+    <h1 class="admin-title">Edit <%= @reel.label %></h1>
+    <p class="admin-subtitle">
+      Covers <%= reel_years(@reel) %> · runs <%= reel_length(@reel) %> ·
+      <%= link_to 'preview it', preview_admin_commercial_reel_path(@reel) %> ·
+      <%= link_to 'back to the reels', admin_commercial_reels_path %>
+    </p>
+  </header>
+
+  <%= render 'form', reel: @reel, url: admin_commercial_reel_path(@reel), submit_label: 'Save reel' %>
+</div>

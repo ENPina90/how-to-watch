@@ -1,0 +1,28 @@
+<%= simple_form_for(reel, url: url, html: { class: 'reel-form' }) do |f| %>
+  <%= f.error_notification %>
+
+  <%= f.input :label, hint: 'What it is called in the listing — a year, or a span like "1980-85".' %>
+
+  <%# The id, not the URL: everything downstream builds its own address from it, through the
+      YouTube provider row, so that the domain lives in one place. %>
+  <%= f.input :youtube_id, label: 'YouTube id',
+        hint: 'Just the id — the part after v= in the watch URL.' %>
+
+  <div class="reel-form__years">
+    <%= f.input :starts_year, as: :integer, label: 'First year' %>
+    <%= f.input :ends_year, as: :integer, label: 'Last year',
+          hint: 'Same as the first year for a reel that covers one year.' %>
+  </div>
+
+  <%# Optional, and fetched with a button on the index rather than typed. Without it a break
+      can only start in the first few minutes of the reel, so every break opens with roughly
+      the same adverts -- see CommercialReel::BLIND_WINDOW. %>
+  <%= f.input :duration_seconds, as: :integer, label: 'Runtime (seconds)',
+        hint: 'Leave blank and fetch it from the listing. Without one, breaks can only ' \
+              'start in the first few minutes of the reel.' %>
+
+  <div class="reel-form__actions">
+    <%= f.button :submit, submit_label, class: 'admin-save' %>
+    <%= link_to 'Cancel', admin_commercial_reels_path, class: 'reel-form__cancel' %>
+  </div>
+<% end %>
