@@ -515,6 +515,47 @@ body.cable__mode .cinema__screen {
   }
 }
 
+/* ---- the pane of glass over the picture ----------------------------------------------
+ *
+ * Clicking the picture pauses the film. That control is inside a cross-origin frame and
+ * cannot be reached into and removed, so it is covered instead: a transparent sheet over
+ * the picture that catches the click and does nothing with it.
+ *
+ * It stops short of the player's own bar, which stays reachable -- the subtitles, the
+ * subtitle language, the quality menu and the volume all live there, and taking those away
+ * to stop a pause would be a poor trade. The height comes from the same measurements the
+ * fullscreen button is placed by (_cinema.scss): a 40px row of buttons centred 29px above
+ * the bottom, with the scrubber above it. Erring high leaves a strip of picture uncovered
+ * rather than eating into the bar, which is the safer way to be wrong -- cable-hold puts
+ * the film back on if a pause does get through, so this only has to catch the common case.
+ */
+.cinema__screen {
+  --player-bar-height: 72px;
+}
+
+.cable-guard {
+  position: absolute;
+  inset: 0 0 var(--player-bar-height) 0;
+  /* Above the frame stack, below every control of ours -- the banner is 12, the two corner
+     buttons 21, the guide 30. */
+  z-index: 2;
+  background: transparent;
+}
+
+/* A commercial break has no bar to leave reachable: the reel is asked for `controls=0`, so
+   the whole frame is picture and all of it should be covered. It matters more here, too --
+   cable-hold cannot undo a pause on a YouTube embed, because YouTube takes no commands
+   from this app at all. */
+.cable-guard--whole {
+  inset: 0;
+}
+
+/* Not while the guide is up. The picture is a thumbnail nobody is watching then, our own
+   two buttons sit over it, and cable-hold still covers the pause it is there to prevent. */
+.cinema__screen--guide .cable-guard {
+  display: none;
+}
+
 /* ---- the guide button ----------------------------------------------------------------
  *
  * Placed over the player's own play/pause button, exactly as .cinema__fullscreen is placed
