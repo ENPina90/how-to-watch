@@ -521,16 +521,23 @@ body.cable__mode .cinema__screen {
  * cannot be reached into and removed, so it is covered instead: a transparent sheet over
  * the picture that catches the click and does nothing with it.
  *
- * It stops short of the player's own bar, which stays reachable -- the subtitles, the
- * subtitle language, the quality menu and the volume all live there, and taking those away
- * to stop a pause would be a poor trade. The height comes from the same measurements the
- * fullscreen button is placed by (_cinema.scss): a 40px row of buttons centred 29px above
- * the bottom, with the scrubber above it. Erring high leaves a strip of picture uncovered
- * rather than eating into the bar, which is the safer way to be wrong -- cable-hold puts
- * the film back on if a pause does get through, so this only has to catch the common case.
+ * It stops at the seam between the scrubber and the row of buttons underneath it. The
+ * scrubber is covered: dragging it is the one mouse gesture that can still put a viewer out
+ * of step with the schedule, and a channel that can be wound back is not a channel. The
+ * buttons are left alone, because the subtitles, the subtitle language, the quality menu
+ * and the volume all live there and taking those away would be a poor trade.
+ *
+ * The seam is read off the player's own stylesheet rather than guessed at, the same source
+ * the fullscreen button is placed from (_cinema.scss): `.jw-controls` carries 6px of bottom
+ * padding under a 46px `.jw-bar`, so the bar ends 52px up and the scrubber begins there.
+ * The buttons inside it are 40px centred 29px up, which leaves three pixels of margin
+ * between the top of a button and the edge of the sheet.
+ *
+ * Two measurements confirm the 29px: it is what the app's own fullscreen button is placed
+ * by to sit exactly on theirs, and a hit test at that spot lands on our button.
  */
 .cinema__screen {
-  --player-bar-height: 72px;
+  --player-bar-height: 52px;
 }
 
 .cable-guard {
