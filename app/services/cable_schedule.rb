@@ -231,7 +231,7 @@ module CableSchedule
 
       # Where the film stops, and where the slot stops -- the same instant only when the
       # runtime happens to land on the grid.
-      content_end = [cursor + runtime(entry), day_end].min
+      content_end = [cursor + runtime(entry, subentry), day_end].min
       finish = [next_break_mark(content_end), day_end].min
       rows << { list_id: channel.id, entry_id: entry.id, subentry_id: subentry&.id,
                 airs_on: date, starts_at: cursor, ends_at: finish,
@@ -304,13 +304,19 @@ module CableSchedule
     entry.subentries.to_a.sample
   end
 
-  def runtime(entry) = fallback_minutes(entry).minutes
+  def runtime(entry, subentry = nil) = fallback_minutes(entry, subentry).minutes
 
-  # How long this entry is taken to run, in minutes -- its own where the catalogue has one,
-  # and a flat guess where it does not. Public because the guess is worth naming: a warning
-  # about a missing runtime is more use if it says what is being assumed in its place.
-  def fallback_minutes(entry)
-    minutes = entry.length.to_i
+  # How long this programme is taken to run, in minutes.
+  #
+  # The episode's own runtime first, where one is playing: a show does not have a runtime,
+  # its episodes do, and a season of forty-minute episodes laid out by the show's figure is
+  # wrong for every one of them. Then the entry's own, then a flat guess.
+  #
+  # Public because the guess is worth naming: a warning about a missing runtime is more use
+  # if it says what is being assumed in its place.
+  def fallback_minutes(entry, subentry = nil)
+    minutes = subentry&.length.to_i
+    minutes = entry.length.to_i if minutes < MIN_MINUTES
     return minutes if minutes >= MIN_MINUTES
 
     FALLBACK_MINUTES.fetch(entry.media, FALLBACK_MINUTES_DEFAULT)

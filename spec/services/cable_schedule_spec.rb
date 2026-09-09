@@ -140,6 +140,50 @@ RSpec.describe CableSchedule do
     end
   end
 
+  # A show has no runtime of its own -- a season of forty-minute episodes and a season of
+  # twenty-minute ones can sit under one entry, so there is no one figure to put on it. The
+  # episode picked for the slot is the thing being laid out, and it has one.
+  describe 'a series laid out by its episodes' do
+    let(:series) do
+      create(:entry, list: channel, media: 'series', name: 'Show', length: nil, position: 1,
+                     imdb: 'tt0000001')
+    end
+
+    it 'takes the length of the episode it picked, not the show' do
+      episode = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot',
+                                 length: 53)
+      series.update!(current: episode)
+
+      described_class.build_day!(channel, date)
+      slot = described_class.on_air(channel, at: midnight + 1.minute)
+
+      expect(slot.subentry).to eq(episode)
+      expect(slot.programme_duration).to eq(53 * 60)
+    end
+
+    # The flat guess is thirty minutes. An episode laid out by it runs on past the credits
+    # or is cut off partway through, and both are visible on the channel.
+    it 'falls back to the guess only where the episode has no length either' do
+      Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot', length: nil)
+
+      expect(described_class.fallback_minutes(series, series.subentries.first)).to eq(30)
+    end
+
+    it 'prefers the episode over a length the show does carry' do
+      series.update!(length: 30)
+      episode = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot',
+                                 length: 53)
+
+      expect(described_class.fallback_minutes(series, episode)).to eq(53)
+    end
+
+    it 'falls back to the show when no episode is playing' do
+      series.update!(length: 44)
+
+      expect(described_class.fallback_minutes(series)).to eq(44)
+    end
+  end
+
   describe 'the dial' do
     let!(:other) { create(:list, user: user, provider: provider, default: true) }
     let!(:private_channel) { create(:list, user: user, provider: provider, default: false) }
