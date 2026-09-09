@@ -58,6 +58,14 @@ export default class extends Controller {
     // Capture, so a key the guide has claimed is taken before player-keys sees it on the
     // document. Bubbling would let the film seek first and the guide react afterwards.
     document.addEventListener("keydown", this.keyed, true)
+
+    // Up on arrival, the way a set-top box comes up showing what is on. Turning a channel
+    // on is the moment somebody most wants the listing, and closing it is one press.
+    //
+    // Only on a real page load, which is what "arrival" means here: changing channel
+    // replaces the chrome and leaves this controller connected, so a guide closed by hand
+    // stays closed however far up and down the dial you go afterwards.
+    this.show()
   }
 
   disconnect() {
