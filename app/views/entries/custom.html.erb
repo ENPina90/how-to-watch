@@ -3,6 +3,8 @@
   <%= f.input :name %>
   <%= f.input :source_url, label: "Source URL", hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
   <%= f.input :pic %>
+  <%= f.input :length, label: "Runtime (minutes)",
+        hint: "Used by the cable schedule. Left blank it guesses, and a short guess cuts the programme off." %>
   <%= f.input :category %>
   <%= f.input :note %>
   <%= f.input :review %>

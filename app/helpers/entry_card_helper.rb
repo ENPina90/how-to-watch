@@ -42,6 +42,21 @@ module EntryCardHelper
     end
   end
 
+  # Why the runtime field is worth filling in, which differs by what is being edited. The
+  # cable schedule lays a slot out by this figure and guesses where it is missing -- and a
+  # guess that is short cuts the programme off partway through, which is the fault somebody
+  # is usually here to fix. A show has no runtime of its own, so for a series the field is
+  # only a fallback and the episodes are where the real answer belongs.
+  def runtime_hint_for(entry)
+    if entry.media.in?(%w[series anime])
+      'A show has no runtime of its own -- set it per episode below. This is only used ' \
+        'when the episode that comes up has none.'
+    else
+      'Used by the cable schedule. Left blank it guesses, and a guess that is short cuts ' \
+        'the programme off partway through.'
+    end
+  end
+
   def entry_card(entry, **locals)
     render("entries/entry_#{entry.media.downcase}", entry: entry, **locals)
       .to_str
