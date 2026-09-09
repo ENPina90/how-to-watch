@@ -73,9 +73,9 @@
       size. With the guide up it sits over the player's own fullscreen button, which is dead
       -- the frame has no fullscreen permission -- so the one that works is on top of the
       one that does not. %>
-  <%# A transparent sheet over the picture, so that clicking it cannot pause the film. Their
-      own bar is left uncovered and usable -- see _cable.scss for where the line is drawn and
-      why. Nothing is bound to it: catching the click is the whole of its job. %>
+  <%# A transparent strip across the player's scrubber, so it cannot be dragged. Everything
+      else of theirs is left reachable, menus included -- see _cable.scss for where the line
+      is drawn and why. Nothing is bound to it: catching the drag is the whole of its job. %>
   <div class="cable-guard<%= ' cable-guard--whole' if @in_break %>" aria-hidden="true"></div>
 
   <%# A break with nothing to show. Rendered for every break rather than only the ones that
