@@ -66,7 +66,11 @@ class MissingRuntimeNotifier
           'list' => row.entry.list.name,
           'channel' => row.channel.name,
           'media' => row.entry.media,
-          'guess' => CableSchedule.fallback_minutes(row.entry)
+          'guess' => CableSchedule.fallback_minutes(row.entry),
+          # A show does not have a runtime, its episodes do -- so for a series the useful
+          # thing to say is which of them are bare, not that the show itself is.
+          'episodes' => row.entry.subentries.count,
+          'episodes_missing' => row.entry.subentries.where(length: [nil, 0]).count
         }
       )
       true

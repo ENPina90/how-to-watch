@@ -32,7 +32,7 @@ module NotificationsHelper
     when Notification::UNPLAYABLE_EMBED
       "#{notification.data['name'].presence || 'An entry'} will not play"
     when Notification::MISSING_RUNTIME
-      "#{notification.data['name'].presence || 'An entry'} has no runtime"
+      missing_runtime_title(notification)
     else
       notification.kind.humanize
     end
@@ -92,14 +92,38 @@ module NotificationsHelper
       'Point it at another id, or take it out.'
   end
 
+  # A show has no runtime of its own -- its episodes do -- so a series is described by which
+  # of its episodes are bare rather than by the show being blank, which reads as wrong.
+  def missing_runtime_title(notification)
+    name = notification.data['name'].presence || 'An entry'
+    bare = notification.data['episodes_missing'].to_i
+
+    return "#{name} has no runtime" unless bare.positive?
+
+    "#{name} has #{pluralize(bare, 'episode')} with no runtime"
+  end
+
   def missing_runtime_detail(notification)
     channel = notification.data['channel'].presence
     guess = notification.data['guess']
+    assumed = guess ? pluralize(guess, 'minute') : 'a flat guess'
+    where = channel ? " on #{channel}" : ''
 
-    "It is scheduled on #{channel || 'the dial'} with no runtime recorded, so cable assumes " \
-      "#{guess ? pluralize(guess, 'minute') : 'a flat guess'}. Where the guess is longer than " \
-      'the file, the slot outlasts the programme and the player starts it again from the ' \
-      'beginning. Open it and set the runtime.'
+    if (bare = notification.data['episodes_missing'].to_i).positive?
+      "#{bare} of its #{notification.data['episodes']} episodes have no runtime recorded, so " \
+        "cable assumes #{assumed} whenever one of them comes up#{where}. #{missing_runtime_harm}"
+    elsif notification.data['episodes'].to_i.zero? && notification.data['media'] == 'series'
+      "It is scheduled#{where} but has no episodes imported and no runtime of its own, so cable " \
+        "assumes #{assumed}. Add its episodes, or set a runtime on the entry."
+    else
+      "It is scheduled#{where} with no runtime recorded, so cable assumes #{assumed}. " \
+        "#{missing_runtime_harm}"
+    end
+  end
+
+  def missing_runtime_harm
+    'Where the guess is short the programme is cut off partway through; where it is long ' \
+      'the slot outlasts the film and the player starts it again from the beginning.'
   end
 
   def broken_poster_detail(notification)

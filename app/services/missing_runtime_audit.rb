@@ -36,6 +36,19 @@ class MissingRuntimeAudit
     # reaches it is the one the notification names.
     rows = @scope.uniq { |row| row.entry.id }
 
-    Result.new(checked: rows.size, missing: rows.select { |row| row.entry.length.to_i.zero? })
+    Result.new(checked: rows.size, missing: rows.select { |row| guessed_at?(row.entry) })
+  end
+
+  # Would the schedule have to guess for this entry?
+  #
+  # Not simply "has no runtime of its own". A show does not have a runtime -- its episodes
+  # do, and the schedule lays each slot out by whichever episode it picked. So a series
+  # whose episodes all carry one needs no guess, however blank the show itself is, and a
+  # series with even one bare episode does whenever that episode comes up.
+  def guessed_at?(entry)
+    episodes = entry.subentries
+    return episodes.where(length: [nil, 0]).exists? if episodes.exists?
+
+    entry.length.to_i.zero?
   end
 end

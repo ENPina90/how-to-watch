@@ -31,6 +31,95 @@ RSpec.describe 'Forms render', :needs_provider, type: :request do
     expect(response.body).to include('name="entry[source_key]"')
   end
 
+  # The cable schedule lays a slot out by the runtime and guesses where there is none, and a
+  # guess that is short cuts the programme off partway through. Both forms are permitted to
+  # write `length` and neither offered anywhere to type it, so the only way to correct one
+  # was the player happening to report it.
+  describe 'the runtime field' do
+    it 'offers a runtime on the standalone edit form' do
+      entry = create(:entry, list: list, position: 1)
+
+      get edit_entry_path(entry)
+
+      expect(response.body).to include('name="entry[length]"')
+    end
+
+    it 'offers a runtime on the modal form' do
+      entry = create(:entry, list: list, position: 1)
+
+      get edit_entry_path(entry, format: :text)
+
+      expect(response.body).to include('name="entry[length]"')
+    end
+
+    # A show has no runtime of its own -- its episodes do, and the schedule measures the
+    # slot by whichever one it picked. Without a field per episode the modal could only set
+    # the fallback.
+    it 'offers a runtime against each episode of a series' do
+      series = create(:entry, list: list, position: 1, media: 'series')
+      first = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot')
+      second = Subentry.create!(entry: series, season: '1', episode: '2', name: 'Second')
+
+      get edit_entry_path(series, format: :text)
+
+      expect(response.body).to include("name=\"entry[subentries_attributes][0][length]\"")
+      expect(response.body).to include("name=\"entry[subentries_attributes][1][length]\"")
+      expect(response.body).to include(first.id.to_s, second.id.to_s)
+    end
+
+    it 'saves a runtime typed against an episode' do
+      series = create(:entry, list: list, position: 1, media: 'series')
+      episode = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot')
+
+      patch entry_path(series), params: {
+        entry: { subentries_attributes: { '0' => { id: episode.id, length: '53' } } }
+      }
+
+      expect(episode.reload.length).to eq(53)
+    end
+
+    # Sixty-six fields in whatever order the database handed them back is no way to find the
+    # one episode that is missing a runtime.
+    it 'lists the episodes in order, with the blank row for adding one last' do
+      series = create(:entry, list: list, position: 1, media: 'series')
+      second = Subentry.create!(entry: series, season: '1', episode: '2', name: 'Second')
+      first = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot')
+
+      get edit_entry_path(series, format: :text)
+
+      titles = response.body.scan(/value="([^"]*)" name="entry\[subentries_attributes\]\[\d+\]\[name\]"/)
+      ids = response.body.scan(/value="(\d+)" name="entry\[subentries_attributes\]\[\d+\]\[id\]"/)
+
+      expect(titles.flatten).to eq(%w[Pilot Second])
+      expect(ids.flatten.map(&:to_i)).to eq([first.id, second.id])
+    end
+
+    # The blank row exists so an episode can be added; left alone it must not become a
+    # nameless one. Judging that by the submitted fields rather than by the row being new
+    # meant a request that set only a runtime destroyed the episode it was correcting.
+    it 'keeps an episode when the request names only the field being changed' do
+      series = create(:entry, list: list, position: 1, media: 'series')
+      episode = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot')
+
+      patch entry_path(series), params: {
+        entry: { subentries_attributes: { '0' => { id: episode.id, length: '53' } } }
+      }
+
+      expect(Subentry.exists?(episode.id)).to be(true)
+      expect(episode.reload.name).to eq('Pilot')
+    end
+
+    it 'still drops the blank row rather than saving a nameless episode' do
+      series = create(:entry, list: list, position: 1, media: 'series')
+
+      expect do
+        patch entry_path(series), params: {
+          entry: { subentries_attributes: { '0' => { name: '', season: '', episode: '' } } }
+        }
+      end.not_to change(Subentry, :count)
+    end
+  end
+
   it 'renders the new list form' do
     get new_list_path
 

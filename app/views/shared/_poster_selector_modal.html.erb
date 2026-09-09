@@ -31,17 +31,38 @@
       <%# Outside the three states above, so it is there whether the search found nothing,
           something, or is still looking -- "none of these is any good" is the case it
           exists for, and that is not the same as "there were none". %>
-      <div class="modal-footer justify-content-between align-items-end">
-        <div class="poster-upload">
-          <label class="form-label mb-1" for="posterUpload">None of these? Upload your own.</label>
-          <input type="file"
-                 id="posterUpload"
-                 class="form-control form-control-sm"
-                 accept="image/jpeg,image/png,image/webp,image/gif"
-                 data-poster-selector-target="file"
-                 data-action="change->poster-selector#upload">
+      <div class="modal-footer d-block">
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-5 poster-upload">
+            <label class="form-label mb-1" for="posterUpload">None of these? Upload your own.</label>
+            <input type="file"
+                   id="posterUpload"
+                   class="form-control form-control-sm"
+                   accept="image/jpeg,image/png,image/webp,image/gif"
+                   data-poster-selector-target="file"
+                   data-action="change->poster-selector#upload">
+          </div>
+          <%# The other half of the same "none of these" case. A picture found in a browser
+              tab is a link long before it is a file on disk, and saving it first only to
+              pick it back out of Downloads is a detour. The server fetches it and keeps a
+              copy, rather than the page pointing at somebody else's host forever -- see
+              RemoteImage, and the broken-poster audit for what hotlinking costs. %>
+          <div class="col-12 col-md-7">
+            <label class="form-label mb-1" for="posterUrl">Or paste an image link.</label>
+            <div class="input-group input-group-sm">
+              <input type="url"
+                     id="posterUrl"
+                     class="form-control form-control-sm"
+                     placeholder="https://…"
+                     data-poster-selector-target="url"
+                     data-action="keydown.enter->poster-selector#fetchUrl">
+              <button type="button"
+                      class="btn btn-outline-secondary"
+                      data-action="poster-selector#fetchUrl">Use</button>
+            </div>
+          </div>
         </div>
-        <p class="mb-0 small" data-poster-selector-target="uploadStatus"></p>
+        <p class="mb-0 mt-2 small" data-poster-selector-target="uploadStatus"></p>
       </div>
     </div>
   </div>

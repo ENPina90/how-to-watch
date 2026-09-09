@@ -9,6 +9,9 @@
       <%= f.input :position %>
       <%= f.input :name %>
       <%= f.input :media %>
+      <%# What the cable schedule lays a slot out by. Left blank it falls back to a flat
+          guess, and a guess that is short cuts the programme off partway through. %>
+      <%= f.input :length, label: "Runtime (minutes)", hint: runtime_hint_for(entry) %>
       <%= f.input :source_url, label: "Source URL",
             input_html: { value: entry.current_source_url },
             hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
@@ -20,7 +23,13 @@
       <%= f.input :source_key,
             label: "Source key / URL",
             hint: "Direct providers only: Drive file id, mega key#fragment, YouTube id, or full URL for Custom. Leave blank for imdb providers." %>
-      <%= f.input :pic, label: "Poster URL (or upload below)" %>
+      <%# Three ways to the same picture, and they are not the same thing. `pic` points at
+          somebody else's host for as long as it stays up -- which is what the broken-poster
+          audit spends its time finding out about -- while the two below keep a copy. %>
+      <%= f.input :pic, label: "Poster URL (linked, not stored)" %>
+      <%= f.input :poster_url, as: :url, label: "Fetch a poster from a link",
+            input_html: { value: nil, placeholder: "https://…" },
+            hint: "Downloads the image and keeps a copy, so it does not go dead later. Replaces the current poster." %>
 
       <% if entry.poster.attached? %>
         <div class="mb-3">
@@ -43,11 +52,15 @@
       <% end %>
       <% if entry.media == 'series' || entry.media == 'anime' %>
         <h3>Episodes</h3>
-        <%= f.simple_fields_for :subentries do |subentry_form| %>
+        <%# In order, so the one episode missing a runtime out of sixty-six can be found. %>
+        <%= f.simple_fields_for :subentries, entry.subentries_for_form do |subentry_form| %>
           <%= subentry_form.input :name %>
           <%= subentry_form.input :plot %>
           <%= subentry_form.input :season %>
           <%= subentry_form.input :episode %>
+          <%# An episode's runtime belongs to the episode, and it is what the cable schedule
+              measures its slot by. %>
+          <%= subentry_form.input :length, label: "Runtime (minutes)" %>
           <%= subentry_form.input :_destroy, as: :boolean, label: 'Remove Subentry' %>
         <% end %>
       <% end %>

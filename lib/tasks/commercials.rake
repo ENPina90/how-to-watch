@@ -12,6 +12,18 @@ namespace :commercials do
     puts "Commercial reels: #{result.summary}."
   end
 
+  # Runs on every deploy from the Procfile, so it must not be able to stop the app booting.
+  # A reel that cannot be created is a break that falls back to the caption, not a reason to
+  # refuse to start; CommercialCatalog.sync! already swallows per-reel failures, and this
+  # catches anything worse -- an unmigrated database on a half-finished deploy, say.
+  desc "commercials:seed, but never fails the boot (used by the Procfile)"
+  task seed_quietly: :environment do
+    result = CommercialCatalog.sync!
+    puts "Commercial reels: #{result.summary}." if result.created.any? || result.failed.any?
+  rescue StandardError => e
+    warn "commercials:seed_quietly skipped: #{e.class}: #{e.message}"
+  end
+
   # How long each reel actually runs, read off the watch page.
   #
   # Without it a break can only start somewhere in the first few minutes, because there is

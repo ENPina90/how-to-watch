@@ -7,7 +7,7 @@ require 'json'
 class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime]
   # Everything here writes state shared by everyone who can see the entry -- its position
   # in the list, its provider, its poster, the `stream` flag. The per-user actions
   # (complete, review, shuffle_current and friends) are deliberately absent: they write
@@ -130,28 +130,45 @@ class EntriesController < ApplicationController
     old_position = @entry.position
     new_position = entry_params[:position].to_i
 
-    # Clean up entry params - remove empty subentries
+    # The edit form always offers one blank row for adding an episode. Left untouched it
+    # arrives here as an empty set of attributes, and without this it would be saved as a
+    # nameless episode.
+    #
+    # Only the blank row, which is to say only a row carrying no id. Judging by the
+    # submitted fields alone deleted an episode that already existed whenever a request did
+    # not happen to restate its name, season and episode -- a partial update of any other
+    # field, such as a runtime, silently destroyed the record it was meant to correct.
+    # Removing an episode on purpose is what the Remove Subentry checkbox is for.
     cleaned_params = entry_params.to_h
-    if cleaned_params[:subentries_attributes]
-      cleaned_params[:subentries_attributes].each do |key, subentry_attrs|
-        # Mark for destruction if name, season, and episode are all empty
-        if subentry_attrs[:name].blank? && subentry_attrs[:season].blank? && subentry_attrs[:episode].blank?
-          cleaned_params[:subentries_attributes][key][:_destroy] = '1'
-        end
-      end
+    cleaned_params[:subentries_attributes]&.each_value do |attrs|
+      next if attrs[:id].present?
+
+      attrs[:_destroy] = '1' if attrs[:name].blank? && attrs[:season].blank? && attrs[:episode].blank?
     end
+
+    # Fetched after the rest of the entry has saved, and not allowed to take the rest down
+    # with it: an address that turns out not to have an image behind it should not throw
+    # away the name and the runtime that were typed in the same breath. It is reported
+    # rather than swallowed, because nothing else on the page would show it had failed.
+    poster_url = cleaned_params.delete(:poster_url)
 
     cleaned_params.merge!(list: @entry.list)
     if @entry.update(cleaned_params)
       if old_position != new_position
         shift_positions(@entry, new_position)
       end
+      poster_error = poster_url.present? ? attach_poster_from_url(poster_url)[:error] : nil
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(dom_id(@entry), partial: "entries/entry_#{@entry.media.downcase}", locals: { entry: @entry })
-          turbo_stream.after(dom_id(@entry), "<turbo-frame id='modal-success'></turbo-frame>")
+          flash.now[:alert] = poster_error if poster_error
+          streams = [turbo_stream.replace(dom_id(@entry), partial: "entries/entry_#{@entry.media.downcase}", locals: { entry: @entry })]
+          streams << turbo_stream.replace('flash', partial: 'shared/flashes') if poster_error
+          render turbo_stream: streams
         end
-        format.html { redirect_to list_path(@entry.list, anchor: @entry.imdb) }
+        format.html do
+          flash[:alert] = poster_error if poster_error
+          redirect_to list_path(@entry.list, anchor: @entry.imdb)
+        end
       end
     else
       render :edit
@@ -307,6 +324,34 @@ class EntriesController < ApplicationController
     @entries_sidebar_collapsed = true # Right entries sidebar collapsed by default
 
     render layout: 'special_layout'
+  end
+
+  # How long this entry really runs, as reported by the player showing it.
+  #
+  # `entries.length` is the catalogue's claim, and for a good few entries there is no claim
+  # at all -- OMDB had none, and the cable schedule falls back to a flat guess. A guess that
+  # is short cuts a programme off partway through; one that is long leaves the slot running
+  # after the film has ended. Neither is visible from the server: only the player knows what
+  # it is holding, and it says so in every report.
+  #
+  # Fills a gap and never overwrites. A runtime somebody has set by hand, or one OMDB gave,
+  # is a considered value and not ours to correct from whichever cut a provider happens to
+  # be serving today. Silent either way -- nothing on the page waits on the answer.
+  def runtime
+    minutes = (params[:seconds].to_i / 60.0).round
+    return head :no_content unless minutes.positive?
+
+    # An episode's runtime belongs to the episode. A show does not have one -- a season of
+    # forty-minute episodes and a season of twenty-minute ones can sit under the same entry,
+    # and writing either figure onto the show would be wrong for the other.
+    subject = @entry.subentries.find_by(id: params[:subentry]) || @entry
+    return head :no_content unless subject.length.to_i.zero?
+
+    subject.update_column(:length, minutes)
+    Rails.logger.info("Runtime learned for #{subject.class.name.downcase} #{subject.id} " \
+                      "(#{@entry.name}): #{minutes} min")
+
+    head :no_content
   end
 
   def decrement_current
@@ -635,19 +680,24 @@ class EntriesController < ApplicationController
       { error: 'Failed to save that image' }
     end
 
+    # A link, either one of the candidates the picker found or one somebody pasted. Since
+    # the second of those lets the user choose where the server connects to, the fetching is
+    # RemoteImage's job -- see the note there for what it refuses and why.
+    #
+    # The extension comes from the sniffed type rather than from the path: a URL ending
+    # .jpg is not a promise, and this name is what the file is served under.
     def attach_poster_from_url(poster_url)
-      downloaded_image = URI.open(poster_url)
-      extension = File.extname(URI.parse(poster_url).path).delete('.').presence || 'jpg'
+      image = RemoteImage.fetch(poster_url, max_bytes: MAX_POSTER_BYTES, accept: POSTER_CONTENT_TYPES)
+      return { error: image.error } unless image.ok?
 
       @entry.poster.attach(
-        io: downloaded_image,
-        filename: poster_filename(extension),
-        content_type: downloaded_image.content_type || 'image/jpeg'
+        io: image.io,
+        filename: poster_filename(image.content_type.split('/').last),
+        content_type: image.content_type
       )
       {}
     rescue StandardError => e
-      Rails.logger.error "Error updating poster: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
+      Rails.logger.error "Error updating poster for entry #{@entry.id}: #{e.message}"
       { error: 'Failed to update poster' }
     end
 
@@ -868,6 +918,7 @@ class EntriesController < ApplicationController
         :year,
         :pic,
         :poster,
+        :poster_url,
         :genre,
         :director,
         :writer,

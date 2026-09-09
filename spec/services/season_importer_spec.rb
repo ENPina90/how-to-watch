@@ -9,8 +9,10 @@ RSpec.describe SeasonImporter do
       'overview' => 'The first season.',
       'air_date' => '2019-04-06',
       'episodes' => [
-        { 'episode_number' => 1, 'name' => 'Ep one', 'overview' => 'First',  'vote_average' => 8.0 },
-        { 'episode_number' => 2, 'name' => 'Ep two', 'overview' => 'Second', 'vote_average' => 7.5 }
+        { 'episode_number' => 1, 'name' => 'Ep one', 'overview' => 'First',  'vote_average' => 8.0,
+          'runtime' => 24 },
+        { 'episode_number' => 2, 'name' => 'Ep two', 'overview' => 'Second', 'vote_average' => 7.5,
+          'runtime' => 22 }
       ]
     }
   end
@@ -56,6 +58,15 @@ RSpec.describe SeasonImporter do
       entry = importer.call[:entry]
 
       expect(entry.subentries.pluck(:imdb).uniq).to eq(['tt1355642'])
+    end
+
+    # A show has no runtime of its own -- its episodes do, and TMDB hands them over in the
+    # same payload as everything else here. Dropping them leaves the cable schedule laying
+    # every episode out by a flat guess.
+    it 'keeps each episode\'s own runtime' do
+      entry = importer.call[:entry]
+
+      expect(entry.subentries.order(:episode).pluck(:length)).to eq([24, 22])
     end
 
     it 'makes a single TMDB request for a series season' do

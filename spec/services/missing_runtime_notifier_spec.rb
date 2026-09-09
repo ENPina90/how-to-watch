@@ -57,6 +57,63 @@ RSpec.describe MissingRuntimeNotifier do
     end
   end
 
+  # A show has no runtime of its own, so judging it by `entries.length` flags every series
+  # on the dial and says something untrue about each of them. What the schedule actually
+  # lays a slot out by is the episode it picked, and that is what has to be complained about.
+  describe 'a series' do
+    let!(:series) do
+      create(:entry, list: channel, media: 'series', name: 'Show', length: nil, position: 1)
+    end
+
+    def episode(number, length)
+      Subentry.create!(entry: series, season: '1', episode: number.to_s, name: "Ep #{number}",
+                       length: length)
+    end
+
+    it 'says nothing about a show whose episodes all carry a runtime' do
+      episode(1, 24)
+      episode(2, 22)
+
+      expect { described_class.call }.not_to change(Notification, :count)
+    end
+
+    it 'warns about a show with even one bare episode' do
+      episode(1, 24)
+      episode(2, nil)
+
+      expect { described_class.call }.to change(Notification, :count).by(1)
+    end
+
+    it 'counts the bare episodes rather than describing the show as blank' do
+      episode(1, 24)
+      episode(2, nil)
+
+      described_class.call
+      data = Notification.find_by(subject: series).data
+
+      expect(data['episodes']).to eq(2)
+      expect(data['episodes_missing']).to eq(1)
+    end
+
+    # Nothing to pick an episode from, so the schedule falls back to the show -- which has
+    # no runtime either, and the guess is all that is left.
+    it 'warns about a show with no episodes imported at all' do
+      described_class.call
+
+      expect(Notification.find_by(subject: series).data['episodes']).to eq(0)
+    end
+
+    it 'retires the warning once the last bare episode is filled in' do
+      episode(1, 24)
+      bare = episode(2, nil)
+      described_class.call
+
+      bare.update!(length: 22)
+
+      expect { described_class.call }.to change(Notification, :count).by(-1)
+    end
+  end
+
   describe 'reconciling' do
     it 'raises nothing twice for the same entry' do
       scheduled('No Runtime', nil)
