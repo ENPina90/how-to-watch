@@ -93,8 +93,12 @@ class CableController < ApplicationController
       # rather than a dead frame.
       @embed_url = @slot.break_reel&.embed_url(start_at: @slot.reel_position_at(@now))
     else
+      # No subtitles. A channel playing to a room is not a page somebody is working
+      # through, and burned-in English captions on everything is not what a television
+      # looks like -- the viewer can still turn them on in the player's own menu, which is
+      # the only place they can be changed once the frame is up.
       @embed_url = @entry.embed_url(subentry: @current_subentry, autoplay: true,
-                                    start_at: @slot.offset_at(@now))
+                                    start_at: @slot.offset_at(@now), subtitles: false)
       return render :off_air, layout: "special_layout" if @embed_url.blank?
     end
 
