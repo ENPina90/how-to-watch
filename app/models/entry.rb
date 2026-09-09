@@ -260,6 +260,17 @@ class Entry < ApplicationRecord
   end
 
   # Get user's current episode for this entry
+  # The episode after this one, in the order episodes play. A read: it answers "what would
+  # advancing land on" without advancing, which is what warming the next episode needs.
+  def subentry_after(subentry)
+    return nil if subentry.nil?
+
+    ordered = subentries.order(:season, :episode).to_a
+    at = ordered.index(subentry)
+
+    at && ordered[at + 1]
+  end
+
   def current_subentry_for_user(user)
     # Signed out there is no per-user position to read, so the entry's own pointer is the
     # only "current" there is. Returning nil left a series with no episode to play for a

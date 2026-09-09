@@ -24,16 +24,13 @@ class UserEntryPosition < ApplicationRecord
   def advance_to_next!
     return unless current_subentry
 
-    subentries = entry.subentries.order(:season, :episode)
-    current_index = subentries.index(current_subentry)
+    # Asked of the entry rather than worked out here, so that warming the next episode and
+    # actually moving to it can never disagree about which one it is.
+    following = entry.subentry_after(current_subentry)
+    return current_subentry if following.nil? # At end, stay on last episode
 
-    if current_index && current_index < subentries.length - 1
-      next_subentry = subentries[current_index + 1]
-      update!(current_subentry: next_subentry)
-      next_subentry
-    else
-      current_subentry # At end, stay on last episode
-    end
+    update!(current_subentry: following)
+    following
   end
 
   # Go to previous episode

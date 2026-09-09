@@ -22,6 +22,12 @@ import { playerAdapterFor, isControllable } from "services/player_adapter"
 // The move itself is cinema-navigation's, offered rather than performed for the same reason
 // the up-next card offers it: if that controller is not there, the fallback is an ordinary
 // navigation to the same URL and the channel still changes programme.
+// How long before a change to start warming what comes after it. The embed behind it takes
+// about a second and a half to reach a picture, so this is mostly slack -- but a warmed
+// frame is also a buffered one, and arriving with a few seconds already in hand is the
+// difference between the next programme starting and the next programme loading.
+const WARM_LEAD = 45000
+
 export default class extends Controller {
   static values = {
     // The channel's own path. Asked again when the programme ends, and it answers with
@@ -51,12 +57,18 @@ export default class extends Controller {
 
   disconnect() {
     clearTimeout(this.timer)
+    clearTimeout(this.warmTimer)
     this.player?.destroy()
   }
 
   scheduleMove() {
     const endsAt = Date.parse(this.endsAtValue)
     if (Number.isNaN(endsAt)) return
+
+    // Ask for the next programme to be warmed shortly before it is due. Unlike the watch
+    // page there is no up-next card to take the hint from, so the clock gives it.
+    const lead = Math.max(endsAt - Date.now() - WARM_LEAD, 0)
+    this.warmTimer = setTimeout(() => this.dispatch("warm", { target: document }), lead)
 
     // A programme whose end has already passed by the time the page renders -- a slow
     // request landing in the last second of a slot. Move at once rather than never.
@@ -116,6 +128,7 @@ export default class extends Controller {
     if (this.moved) return
     this.moved = true
     clearTimeout(this.timer)
+    clearTimeout(this.warmTimer)
 
     const url = (early && this.fillerUrlValue) || this.urlValue
     const asked = this.dispatch("move", {

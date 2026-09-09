@@ -29,7 +29,14 @@
      <%# The clock asking to move on is answered the same way the up-next card is on the
          watch page: the navigation controller fetches the next page and pastes it in, so
          the player's frame and any fullscreen survive the change of programme. %>
+     <%# The clock gives the warming its cue here: there is no up-next card on a cable
+         channel, and what comes next is not at an address of its own -- it is this same
+         channel, asked what will be on at the moment it changes. %>
      data-action="cable-clock:move@document->cinema-navigation#moveFromEvent
+                  cable-clock:warm@document->cinema-navigation#warmNext
+                  <%# The guide is not replaced by a move, so it has to be told about one:
+                      its highlight follows the channel however the channel was changed. %>
+                  cinema-navigation:moved@document->cable-guide#channelChanged
                   player-keys:fullscreen@document->cinema-fullscreen#toggle"
      data-cable-guide-url-value="<%= cable_guide_path %>"
      data-cable-guide-channel-value="<%= @channel.id %>"
@@ -66,6 +73,11 @@
       size. With the guide up it sits over the player's own fullscreen button, which is dead
       -- the frame has no fullscreen permission -- so the one that works is on top of the
       one that does not. %>
+  <%# A transparent strip across the player's scrubber, so it cannot be dragged. Everything
+      else of theirs is left reachable, menus included -- see _cable.scss for where the line
+      is drawn and why. Nothing is bound to it: catching the drag is the whole of its job. %>
+  <div class="cable-guard<%= ' cable-guard--whole' if @in_break %>" aria-hidden="true"></div>
+
   <%# A break with nothing to show. Rendered for every break rather than only the ones that
       start out empty, because a reel can refuse at any point -- taken down, made private,
       embedding switched off -- and cable-filler uncovers this when it hears the player say
@@ -101,7 +113,15 @@
            keyboard is fullscreen and mute, neither of which touches the film. %>
        <%# cable-filler only through a break, and only then: it is watching one particular
            embed for one particular refusal. %>
-       data-controller="player-keys cable-clock<%= ' cable-filler' if @in_break %>"
+       <%# cable-hold puts the film back on when somebody stops it. There is no pausing a
+           channel that plays to a clock -- the schedule does not wait, so a pause only puts
+           this viewer out of step with the listing and with everyone else watching. Absent
+           through a break, where the frame is YouTube's and nothing here can drive it. %>
+       data-controller="player-keys cable-clock<%= @in_break ? ' cable-filler' : ' cable-hold' %>"
+       <% unless @in_break %>
+         data-cable-hold-frame-value="cinema"
+         data-cable-hold-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
+       <% end %>
        <% if @in_break %>
          data-cable-filler-frame-value="cinema"
          data-cable-filler-card-value="cableInterlude"
@@ -121,6 +141,11 @@
        data-cable-clock-adapter-value="<%= @in_break ? nil : @entry.resolved_source&.sync_adapter %>"
        <%# Where to go when this programme is over: the channel itself, which answers with
            whatever the schedule says is on by the time the request lands. %>
+       <%# Which channel this is, on the one element a move replaces -- the guide reads it
+           back to move its highlight, since nothing else tells it the dial has turned. %>
+       data-cable-channel-id="<%= @channel.id %>"
+       <%# This channel as it will be the moment it changes, for warming ahead of the change. %>
+       data-cinema-next-url="<%= @next_url %>"
        data-cable-clock-url-value="<%= cable_channel_path(@channel) %>"
        <%# The next time this channel shows something different, which is not always the end
            of the slot: a programme with a break after it changes twice. %>

@@ -515,6 +515,66 @@ body.cable__mode .cinema__screen {
   }
 }
 
+/* ---- the strip over the scrubber -----------------------------------------------------
+ *
+ * Dragging the scrubber is the one mouse gesture that can still put a viewer out of step
+ * with the schedule, and unlike a pause nothing here can undo it -- a channel that can be
+ * wound back is not a channel. So it is covered: a transparent strip across the frame at
+ * exactly its height, catching the drag and doing nothing with it.
+ *
+ * A strip and not a sheet over the whole picture, which is what this was first. The
+ * subtitle and settings panels open *upward* into the picture, so a sheet covering it left
+ * both menus drawn but unclickable -- the buttons that opened them were reachable and the
+ * lists behind them were not, which is worse than either extreme. Clicking the picture
+ * pauses the film again as a result, and that is the right trade: cable-hold puts it back
+ * on within the same second, so a pause costs nothing lasting while a scrub does.
+ *
+ * Sized to the scrubber's reach rather than to the line you can see. A slider's hit area is
+ * padded well beyond its drawn width and grows again on hover, so a strip fitted to the line
+ * left its lower edge live -- which is the half that matters, since that is the edge the
+ * pointer arrives at coming up from the controls.
+ *
+ * So it runs from just above the row of buttons to well clear of the scrubber's top. That is
+ * as far down as it can go: the buttons are 40px centred 29px above the bottom, so their box
+ * ends 49px up, and a strip starting at 51px leaves two pixels between the two. The
+ * subtitles, the subtitle language, the quality menu and the volume all live in that row and
+ * have to stay clickable -- if the scrubber's hit area really does reach below 51px it
+ * overlaps them, and no rectangle can have both.
+ *
+ * Upward it is deliberately generous. Above the scrubber is only picture, and covering
+ * picture costs nothing: clicking it pauses the film, and cable-hold puts it back on within
+ * the same second.
+ */
+.cinema__screen {
+  --scrubber-from-bottom: 51px;
+  --scrubber-height: 49px;
+}
+
+.cable-guard {
+  position: absolute;
+  inset: auto 0 var(--scrubber-from-bottom) 0;
+  height: var(--scrubber-height);
+  /* Above the frame stack, below every control of ours -- the banner is 12, the two corner
+     buttons 21, the guide 30. */
+  z-index: 2;
+  background: transparent;
+}
+
+/* A commercial break is the one case worth covering whole. The reel is asked for
+   `controls=0`, so there is no scrubber to aim at and no bar to leave reachable -- and it
+   matters more here, because cable-hold cannot undo a pause on a YouTube embed: YouTube
+   takes no commands from this app at all. */
+.cable-guard--whole {
+  inset: 0;
+  height: auto;
+}
+
+/* Not while the guide is up. The picture is a thumbnail nobody is watching then, our own
+   two buttons sit over it, and cable-hold still covers the pause it would prevent. */
+.cinema__screen--guide .cable-guard {
+  display: none;
+}
+
 /* ---- the guide button ----------------------------------------------------------------
  *
  * Placed over the player's own play/pause button, exactly as .cinema__fullscreen is placed

@@ -15,10 +15,20 @@ class CommercialReel < ApplicationRecord
   scope :covering, ->(year) { where(starts_year: ..year).where(ends_year: year..) }
   scope :in_order, -> { order(:starts_year) }
 
-  # How far into a reel a break may begin when its runtime is unknown. Every one of these is
-  # a quarter of an hour at the very least, so anywhere in the first five minutes is safe
-  # without knowing anything more -- and knowing more only widens it.
+  # How far into a reel a break may begin when its runtime is unknown. Deliberately small:
+  # without a runtime there is no telling how much reel there is to spend, and running out
+  # mid-break is worse than a narrow choice of starting points. `commercials:durations`
+  # fills the runtimes in, and every reel that has one ignores this entirely.
   BLIND_WINDOW = 5.minutes
+
+  # Never the first minute and a half. That is where a channel's own titles sit -- the
+  # compilations open with them -- and a commercial break that begins with somebody's
+  # YouTube intro is the one thing that gives the whole illusion away.
+  INTRO_SKIP = 90
+
+  # Nor the last half minute, so a break cannot outlive the reel it is playing from. There
+  # is no second thing to cut to.
+  TAIL_MARGIN = 30
 
   # The reel for a film of this year. Falls to the nearest era at either end rather than to
   # nothing: a 1928 film gets the oldest adverts we have, which is a better answer than a
@@ -36,13 +46,21 @@ class CommercialReel < ApplicationRecord
     in_order.last
   end
 
-  # Where in the reel a break of this length may start. Never so late that the reel would
-  # run out mid-break -- there is no third thing to cut to.
+  # Where in the reel a break of this length may start.
+  #
+  # Anywhere between the end of the titles and far enough from the end that the break cannot
+  # outlast the reel. Random across that whole span rather than the first few minutes of it,
+  # which is what makes a channel's adverts differ from one break to the next instead of
+  # replaying the same opening every time.
+  #
+  # A reel too short to give that span -- or one whose runtime is unknown, which leaves only
+  # a conservative guess to spend -- starts as late as it safely can rather than at the very
+  # top, since the titles are the one part worth missing.
   def random_offset_for(seconds)
-    room = usable_length - seconds
-    return 0 if room <= 0
+    latest = usable_length - seconds.to_i - TAIL_MARGIN
+    return [latest, 0].max if latest <= INTRO_SKIP
 
-    rand(0..room.to_i)
+    rand(INTRO_SKIP..latest)
   end
 
   def usable_length

@@ -53,7 +53,11 @@ class CableController < ApplicationController
     # decides a whole day's programme.
     CableSchedule.ensure_day!(@channel, CableSchedule.today) unless preloading?
 
-    @now = Time.current
+    # Normally now, but a page warming the next programme may ask what will be on when it
+    # starts -- unlike the watch page, the thing coming next is not at an address of its own.
+    # Only while warming, which is the whole of what it is for: a channel somebody is
+    # actually watching then cannot be made to claim that something else is on.
+    @now = requested_time || Time.current
     @slot = CableSchedule.on_air(@channel, at: @now)
 
     # Off air: the channel has nothing that can be played at all. The view says so and
@@ -98,6 +102,14 @@ class CableController < ApplicationController
     # the next programme.
     @next_change_at = @in_break ? @slot.ends_at : @slot.next_change_after(@now)
 
+    # The same page as it will be the moment that happens, for warming what comes next while
+    # the current programme runs out.
+    # Rounded up, not truncated. `to_i` drops any fraction of a second, which would land
+    # this an instant *before* the change -- and the answer to "what is on then" would be
+    # the programme already playing, so nothing would be warmed. Slots are built on whole
+    # seconds so it does not arise today, but a boundary is a poor thing to miss by 0.07s.
+    @next_url = cable_channel_path(@channel, at: @next_change_at.to_f.ceil)
+
     # No sidebars at all. There is no list to step through on the right, and the channel
     # list on the left is what the guide is for -- a permanent panel naming the same six
     # channels is furniture over a picture. What is left is the picture and the ring.
@@ -109,6 +121,23 @@ class CableController < ApplicationController
   end
 
   private
+
+  # A moment to render the channel as of, honoured only for a speculative fetch.
+  #
+  # Gating it on the preload header rather than on how far ahead it is: the point is not
+  # that the time is near, it is that nobody is watching this copy of the page. A window
+  # would have to be wide enough for the longest gap the warming can span and would still be
+  # an arbitrary number, and it made the address the page prints for itself invalid for most
+  # of a programme's life -- correct only if fetched late enough, which is a poor thing to
+  # ask anybody to remember.
+  #
+  # Ignored in the past, because there is nothing to warm behind us.
+  def requested_time
+    return nil unless preloading? && params[:at].present?
+
+    at = Time.zone.at(params[:at].to_i)
+    at > Time.current ? at : nil
+  end
 
   # Which of the entries in the listing this viewer has already seen, as one query for the
   # lot. Asking each entry in turn would be a query per cell, and a day of listings across

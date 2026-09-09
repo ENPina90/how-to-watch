@@ -253,6 +253,84 @@ RSpec.describe 'Cable', type: :request do
     end
   end
 
+  # The cable page's next programme is not at an address of its own -- it is this same
+  # channel, asked what will be on at the moment it changes. That is how it warms the next
+  # programme before it starts, the way the watch page warms its next entry.
+  describe 'asking what will be on in a moment' do
+    before { sign_in user }
+
+    def warming(path)
+      get path, headers: { 'X-Cinema-Preload' => '1', 'X-Requested-With' => 'XMLHttpRequest' }
+    end
+
+    it 'answers with the programme that will be on then' do
+      travel_to(midnight + 10.minutes) do
+        slot = CableSchedule.on_air(channel, at: Time.current)
+        following = CableSlot.where(list: channel).after(slot.ends_at).in_order.first
+
+        warming(cable_channel_path(channel, at: slot.ends_at.to_i))
+
+        expect(response.body).to include(following.entry.name)
+      end
+    end
+
+    it 'names that address on the page, so the warming knows where to look' do
+      travel_to(midnight + 10.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('data-cinema-next-url')
+    end
+
+    # A channel somebody is actually watching cannot be made to claim something else is on.
+    # The whole point of the parameter is that nobody is looking at that copy of the page.
+    it 'ignores the time on a page somebody is watching' do
+      travel_to(midnight + 10.minutes) do
+        on_now = CableSchedule.on_air(channel, at: Time.current)
+        slot_end = on_now.ends_at
+
+        get cable_channel_path(channel, at: slot_end.to_i)
+
+        expect(response.body).to include(on_now.entry.name)
+      end
+    end
+
+    it 'ignores a time that has already gone' do
+      travel_to(midnight + 40.minutes) do
+        on_now = CableSchedule.on_air(channel, at: Time.current)
+
+        warming(cable_channel_path(channel, at: (Time.current - 20.minutes).to_i))
+
+        expect(response.body).to include(on_now.entry.name)
+      end
+    end
+
+    # However far ahead the next change happens to be. A film runs two hours; the address
+    # the page prints for itself has to still mean something when the warming finally uses
+    # it, which is why this is not bounded by how near the time is.
+    it 'answers however far ahead the change is' do
+      travel_to(midnight) do
+        long = CableSchedule.on_air(channel, at: Time.current)
+        following = CableSlot.where(list: channel).after(long.ends_at).in_order.first
+
+        warming(cable_channel_path(channel, at: long.ends_at.to_i))
+
+        expect(response.body).to include(following.entry.name)
+      end
+    end
+
+    it 'records nothing about the viewer when asked' do
+      counts = -> { [UserListPosition.count, UserEntry.count, UserEntryPosition.count] }
+
+      travel_to(midnight + 10.minutes) do
+        before_counts = counts.call
+        slot = CableSchedule.on_air(channel, at: Time.current)
+
+        warming(cable_channel_path(channel, at: slot.ends_at.to_i))
+
+        expect(counts.call).to eq(before_counts)
+      end
+    end
+  end
+
   describe 'the channel banner' do
     before { sign_in user }
 

@@ -52,7 +52,17 @@
      data-controller="cinema-fullscreen cinema-navigation"
      <%# `f` is handled by player-keys, which has the keyboard, but fullscreen belongs to
          this element and its controller. Dispatched across rather than reached into. %>
+     <%# The up-next card appearing is the signal to warm what it will move to. It is raised
+         once the film is effectively over, which is exactly when the spare frame is better
+         spent on the next entry than on the channel below.
+
+         Signed in only, because that is the only case where anything raises it: the event
+         comes from player-progress, which tracks a position and so needs an account. Left
+         in unconditionally it would be an action listening for something that can never
+         arrive -- and would read, to anything grepping the page, as position tracking on a
+         page that deliberately has none. %>
      data-action="auto-advance:move@document->cinema-navigation#moveFromEvent
+                  <%= 'player-progress:up-next@document->cinema-navigation#warmNext' if user_signed_in? %>
                   player-keys:fullscreen@document->cinema-fullscreen#toggle"
      data-cinema-fullscreen-idle-class="cinema__screen--idle"
      data-cinema-navigation-moving-class="cinema__screen--moving"
@@ -93,6 +103,9 @@
            Its shortcuts are the player's own, which stopped reaching it when fullscreen
            moved to the container -- see player_keys_controller.js. %>
        data-controller="player-keys<%= ' player-progress' if user_signed_in? %>"
+       <%# Where the up-next card will take you, for warming it while the credits run. Absent
+           on an unordered channel, which advances by shuffling and so has no next to warm. %>
+       <% if @next_url %>data-cinema-next-url="<%= @next_url %>"<% end %>
        <%# Which adapter drives this page's player. Outside the signed-in branch below on
            purpose: cinema-navigation reads this off the fetched page to know how to
            quieten the channel it is warming, and that has nothing to do with whether

@@ -41,6 +41,37 @@ RSpec.describe 'JavaScript modules' do
     end
   end
 
+  describe 'method calls within a file' do
+    # `applyChrome`, `swap` and `swapInner` were deleted from cinema_navigation_controller
+    # by a careless edit while the calls to them stayed. Nothing failed: the suite was
+    # green, the static checks below passed -- they only look at what the *views* reference
+    # -- and the page went on rendering. It broke only when somebody changed channel, at
+    # which point the move died silently in a TypeError and the address bar simply did not
+    # move. This is the check that would have caught it in the file it happened in.
+    #
+    # A mixin's methods count as defined on whatever mixes it in, and a handler assigned in
+    # a constructor counts as defined too; the mixin file itself is skipped, because its
+    # `this` is deliberately somebody else's object.
+    BEHAVIOUR = Rails.root.join('app/javascript/services/tmdb_search_behavior.js')
+    STIMULUS_BUILT_INS = %w[dispatch].freeze
+
+    it 'calls only methods that exist' do
+      mixin = BEHAVIOUR.read.scan(/^  (?:async )?(\w+)\(/).flatten
+
+      missing = JS_FILES.reject { |file| file == BEHAVIOUR }.flat_map { |file|
+        source = file.read
+        defined = source.scan(/^  (?:async |get |static )?(\w+)\(/).flatten
+        defined += source.scan(/this\.(\w+)\s*=[^=]/).flatten
+        defined += mixin if source.include?('TmdbSearchBehavior')
+
+        (source.scan(/\bthis\.(\w+)\(/).flatten.uniq - defined - STIMULUS_BUILT_INS)
+          .map { |name| "#{relative(file)}: this.#{name}() is never defined" }
+      }
+
+      expect(missing).to be_empty
+    end
+  end
+
   describe 'stimulus actions in the views' do
     # `search#entries` was deleted from search_controller.js in 8803106, but the eight
     # data-action attributes pointing at it stayed in lists/show. Stimulus fails those
