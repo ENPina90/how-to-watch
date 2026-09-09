@@ -34,11 +34,16 @@ const RECENTER_AFTER = 5 * 60 * 1000
 // screen and most of the width is what has not happened yet.
 const NOW_AT = 1 / 3
 
-// Keys the guide takes over while it is up, so that moving around the grid does not also
-// scroll the page under it. The film is not at risk from them -- a cable channel has no
-// transport at all, see player-keys' `transport` value -- but the browser's own use of the
-// arrows and Enter still has to be taken away while the grid has them.
-const CLAIMED_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape", "Enter"]
+// Keys the guide takes over while it is up, so that reading the grid does not also scroll
+// the page under it. The film is not at risk from them -- a cable channel has no transport
+// at all, see player-keys' `transport` value -- but the browser's own use of them still has
+// to be taken away while the grid has them.
+//
+// Up and down are deliberately absent. On a cable box those change the channel whether the
+// guide is up or not, so they are left to cinema-navigation: the dial turns, the picture in
+// the corner changes, and the guide's highlight follows it. Reading a listing and changing
+// channel are the same gesture, which is most of what a guide is for.
+const CLAIMED_KEYS = ["ArrowLeft", "ArrowRight", "Escape", "Enter"]
 
 export default class extends Controller {
   static targets = [
@@ -259,19 +264,42 @@ export default class extends Controller {
     const programme = event.target.closest("[data-cable-guide-tune]")
     if (!programme) return
 
-    const row = programme.closest(".tvguide__row")
-    this.bodyTarget.querySelectorAll(".tvguide__row--tuned")
-      .forEach((tuned) => tuned.classList.remove("tvguide__row--tuned"))
-    row?.classList.add("tvguide__row--tuned")
+    this.lightUp(programme.dataset.cableGuideTune)
+  }
+
+  // The row that is lit, brought into view. A dial of six fits on screen; a longer one
+  // would leave the channel you just turned to somewhere below the fold.
+  scrollToTuned() {
+    this.bodyTarget.querySelector(".tvguide__row--tuned")?.scrollIntoView({ block: "nearest" })
+  }
+
+  // The channel changed by something other than a click on the grid -- the arrows, the
+  // remote, the clock running out. The guide sits outside the chrome so that using it does
+  // not close it, which also means a move replaces nothing in here: without being told, it
+  // goes on lighting the channel it was opened from long after the picture has moved.
+  channelChanged() {
+    this.lightUp(document.getElementById("cinema-chrome")?.dataset.cableChannelId)
+  }
+
+  // Move the highlight, and everything that hangs off it.
+  lightUp(channelId) {
+    if (!channelId || !this.hasBodyTarget) return
 
     // The screen element survives a move, so the channel it names would otherwise still be
     // the one the page was first rendered for -- and the next refetch would light the wrong
-    // row. Nothing else reads it, but a value that lies is worth not keeping.
-    this.channelValue = programme.dataset.cableGuideTune
+    // row.
+    this.channelValue = channelId
 
-    // What is live has moved to another row, and the picture is about to change to match.
+    this.bodyTarget.querySelectorAll(".tvguide__row--tuned")
+      .forEach((tuned) => tuned.classList.remove("tvguide__row--tuned"))
+    this.bodyTarget
+      .querySelector(`.tvguide__row[data-channel-id="${CSS.escape(channelId)}"]`)
+      ?.classList.add("tvguide__row--tuned")
+
+    // What is live has moved to another row, and the picture has moved to match.
     this.markLive()
     this.describeCurrent()
+    this.scrollToTuned()
   }
 
   // ---- being left alone -----------------------------------------------------------
@@ -318,48 +346,32 @@ export default class extends Controller {
     if (event.key === "Escape") return this.close()
     if (event.key === "Enter") return this.focused?.click()
 
-    this.move(event.key)
+    this.step(event.key)
     this.rest()
   }
 
-  // Up and down change channel, left and right step along a row -- which is how a cable
-  // guide has always worked, and it is the reason the arrows are taken off the player.
-  move(key) {
-    const rows = [...this.bodyTarget.querySelectorAll(".tvguide__row")]
-    if (rows.length === 0) return
+  // Left and right walk along the row that is lit, to read what is on later. Up and down
+  // are not here: they turn the dial, and the highlight follows of its own accord.
+  step(key) {
+    const row = this.focused?.closest(".tvguide__row") ??
+                this.bodyTarget.querySelector(".tvguide__row--tuned") ??
+                this.bodyTarget.querySelector(".tvguide__row")
+    if (!row) return
 
-    const current = this.focused
-    const row = current?.closest(".tvguide__row")
-    const rowAt = row ? rows.indexOf(row) : -1
+    const cells = [...row.querySelectorAll(".tvguide__programme")]
+    if (cells.length === 0) return
 
-    let next
-    if (key === "ArrowUp" || key === "ArrowDown") {
-      const step = key === "ArrowDown" ? 1 : -1
-      const target = rows[(rowAt + step + rows.length) % rows.length]
-      // Landing on the programme nearest where you were, rather than the row's first --
-      // moving down a column should stay in roughly the same column.
-      next = this.nearest(target, current)
-    } else {
-      const cells = [...(row ?? rows[0]).querySelectorAll(".tvguide__programme")]
-      const at = current ? cells.indexOf(current) : -1
-      next = cells[Math.min(Math.max(at + (key === "ArrowRight" ? 1 : -1), 0), cells.length - 1)]
-    }
-
+    // Entering a row from nowhere starts at what is on, rather than at the far end of the
+    // day -- the same place the eye starts.
+    const from = this.focused && cells.includes(this.focused)
+      ? cells.indexOf(this.focused)
+      : cells.indexOf(this.currentCell())
+    const next = cells[Math.min(Math.max(from + (key === "ArrowRight" ? 1 : -1), 0), cells.length - 1)]
     if (!next) return
+
     this.focused = next
     this.previewing = true
     next.focus({ preventScroll: false })
     this.describe(next)
-  }
-
-  // The cell in a row whose span covers where the current one starts. Falls back to the one
-  // the line is in, so entering the grid from nowhere lands on what is on.
-  nearest(row, current) {
-    const cells = [...row.querySelectorAll(".tvguide__programme")]
-    if (cells.length === 0) return null
-    if (!current) return this.currentCell() ?? cells[0]
-
-    const want = current.getBoundingClientRect().left
-    return cells.find((cell) => cell.getBoundingClientRect().right > want) ?? cells[cells.length - 1]
   }
 }

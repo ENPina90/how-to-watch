@@ -81,12 +81,13 @@ export default class extends Controller {
   }
 
   // Up and down the dial from the keyboard, which is how anybody who has held a remote
-  // expects to change channel.
+  // expects to change channel -- including while the guide is up, where they turn the dial
+  // rather than walking the grid.
   //
-  // It presses the arrow rather than moving on its own. Everything the click path already
+  // It reads the address off the arrow and goes there itself. Everything the click path
   // knows -- that down may have a channel warmed and waiting, that a second move must not
-  // race the first, what to do when the answer is not a player page -- would otherwise have
-  // to be repeated here and kept in step with itself.
+  // race the first, what to do when the answer is not a player page -- is shared rather than
+  // repeated, and neither has to care whether the control it names is on screen.
   keyPressed(event) {
     if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
     if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
@@ -99,7 +100,7 @@ export default class extends Controller {
     if (!arrow) return
 
     event.preventDefault()
-    arrow.click()
+    this.follow(arrow.href)
   }
 
   // Somewhere the arrows already mean something: a field being typed into, a select being
@@ -120,12 +121,24 @@ export default class extends Controller {
 
     event.preventDefault()
 
-    // The one direction that may already be waiting -- but only when it is still what is
-    // warm. Late in a programme the spare is re-aimed at whatever comes next on this
-    // channel, and promoting that for a press of "down" would land on the wrong thing.
-    if (this.spares[BELOW]?.request === link.href) return this.promote(BELOW)
+    this.follow(link.href)
+  }
 
-    this.moveTo(link.href)
+  // Go where a channel control points, using the spare warmed for it if there is one.
+  //
+  // Shared by the click and the keyboard rather than having the keyboard press the control
+  // for it. Pressing it meant synthesising a click on an anchor that is `display: none`
+  // whenever the guide is up, and the browser's handling of that turned out to be
+  // inconsistent -- sometimes the page moved in place, sometimes it followed the link as an
+  // ordinary navigation and reloaded, taking the guide down with it. Calling the same code
+  // directly has neither problem and is what the click does anyway.
+  follow(href) {
+    // Only when the spare is still what this control points at. Late in a programme there
+    // is a second spare aimed at whatever comes next on this channel, and promoting that
+    // for a press of "down" would land on the wrong thing.
+    if (this.spares[BELOW]?.request === href) return this.promote(BELOW)
+
+    this.moveTo(href)
   }
 
   // The three that record a position first are forms, not links, so they arrive here
@@ -207,6 +220,11 @@ export default class extends Controller {
     this.applyChrome(page)
     history.pushState({}, "", url)
 
+    // Said once the page describes where we have arrived. Anything outside the chrome that
+    // tracks the channel has no other way of knowing -- the guide in particular is
+    // deliberately not replaced by a move, so that using it does not close it.
+    this.dispatch("moved", { target: document })
+
     // Whatever is still warm was warmed for where we were, not for where we have arrived.
     this.discardSpares()
     this.scheduleWarming()
@@ -249,6 +267,46 @@ export default class extends Controller {
     delete this.spares[role]
 
     return true
+  }
+
+  // Everything except the frame: adopting a spare has already dealt with that.
+  applyChrome(page) {
+    this.swap("cinema-chrome", page)
+    // The channel list, whose highlight is on whichever channel is playing -- a move
+    // between channels moves it. Replaced rather than filled, so the autoscroll controller
+    // on it connects again and brings the newly marked channel into view; its scroll
+    // position is the one thing here that should not survive a move.
+    this.swap("sidebarChannelsPanel", page)
+    // Contents rather than the elements themselves. Both of these are panels whose open
+    // or shut state is the viewer's, held on the element by scripts that ran once at page
+    // load -- the entries sidebar is rendered shut every time and opened afterwards from
+    // what was remembered, so handing it back the server's version closes it for good.
+    this.swapInner("entriesSidebar", page)
+    this.swapInner("nowPlayingContent", page)
+
+    document.title = page.title
+  }
+
+  swap(id, page) {
+    const current = document.getElementById(id)
+    const incoming = page.getElementById(id)
+    // Stimulus notices the replacement itself, so the controllers inside come back
+    // connected to the new entry's values.
+    if (current && incoming) current.replaceWith(incoming)
+  }
+
+  swapInner(id, page) {
+    const current = document.getElementById(id)
+    const incoming = page.getElementById(id)
+    if (!current || !incoming) return
+
+    // The data attributes describe the entry and have to move; class and style describe
+    // whether the panel is open and must not, because only the page knows that by now.
+    for (const { name, value } of incoming.attributes) {
+      if (name.startsWith("data-")) current.setAttribute(name, value)
+    }
+
+    current.replaceChildren(...incoming.childNodes)
   }
 
   // ---- the two spare frames --------------------------------------------------------
