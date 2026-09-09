@@ -130,15 +130,20 @@ class EntriesController < ApplicationController
     old_position = @entry.position
     new_position = entry_params[:position].to_i
 
-    # Clean up entry params - remove empty subentries
+    # The edit form always offers one blank row for adding an episode. Left untouched it
+    # arrives here as an empty set of attributes, and without this it would be saved as a
+    # nameless episode.
+    #
+    # Only the blank row, which is to say only a row carrying no id. Judging by the
+    # submitted fields alone deleted an episode that already existed whenever a request did
+    # not happen to restate its name, season and episode -- a partial update of any other
+    # field, such as a runtime, silently destroyed the record it was meant to correct.
+    # Removing an episode on purpose is what the Remove Subentry checkbox is for.
     cleaned_params = entry_params.to_h
-    if cleaned_params[:subentries_attributes]
-      cleaned_params[:subentries_attributes].each do |key, subentry_attrs|
-        # Mark for destruction if name, season, and episode are all empty
-        if subentry_attrs[:name].blank? && subentry_attrs[:season].blank? && subentry_attrs[:episode].blank?
-          cleaned_params[:subentries_attributes][key][:_destroy] = '1'
-        end
-      end
+    cleaned_params[:subentries_attributes]&.each_value do |attrs|
+      next if attrs[:id].present?
+
+      attrs[:_destroy] = '1' if attrs[:name].blank? && attrs[:season].blank? && attrs[:episode].blank?
     end
 
     cleaned_params.merge!(list: @entry.list)
