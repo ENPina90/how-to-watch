@@ -6,7 +6,7 @@ import * as bootstrap from "bootstrap";
 // serves every card on the page: the entry comes from the Bootstrap trigger via
 // `event.relatedTarget`, so nothing about it can be baked into the markup.
 export default class extends Controller {
-  static targets = ["modal", "loading", "results", "error", "title", "file", "uploadStatus"];
+  static targets = ["modal", "loading", "results", "error", "title", "file", "url", "uploadStatus"];
 
   connect() {
     this.modalTarget.addEventListener('show.bs.modal', this.open);
@@ -99,13 +99,32 @@ export default class extends Controller {
 
       if (response.ok) {
         this.finish();
-      } else {
-        alert('Failed to update poster. Please try again.');
+        return true;
       }
+
+      const data = await response.json().catch(() => ({}));
+      this.setUploadStatus(data.error || 'Failed to update poster. Please try again.');
+      return false;
     } catch (error) {
       console.error('Error updating poster:', error);
-      alert('Failed to update poster. Please try again.');
+      this.setUploadStatus('Failed to update poster. Please try again.');
+      return false;
     }
+  }
+
+  // A pasted link, which takes the same road as clicking one of the candidates -- the
+  // server fetches it and attaches a copy. The reason it reports its failures in the
+  // status line rather than an alert is that they are worth reading: the address may be
+  // one the server will not fetch from, or not have an image at the end of it.
+  async fetchUrl(event) {
+    event?.preventDefault();
+
+    const url = this.urlTarget.value.trim();
+    if (!url) return;
+
+    this.setUploadStatus('Fetching…');
+
+    if (!(await this.selectPoster(url))) this.urlTarget.focus();
   }
 
   // The way out when none of the candidates is any good: the entry's own file, sent as
@@ -161,6 +180,7 @@ export default class extends Controller {
 
   resetUpload() {
     this.fileTarget.value = '';
+    this.urlTarget.value = '';
     this.setUploadStatus('');
   }
 
