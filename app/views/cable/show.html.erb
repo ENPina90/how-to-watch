@@ -108,7 +108,15 @@
            keyboard is fullscreen and mute, neither of which touches the film. %>
        <%# cable-filler only through a break, and only then: it is watching one particular
            embed for one particular refusal. %>
-       data-controller="player-keys cable-clock<%= ' cable-filler' if @in_break %>"
+       <%# cable-hold puts the film back on when somebody stops it. There is no pausing a
+           channel that plays to a clock -- the schedule does not wait, so a pause only puts
+           this viewer out of step with the listing and with everyone else watching. Absent
+           through a break, where the frame is YouTube's and nothing here can drive it. %>
+       data-controller="player-keys cable-clock<%= @in_break ? ' cable-filler' : ' cable-hold' %>"
+       <% unless @in_break %>
+         data-cable-hold-frame-value="cinema"
+         data-cable-hold-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
+       <% end %>
        <% if @in_break %>
          data-cable-filler-frame-value="cinema"
          data-cable-filler-card-value="cableInterlude"
