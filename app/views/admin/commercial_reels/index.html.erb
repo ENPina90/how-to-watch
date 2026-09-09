@@ -1,0 +1,96 @@
+<div class="admin-dashboard reel-admin">
+  <header class="admin-header reel-admin__header">
+    <div>
+      <h1 class="admin-title">Commercial reels</h1>
+      <p class="admin-subtitle">
+        What plays in the gap between programmes on <%= link_to '/cable', cable_path %>. A film
+        is matched to the reel covering its own year, so a 1987 film goes out to 1987 adverts.
+        <br>
+        Preview rolls a fresh start point each time, the way a real break does — which is the
+        only way to find out whether a reel still plays.
+      </p>
+    </div>
+    <%= link_to new_admin_commercial_reel_path, class: 'admin-save' do %>
+      <i class="fa-solid fa-plus"></i> New reel
+    <% end %>
+  </header>
+
+  <% if @reels.empty? %>
+    <p class="admin-note">
+      No reels yet, so every break falls back to the caption. <code>rails commercials:seed</code>
+      creates the ones this app ships with.
+    </p>
+  <% else %>
+    <p class="admin-note">
+      <%= pluralize(@reels.size, 'reel') %> covering
+      <%= @reels.first.starts_year %>–<%= @reels.last.ends_year %>.
+      <% if @gaps.any? %>
+        <%# Not an error: `for_year` falls to the nearest era rather than to nothing. But
+            these are the years whose adverts are least likely to belong to the film. %>
+        <strong><%= pluralize(@gaps.size, 'year') %> with no reel of its own</strong> —
+        <%= @gaps.join(', ') %> — fall back to the nearest era.
+      <% end %>
+    </p>
+
+    <% @decades.each do |decade, reels| %>
+      <section class="admin-section">
+        <h2 class="admin-section__title"><%= decade %>s</h2>
+
+        <div class="reel-rows">
+          <% reels.each do |reel| %>
+            <article class="reel-row <%= 'reel-row--blind' unless reel.duration_seconds.to_i.positive? %>">
+              <div class="reel-row__years"><%= reel_years(reel) %></div>
+
+              <div class="reel-row__identity">
+                <h3 class="reel-row__label"><%= reel.label %></h3>
+                <%# Straight to YouTube, so "is it still there at all" is one click and
+                    does not depend on the embed working. %>
+                <%= link_to "https://www.youtube.com/watch?v=#{reel.youtube_id}",
+                            target: '_blank', rel: 'noopener noreferrer',
+                            class: 'reel-row__id' do %>
+                  <%= reel.youtube_id %> <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                <% end %>
+              </div>
+
+              <div class="reel-row__length">
+                <% if reel.duration_seconds.to_i.positive? %>
+                  <strong><%= reel_length(reel) %></strong>
+                  <span>of adverts to draw a break from</span>
+                <% else %>
+                  <strong>No runtime</strong>
+                  <span>breaks can only start in the first <%= CommercialReel::BLIND_WINDOW.to_i / 60 %> minutes</span>
+                <% end %>
+              </div>
+
+              <div class="reel-row__actions">
+                <%# New tab: the point is to watch it play with this list still open behind. %>
+                <%= link_to preview_admin_commercial_reel_path(reel),
+                            target: '_blank', rel: 'noopener',
+                            class: 'btn btn-sm btn-outline-secondary' do %>
+                  <i class="fa-solid fa-play"></i> Preview
+                <% end %>
+
+                <%= button_to fetch_duration_admin_commercial_reel_path(reel), method: :patch,
+                              class: 'btn btn-sm btn-outline-secondary' do %>
+                  <i class="fa-solid fa-stopwatch"></i> Runtime
+                <% end %>
+
+                <%= link_to edit_admin_commercial_reel_path(reel),
+                            class: 'btn btn-sm btn-outline-secondary' do %>
+                  <i class="fa-solid fa-pen"></i> Edit
+                <% end %>
+
+                <%= button_to admin_commercial_reel_path(reel), method: :delete,
+                              class: 'btn btn-sm btn-outline-danger',
+                              form: { data: { turbo_confirm: "Delete #{reel.label}? Breaks that " \
+                                                             'were using it fall back to the caption.' } } do %>
+                  <i class="fa-solid fa-trash"></i> Delete
+                <% end %>
+              </div>
+            </article>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+  <% end %>
+</div>

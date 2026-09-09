@@ -318,3 +318,214 @@
 .admin-up-next__field {
   width: 7rem;
 }
+
+/* ---------------------------------------------------------------------------
+   Commercial reels
+
+   The reel list rides on .admin-dashboard for its page frame, so only the rows
+   and the preview need styles of their own.
+   --------------------------------------------------------------------------- */
+
+.reel-admin__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+// The button is a link here rather than a submit, so it needs the padding that
+// .admin-save gets from being an input.
+.reel-admin .admin-save {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #1db954;
+  border: none;
+  border-radius: 8px;
+  color: #0a0a0a;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.reel-admin .admin-save:hover {
+  background-color: #1ed760;
+  color: #0a0a0a;
+}
+
+// The summary sits directly above the first decade heading, which is tight by default.
+.reel-admin .admin-note {
+  margin-bottom: 28px;
+}
+
+.reel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reel-row {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background-color: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+}
+
+// A reel with no runtime is not broken, but it is worth seeing: every break on
+// it opens in roughly the same place.
+.reel-row--blind {
+  border-left: 3px solid #ffb020;
+}
+
+.reel-row__years {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.reel-row__label {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.reel-row__id {
+  font-family: var(--bs-font-monospace, monospace);
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration: none;
+}
+
+.reel-row__id:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.reel-row__length {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.reel-row__length strong {
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.reel-row--blind .reel-row__length strong {
+  color: #ffb020;
+}
+
+.reel-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+// button_to renders a form, which would otherwise take a line of its own.
+.reel-row__actions form {
+  display: inline;
+  margin: 0;
+}
+
+.reel-form {
+  max-width: 560px;
+}
+
+.reel-form__years {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.reel-form__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.reel-form__cancel {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* The preview. Same shape as .source-test: a bar of facts, a note, and the
+   picture filling what is left. */
+
+.reel-preview {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+  padding: 12px 16px 16px;
+}
+
+.reel-preview__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.reel-preview__meta {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.reel-preview__link {
+  font-size: 0.85rem;
+}
+
+.reel-preview__note {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.reel-preview__frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 10px;
+  background: #000;
+}
+
+// Above the frame rather than replacing it: on /cable the frame is blanked
+// because YouTube's error is the thing being hidden, but here it is evidence.
+.reel-preview__failure {
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  border-radius: 10px;
+  background: rgba(255, 107, 107, 0.08);
+  color: #ff6b6b;
+}
+
+.reel-preview__failure h2 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.reel-preview__failure p {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@media (max-width: 780px) {
+  .reel-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .reel-row__actions {
+    justify-content: flex-start;
+  }
+}

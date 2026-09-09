@@ -1,8 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Source do
-  def source(templates, kind: 'imdb', autoplay_param: nil)
-    described_class.create!(name: "Test #{SecureRandom.hex(4)}", kind: kind,
+  def source(templates, kind: 'imdb', autoplay_param: nil, slug: nil)
+    described_class.create!(name: "Test #{SecureRandom.hex(4)}", kind: kind, slug: slug,
                             templates: templates, autoplay_param: autoplay_param)
   end
 
@@ -36,6 +36,68 @@ RSpec.describe Source do
       entry = build(:entry, list: list, media: 'movie', imdb: 'tt1')
 
       expect(provider.url_for(entry, autoplay: true)).to eq('https://p.test/movie/tt1?autoplay=1')
+    end
+  end
+
+  # Subtitles can only be decided as the frame is written: the player's own message handler
+  # ignores everything that is not play/pause/mute/unmute/seek, so there is no asking it
+  # afterwards. /cable is the page that wants none -- see docs/guides/VIDSRC.md §3.
+  describe 'turning the subtitles off' do
+    # The adapter is looked up from the slug, so a vidsrc-backed provider is one wearing a
+    # vidsrc slug -- there is no column to set.
+    def vidsrc(template)
+      source({ 'movie' => template }, slug: 'vidsrc2', autoplay_param: 'autoplay')
+    end
+
+    let(:entry) { build(:entry, list: list, media: 'movie', imdb: 'tt1') }
+
+    it 'leaves the subtitle language in by default' do
+      provider = vidsrc('https://p.test/movie?imdb=%{imdb}&ds_lang=en')
+
+      expect(provider.url_for(entry)).to include('ds_lang=en')
+    end
+
+    # Taken out rather than set to an off value: ds_lang names a language, and the only way
+    # to ask for none is not to name one.
+    it 'takes it out when the page does not want subtitles' do
+      provider = vidsrc('https://p.test/movie?imdb=%{imdb}&ds_lang=en')
+
+      expect(provider.url_for(entry, subtitles: false)).to eq('https://p.test/movie?imdb=tt1&autoplay=0')
+    end
+
+    # The parameter can sit anywhere in the query, and each position drops a different
+    # separator with it -- which is why the query is rebuilt rather than pattern-matched.
+    it 'takes it out from the middle of the query' do
+      provider = vidsrc('https://p.test/movie?ds_lang=en&imdb=%{imdb}&x=1')
+
+      expect(provider.url_for(entry, subtitles: false)).to eq('https://p.test/movie?imdb=tt1&x=1&autoplay=0')
+    end
+
+    it 'leaves a template that names no subtitle language alone' do
+      provider = vidsrc('https://p.test/movie?imdb=%{imdb}')
+
+      expect(provider.url_for(entry, subtitles: false)).to eq('https://p.test/movie?imdb=tt1&autoplay=0')
+    end
+
+    it 'drops the query entirely when the subtitle language was all of it' do
+      provider = vidsrc('https://p.test/movie/%{imdb}?ds_lang=en')
+
+      expect(provider.url_for(entry, subtitles: false)).to eq('https://p.test/movie/tt1?autoplay=0')
+    end
+
+    # A provider with no adapter has no player to ask, so there is no parameter to name.
+    it 'leaves a provider with no adapter alone' do
+      provider = source({ 'movie' => 'https://p.test/movie?imdb=%{imdb}&ds_lang=en' })
+
+      expect(provider.url_for(entry, subtitles: false)).to include('ds_lang=en')
+    end
+
+    it 'still resumes where it was asked to' do
+      provider = vidsrc('https://p.test/movie?imdb=%{imdb}&ds_lang=en')
+
+      url = provider.url_for(entry, subtitles: false, start_at: 300, autoplay: true)
+
+      expect(url).to eq('https://p.test/movie?imdb=tt1&autoplay=1&startAt=300')
     end
   end
 

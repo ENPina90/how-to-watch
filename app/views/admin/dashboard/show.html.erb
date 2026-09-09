@@ -94,6 +94,14 @@
         <span class="admin-stat__label">Sources active</span>
         <span class="admin-stat__note"><%= link_to 'Manage', sources_path %></span>
       </div>
+      <%# The adverts between programmes on /cable. Counted here because the number is the
+          thing worth knowing at a glance -- a dial with no reels plays silence between
+          programmes and nothing else says so. %>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= stats.reels_timed %>/<%= stats.reels_total %></span>
+        <span class="admin-stat__label">Reels with a runtime</span>
+        <span class="admin-stat__note"><%= link_to 'Manage', admin_commercial_reels_path %></span>
+      </div>
     </div>
 
     <div class="admin-tables">

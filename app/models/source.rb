@@ -195,6 +195,24 @@ class Source < ApplicationRecord
   def resume_param = RESUME_PARAMS[sync_adapter]
   def resumable?   = resume_param.present?
 
+  # The parameter that picks a subtitle track at load time, so it can be taken back out
+  # again for a page that does not want one.
+  #
+  # Keyed by adapter for the same reason RESUME_PARAMS is: it belongs to the player rather
+  # than to whichever domain vidsrc is answering on this month, and a provider with no
+  # adapter has no player to ask.
+  #
+  # Taken out rather than set to some off value. `ds_lang` is a *language*, and the only
+  # documented way to say "none" is not to name one -- see docs/guides/VIDSRC.md §3.
+  # Subtitles cannot be driven any other way: the player's message handler ignores
+  # everything that is not play/pause/mute/unmute/seek, so this is the one moment there is
+  # to decide it.
+  SUBTITLE_PARAMS = {
+    "vidsrc" => "ds_lang"
+  }.freeze
+
+  def subtitle_param = SUBTITLE_PARAMS[sync_adapter]
+
   # Origins a provider's player reaches for *after* the page has framed it, so they can be
   # warmed while the first frame is still loading.
   #
@@ -214,12 +232,12 @@ class Source < ApplicationRecord
 
   # Build the playable embed URL for an entry (plus optional subentry for series/anime).
   # Returns nil if no template matches the entry's media type.
-  def url_for(entry, subentry: nil, autoplay: false, start_at: nil)
+  def url_for(entry, subentry: nil, autoplay: false, start_at: nil, subtitles: true)
     template = template_for(entry.media)
     return nil if template.blank?
 
     build_url(entry.media, entry_variables(entry, subentry, template),
-              autoplay: autoplay, start_at: start_at)
+              autoplay: autoplay, start_at: start_at, subtitles: subtitles)
   end
 
   # Build a URL from a media key + an explicit variables hash, no Entry required.
@@ -229,12 +247,14 @@ class Source < ApplicationRecord
   # id, or a series with no resolved episode. Returning nil matters: Entry#embed_url only
   # falls back to the legacy source columns when this is blank, so a half-substituted URL
   # would be served as if it worked.
-  def build_url(media, vars, autoplay: false, start_at: nil)
+  def build_url(media, vars, autoplay: false, start_at: nil, subtitles: true)
     template = template_for(media)
     return nil if template.blank?
 
     url = substitute(template, vars)
     return nil if url.nil?
+
+    url = strip_subtitles(url) unless subtitles
 
     append_resume(append_autoplay(url, autoplay), start_at)
   end
@@ -295,6 +315,25 @@ class Source < ApplicationRecord
     return url if resume_param.blank? || seconds.to_f <= 0
 
     append_param(url, resume_param, seconds.to_f.round)
+  end
+
+  # Remove the subtitle language the template asks for, leaving the rest of the URL as it
+  # was. Written as a rebuild of the query rather than a substitution because the parameter
+  # can be anywhere in it -- first, last, or in the middle -- and each position needs a
+  # different separator dropped with it.
+  def strip_subtitles(url)
+    return url if subtitle_param.blank?
+
+    uri = URI.parse(url)
+    return url if uri.query.blank?
+
+    kept = URI.decode_www_form(uri.query).reject { |key, _| key == subtitle_param }
+    uri.query = kept.any? ? URI.encode_www_form(kept) : nil
+    uri.to_s
+  rescue URI::InvalidURIError
+    # A template this cannot parse is one nobody can take a parameter out of. Subtitles on
+    # is what it did before, and is the safer of the two to be wrong about.
+    url
   end
 
   def append_param(url, key, value)

@@ -1,0 +1,11 @@
+<div class="admin-dashboard reel-admin">
+  <header class="admin-header">
+    <h1 class="admin-title">New reel</h1>
+    <p class="admin-subtitle">
+      A compilation of adverts from the years it covers, for filling the gap between
+      programmes. <%= link_to 'Back to the reels', admin_commercial_reels_path %>
+    </p>
+  </header>
+
+  <%= render 'form', reel: @reel, url: admin_commercial_reels_path, submit_label: 'Add reel' %>
+</div>

@@ -1,0 +1,65 @@
+<%# One question: does this reel play, at a point a real break would actually start from?
+    Deliberately bare -- no channel, no schedule, nothing that could fail and be mistaken
+    for the reel failing. The same shape as sources#test, for the same reason. %>
+<div class="reel-preview"
+     data-controller="reel-preview"
+     data-reel-preview-frame-value="reelPreviewFrame">
+  <div class="reel-preview__bar">
+    <strong><%= @reel.label %></strong>
+    <code><%= @reel.youtube_id %></code>
+
+    <span class="reel-preview__meta">
+      covers <%= reel_years(@reel) %>
+    </span>
+
+    <%# The whole point of the page: what the schedule would have picked, spelled out, so a
+        reel that plays and a reel that happens to have been given an easy offset are not
+        the same result. %>
+    <span class="reel-preview__meta">
+      starting <%= clock(@offset) %> in<% if @reel.duration_seconds.to_i.positive? %>
+        of <%= reel_length(@reel) %><% end %>
+    </span>
+
+    <span class="reel-preview__meta">
+      for a <%= clock(@break_seconds) %> break
+    </span>
+
+    <%= link_to 'Roll again', preview_admin_commercial_reel_path(@reel), class: 'reel-preview__link' %>
+    <%= link_to 'Back to the reels', admin_commercial_reels_path, class: 'reel-preview__link' %>
+  </div>
+
+  <% if @embed_url %>
+    <p class="reel-preview__note">
+      This is the embed a break uses, at an offset rolled the way a break rolls one — never
+      the first <%= CommercialReel::INTRO_SKIP %> seconds, where the compilation's own titles
+      sit, and never so late that a <%= clock(@break_seconds) %> break would run off the end.
+      <%= link_to 'Open it on YouTube', "https://www.youtube.com/watch?v=#{@reel.youtube_id}&t=#{@offset}",
+                  target: '_blank', rel: 'noopener noreferrer' %>
+      to rule out anything on this page.
+    </p>
+
+    <%# Hidden until the player says it will not play. On /cable this is a caption over the
+        break; here it is the answer the page exists to give, so it says what went wrong. %>
+    <div class="reel-preview__failure" data-reel-preview-target="failure" hidden>
+      <h2>YouTube will not play this reel</h2>
+      <p data-reel-preview-target="reason">The player refused it.</p>
+      <p>
+        On /cable this is a black rectangle for the length of the break — the caption covers
+        it, but there are no adverts. Swap the id for a compilation that still plays, or
+        delete the reel and let the year fall back to its neighbour.
+      </p>
+    </div>
+
+    <iframe class="reel-preview__frame"
+            id="reelPreviewFrame"
+            title="<%= @reel.label %> preview"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            src="<%= @embed_url %>"></iframe>
+  <% else %>
+    <p class="reel-preview__note reel-preview__note--empty">
+      There is no active YouTube provider, so no embed address can be built. Add one under
+      <%= link_to 'sources', sources_path %> — every reel plays through it, which is why the
+      domain lives in one row rather than in each of these.
+    </p>
+  <% end %>
+</div>

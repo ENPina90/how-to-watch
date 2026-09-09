@@ -56,6 +56,12 @@ class AdminStatistics
   def sources_active = Source.where(active: true).count
   def sources_total = Source.count
 
+  # The adverts between programmes on /cable. Worth a number of its own because a dial with
+  # no reels plays silence between programmes and nothing else on the page would say so --
+  # which is exactly what a deploy that never ran `commercials:seed` looks like.
+  def reels_total = CommercialReel.count
+  def reels_timed = CommercialReel.where.not(duration_seconds: [nil, 0]).count
+
   # The channels people are actually filling, biggest first.
   def busiest_lists(limit = 5)
     List.left_joins(:entries)

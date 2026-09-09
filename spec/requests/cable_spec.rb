@@ -331,6 +331,41 @@ RSpec.describe 'Cable', type: :request do
     end
   end
 
+  # A channel playing to a room is not a page somebody is working through, and burned-in
+  # English captions on everything is not what a television looks like. It can only be
+  # decided as the frame is written: the player's own handler ignores anything that is not
+  # play/pause/mute/unmute/seek, so there is no asking it afterwards.
+  describe 'subtitles' do
+    # The provider in this file names no subtitle language, so this needs one that does --
+    # and the adapter that owns the parameter comes from the slug.
+    let!(:subtitled) do
+      provider.update!(active: false)
+      Source.create!(name: 'Vidsrc', slug: 'vidsrc2', kind: 'imdb', active: true, position: 2,
+                     autoplay_param: 'autoplay',
+                     templates: { 'movie' => 'https://p.test/movie?imdb=%{imdb}&ds_lang=en' })
+    end
+
+    it 'leaves them off on a cable channel' do
+      CableSchedule.build_day!(channel, date)
+      sign_in user
+
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('p.test/movie?imdb=')
+      expect(response.body).not_to include('ds_lang')
+    end
+
+    # /cable is the exception, not a new default. Somebody sitting down to a film chose it,
+    # and the subtitles they have always had stay where they were.
+    it 'leaves them on where a viewer chose what to watch' do
+      sign_in user
+
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('ds_lang=en')
+    end
+  end
+
   # The schedule is only as good as the runtimes it is laid out from, and it cannot see them
   # for itself. The page carries what the catalogue claims and, where it claims nothing, the
   # address to say otherwise.

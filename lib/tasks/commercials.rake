@@ -34,13 +34,10 @@ namespace :commercials do
   # read is left alone rather than blanked: a runtime already known is better than none.
   desc "Fill in how long each commercial reel runs"
   task durations: :environment do
-    agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
-            "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
-
     CommercialReel.in_order.find_each do |reel|
-      body = HTTParty.get("https://www.youtube.com/watch?v=#{reel.youtube_id}",
-                          headers: { "User-Agent" => agent }, timeout: 20).body.to_s
-      seconds = body[/"lengthSeconds":"(\d+)"/, 1]&.to_i
+      # The same reading the Runtime button on /admin/commercial_reels does, so there is
+      # one implementation of it and one set of answers.
+      seconds = YoutubeVideoFacts.for(reel.youtube_id).duration_seconds
 
       if seconds&.positive?
         reel.update!(duration_seconds: seconds)
@@ -48,8 +45,6 @@ namespace :commercials do
       else
         puts "❔ #{reel.label.ljust(10)} could not read a runtime -- left as #{reel.duration_seconds.inspect}"
       end
-    rescue StandardError => e
-      puts "⚠️  #{reel.label.ljust(10)} #{e.class}: #{e.message.truncate(50)}"
     end
   end
 
