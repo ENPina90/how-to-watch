@@ -259,12 +259,16 @@ RSpec.describe 'Cable', type: :request do
   describe 'asking what will be on in a moment' do
     before { sign_in user }
 
+    def warming(path)
+      get path, headers: { 'X-Cinema-Preload' => '1', 'X-Requested-With' => 'XMLHttpRequest' }
+    end
+
     it 'answers with the programme that will be on then' do
       travel_to(midnight + 10.minutes) do
         slot = CableSchedule.on_air(channel, at: Time.current)
         following = CableSlot.where(list: channel).after(slot.ends_at).in_order.first
 
-        get cable_channel_path(channel, at: slot.ends_at.to_i)
+        warming(cable_channel_path(channel, at: slot.ends_at.to_i))
 
         expect(response.body).to include(following.entry.name)
       end
@@ -276,13 +280,14 @@ RSpec.describe 'Cable', type: :request do
       expect(response.body).to include('data-cinema-next-url')
     end
 
-    # Bounded because it is a warming affordance, not a way to read the schedule -- the
-    # guide is what does that, and it says so on every row.
-    it 'ignores a time further off than warming would ever need' do
+    # A channel somebody is actually watching cannot be made to claim something else is on.
+    # The whole point of the parameter is that nobody is looking at that copy of the page.
+    it 'ignores the time on a page somebody is watching' do
       travel_to(midnight + 10.minutes) do
         on_now = CableSchedule.on_air(channel, at: Time.current)
+        slot_end = on_now.ends_at
 
-        get cable_channel_path(channel, at: (Time.current + 6.hours).to_i)
+        get cable_channel_path(channel, at: slot_end.to_i)
 
         expect(response.body).to include(on_now.entry.name)
       end
@@ -292,9 +297,23 @@ RSpec.describe 'Cable', type: :request do
       travel_to(midnight + 40.minutes) do
         on_now = CableSchedule.on_air(channel, at: Time.current)
 
-        get cable_channel_path(channel, at: (Time.current - 20.minutes).to_i)
+        warming(cable_channel_path(channel, at: (Time.current - 20.minutes).to_i))
 
         expect(response.body).to include(on_now.entry.name)
+      end
+    end
+
+    # However far ahead the next change happens to be. A film runs two hours; the address
+    # the page prints for itself has to still mean something when the warming finally uses
+    # it, which is why this is not bounded by how near the time is.
+    it 'answers however far ahead the change is' do
+      travel_to(midnight) do
+        long = CableSchedule.on_air(channel, at: Time.current)
+        following = CableSlot.where(list: channel).after(long.ends_at).in_order.first
+
+        warming(cable_channel_path(channel, at: long.ends_at.to_i))
+
+        expect(response.body).to include(following.entry.name)
       end
     end
 
@@ -305,7 +324,7 @@ RSpec.describe 'Cable', type: :request do
         before_counts = counts.call
         slot = CableSchedule.on_air(channel, at: Time.current)
 
-        get cable_channel_path(channel, at: slot.ends_at.to_i)
+        warming(cable_channel_path(channel, at: slot.ends_at.to_i))
 
         expect(counts.call).to eq(before_counts)
       end

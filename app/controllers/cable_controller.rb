@@ -53,10 +53,10 @@ class CableController < ApplicationController
     # decides a whole day's programme.
     CableSchedule.ensure_day!(@channel, CableSchedule.today) unless preloading?
 
-    # Normally now, but the page may ask what will be on in a moment -- that is how it warms
-    # the next programme before it starts, since unlike the watch page the thing coming next
-    # is not at an address of its own. Bounded to the near future because that is all it is
-    # for, and read-only either way: this decides what to render and writes nothing.
+    # Normally now, but a page warming the next programme may ask what will be on when it
+    # starts -- unlike the watch page, the thing coming next is not at an address of its own.
+    # Only while warming, which is the whole of what it is for: a channel somebody is
+    # actually watching then cannot be made to claim that something else is on.
     @now = requested_time || Time.current
     @slot = CableSchedule.on_air(@channel, at: @now)
 
@@ -118,16 +118,21 @@ class CableController < ApplicationController
 
   private
 
-  # How far ahead the page may ask to see. Long enough to cover warming the next programme,
-  # short enough that this stays a warming affordance rather than a way to browse the
-  # schedule -- the guide is what does that, and it says so on every row.
-  WARM_WINDOW = 15.minutes
-
+  # A moment to render the channel as of, honoured only for a speculative fetch.
+  #
+  # Gating it on the preload header rather than on how far ahead it is: the point is not
+  # that the time is near, it is that nobody is watching this copy of the page. A window
+  # would have to be wide enough for the longest gap the warming can span and would still be
+  # an arbitrary number, and it made the address the page prints for itself invalid for most
+  # of a programme's life -- correct only if fetched late enough, which is a poor thing to
+  # ask anybody to remember.
+  #
+  # Ignored in the past, because there is nothing to warm behind us.
   def requested_time
-    at = params[:at].presence and at = Time.zone.at(at.to_i)
-    return nil if at.nil? || !at.between?(Time.current, WARM_WINDOW.from_now)
+    return nil unless preloading? && params[:at].present?
 
-    at
+    at = Time.zone.at(params[:at].to_i)
+    at > Time.current ? at : nil
   end
 
   # Which of the entries in the listing this viewer has already seen, as one query for the
