@@ -529,15 +529,25 @@ body.cable__mode .cinema__screen {
  * pauses the film again as a result, and that is the right trade: cable-hold puts it back
  * on within the same second, so a pause costs nothing lasting while a scrub does.
  *
- * Placed from the player's own geometry, cross-checked against a screenshot of its controls
- * at a known window size: its buttons are 40px centred 29px above the bottom, and the
- * scrubber sits above that row with its line about 77px up. The strip covers the band
- * around it and stops well clear of the buttons, so the subtitles, the subtitle language,
- * the quality menu and the volume are all still reachable.
+ * Sized to the scrubber's reach rather than to the line you can see. A slider's hit area is
+ * padded well beyond its drawn width and grows again on hover, so a strip fitted to the line
+ * left its lower edge live -- which is the half that matters, since that is the edge the
+ * pointer arrives at coming up from the controls.
+ *
+ * So it runs from just above the row of buttons to well clear of the scrubber's top. That is
+ * as far down as it can go: the buttons are 40px centred 29px above the bottom, so their box
+ * ends 49px up, and a strip starting at 51px leaves two pixels between the two. The
+ * subtitles, the subtitle language, the quality menu and the volume all live in that row and
+ * have to stay clickable -- if the scrubber's hit area really does reach below 51px it
+ * overlaps them, and no rectangle can have both.
+ *
+ * Upward it is deliberately generous. Above the scrubber is only picture, and covering
+ * picture costs nothing: clicking it pauses the film, and cable-hold puts it back on within
+ * the same second.
  */
 .cinema__screen {
-  --scrubber-from-bottom: 60px;
-  --scrubber-height: 22px;
+  --scrubber-from-bottom: 51px;
+  --scrubber-height: 49px;
 }
 
 .cable-guard {
