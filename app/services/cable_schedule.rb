@@ -208,6 +208,11 @@ module CableSchedule
   # Entries are drawn from a shuffled bag and refilled when it runs out, which is what makes
   # a small channel repeat through the day without repeating in the same order. The one
   # thing the refill guards is playing the same entry twice in a row across the seam.
+  #
+  # The clock is what ends this, not the bag: an entry that cannot be played moves nothing
+  # on, so a channel where nothing can be played would fill bag after bag and never reach
+  # the end of the day. A pass that places nothing is therefore the other way out -- see the
+  # break below.
   def plan(channel, date)
     programmes = schedulable(channel)
     return [] if programmes.empty?
@@ -215,19 +220,31 @@ module CableSchedule
     day_start = zone.local(date.year, date.month, date.day)
     day_end = day_start + 1.day
     cursor = day_start
-    bag = []
+    bag = refill(programmes, nil)
+    placed = false
     last = nil
     rows = []
 
     while cursor < day_end && rows.length < MAX_SLOTS_PER_DAY
-      bag = refill(programmes, last) if bag.empty?
+      if bag.empty?
+        # A whole pass over everything the channel has, and not one of them could be
+        # played. Refilling would shuffle the same dead entries past the same check for
+        # the rest of the day and never advance the clock by a second, so the channel is
+        # off air instead -- which is a page saying so, rather than a request that never
+        # returns.
+        break unless placed
+
+        bag = refill(programmes, last)
+        placed = false
+      end
+
       entry = bag.shift
 
-      subentry = episode_for(entry)
       # An entry that cannot produce a playable URL is not a programme. Series are the
-      # reason this is checked here rather than up front: the URL needs the episode, and
-      # the episode is not chosen until the slot is.
-      next if entry.embed_url(subentry: subentry).blank?
+      # reason this is asked here rather than up front: the URL needs the episode, and the
+      # episode is not chosen until the slot is.
+      playable, subentry = playable_episode(entry)
+      next unless playable
 
       # Where the film stops, and where the slot stops -- the same instant only when the
       # runtime happens to land on the grid.
@@ -238,6 +255,7 @@ module CableSchedule
                 position: rows.length, created_at: Time.current, updated_at: Time.current }
         .merge(commercial_break(entry, content_end, finish))
 
+      placed = true
       last = entry
       cursor = finish
     end
@@ -296,12 +314,31 @@ module CableSchedule
       break_offset: reel&.random_offset_for(gap) }
   end
 
-  # Which episode of a series is on. Random, like everything else in the running order --
-  # the channel is not working through a series in order, it is playing episodes of it.
-  def episode_for(entry)
-    return nil unless entry.media == "series" || entry.media == "anime"
+  # Which episode of this entry is on, and whether there is one that can be played at all.
+  #
+  # Asked of every entry, because "can this be played" is only answerable once an episode is
+  # picked -- a provider's series template wants a season and an episode number, and an
+  # episode nobody numbered leaves it with a hole in it and no URL.
+  #
+  # Which is a fact about that episode and not about the show, so the rest are tried before
+  # the show is passed over. That is also what makes a barren pass in `plan` mean what it is
+  # taken to mean there: if nothing was placed, nothing on the channel can be played at all,
+  # rather than the shuffle having been unlucky.
+  def playable_episode(entry)
+    episode_choices(entry).each do |episode|
+      return [true, episode] if entry.embed_url(subentry: episode).present?
+    end
 
-    entry.subentries.to_a.sample
+    [false, nil]
+  end
+
+  # The episodes worth trying, in the order to try them. Random, like everything else in the
+  # running order -- the channel is not working through a series in order, it is playing
+  # episodes of it. A film has one candidate and it is the film itself.
+  def episode_choices(entry)
+    return [nil] unless entry.media == "series" || entry.media == "anime"
+
+    entry.subentries.to_a.shuffle
   end
 
   def runtime(entry, subentry = nil) = fallback_minutes(entry, subentry).minutes
