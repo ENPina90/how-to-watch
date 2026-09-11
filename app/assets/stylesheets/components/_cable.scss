@@ -193,23 +193,13 @@ body.cable__mode .cinema__screen {
   font-size: 1.15em;
 }
 
-/* IMDb's own yellow and Letterboxd's own green, which is how both marks are recognised.
-   Scoped under .page-container and marked important to get out from under the layout's
-   blanket `.page-container i { color: #fff !important }`, which is what every other
-   component with a coloured icon has to do -- see the sidebar's controls and the
-   subscription pills. */
-.page-container .tvguide__score--imdb i {
-  color: #f5c518 !important;
-}
-
+/* Both marks are set in the same white as the line they sit in. Their brand colours are
+   what they wear everywhere else on the site, and against a solid blue panel at this size
+   the yellow and the green read as two warnings rather than as two logos. */
 .tvguide__score--letterboxd,
 .tvguide__score--letterboxd:hover,
 .tvguide__score--letterboxd:focus-visible {
   color: rgba(255, 255, 255, 0.85);
-}
-
-.page-container .tvguide__score--letterboxd i {
-  color: #00e054 !important;
 }
 
 .tvguide__score--letterboxd:hover,
