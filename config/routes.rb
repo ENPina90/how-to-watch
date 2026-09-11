@@ -77,6 +77,9 @@ Rails.application.routes.draw do
   # Before the :id route, and it has to stay there -- "guide" would otherwise be read as a
   # channel id, cast to nothing, and quietly serve channel one.
   get 'cable/guide', to: 'cable#guide', as: :cable_guide
+  # The one thing under /cable that writes anything, which is why it is the one POST.
+  # Admin only, and it rewrites today for every channel at once.
+  post 'cable/regenerate', to: 'cable#regenerate', as: :cable_regenerate
   get 'cable/:id', to: 'cable#show', as: :cable_channel
 
   # Health check endpoint for Railway

@@ -109,10 +109,12 @@ body.cable__mode .cinema__screen {
 .tvguide__detail-channel {
   display: block;
   margin: 0 0 6px;
-  /* Clear of the home button, which sits in this corner. Only this line needs it: it is
-     the one at the top of the panel, and a long channel name would otherwise run under
-     the button and be read through it. */
-  padding-right: 120px;
+  /* Clear of the buttons in this corner. Only this line needs it: it is the one at the top
+     of the panel, and a long channel name would otherwise run under them and be read
+     through them. Wide enough for both, since the second only appears for an admin and a
+     gutter that changed width with who is looking would be worse than one that is always
+     there. */
+  padding-right: 250px;
   font-size: 1.9rem;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -186,18 +188,28 @@ body.cable__mode .cinema__screen {
   overflow: hidden;
 }
 
-/* The way out of cable, in the corner the box kept its exit in. The guide covers the whole
-   screen while it is up, banner and all, so the home button on the banner cannot be reached
-   from here and this is the one that answers.
-
-   Bevelled like everything else raised on the grid -- lit on the top and left, black on the
-   bottom and right -- because that is what a button looked like drawn by a character
-   generator, and it is the same two colours the channel gutter and the cells are drawn in. */
-.tvguide__home {
+/* The guide's own buttons, in the corner the box kept its exit in. The guide covers the
+   whole screen while it is up, banner and all, so the home button on the banner cannot be
+   reached from here and these are what answer. */
+.tvguide__controls {
   position: absolute;
   top: 0;
   right: 0;
   z-index: 3;
+  display: flex;
+}
+
+/* button_to wraps its button in a form, which would otherwise be a block in the middle of
+   the row and put Home on a line of its own. */
+.tvguide__rebuild-form {
+  display: contents;
+}
+
+/* Bevelled like everything else raised on the grid -- lit on the top and left, black on the
+   bottom and right -- because that is what a button looked like drawn by a character
+   generator, and it is the same two colours the channel gutter and the cells are drawn in. */
+.tvguide__home,
+.tvguide__rebuild {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -206,17 +218,28 @@ body.cable__mode .cinema__screen {
   border: 2px solid;
   border-color: #4a4ac8 #000 #000 #4a4ac8;
   color: #ffd42a;
+  font-family: inherit;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   text-decoration: none;
+  cursor: pointer;
+}
+
+/* Duller than Home until it is pointed at. It rewrites the whole dial and is pressed once
+   in a blue moon; it should not sit in the corner competing with the way out. */
+.tvguide__rebuild {
+  background: #14144e;
+  color: #9aa2e8;
 }
 
 /* Lit the way the tuned channel's gutter is lit, which is this guide's one way of saying
    a thing is selected. */
 .tvguide__home:hover,
-.tvguide__home:focus-visible {
+.tvguide__home:focus-visible,
+.tvguide__rebuild:hover,
+.tvguide__rebuild:focus-visible {
   background: #ffd42a;
   color: #05052e;
   text-shadow: none;

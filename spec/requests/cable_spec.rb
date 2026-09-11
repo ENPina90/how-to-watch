@@ -696,6 +696,71 @@ RSpec.describe 'Cable', type: :request do
       expect(home).to be_present
       expect(home).to include(%(href="#{root_path}"))
     end
+
+    # A schedule is a shuffle, so "this afternoon is a poor line-up" has no smaller fix
+    # than dealing again. The button is on the guide because that is where you are when you
+    # can see that it is.
+    describe 'dealing today again' do
+      it 'offers an admin the button and nobody else' do
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+        expect(response.body).not_to include('tvguide__rebuild')
+
+        user.update!(admin: true)
+        travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+        expect(response.body).to include('tvguide__rebuild')
+        expect(response.body).to include(cable_regenerate_path)
+      end
+
+      it 'lays today out again for every channel on the dial' do
+        user.update!(admin: true)
+        before_slots = CableSlot.where(airs_on: date).order(:id).pluck(:id)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { post cable_regenerate_path }
+
+        after_slots = CableSlot.where(airs_on: date).order(:id).pluck(:id)
+        expect(after_slots).not_to eq(before_slots)
+        expect(CableSlot.where(list: channel, airs_on: date)).to be_any
+        expect(CableSlot.where(list: second_channel, airs_on: date)).to be_any
+      end
+
+      it 'leaves the days either side of today alone' do
+        user.update!(admin: true)
+        CableSchedule.build_day!(channel, date - 1)
+        yesterday = CableSlot.where(list: channel, airs_on: date - 1).order(:position)
+                             .pluck(:entry_id, :starts_at)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { post cable_regenerate_path }
+
+        expect(CableSlot.where(list: channel, airs_on: date - 1).order(:position)
+                        .pluck(:entry_id, :starts_at)).to eq(yesterday)
+      end
+
+      it 'sends the viewer back to the channel, so the page reloads onto the new day' do
+        user.update!(admin: true)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) do
+          post cable_regenerate_path, headers: { 'HTTP_REFERER' => cable_channel_path(channel) }
+        end
+
+        expect(response).to redirect_to(cable_channel_path(channel))
+      end
+
+      # The same terms as /admin: rewriting the dial is the admin's own job, not part of
+      # what they are looking at when viewing the site as somebody else.
+      it 'refuses a viewer with no admin account, and changes nothing' do
+        sign_in user
+        before_slots = CableSlot.where(airs_on: date).order(:id).pluck(:id)
+
+        travel_to(midnight + 11.minutes) { post cable_regenerate_path }
+
+        expect(response).to have_http_status(:redirect)
+        expect(CableSlot.where(airs_on: date).order(:id).pluck(:id)).to eq(before_slots)
+      end
+    end
   end
 
   describe 'a channel with nothing it can play' do
