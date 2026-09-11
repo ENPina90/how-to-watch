@@ -603,6 +603,99 @@ RSpec.describe 'Cable', type: :request do
       expect(response.body).to include("data-guide-watch-url=\"#{watch_entry_path(entry, channel: channel.id)}")
       expect(response.body).to include("data-guide-channel-url=\"#{list_path(channel)}\"")
     end
+
+    # A channel showing one series all afternoon is a column of cells reading the same
+    # thing if each of them carries its own episode number, with the only word that varies
+    # pushed off the right-hand edge. So the cell says the show and the panel says the rest.
+    describe 'a series in the listing' do
+      let!(:series) do
+        provider.update!(
+          templates: provider.templates.merge('series' => 'https://p.test/tv?imdb=%<imdb>s')
+        )
+        create(:entry, list: channel, media: 'series', name: 'Babylon 5', length: nil,
+                       position: 2, imdb: 'tt0000005', rating: 0.0, genre: 'Sci-Fi, Drama')
+      end
+      let!(:episode) do
+        Subentry.create!(entry: series, season: 2, episode: 14, length: 43, rating: '9.2',
+                         name: 'There All the Honor Lies')
+      end
+
+      before do
+        entry.destroy!
+        CableSlot.delete_all
+        CableSchedule.build_day!(channel, date)
+      end
+
+      it 'names only the show in the grid' do
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).to include('<span class="tvguide__name">Babylon 5</span>')
+        expect(response.body).not_to include('<span class="tvguide__name">Babylon 5 &mdash;')
+      end
+
+      it 'carries the episode for the panel beside the picture' do
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).to include('data-guide-title="Babylon 5"')
+        expect(response.body).to include('data-guide-episode="S2E14"')
+        expect(response.body).to include('data-guide-episode-title="There All the Honor Lies"')
+      end
+
+      # The episode's own runtime and score, not the show's: the show's average says
+      # nothing about which episode is on, and the slot's width is the runtime plus the
+      # commercial break after it.
+      it 'carries the episode\'s own runtime and rating' do
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).to include('data-guide-runtime="43 min"')
+        expect(response.body).to include('data-guide-rating="9.2/10"')
+        expect(response.body).to include('data-guide-genre="Sci-Fi · Drama"')
+      end
+    end
+
+    # Imports leave the numbering in the name when the columns were never filled in. There
+    # is nowhere else to read it from, so the title is taken apart instead of printed whole.
+    it 'takes the show out of a title that carries its own numbering' do
+      entry.update!(name: 'MARVEL S01E15 The Unworthy Thor')
+
+      sign_in user
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      expect(response.body).to include('<span class="tvguide__name">MARVEL</span>')
+      expect(response.body).to include('data-guide-episode="S1E15"')
+      expect(response.body).to include('data-guide-episode-title="The Unworthy Thor"')
+    end
+
+    # Zero is what an import writes when it found no numbering at all. It is not season
+    # nought episode nought, and a panel saying so would be inventing a fact.
+    it 'says nothing about an episode nobody numbered' do
+      provider.update!(
+        templates: provider.templates.merge('episode' => 'https://p.test/ep?imdb=%<imdb>s')
+      )
+      entry.update!(media: 'episode', series: '', season: 0, episode: 0)
+
+      sign_in user
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      expect(response.body).to include('data-guide-episode=""')
+      expect(response.body).to include('<span class="tvguide__name">The Death of Harvey</span>')
+    end
+
+    # The guide covers the whole screen while it is up, banner and all, so the home button
+    # on the banner cannot be reached from it. Without one of its own the only way off the
+    # channel from an open guide is the browser's back button.
+    it 'offers a way out of cable from the guide itself' do
+      sign_in user
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      home = response.body[/<a[^>]*tvguide__home[^>]*>/]
+
+      expect(home).to be_present
+      expect(home).to include(%(href="#{root_path}"))
+    end
   end
 
   describe 'a channel with nothing it can play' do

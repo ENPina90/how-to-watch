@@ -203,13 +203,27 @@
         <h2 class="tvguide__detail-title">
           <a data-cable-guide-target="detailTitle" href="#"></a>
         </h2>
-        <p class="tvguide__detail-meta" data-cable-guide-target="detailMeta"></p>
+        <%# Which episode, and what it is called. The grid says only the show -- an
+            afternoon of one series would otherwise be a column of identical cells -- so
+            this is the only place the rest of it is said. Empty, and gone, for a film. %>
+        <p class="tvguide__detail-episode" data-cable-guide-target="detailEpisode" hidden></p>
+        <p class="tvguide__detail-meta" data-cable-guide-target="detailMeta" hidden></p>
+        <p class="tvguide__detail-genre" data-cable-guide-target="detailGenre" hidden></p>
         <p class="tvguide__detail-watched" data-cable-guide-target="detailWatched" hidden>
           <i class="fa-solid fa-eye"></i> Watched
         </p>
         <p class="tvguide__detail-plot" data-cable-guide-target="detailPlot"></p>
       </div>
     </div>
+
+    <%# The way out of cable altogether. The banner has one of these, but the guide covers
+        the whole screen while it is up and the banner with it, so the guide needs its own
+        or the only way off the channel is the browser's back button. Top right, in the
+        corner the box kept its exit in. %>
+    <%= link_to root_path, class: "tvguide__home", title: "Home" do %>
+      <i class="fa-solid fa-house"></i>
+      <span>Home</span>
+    <% end %>
 
     <button type="button" class="tvguide__hide" data-action="click->cable-guide#close">
       <i class="fa-solid fa-compress-alt"></i> Hide Guide

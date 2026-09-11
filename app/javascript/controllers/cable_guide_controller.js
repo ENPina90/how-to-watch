@@ -48,7 +48,8 @@ const CLAIMED_KEYS = ["ArrowLeft", "ArrowRight", "Escape", "Enter"]
 export default class extends Controller {
   static targets = [
     "panel", "body", "grid", "clock", "nowLine",
-    "detailChannel", "detailTitle", "detailMeta", "detailPlot", "detailWatched"
+    "detailChannel", "detailTitle", "detailEpisode", "detailMeta", "detailGenre",
+    "detailPlot", "detailWatched"
   ]
   static classes = ["open"]
   static values = { url: String, channel: String }
@@ -245,13 +246,37 @@ export default class extends Controller {
 
     this.detailChannelTarget.textContent = data.guideChannel ?? ""
     this.detailChannelTarget.href = data.guideChannelUrl ?? "#"
+    // The show, which is also all the cell in the grid says.
     this.detailTitleTarget.textContent = data.guideTitle ? `“${data.guideTitle}”` : ""
     this.detailTitleTarget.href = data.guideWatchUrl ?? "#"
-    this.detailMetaTarget.textContent = [
-      this.span(data), data.guideYear, data.guideNumber && `Ch ${data.guideNumber} - ${data.guideChannel}`
-    ].filter(Boolean).join("  ·  ")
+
+    // And which episode of it, which the grid deliberately leaves out -- an afternoon of
+    // one series is a column of identical cells if every one of them carries its number.
+    // Said here instead, once, about the one programme being pointed at.
+    this.line(this.detailEpisodeTarget, [
+      data.guideEpisode, data.guideEpisodeTitle
+    ].filter(Boolean).join("  ·  "))
+
+    // What the catalogue knows about it beyond its name. Runtime is the programme's own,
+    // not the cell's width: the slot runs on to the next five-minute mark and the
+    // difference is the commercial break.
+    this.line(this.detailMetaTarget, [
+      this.span(data), data.guideYear, data.guideRuntime, data.guideRating,
+      data.guideNumber && `Ch ${data.guideNumber} - ${data.guideChannel}`
+    ].filter(Boolean).join("  ·  "))
+
+    this.line(this.detailGenreTarget, data.guideGenre)
+
     this.detailPlotTarget.textContent = data.guidePlot ?? ""
     this.detailWatchedTarget.hidden = data.guideWatched !== "true"
+  }
+
+  // A line with nothing to say takes up no room. The panel is a fixed height and the
+  // synopsis is clamped to what is left of it, so an empty paragraph is a line of the
+  // synopsis gone -- and a film has two of these empty every time.
+  line(target, text) {
+    target.textContent = text ?? ""
+    target.hidden = !text
   }
 
   // The programme's own hours, in the viewer's zone -- the same reading the grid's columns
