@@ -24,10 +24,6 @@ const STALE_AFTER = 5 * 60 * 1000
 // and a handful of text nodes.
 const TICK = 1000
 
-// The panel follows the pointer, and goes back to what is actually playing when the
-// pointer stops. Long enough to read a synopsis without it snatching the text away.
-const REVERT_AFTER = 8000
-
 // Left alone this long, the guide scrolls itself back to now. Somebody who wandered off
 // down tomorrow afternoon and came back should not have to find their way home.
 const RECENTER_AFTER = 2 * 60 * 1000
@@ -356,12 +352,16 @@ export default class extends Controller {
     }, SCROLL_IDLE)
   }
 
-  // Any sign of life. Two things are waiting on it: the panel, which goes back to what is
-  // playing shortly after the pointer stops, and the grid, which finds its way back to now
-  // after rather longer.
+  // Any sign of life. One thing waits on it: the grid finding its way back to the present,
+  // and the panel going back to what is playing along with it.
+  //
+  // The panel used to give up on its own, a few seconds after the pointer stopped moving --
+  // which meant reading a synopsis for longer than eight seconds made it vanish while the
+  // pointer was still sitting on the programme it described. Being still is not the same as
+  // being gone. So there is one idle clock now, not two, and what it does when it runs out
+  // it does all at once: the grid comes home and the panel goes back to what is on.
   rest() {
     this.clearIdleTimers()
-    this.revertTimer = setTimeout(() => this.describeCurrent(), REVERT_AFTER)
     this.recentreTimer = setTimeout(() => {
       this.recentre({ smooth: true })
       this.describeCurrent()
@@ -370,7 +370,6 @@ export default class extends Controller {
   }
 
   clearIdleTimers() {
-    clearTimeout(this.revertTimer)
     clearTimeout(this.recentreTimer)
     clearTimeout(this.scrollIdle)
     this.scrollIdle = null
