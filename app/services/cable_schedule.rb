@@ -105,23 +105,22 @@ module CableSchedule
     before + [current] + after
   end
 
-  # How far behind the present the guide reaches. Three days, so the question "what was on
-  # last night" has an answer: the schedule is kept that long, and scrolling left through it
-  # is how a listing is read backwards. RETAIN_DAYS is worked out from this.
-  GUIDE_LEAD_HOURS = 72
-
-  # How far ahead. Tomorrow is the last day anything lays out -- the job builds it and
-  # nothing builds the day after -- so the window stops at the end of it. A fixed width
-  # would have run past that into a day nobody has scheduled, which is a stretch of empty
-  # grid that looks like six channels going off air at once.
+  # The guide is three cable days wide: yesterday, today and tomorrow, midnight to midnight.
+  #
+  # Whole days rather than a span of hours either side of now, because days are the unit the
+  # schedule is written in -- a row in cable_slots belongs to an `airs_on` date -- and
+  # because a listing you read by day should not begin and end in the middle of two of them.
+  # Yesterday is as far back as is worth keeping: what was on last night is a question, what
+  # was on last Tuesday is not. Tomorrow is as far forward as anything is laid out.
+  GUIDE_BEHIND_DAYS = 1
   GUIDE_AHEAD_DAYS = 1
 
-  # How many days of played-out schedule to keep, which is a restatement of the lead above
+  # How many days of played-out schedule to keep, which is a restatement of the line above
   # rather than a number of its own -- and is declared here, next to it, so the two cannot
   # drift apart. A day the viewer can scroll to and the pruning has deleted is an empty row,
   # and nothing tells that apart from a channel that was off air. One day of margin on top,
   # for a guide left open across midnight.
-  RETAIN_DAYS = (GUIDE_LEAD_HOURS / 24.0).ceil + 1
+  RETAIN_DAYS = GUIDE_BEHIND_DAYS + 1
 
   # The guide opens on a half hour, the way the printed listings did -- the columns are :00
   # and :30 and nothing else, so a window starting at 7:47 would label every one of them
@@ -131,22 +130,23 @@ module CableSchedule
   # laid out in one fixed zone so that every viewer sees the same programme at once; what
   # time that instant *is* belongs to whoever is looking. A listing whose columns disagreed
   # with the clock on the wall would be no use to read.
+  # Midnight to midnight over the three days, in the schedule's own zone: cable days are
+  # dates there, so which days to show is a question asked in that zone even though every
+  # time printed on the grid is answered in the viewer's.
+  #
+  # `in_zone` is what the columns are labelled in and is not what decides the edges. The
+  # window is the same three days for everybody -- it is the same schedule -- and a viewer
+  # somewhere else reads it against their own clock, which is the whole of the difference.
   def guide_window(at: Time.current, in_zone: zone)
-    local = at.in_time_zone(in_zone)
-    start = local.change(min: local.min < 30 ? 0 : 30, sec: 0, usec: 0) - GUIDE_LEAD_HOURS.hours
+    today = at.in_time_zone(zone).to_date
 
-    start...guide_window_end(at)
+    midnight_on(today - GUIDE_BEHIND_DAYS, in_zone)...midnight_on(today + GUIDE_AHEAD_DAYS + 1, in_zone)
   end
 
-  # Midnight at the end of the last day laid out, in the schedule's own zone -- cable days
-  # are dates there, so this is a date question rather than a number of hours from now.
-  # Which makes the window a different width at breakfast than at bedtime, and that is the
-  # point: it is as wide as there are listings, and the grid is drawn from the window rather
-  # than from a constant.
-  def guide_window_end(at = Time.current)
-    ends_on = at.in_time_zone(zone).to_date + GUIDE_AHEAD_DAYS + 1
-
-    zone.local(ends_on.year, ends_on.month, ends_on.day)
+  # The instant a cable day begins, read in whichever zone the caller is going to print it
+  # in. The same moment either way; `in_zone` only decides what it will be called.
+  def midnight_on(date, in_zone = zone)
+    zone.local(date.year, date.month, date.day).in_time_zone(in_zone)
   end
 
   # How wide the window is, in hours. The unit the grid is laid out in: every column, every

@@ -1,8 +1,8 @@
 require 'rails_helper'
 require 'rake'
 
-# The guide reaches three days behind the present; this is what puts something there to
-# find on a dial that has only ever laid out one day at a time.
+# The guide reaches back to yesterday; this is what puts something there to find on a dial
+# that has only ever laid out one day at a time.
 RSpec.describe 'cable:backfill' do
   let(:user) { create(:user) }
 
@@ -43,7 +43,7 @@ RSpec.describe 'cable:backfill' do
     run
 
     expect(CableSlot.where(list: channel).distinct.count(:airs_on))
-      .to eq(CableSchedule::GUIDE_LEAD_HOURS / 24)
+      .to eq(CableSchedule::GUIDE_BEHIND_DAYS)
   end
 
   # A day that really did air is a record of what the channel played. Laying it out again

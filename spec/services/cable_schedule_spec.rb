@@ -397,48 +397,45 @@ RSpec.describe CableSchedule do
   end
 
   describe 'the guide window' do
-    # It reaches three days behind the present, so "what was on last night" has an answer,
-    # and it always opens on a half hour -- the columns are :00 and :30, and a window
-    # starting at 7:47 would label every one of them oddly.
-    let(:lead) { described_class::GUIDE_LEAD_HOURS.hours }
+    # Three whole cable days, midnight to midnight: yesterday, today and tomorrow. Days
+    # rather than a span of hours either side of now, because days are the unit the
+    # schedule is written in and a listing read by day should not begin in the middle of one.
 
-    it 'opens on the half hour containing now, less the lead-in' do
-      window = described_class.guide_window(at: midnight + 7.hours + 47.minutes)
-
-      expect(window.begin).to eq(midnight + 7.hours + 30.minutes - lead)
-    end
-
-    it 'opens on the hour when now is in its first half' do
-      window = described_class.guide_window(at: midnight + 7.hours + 12.minutes)
-
-      expect(window.begin).to eq(midnight + 7.hours - lead)
-    end
-
-    it 'reaches three days back' do
+    it 'runs from the start of yesterday to the end of tomorrow' do
       window = described_class.guide_window(at: midnight + 7.hours)
 
-      expect(window.begin).to eq(midnight + 7.hours - 72.hours)
-      expect(described_class.days_covered(window).first).to eq(date - 3)
+      expect(window.begin).to eq(midnight - 1.day)
+      expect(window.end).to eq(midnight + 2.days)
     end
 
-    # Tomorrow is the last day anything lays out, so the window stops at the end of it
-    # rather than at a fixed width -- which would have run on into a day nobody has
-    # scheduled and drawn a stretch of empty grid for it.
-    it 'stops at the end of tomorrow rather than at a fixed width' do
-      morning = described_class.guide_window(at: midnight + 7.hours)
-      evening = described_class.guide_window(at: midnight + 22.hours)
+    it 'is the same three days whatever time of day it is asked' do
+      [1.minute, 7.hours, 22.hours, 23.hours + 59.minutes].each do |into_the_day|
+        window = described_class.guide_window(at: midnight + into_the_day)
 
-      expect(morning.end).to eq(midnight + 2.days)
-      expect(evening.end).to eq(midnight + 2.days)
-      expect(described_class.guide_hours(evening)).to be < described_class.guide_hours(morning)
+        expect(described_class.guide_hours(window)).to eq(72)
+        expect(described_class.days_covered(window)).to eq([date - 1, date, date + 1])
+      end
     end
 
-    # Half-open, and the end lands exactly on midnight every time -- so taking it at face
-    # value would claim a day the window stops at the very start of and never shows.
+    # Half-open, and the end lands exactly on midnight -- so taking it at face value would
+    # claim a day the window stops at the very start of and never shows.
     it 'does not claim the day it stops at the start of' do
       window = described_class.guide_window(at: midnight + 7.hours)
 
       expect(described_class.days_covered(window).last).to eq(date + 1)
+    end
+
+    # The edges are the same instants for everybody: it is the same schedule, and a viewer
+    # somewhere else reads it against their own clock. Only what the columns are *called*
+    # belongs to the reader.
+    it 'shows the same three days to a viewer in another zone' do
+      berlin = ActiveSupport::TimeZone['Europe/Berlin']
+      here = described_class.guide_window(at: midnight + 7.hours)
+      there = described_class.guide_window(at: midnight + 7.hours, in_zone: berlin)
+
+      expect(there.begin).to eq(here.begin)
+      expect(there.end).to eq(here.end)
+      expect(there.begin.time_zone).to eq(berlin)
     end
 
     # A day already played out is not laid out on demand: what was on is whatever was
@@ -452,23 +449,15 @@ RSpec.describe CableSchedule do
       end
     end
 
-    it 'keeps the present inside it, with the past behind and the rest ahead' do
+    it 'keeps the present inside it, with a day behind and a day ahead' do
       at = midnight + 7.hours + 47.minutes
       window = described_class.guide_window(at: at)
 
       expect(window).to cover(at)
-      expect(at - window.begin).to be_within(30.minutes).of(lead)
+      expect(window).to cover(at - 1.day)
+      expect(window).to cover(at + 1.day)
     end
 
-    # The schedule is one fixed zone so that everybody sees the same programme at once, but
-    # what time that is belongs to whoever is reading the listing.
-    it 'opens on the viewer\'s half hour, not the schedule\'s' do
-      berlin = ActiveSupport::TimeZone['Europe/Berlin']
-      window = described_class.guide_window(at: midnight + 7.hours, in_zone: berlin)
-
-      expect(window.begin.time_zone).to eq(berlin)
-      expect(window.begin.min).to eq(0).or eq(30)
-    end
   end
 
   describe 'resolving a viewer\'s zone' do
