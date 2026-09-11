@@ -82,6 +82,10 @@ Rails.application.routes.draw do
   post 'cable/regenerate', to: 'cable#regenerate', as: :cable_regenerate
   get 'cable/:id', to: 'cable#show', as: :cable_channel
 
+  # The phone view or the full one, by the viewer's own say-so rather than by what their
+  # user agent implies. A POST because it changes what every page after it renders.
+  post '/view_mode', to: 'application#view_mode', as: :view_mode
+
   # Health check endpoint for Railway
   get '/health', to: 'application#health'
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
