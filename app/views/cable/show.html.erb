@@ -203,7 +203,12 @@
         <h2 class="tvguide__detail-title">
           <a data-cable-guide-target="detailTitle" href="#"></a>
         </h2>
-        <p class="tvguide__detail-meta" data-cable-guide-target="detailMeta"></p>
+        <%# Which episode, and what it is called. The grid says only the show -- an
+            afternoon of one series would otherwise be a column of identical cells -- so
+            this is the only place the rest of it is said. Empty, and gone, for a film. %>
+        <p class="tvguide__detail-episode" data-cable-guide-target="detailEpisode" hidden></p>
+        <p class="tvguide__detail-meta" data-cable-guide-target="detailMeta" hidden></p>
+        <p class="tvguide__detail-genre" data-cable-guide-target="detailGenre" hidden></p>
         <p class="tvguide__detail-watched" data-cable-guide-target="detailWatched" hidden>
           <i class="fa-solid fa-eye"></i> Watched
         </p>

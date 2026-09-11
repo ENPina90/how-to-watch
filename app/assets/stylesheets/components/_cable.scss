@@ -134,11 +134,31 @@ body.cable__mode .cinema__screen {
   color: #ffd42a;
 }
 
+/* Which episode, under the show. The grid says only the show, so this is the only place
+   the number and the episode's own name appear at all -- which is why it is set at nearly
+   the weight of the heading above it rather than as another line of small print. */
+.tvguide__detail-episode {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #cfd4ff;
+}
+
 .tvguide__detail-meta {
-  margin: 0 0 14px;
+  margin: 0 0 8px;
   font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.85);
   font-variant-numeric: tabular-nums;
+}
+
+/* The genres, in the small caps the old guides set their category tags in. */
+.tvguide__detail-genre {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .tvguide__detail-watched {

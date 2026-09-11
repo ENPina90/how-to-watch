@@ -72,6 +72,9 @@
               # clipped -- the arrows say so, the way they did on cable.
               runs_in = slot.starts_at < window_start
               runs_on = slot.ends_at > @window.end
+              # The show, and the episode of it, kept apart: the cell gets the show and the
+              # panel gets the rest. See CableHelper::Programme for why.
+              programme = cable_programme(slot)
             %>
             <a class="tvguide__programme"
                href="<%= cable_channel_path(channel) %>"
@@ -85,7 +88,14 @@
                data-guide-channel="<%= channel.name %>"
                data-guide-channel-url="<%= list_path(channel) %>"
                data-guide-number="<%= row[:number] %>"
-               data-guide-title="<%= cable_programme_name(slot) %>"
+               data-guide-title="<%= programme.show %>"
+               <%# What the grid deliberately leaves out, for the panel to say once about
+                   the one programme being pointed at. %>
+               data-guide-episode="<%= programme.number %>"
+               data-guide-episode-title="<%= programme.episode_title %>"
+               data-guide-runtime="<%= cable_runtime(slot) %>"
+               data-guide-rating="<%= cable_rating(slot) %>"
+               data-guide-genre="<%= cable_genres(slot) %>"
                <%# Where this programme lives outside the schedule: its own page on the
                    watch side, played from the beginning the ordinary way. %>
                data-guide-watch-url="<%= watch_entry_path(slot.entry, channel: channel.id,
@@ -97,7 +107,7 @@
               <%# Pinned to the cell's own edges rather than sitting in the flow, so the
                   title between them is free to slide as the day scrolls past. %>
               <% if runs_in %><span class="tvguide__arrow tvguide__arrow--in">&#9664;</span><% end %>
-              <span class="tvguide__name"><%= cable_programme_name(slot) %></span>
+              <span class="tvguide__name"><%= programme.show %></span>
               <% if runs_on %><span class="tvguide__arrow tvguide__arrow--out">&#9654;</span><% end %>
             </a>
           <% end %>
