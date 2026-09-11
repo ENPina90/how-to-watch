@@ -14,6 +14,11 @@ class User < ApplicationRecord
 
   # Channels belong to the account; the foreign key means a destroy raises without this.
   has_many :lists, dependent: :destroy
+
+  # The one channel this member has singled out: where "add to favourites" files a film,
+  # and what the phone view opens on. A single column rather than a flag on the channel,
+  # so it is the member's own choice and so there can only ever be one of them.
+  belongs_to :favorite_list, class_name: 'List', optional: true
   has_many :user_entries, dependent: :destroy
   has_many :user_entry_positions, dependent: :destroy
   has_many :subscriptions, dependent: :destroy
@@ -31,6 +36,11 @@ class User < ApplicationRecord
 
   # Minutes, so a small number. Negative is the only value that means nothing at all.
   validates :randomizer, numericality: { greater_than_or_equal_to: 0 }
+
+  # A member can only favourite a channel they created. Guarded on the model and not only
+  # in the controller because the column is what everything else trusts: "add to
+  # favourites" writes an entry straight into whatever it points at.
+  validate :favorite_list_is_own
 
   # What to call this user in the UI. Both navbars used to build this inline, with
   # slightly different rules -- a blank-but-present username rendered as nothing in one
@@ -164,6 +174,25 @@ class User < ApplicationRecord
     end
   end
 
+  # --- Favourite channel ------------------------------------------------------------
+
+  def favorite?(list)
+    favorite_list_id.present? && favorite_list_id == list&.id
+  end
+
+  # Moves the favourite rather than adding to it: there is one column, so favouriting a
+  # second channel is how a member stops favouriting the first. Refuses a channel that is
+  # not theirs, which is the same answer the validation would give.
+  def favorite!(list)
+    return false unless list&.user_id == id
+
+    update(favorite_list: list)
+  end
+
+  def unfavorite!
+    update(favorite_list: nil)
+  end
+
   # --- Letterboxd -------------------------------------------------------------------
   # Linking is a username and an opt-in: the diary is read from the public RSS feed at
   # /<username>/rss/, which needs no credentials. See LetterboxdFeed.
@@ -215,22 +244,28 @@ class User < ApplicationRecord
     Subscription.auto_subscribe_user(self)
   end
 
+  # Every account starts with one channel of its own, and it starts out as the favourite:
+  # somewhere for "add to favourites" to file a film before the member has made any
+  # channels, without the app having to guess which one they meant.
   def create_default_list
-    list_name = generate_default_list_name
-    lists.create!(
-      name: list_name,
+    list = lists.create!(
+      name: generate_default_list_name,
       private: true,
       mobile: true
     )
+
+    # update_column, not update: this runs inside the account's own create, and a full save
+    # here would put the just-written record back through the Letterboxd callbacks.
+    update_column(:favorite_list_id, list.id)
   end
 
   def generate_default_list_name
-    if username.present?
-      "#{username.capitalize}'s Favorites"
-    else
-      # Extract the part before @ from email and capitalize it
-      email_prefix = email.split('@').first
-      "#{email_prefix.capitalize}'s Favorites"
-    end
+    "#{(username.presence || email.split('@').first).capitalize}'s Watchlist"
+  end
+
+  def favorite_list_is_own
+    return if favorite_list.nil? || favorite_list.user_id == id
+
+    errors.add(:favorite_list, 'must be a channel you created')
   end
 end
