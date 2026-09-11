@@ -127,7 +127,7 @@
       <ul class="menu">
         <%# criteria_label is the one place a grouping's stored name and its word differ:
             the channel's own order is stored as Position and reads as Order. %>
-        <% %w[Position Year Rating Genre Category Watched Media Length].each do |criteria| %>
+        <% %w[Position Title Year Rating Genre Category Watched Media Length].each do |criteria| %>
           <li class="<%= 'active' if @criteria == criteria %>">
             <%= sort_menu_link(@list, criteria, criteria_label(criteria)) %>
           </li>

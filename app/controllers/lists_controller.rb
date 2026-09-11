@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 class ListsController < ApplicationController
-  # The grouping options offered on the list page. Everything except Position, Genre,
-  # Year and Watched is handled by reading the matching Entry attribute, so this doubles
-  # as the whitelist for that lookup.
-  GROUPING_CRITERIA = %w[Position Genre Year Watched Rating Category Media Length].freeze
+  # The grouping options offered on the list page. Everything except Position, Title,
+  # Genre, Year and Watched is handled by reading the matching Entry attribute, so this
+  # doubles as the whitelist for that lookup.
+  GROUPING_CRITERIA = %w[Position Title Genre Year Watched Rating Category Media Length].freeze
   SORT_DIRECTIONS = %w[asc desc].freeze
   # Channels inside this one are filed under this in the rail, whatever the grouping: they
   # have none of the attributes the groupings read.
@@ -824,6 +824,18 @@ class ListsController < ApplicationController
       @entries = @list_entries.group_by(&:rating_section)
     when 'Length'
       @entries = @list_entries.group_by(&:length_section)
+    when 'Title'
+      # A section per opening letter, and the titles inside it in order -- sorting the
+      # sections alone would leave a letter's own entries in channel order, so "A to Z"
+      # would only be true between letters. Case-folded, or "the Thing" files apart from
+      # "The Thing"; digits and symbols share a bucket, since one section each for "1917"
+      # and "2001" is a rail of sections holding one film.
+      by_letter = @list_entries.group_by { |entry| Entry.title_letter(entry.name) }
+      by_letter.each do |letter, titled|
+        titled = titled.sort_by { |entry| entry.name.to_s.downcase }
+        titled = titled.reverse if @direction == 'desc'
+        @entries[letter] = titled
+      end
     when 'Watched'
       @entries['Unwatched'] = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
       @entries['Watched'] = @list_entries.select { |entry| entry.completed_by?(current_user) }.sort_by { |entry| entry.position || 0 }
