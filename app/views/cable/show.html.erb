@@ -248,7 +248,11 @@
       <i class="fa-solid fa-compress-alt"></i> Hide Guide
     </button>
 
-    <div class="tvguide__body" data-cable-guide-target="body">
+    <%# The scrolling element, so the scroll listener has to be here -- scroll does not
+        bubble, and the guide needs to know the viewer is awake to stop the grid hauling
+        itself back to the present under somebody reading tomorrow evening. %>
+    <div class="tvguide__body" data-cable-guide-target="body"
+         data-action="scroll->cable-guide#scrolled">
       <p class="tvguide__loading">Loading listings&hellip;</p>
     </div>
   </div>

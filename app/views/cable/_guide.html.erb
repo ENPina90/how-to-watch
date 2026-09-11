@@ -14,14 +14,23 @@
     everybody; what time those instants are is a question about where you are sitting. %>
 <%
   window_start = @window.begin
-  # How wide the window is, which is no longer a constant: it runs from three days back to
-  # the end of the last day anything has laid out, so it is a little narrower each evening.
+  # Three days, so 72 hours -- except across a daylight saving change, where one of them is
+  # 23 or 25. Measured rather than assumed for that reason.
   window_hours = CableSchedule.guide_hours(@window)
   # Where a moment falls along the track, in hours from the left edge. Clamped, so a film
   # that began before the window opened starts at the edge rather than off it.
   hours = ->(time) { (((time - window_start) / 3600.0)).clamp(0, window_hours) }
   track = ->(count) { "calc(var(--guide-hour-width) * #{count.round(5)})" }
   columns = ((window_hours * 2).round).times.map { |i| window_start + (i * 30.minutes) }
+
+  # The days the track crosses, as bands to label. Midnight to midnight in the viewer's own
+  # zone, like every other time on the grid -- a viewer somewhere else is reading the same
+  # schedule against their own clock, and their day is the one they want named. So the first
+  # and last bands are partial for anybody outside the schedule's zone, which is fine: a
+  # band is as wide as the part of that day the window holds.
+  day_bands = columns.map { |column| column.in_time_zone(@zone).beginning_of_day }.uniq.map do |day|
+    { day: day, from: hours.call(day), to: hours.call(day + 1.day) }
+  end
 %>
 <%# The actions are bound here rather than per cell: this markup is fetched and inserted,
     and one delegating listener on the grid serves however many programmes come back.
@@ -38,24 +47,42 @@
      data-window-hours="<%= window_hours %>"
      style="--guide-track: <%= track.call(window_hours) %>">
 
-  <div class="tvguide__times">
-    <%# The corner cell is a running clock, as it was on the real thing -- the columns are
-        half hours and none of them says what time it is now. %>
-    <div class="tvguide__corner" data-cable-guide-target="clock"><%= cable_clock(@now, @zone) %></div>
-    <div class="tvguide__columns" style="width: <%= track.call(window_hours) %>">
-      <% columns.each do |column| %>
-        <%
-          # Midnight in the viewer's zone: where one day's listings stop and the next
-          # begin. The track is days long now, so without this every column reads the same
-          # as the one three days to its left and there is no telling which is which.
-          local = column.in_time_zone(@zone)
-          day_break = local.hour.zero? && local.min.zero?
-        %>
-        <div class="tvguide__column <%= 'tvguide__column--day' if day_break %>"
-             style="width: <%= track.call(0.5) %>">
-          <%= day_break ? cable_day(column, @zone) : cable_time(column, @zone).upcase %>
-        </div>
-      <% end %>
+  <div class="tvguide__header">
+    <%# Which day you are looking at, in a band of its own over the times.
+
+        The label inside each band holds station against the gutter as that day scrolls
+        past, exactly the way a programme's title does in its cell -- so the answer to
+        "which day is this" is on screen at every scroll position within the day, not only
+        when its left edge happens to be in view. Same two requirements as the title: the
+        band must clip rather than scroll, and the label must be narrower than the band. %>
+    <div class="tvguide__days">
+      <div class="tvguide__days-gutter"></div>
+      <div class="tvguide__days-track" style="width: <%= track.call(window_hours) %>">
+        <% day_bands.each do |band| %>
+          <div class="tvguide__day<%= ' tvguide__day--today' if band[:day].to_date == @now.in_time_zone(@zone).to_date %>"
+               style="left: <%= track.call(band[:from]) %>; width: <%= track.call(band[:to] - band[:from]) %>">
+            <span class="tvguide__day-name"><%= cable_day(band[:day], @zone) %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="tvguide__times">
+      <%# The corner cell is a running clock, as it was on the real thing -- the columns are
+          half hours and none of them says what time it is now. It is also the way back:
+          pressed, it takes the grid to the present, which is a long way from the far end of
+          tomorrow. %>
+      <button type="button" class="tvguide__corner" data-cable-guide-target="clock"
+              title="Jump to what is on now" data-action="click->cable-guide#jumpToNow">
+        <%= cable_clock(@now, @zone) %>
+      </button>
+      <div class="tvguide__columns" style="width: <%= track.call(window_hours) %>">
+        <% columns.each do |column| %>
+          <div class="tvguide__column" style="width: <%= track.call(0.5) %>">
+            <%= cable_time(column, @zone).upcase %>
+          </div>
+        <% end %>
+      </div>
     </div>
   </div>
 

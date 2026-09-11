@@ -28,7 +28,13 @@ const REVERT_AFTER = 8000
 
 // Left alone this long, the guide scrolls itself back to now. Somebody who wandered off
 // down tomorrow afternoon and came back should not have to find their way home.
-const RECENTER_AFTER = 5 * 60 * 1000
+const RECENTER_AFTER = 2 * 60 * 1000
+
+// Scrolling is how the guide is mostly used, so it has to count as being awake -- otherwise
+// the grid would haul itself back to the present under somebody halfway through reading
+// tomorrow evening. Scroll fires far too often to re-arm a pair of timers on each one, so
+// it is only acted on this often.
+const SCROLL_IDLE = 250
 
 // Where the line sits after a recentre: a third in, so there is a little of the past on
 // screen and most of the width is what has not happened yet.
@@ -337,6 +343,17 @@ export default class extends Controller {
 
   // ---- being left alone -----------------------------------------------------------
 
+  // Scrolling, throttled to something a timer can live with. Only the idle clocks care,
+  // and they are minutes long -- a quarter second of coarseness is nothing to them.
+  scrolled() {
+    if (this.scrollIdle) return
+
+    this.scrollIdle = setTimeout(() => {
+      this.scrollIdle = null
+      this.rest()
+    }, SCROLL_IDLE)
+  }
+
   // Any sign of life. Two things are waiting on it: the panel, which goes back to what is
   // playing shortly after the pointer stops, and the grid, which finds its way back to now
   // after rather longer.
@@ -353,6 +370,16 @@ export default class extends Controller {
   clearIdleTimers() {
     clearTimeout(this.revertTimer)
     clearTimeout(this.recentreTimer)
+    clearTimeout(this.scrollIdle)
+    this.scrollIdle = null
+  }
+
+  // The clock in the corner, pressed. The grid is three days wide and the present is one
+  // spot on it; this is the way back from the other two.
+  jumpToNow() {
+    this.recentre({ smooth: true })
+    this.describeCurrent()
+    this.rest()
   }
 
   // Put the line marking now a third of the way across, so there is a little of what has
