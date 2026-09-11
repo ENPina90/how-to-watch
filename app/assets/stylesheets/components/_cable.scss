@@ -109,6 +109,10 @@ body.cable__mode .cinema__screen {
 .tvguide__detail-channel {
   display: block;
   margin: 0 0 6px;
+  /* Clear of the home button, which sits in this corner. Only this line needs it: it is
+     the one at the top of the panel, and a long channel name would otherwise run under
+     the button and be read through it. */
+  padding-right: 120px;
   font-size: 1.9rem;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -180,6 +184,43 @@ body.cable__mode .cinema__screen {
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* The way out of cable, in the corner the box kept its exit in. The guide covers the whole
+   screen while it is up, banner and all, so the home button on the banner cannot be reached
+   from here and this is the one that answers.
+
+   Bevelled like everything else raised on the grid -- lit on the top and left, black on the
+   bottom and right -- because that is what a button looked like drawn by a character
+   generator, and it is the same two colours the channel gutter and the cells are drawn in. */
+.tvguide__home {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: #23237a;
+  border: 2px solid;
+  border-color: #4a4ac8 #000 #000 #4a4ac8;
+  color: #ffd42a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+/* Lit the way the tuned channel's gutter is lit, which is this guide's one way of saying
+   a thing is selected. */
+.tvguide__home:hover,
+.tvguide__home:focus-visible {
+  background: #ffd42a;
+  color: #05052e;
+  text-shadow: none;
+  outline: none;
 }
 
 /* The bar between the picture and the grid, which is where these always put it. */

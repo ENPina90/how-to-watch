@@ -216,6 +216,15 @@
       </div>
     </div>
 
+    <%# The way out of cable altogether. The banner has one of these, but the guide covers
+        the whole screen while it is up and the banner with it, so the guide needs its own
+        or the only way off the channel is the browser's back button. Top right, in the
+        corner the box kept its exit in. %>
+    <%= link_to root_path, class: "tvguide__home", title: "Home" do %>
+      <i class="fa-solid fa-house"></i>
+      <span>Home</span>
+    <% end %>
+
     <button type="button" class="tvguide__hide" data-action="click->cable-guide#close">
       <i class="fa-solid fa-compress-alt"></i> Hide Guide
     </button>

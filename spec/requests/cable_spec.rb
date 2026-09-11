@@ -684,6 +684,18 @@ RSpec.describe 'Cable', type: :request do
       expect(response.body).to include('<span class="tvguide__name">The Death of Harvey</span>')
     end
 
+    # The guide covers the whole screen while it is up, banner and all, so the home button
+    # on the banner cannot be reached from it. Without one of its own the only way off the
+    # channel from an open guide is the browser's back button.
+    it 'offers a way out of cable from the guide itself' do
+      sign_in user
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      home = response.body[/<a[^>]*tvguide__home[^>]*>/]
+
+      expect(home).to be_present
+      expect(home).to include(%(href="#{root_path}"))
+    end
   end
 
   describe 'a channel with nothing it can play' do
