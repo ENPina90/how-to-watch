@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_09_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -291,6 +291,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_120000) do
     t.boolean "dark_mode", default: true, null: false
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
+    t.bigint "favorite_list_id"
     t.boolean "letterboxd_enabled", default: false, null: false
     t.string "letterboxd_sync_error"
     t.datetime "letterboxd_synced_at"
@@ -302,6 +303,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_120000) do
     t.string "username"
     t.index ["admin"], name: "index_users_on_admin"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["favorite_list_id"], name: "index_users_on_favorite_list_id"
     t.index ["letterboxd_enabled"], name: "index_users_on_letterboxd_enabled", where: "letterboxd_enabled"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
@@ -405,6 +407,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_120000) do
   add_foreign_key "user_entry_positions", "users"
   add_foreign_key "user_list_positions", "lists"
   add_foreign_key "user_list_positions", "users"
+  add_foreign_key "users", "lists", column: "favorite_list_id", on_delete: :nullify
   add_foreign_key "visits", "users"
   add_foreign_key "vote_options", "entries"
   add_foreign_key "vote_options", "vote_sessions"

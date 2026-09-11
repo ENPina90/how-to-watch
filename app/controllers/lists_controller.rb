@@ -10,7 +10,7 @@ class ListsController < ApplicationController
   # have none of the attributes the groupings read.
   CHILD_SECTION = 'Channels'
 
-  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :entry_index, :nested_entries, :top_entries, :add_season, :toggle_default, :next_entry, :previous_entry, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
+  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :entry_index, :nested_entries, :top_entries, :add_season, :toggle_default, :toggle_favorite, :next_entry, :previous_entry, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
   # Under an access mode that lets strangers browse, a private channel still is not theirs
   # to read -- including the pieces of it that load on their own.
@@ -28,8 +28,8 @@ class ListsController < ApplicationController
     # subscribe to -- so a signed-out visitor gets the browsing view instead of an empty
     # one built for somebody who is not there.
     if @is_mobile && current_user
-      # For mobile, find the user's favorites list (mobile: true)
-      @favorites_list = current_user.lists.find_by(mobile: true)
+      # The channel the member has favourited -- the auto-created one until they move it.
+      @favorites_list = current_user.favorite_list
       # Get all subscribed lists with entry counts
       @subscribed_lists = current_user.subscribed_lists
                                     .left_joins(:entries)
@@ -418,6 +418,27 @@ class ListsController < ApplicationController
     end
   end
 
+  # A member's favourite channel: the one "add to favourites" files into and the one the
+  # phone view opens on. Theirs alone to set, and only over a channel they created -- the
+  # edit page is reachable for a default channel somebody else owns, so ownership is
+  # checked here rather than leaning on the edit permission.
+  def toggle_favorite
+    unless current_user && @list.user_id == current_user.id
+      return redirect_back(fallback_location: list_path(@list),
+                           alert: 'You can only favourite a channel you created.')
+    end
+
+    if current_user.favorite?(@list)
+      current_user.unfavorite!
+      message = "#{@list.name} is no longer your favourite channel"
+    else
+      current_user.favorite!(@list)
+      message = "#{@list.name} is now your favourite channel"
+    end
+
+    redirect_to edit_list_path(@list), notice: message
+  end
+
   def move_to_list
     target_list_id = params[:target_list_id]
     remove_from_id = params[:remove_from]
@@ -545,7 +566,7 @@ class ListsController < ApplicationController
   end
 
   def add_to_favorites
-    favorites_list = current_user.lists.find_by(mobile: true)
+    favorites_list = current_user.favorite_list
     return render json: { error: 'Favorites channel not found' }, status: :not_found unless favorites_list
 
     render_import(ImdbEntryImporter.new(list: favorites_list, imdb_id: params[:imdb], tmdb_id: params[:tmdb]).call)

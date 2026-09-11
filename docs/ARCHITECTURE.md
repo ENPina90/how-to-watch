@@ -42,13 +42,23 @@ are generated from provider URL templates.
 
 **`User`** — Devise account. Flags: `admin` (can edit anything, manage `Source`s, set
 default lists, and **view the site as another user** — §5.7), `dark_mode`, `letterboxd_enabled`. On create it
-auto-subscribes to default lists and **creates a "<Name>'s Favorites" list** with
-`mobile: true, private: true` (`app/models/user.rb:186`).
+auto-subscribes to default lists and **creates a "<Name>'s Watchlist" list** with
+`mobile: true, private: true`, then points `favorite_list_id` at it
+(`User#create_default_list`).
+- `favorite_list_id` → `List`: **the member's favourite channel** — where
+  `/lists/add_to_favorites` files an entry and what the mobile index opens on. One column,
+  so there is only ever one; validated to a list the member owns (`favorite_list_is_own`),
+  and nullified rather than cascading if that list is deleted. Set from the channel's edit
+  page via `PATCH /lists/:id/toggle_favorite`, which checks ownership itself because
+  `can_edit_list?` also lets anyone edit a default channel. `User#favorite?`, `#favorite!`
+  (moves it), `#unfavorite!`.
 
 **`List`** — a channel. Owned by a user.
 - `ordered` — true: play in `position` order; false: play a random unwatched entry.
-- `private`, `default` (admin-set; everyone auto-subscribes), `mobile` (marks the user's
-  favorites list used by the mobile UI), `reviewable` (prompt for a rating after finishing).
+- `private`, `default` (admin-set; everyone auto-subscribes), `mobile` (marks the channel
+  created with the account; a record of where it came from, not what it is for — the
+  favourite is `users.favorite_list_id`), `reviewable` (prompt for a rating after
+  finishing).
 - `auto_play` (flows into the embed URL's autoplay param) and `auto_next`
   (**declared in forms and the DB but no advance logic is implemented**).
 - `settings` / `sort` — remembered grouping criteria for the show page (`settings` is read
@@ -196,7 +206,7 @@ jumps to a random unwatched entry.
 | Add a whole season | `episodes_controller.js` → `POST /lists/:id/add_season` | → `SeasonImporter`; one TMDB call (two for anime past season 1) |
 | Add a single episode | `entries#create` with `season`/`episode`/`tmdb` | → `EpisodeImporter`, creating a standalone `media: "episode"` entry |
 | Global navbar search | `list_search_controller.js` → `POST /lists/add_to_list` (JSON) | |
-| Mobile | `mobile_search_controller.js` → `POST /lists/add_to_favorites` (JSON) | targets the user's `mobile: true` list |
+| Mobile | `mobile_search_controller.js` → `POST /lists/add_to_favorites` (JSON) | targets `current_user.favorite_list`; 404s when there is none |
 | Top-rated episodes | `lists#top_entries` → `ImdbScraper` | scrapes IMDb search HTML |
 | Watch without saving | `GET /watch_now?imdb=…` → `pages#watch_now` | transient, no DB write |
 
@@ -360,8 +370,8 @@ neither needs a local Redis.
 
 `config/routes.rb` — non-obvious ones:
 - `lists`: member `watch_current` (GET), `top_entries` (POST), `add_season` (POST),
-  `move_to_list`, `subscribe`, `unsubscribe`, `mark_all_complete/incomplete`;
-  collection `search` (JSON).
+  `move_to_list`, `subscribe`, `unsubscribe`, `mark_all_complete/incomplete`,
+  `toggle_default`, `toggle_favorite`; collection `search` (JSON).
 - Two non-RESTful posts outside the resource: `/lists/add_to_favorites`, `/lists/add_to_list`.
 - `entries` member routes are split by side effect: **writes are PATCH/POST**
   (`complete`, `review`, `complete_without_review`, `reportlink`, `repair_image`,

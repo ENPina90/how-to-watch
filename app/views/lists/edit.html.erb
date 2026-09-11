@@ -14,6 +14,35 @@
   <%= f.button :submit %>
 <% end %>
 
+<%# A member's favourite channel is a property of the member, not of the channel, so it is
+    a control of its own rather than a field on the form above. Only the owner sees it: a
+    default channel somebody else owns is editable here, but not favouritable. %>
+<% if current_user && @list.user_id == current_user.id %>
+  <div class="mt-4 border-t pt-4">
+    <h5>Favourite Channel</h5>
+    <% if current_user.favorite?(@list) %>
+      <p class="text-muted mb-2">
+        This is your favourite channel. It is where <strong>Add to Favourites</strong> files
+        anything you save, and the channel the mobile view opens on.
+      </p>
+      <%= link_to "Remove as Favourite", list_toggle_favorite_path(@list),
+          class: "btn btn-outline-secondary btn-sm",
+          data: { turbo_method: :patch } %>
+    <% else %>
+      <p class="text-muted mb-2">
+        Make this the channel <strong>Add to Favourites</strong> files into.
+        <% if current_user.favorite_list %>
+          It will replace <strong><%= current_user.favorite_list.name %></strong> — you can
+          only have one favourite.
+        <% end %>
+      </p>
+      <%= link_to "Set as Favourite", list_toggle_favorite_path(@list),
+          class: "btn btn-primary btn-sm",
+          data: { turbo_method: :patch } %>
+    <% end %>
+  </div>
+<% end %>
+
 <div class="mt-4 border-t pt-4">
   <h5>Bulk Actions</h5>
   <div class="d-flex gap-2">

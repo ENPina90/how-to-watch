@@ -101,6 +101,7 @@ Rails.application.routes.draw do
     patch :next_entry
     patch :previous_entry
     patch :toggle_default
+    patch :toggle_favorite
     patch :move_to_list
     patch :subscribe
     patch :unsubscribe
