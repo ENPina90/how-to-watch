@@ -10,6 +10,8 @@
 #   :not_found — OMDB has nothing usable for that id
 #   :failed    — creation failed (Entry.create_from_source returns a message, not an Entry)
 class ImdbEntryImporter
+  SERIES_MEDIA = %w[series anime].freeze
+
   def initialize(list:, imdb_id:, tmdb_id: nil)
     @list = list
     @imdb_id = imdb_id
@@ -28,6 +30,8 @@ class ImdbEntryImporter
     entry = Entry.create_from_source(omdb_result, @list, false)
     return result(:failed, nil, 'Failed to create entry') unless entry.is_a?(Entry)
 
+    import_episodes(entry)
+
     result(:created, entry, "Added to #{@list.name}")
   rescue StandardError => e
     Rails.logger.error "ImdbEntryImporter failed for #{@imdb_id}: #{e.message}"
@@ -35,6 +39,21 @@ class ImdbEntryImporter
   end
 
   private
+
+  # A series row on its own has nothing to play: the episodes are what carry the season and
+  # episode numbers a provider's template asks for, so a show imported without them is an
+  # entry that looks right in a channel and is off air the moment anybody opens it.
+  #
+  # The same call EntriesController#create makes after creating a series, and it is allowed
+  # to fail the same way: the entry itself was created, and losing the episodes is a reason
+  # to log rather than to throw away the row and report nothing was added.
+  def import_episodes(entry)
+    return unless SERIES_MEDIA.include?(entry.media)
+
+    OmdbApi.get_series_episodes(entry)
+  rescue StandardError => e
+    Rails.logger.error "ImdbEntryImporter could not import episodes for Entry #{entry.id}: #{e.message}"
+  end
 
   def result(status, entry, message)
     { status: status, entry: entry, message: message }
