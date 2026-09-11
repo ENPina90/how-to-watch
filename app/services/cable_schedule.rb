@@ -28,11 +28,6 @@ module CableSchedule
   # day filled with them is thousands of rows.
   MIN_MINUTES = 5
 
-  # How many days of played-out schedule to keep. Yesterday is worth having while somebody
-  # is still watching a programme that started before midnight; anything older is history
-  # nothing reads.
-  RETAIN_DAYS = 2
-
   # Programmes end on the clock, not when the film happens to stop. A slot runs to the next
   # five-minute mark and whatever is left after the film has ended is a commercial break --
   # which means every slot also *starts* on a five-minute mark, and the listing reads the
@@ -110,13 +105,22 @@ module CableSchedule
     before + [current] + after
   end
 
-  # A full day of listings, scrollable. The visible width is a few hours; the rest is what
-  # you scroll to, which is what the guide is for.
-  GUIDE_HOURS = 24
+  # The guide is three cable days wide: yesterday, today and tomorrow, midnight to midnight.
+  #
+  # Whole days rather than a span of hours either side of now, because days are the unit the
+  # schedule is written in -- a row in cable_slots belongs to an `airs_on` date -- and
+  # because a listing you read by day should not begin and end in the middle of two of them.
+  # Yesterday is as far back as is worth keeping: what was on last night is a question, what
+  # was on last Tuesday is not. Tomorrow is as far forward as anything is laid out.
+  GUIDE_BEHIND_DAYS = 1
+  GUIDE_AHEAD_DAYS = 1
 
-  # How much of the window sits behind the present. Enough to scroll back and see what you
-  # just missed, not so much that the day is mostly over before it starts.
-  GUIDE_LEAD_HOURS = 2
+  # How many days of played-out schedule to keep, which is a restatement of the line above
+  # rather than a number of its own -- and is declared here, next to it, so the two cannot
+  # drift apart. A day the viewer can scroll to and the pruning has deleted is an empty row,
+  # and nothing tells that apart from a channel that was off air. One day of margin on top,
+  # for a guide left open across midnight.
+  RETAIN_DAYS = GUIDE_BEHIND_DAYS + 1
 
   # The guide opens on a half hour, the way the printed listings did -- the columns are :00
   # and :30 and nothing else, so a window starting at 7:47 would label every one of them
@@ -126,12 +130,28 @@ module CableSchedule
   # laid out in one fixed zone so that every viewer sees the same programme at once; what
   # time that instant *is* belongs to whoever is looking. A listing whose columns disagreed
   # with the clock on the wall would be no use to read.
+  # Midnight to midnight over the three days, in the schedule's own zone: cable days are
+  # dates there, so which days to show is a question asked in that zone even though every
+  # time printed on the grid is answered in the viewer's.
+  #
+  # `in_zone` is what the columns are labelled in and is not what decides the edges. The
+  # window is the same three days for everybody -- it is the same schedule -- and a viewer
+  # somewhere else reads it against their own clock, which is the whole of the difference.
   def guide_window(at: Time.current, in_zone: zone)
-    local = at.in_time_zone(in_zone)
-    start = local.change(min: local.min < 30 ? 0 : 30, sec: 0, usec: 0) - GUIDE_LEAD_HOURS.hours
+    today = at.in_time_zone(zone).to_date
 
-    start...(start + GUIDE_HOURS.hours)
+    midnight_on(today - GUIDE_BEHIND_DAYS, in_zone)...midnight_on(today + GUIDE_AHEAD_DAYS + 1, in_zone)
   end
+
+  # The instant a cable day begins, read in whichever zone the caller is going to print it
+  # in. The same moment either way; `in_zone` only decides what it will be called.
+  def midnight_on(date, in_zone = zone)
+    zone.local(date.year, date.month, date.day).in_time_zone(in_zone)
+  end
+
+  # How wide the window is, in hours. The unit the grid is laid out in: every column, every
+  # programme and the line marking now are all a multiple of one hour.
+  def guide_hours(window) = (window.end - window.begin) / 3600.0
 
   # A viewer's zone name, or the schedule's own when it means nothing. Names come from the
   # browser, so they are checked rather than trusted -- and an unknown one is somebody's
@@ -166,11 +186,25 @@ module CableSchedule
 
   # The cable days a window touches. The window is in the viewer's zone and `airs_on` is a
   # date in the schedule's, so the two have to be converted rather than compared.
+  #
+  # Read off the last instant inside the window rather than off its end, because the range
+  # is half-open and the end now lands exactly on midnight every time -- so taking the end
+  # at face value would claim a day the window stops at the very start of and never shows.
   def days_covered(window)
     first = window.begin.in_time_zone(zone).to_date
-    last = window.end.in_time_zone(zone).to_date
+    last = (window.end - 1.second).in_time_zone(zone).to_date
 
     (first..last).to_a
+  end
+
+  # Of the days a window touches, the ones worth laying out: today and anything after it.
+  #
+  # A day that has been and gone is not filled in on demand. The listing for it is whatever
+  # the channel actually played, and a schedule invented after the fact is not a record of
+  # anything -- it is a plausible-looking day nobody watched, written into the past.
+  # So the guide shows what was really there, and an empty stretch to the left is honest.
+  def days_to_fill(window)
+    days_covered(window).select { |date| date >= today }
   end
 
   # Lay out one channel's day, replacing whatever was there. In a transaction because a
@@ -220,9 +254,13 @@ module CableSchedule
     day_start = zone.local(date.year, date.month, date.day)
     day_end = day_start + 1.day
     cursor = day_start
-    bag = refill(programmes, nil)
+    # What the day before ended with, so this one does not open with it. The bag's rule
+    # against playing the same thing twice running reaches only as far as the day it is
+    # dealing, and the seam between two days is a place the viewer is actually sitting --
+    # a film that runs to midnight and starts again is the most visible repeat there is.
+    last = entry_before(channel, day_start)
+    bag = refill(programmes, last)
     placed = false
-    last = nil
     rows = []
 
     while cursor < day_end && rows.length < MAX_SLOTS_PER_DAY
@@ -263,6 +301,17 @@ module CableSchedule
     rows
   end
 
+  # The programme this channel was showing as the day before ran out, where that day was
+  # ever laid out. Read before the transaction that replaces this day, so it is the real
+  # previous day rather than a half-written one -- and nil at the start of a channel's
+  # history, which puts no constraint on the first programme of its first day.
+  def entry_before(channel, day_start)
+    CableSlot.where(list: channel)
+             .where(ends_at: ..day_start)
+             .order(ends_at: :desc)
+             .first&.entry
+  end
+
   # Everything the channel can play, including what it borrows from the channels inside it
   # -- the same reach the /watch arrows have. Preloaded because laying out a day asks every
   # one of them for a provider and a template, and the big channel holds 1,200.
@@ -272,7 +321,21 @@ module CableSchedule
       records: entries, associations: [:provider, :subentries, { list: :provider }]
     ).call
 
-    entries.reject { |entry| entry.imdb.blank? && entry.source_key.blank? }
+    entries.reject { |entry| unschedulable?(entry) }
+  end
+
+  # An entry with nothing to put in a template cannot be played, and one already known to be
+  # broken should not be put on air to find out again -- a channel is watched rather than
+  # worked through, so a dead programme is four minutes of black frame before the clock
+  # moves the channel on by itself.
+  #
+  # `stream` is three-valued and only `false` means broken: it is nil for an entry nothing
+  # has ever checked, and dropping those would take most of a young channel off the air on
+  # no evidence. The same reading EmbedAvailabilityScanJob takes of the column.
+  def unschedulable?(entry)
+    return true if entry.imdb.blank? && entry.source_key.blank?
+
+    entry.stream == false
   end
 
   # A fresh shuffle, arranged so the seam between two bags does not play the same thing

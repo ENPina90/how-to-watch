@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-# Lays out tomorrow's cable schedule, once a day around noon.
+# Lays out tomorrow's cable schedule, once a day at seven in the morning.
 #
-# Noon rather than midnight so that there is always a full day in hand: whatever is on air
-# this afternoon was scheduled yesterday lunchtime, and nothing is ever being written for a
-# channel somebody is watching. The day being replaced is one that has not started.
+# Any hour but midnight would do, and the reason is the same whichever is picked: there is
+# always a full day in hand. Whatever is on air this evening was laid out yesterday morning,
+# so the day being written is never the day somebody is watching -- it has not started yet.
 #
 # Today is filled in too, but only if it is empty -- the first run after a deploy, a
 # channel newly marked default, a day the worker was down for. `ensure_day!` will not touch

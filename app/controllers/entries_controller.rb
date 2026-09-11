@@ -7,7 +7,8 @@ require 'json'
 class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   before_action :set_list, only: %i[new create]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime]
+  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime favorite unfavorite]
+  before_action :authenticate_user!, only: %i[favorite unfavorite]
   # Everything here writes state shared by everyone who can see the entry -- its position
   # in the list, its provider, its poster, the `stream` flag. The per-user actions
   # (complete, review, shuffle_current and friends) are deliberately absent: they write
@@ -184,6 +185,39 @@ class EntriesController < ApplicationController
       flash[:error] = 'Failed to duplicate entry.'
       redirect_back(fallback_location: root_path)
     end
+  end
+
+  # File this film in the member's own favourites channel, and say so.
+  #
+  # Adds only. A heart that emptied again on a second press would be a delete button drawn
+  # as a toggle -- it would take a row out of a channel the member built, which is a
+  # different and more destructive thing than the one they asked for by pressing it once.
+  def favorite
+    list = current_user.favorite_list
+
+    unless list
+      return render json: { error: 'Pick a favourites channel first.' }, status: :unprocessable_entity
+    end
+
+    copy = @entry.file_into!(list)
+
+    render json: { favorited: true, entry_id: copy.id, list: list.name }
+  rescue ActiveRecord::RecordInvalid => e
+    Rails.logger.error("favorite failed for entry #{@entry.id}: #{e.message}")
+    render json: { error: 'Could not add that to your favourites.' }, status: :unprocessable_entity
+  end
+
+  # Take it out again. The row that goes is the copy in the member's own favourites
+  # channel, never the one that was playing -- the two are different rows, and the scope
+  # here is what keeps them apart.
+  #
+  # Nothing to undo is a success, not an error: the heart it was pressed on is already
+  # empty and saying so twice helps nobody.
+  def unfavorite
+    copy = @entry.copy_in(current_user.favorite_list)
+    copy&.destroy
+
+    render json: { favorited: false }
   end
 
   def destroy

@@ -8,6 +8,12 @@ module CableHelper
     time.in_time_zone(zone).strftime("%-l:%M %p").downcase
   end
 
+  # The column where one day's listings give way to the next. The track runs for days now,
+  # so a column reading 12:00 AM says nothing on its own -- there are four of them.
+  def cable_day(time, zone = CableSchedule.zone)
+    time.in_time_zone(zone).strftime("%a %-e %b").upcase
+  end
+
   # The clock in the guide's corner cell, seconds and all -- the old guides ran one, and it
   # is the only thing on the grid that says what time it actually is.
   def cable_clock(time, zone = CableSchedule.zone)
@@ -95,14 +101,17 @@ module CableHelper
     rest.zero? ? "#{hours} hr" : "#{hours} hr #{rest} min"
   end
 
-  # The score out of ten. An episode's own where anyone recorded one, since the show's
-  # average says nothing about which episode is on; zero is what an import writes when it
-  # found nothing, and is not a rating of nought.
+  # The score, as IMDb gives it. An episode's own where anyone recorded one, since the
+  # show's average says nothing about which episode is on; zero is what an import writes
+  # when it found nothing, and is not a rating of nought.
+  #
+  # No "/10" on it: it sits behind IMDb's own mark in the panel, and out of ten is what
+  # that mark means.
   def cable_rating(slot)
     score = [slot.subentry&.rating, slot.entry.rating].compact.map(&:to_f).find(&:positive?)
     return nil unless score
 
-    format("%.1f/10", score)
+    format("%.1f", score)
   end
 
   # The genres, in the dot-separated run the rest of the panel is set in.

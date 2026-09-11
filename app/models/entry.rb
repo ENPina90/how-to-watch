@@ -338,6 +338,57 @@ class Entry < ApplicationRecord
   # The Letterboxd rating is one member's own, so it lives on their tracking row rather
   # than on the entry everybody sharing the channel sees. Reads through the preloaded
   # association, so a card can ask without costing a query.
+  # What identifies this film wherever it has been filed. The same film in two channels is
+  # two rows with two ids, so "is this already in my favourites" is a question about what
+  # the film is, not about which row is being looked at.
+  def catalogue_key
+    imdb.presence || source_key.presence || name.to_s.strip.downcase
+  end
+
+  # The copy of this film already sitting in a channel, if there is one.
+  def copy_in(list)
+    return nil if list.nil?
+
+    scope = list.entries
+    return scope.find_by(imdb: imdb) if imdb.present?
+    return scope.find_by(source_key: source_key) if source_key.present?
+
+    scope.find_by(name: name)
+  end
+
+  # File a copy of this entry in another channel, or hand back the copy already there.
+  #
+  # A copy and not a move: an entry belongs to one channel, so adding a film to your
+  # favourites cannot take it off the channel it was playing on. Idempotent, because the
+  # button that calls it is a heart somebody may well press twice.
+  #
+  # The episodes come with it. A series filed without them is an entry with nothing to
+  # play, which would sit in the favourites channel looking fine and be off air the moment
+  # anybody tuned to it.
+  def file_into!(list)
+    existing = copy_in(list)
+    return existing if existing
+
+    transaction do
+      copy = dup
+      copy.list = list
+      copy.position = Entry.next_position(list)
+      # Whose copy this is has nothing to do with who has watched what: progress is per
+      # user and lives in UserEntry, and these two columns are the pre-multi-user leftovers.
+      copy.completed = false
+      copy.current_id = nil
+      copy.save!
+
+      subentries.order(:season, :episode).each do |subentry|
+        copy.subentries.create!(
+          subentry.attributes.except('id', 'entry_id', 'created_at', 'updated_at', 'completed')
+        )
+      end
+
+      copy
+    end
+  end
+
   def letterboxd_score_for(user)
     user_entry_for(user)&.letterboxd_score
   end

@@ -70,6 +70,54 @@ RSpec.describe CableSchedule do
     end
   end
 
+  # The seam between two days is a place the viewer is actually sitting, and a film that
+  # runs to midnight and starts again is the most visible repeat a channel can make. The
+  # bag's own rule against it only reaches as far as the day it is dealing, so the day being
+  # laid out is told what the one before ended with.
+  describe 'the seam between two days' do
+    before { 3.times { |i| film("Film #{i}", 90, i + 1) } }
+
+    it 'does not open a day with the programme the day before closed on' do
+      described_class.build_day!(channel, date)
+      closing = CableSlot.where(list: channel, airs_on: date).in_order.last
+
+      described_class.build_day!(channel, date + 1)
+      opening = CableSlot.where(list: channel, airs_on: date + 1).in_order.first
+
+      expect(opening.entry_id).not_to eq(closing.entry_id)
+    end
+
+    # Ten deals, because one passing could be the shuffle being kind.
+    it 'holds across repeated deals' do
+      described_class.build_day!(channel, date)
+
+      10.times do
+        described_class.build_day!(channel, date + 1)
+        closing = CableSlot.where(list: channel, airs_on: date).in_order.last
+        opening = CableSlot.where(list: channel, airs_on: date + 1).in_order.first
+
+        expect(opening.entry_id).not_to eq(closing.entry_id)
+      end
+    end
+
+    # A channel with one programme has nothing else to open with, and a day it cannot fill
+    # is worse than a repeat nobody can avoid.
+    it 'still fills a day on a channel with only one programme' do
+      Entry.where(list: channel).where.not(name: 'Film 0').destroy_all
+      described_class.build_day!(channel, date)
+      described_class.build_day!(channel, date + 1)
+
+      slots = CableSlot.where(list: channel, airs_on: date + 1).in_order.to_a
+      expect(slots.first.starts_at).to eq(midnight + 1.day)
+      expect(slots.last.ends_at).to eq(midnight + 2.days)
+    end
+
+    # Nothing to be told at the start of a channel's history, and no reason to refuse.
+    it 'lays out a day with nothing before it' do
+      expect(described_class.build_day!(channel, date)).to be_positive
+    end
+  end
+
   describe 'a day that is not 24 hours long' do
     before { 3.times { |i| film("Film #{i}", 90, i + 1) } }
 
@@ -101,6 +149,30 @@ RSpec.describe CableSchedule do
       described_class.build_day!(channel, date)
 
       expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Playable'])
+    end
+
+    # A channel is watched rather than worked through: a programme that cannot play is four
+    # minutes of black frame before the clock moves the channel on by itself, and nobody
+    # watching gets to skip it. So a link already reported broken stays off the air.
+    it 'skips an entry whose stream is reported broken' do
+      film('Working', 90, 1)
+      create(:entry, list: channel, name: 'Broken', media: 'movie', length: 90,
+                     position: 2, imdb: 'tt9999999', stream: false)
+
+      described_class.build_day!(channel, date)
+
+      expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Working'])
+    end
+
+    # Three-valued, and only false means broken. An entry nothing has ever checked is not
+    # evidence of anything, and dropping those would take most of a young channel off air.
+    it 'still schedules an entry nothing has checked yet' do
+      create(:entry, list: channel, name: 'Unchecked', media: 'movie', length: 90,
+                     position: 1, imdb: 'tt8888888', stream: nil)
+
+      described_class.build_day!(channel, date)
+
+      expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Unchecked'])
     end
 
     it 'gives a programme with no runtime a default rather than dropping it' do
@@ -373,47 +445,67 @@ RSpec.describe CableSchedule do
   end
 
   describe 'the guide window' do
-    # It runs a full day, opening a couple of hours behind the present so there is
-    # something to scroll back to, and it always opens on a half hour -- the columns are
-    # :00 and :30, and a window starting at 7:47 would label every one of them oddly.
-    let(:lead) { described_class::GUIDE_LEAD_HOURS.hours }
+    # Three whole cable days, midnight to midnight: yesterday, today and tomorrow. Days
+    # rather than a span of hours either side of now, because days are the unit the
+    # schedule is written in and a listing read by day should not begin in the middle of one.
 
-    it 'opens on the half hour containing now, less the lead-in' do
-      window = described_class.guide_window(at: midnight + 7.hours + 47.minutes)
-
-      expect(window.begin).to eq(midnight + 7.hours + 30.minutes - lead)
-      expect(window.end).to eq(window.begin + described_class::GUIDE_HOURS.hours)
-    end
-
-    it 'opens on the hour when now is in its first half' do
-      window = described_class.guide_window(at: midnight + 7.hours + 12.minutes)
-
-      expect(window.begin).to eq(midnight + 7.hours - lead)
-    end
-
-    it 'covers a whole day' do
+    it 'runs from the start of yesterday to the end of tomorrow' do
       window = described_class.guide_window(at: midnight + 7.hours)
 
-      expect(window.end - window.begin).to eq(24.hours)
+      expect(window.begin).to eq(midnight - 1.day)
+      expect(window.end).to eq(midnight + 2.days)
     end
 
-    it 'keeps the present inside it, with the past behind and the rest ahead' do
+    it 'is the same three days whatever time of day it is asked' do
+      [1.minute, 7.hours, 22.hours, 23.hours + 59.minutes].each do |into_the_day|
+        window = described_class.guide_window(at: midnight + into_the_day)
+
+        expect(described_class.guide_hours(window)).to eq(72)
+        expect(described_class.days_covered(window)).to eq([date - 1, date, date + 1])
+      end
+    end
+
+    # Half-open, and the end lands exactly on midnight -- so taking it at face value would
+    # claim a day the window stops at the very start of and never shows.
+    it 'does not claim the day it stops at the start of' do
+      window = described_class.guide_window(at: midnight + 7.hours)
+
+      expect(described_class.days_covered(window).last).to eq(date + 1)
+    end
+
+    # The edges are the same instants for everybody: it is the same schedule, and a viewer
+    # somewhere else reads it against their own clock. Only what the columns are *called*
+    # belongs to the reader.
+    it 'shows the same three days to a viewer in another zone' do
+      berlin = ActiveSupport::TimeZone['Europe/Berlin']
+      here = described_class.guide_window(at: midnight + 7.hours)
+      there = described_class.guide_window(at: midnight + 7.hours, in_zone: berlin)
+
+      expect(there.begin).to eq(here.begin)
+      expect(there.end).to eq(here.end)
+      expect(there.begin.time_zone).to eq(berlin)
+    end
+
+    # A day already played out is not laid out on demand: what was on is whatever was
+    # really on, and a schedule invented afterwards is a day nobody watched written into
+    # the past.
+    it 'offers only today and later as days worth filling' do
+      window = described_class.guide_window(at: midnight + 7.hours)
+
+      travel_to(midnight + 7.hours) do
+        expect(described_class.days_to_fill(window)).to eq([date, date + 1])
+      end
+    end
+
+    it 'keeps the present inside it, with a day behind and a day ahead' do
       at = midnight + 7.hours + 47.minutes
       window = described_class.guide_window(at: at)
 
       expect(window).to cover(at)
-      expect(at - window.begin).to be_within(30.minutes).of(lead)
+      expect(window).to cover(at - 1.day)
+      expect(window).to cover(at + 1.day)
     end
 
-    # The schedule is one fixed zone so that everybody sees the same programme at once, but
-    # what time that is belongs to whoever is reading the listing.
-    it 'opens on the viewer\'s half hour, not the schedule\'s' do
-      berlin = ActiveSupport::TimeZone['Europe/Berlin']
-      window = described_class.guide_window(at: midnight + 7.hours, in_zone: berlin)
-
-      expect(window.begin.time_zone).to eq(berlin)
-      expect(window.begin.min).to eq(0).or eq(30)
-    end
   end
 
   describe 'resolving a viewer\'s zone' do

@@ -45,6 +45,11 @@
          would disagree with the column right next to it for anybody not in that zone. %>
      data-cable-guide-zone-value="<%= CableSchedule.zone.tzinfo.name %>"
      data-cable-guide-open-class="cinema__screen--guide"
+     <%# The heart is the one thing in the guide that writes, so it needs a token. Signed in
+         only: a guest has no favourites channel to file anything in. %>
+     <% if user_signed_in? %>
+       data-cable-guide-token-value="<%= form_authenticity_token %>"
+     <% end %>
      data-cinema-fullscreen-idle-class="cinema__screen--idle"
      <%# Unlike the watch page, the chrome here goes away windowed as well. A cable channel
          is something playing in a room rather than a page being worked through, and its
@@ -199,6 +204,7 @@
           where it plays from the beginning and counts towards what you have seen. Neither
           carries data-cinema-move, so they are ordinary navigations rather than a tune. %>
       <div class="tvguide__detail">
+        <%# The channel, by number and name, the way it is said everywhere else on the box. %>
         <a class="tvguide__detail-channel" data-cable-guide-target="detailChannel" href="#"></a>
         <h2 class="tvguide__detail-title">
           <a data-cable-guide-target="detailTitle" href="#"></a>
@@ -207,29 +213,100 @@
             afternoon of one series would otherwise be a column of identical cells -- so
             this is the only place the rest of it is said. Empty, and gone, for a film. %>
         <p class="tvguide__detail-episode" data-cable-guide-target="detailEpisode" hidden></p>
-        <p class="tvguide__detail-meta" data-cable-guide-target="detailMeta" hidden></p>
-        <p class="tvguide__detail-genre" data-cable-guide-target="detailGenre" hidden></p>
-        <p class="tvguide__detail-watched" data-cable-guide-target="detailWatched" hidden>
-          <i class="fa-solid fa-eye"></i> Watched
+
+        <%# One line of facts, each its own element so the two marks can sit against the
+            scores they belong to. The dots between them are drawn by the stylesheet from
+            whichever parts are showing, so a film with no rating does not leave one
+            stranded. %>
+        <p class="tvguide__detail-meta">
+          <span data-cable-guide-target="detailWhen" hidden></span>
+          <span data-cable-guide-target="detailRuntime" hidden></span>
+          <span data-cable-guide-target="detailYear" hidden></span>
+          <span class="tvguide__score tvguide__score--imdb" data-cable-guide-target="detailImdb" hidden>
+            <i class="fa-brands fa-imdb"></i>
+            <span data-cable-guide-target="detailImdbScore"></span>
+          </span>
+          <%# Out of cable, like the other two links in this panel: it opens Letterboxd's
+              own review prompt in a new tab. The score beside it is this member's own, and
+              is absent until they have logged one. %>
+          <a class="tvguide__score tvguide__score--letterboxd" data-cable-guide-target="detailLetterboxd"
+             href="#" target="_blank" rel="noopener noreferrer" hidden>
+            <i class="fa-brands fa-square-letterboxd"></i>
+            <span data-cable-guide-target="detailLetterboxdScore"></span>
+          </a>
         </p>
+
+        <p class="tvguide__detail-genre" data-cable-guide-target="detailGenre" hidden></p>
+
+        <%# Two marks that are also two switches. Both are drawn hollow for off and solid
+            for on, which is the whole of what they say -- there is no room beside a
+            picture for a word as well, and the pair of glyphs is the same pair the rest of
+            the site uses for these two states.
+
+            Absent for a guest: neither has anywhere to record an answer. %>
+        <% if user_signed_in? %>
+          <p class="tvguide__detail-marks">
+            <%# Marking something watched is the one thing on /cable that writes, and it
+                goes through the ordinary entries#complete route -- the same one the banner
+                below uses. A thing the viewer chose to do, not a side effect of the page
+                having been rendered. %>
+            <button type="button" class="tvguide__mark" data-cable-guide-target="watched"
+                    data-action="click->cable-guide#watch" title="Mark as watched">
+              <i class="fa-regular fa-eye" data-cable-guide-target="watchedIcon"></i>
+            </button>
+
+            <%# Files a copy of the film in this member's own favourites channel, and takes
+                it out again. A copy, because an entry belongs to one channel -- so
+                favouriting cannot move a film off the channel that was playing it, and
+                un-favouriting removes the copy rather than the original. %>
+            <button type="button" class="tvguide__mark" data-cable-guide-target="favorite"
+                    data-action="click->cable-guide#favorite" title="Add to my favourites">
+              <i class="fa-regular fa-heart" data-cable-guide-target="favoriteIcon"></i>
+            </button>
+          </p>
+        <% end %>
+
         <p class="tvguide__detail-plot" data-cable-guide-target="detailPlot"></p>
       </div>
     </div>
 
-    <%# The way out of cable altogether. The banner has one of these, but the guide covers
-        the whole screen while it is up and the banner with it, so the guide needs its own
-        or the only way off the channel is the browser's back button. Top right, in the
-        corner the box kept its exit in. %>
-    <%= link_to root_path, class: "tvguide__home", title: "Home" do %>
-      <i class="fa-solid fa-house"></i>
-      <span>Home</span>
-    <% end %>
+    <%# The corner the box kept its own buttons in. %>
+    <div class="tvguide__controls">
+      <%# Deal today's listings again. Admin only, and on the same terms as /admin: the
+          check is on the real account, and it is gone while viewing the site as somebody
+          else. Left of Home because it is the rarer of the two and Home is the one the eye
+          goes to the corner for.
+
+          A real form post rather than a Turbo one: the schedule under this page has just
+          been replaced, so what is wanted is the page loaded again from nothing -- new
+          listings, new programme, a player pointed at whatever is on now. %>
+      <% if true_user&.admin? && !impersonating? %>
+        <%= button_to cable_regenerate_path, class: "tvguide__rebuild",
+                      form_class: "tvguide__rebuild-form", data: { turbo: false },
+                      title: "Lay today's schedule out again for every channel" do %>
+          <i class="fa-solid fa-rotate"></i>
+          <span>Rebuild</span>
+        <% end %>
+      <% end %>
+
+      <%# The way out of cable altogether. The banner has one of these, but the guide covers
+          the whole screen while it is up and the banner with it, so the guide needs its own
+          or the only way off the channel is the browser's back button. %>
+      <%= link_to root_path, class: "tvguide__home", title: "Home" do %>
+        <i class="fa-solid fa-house"></i>
+        <span>Home</span>
+      <% end %>
+    </div>
 
     <button type="button" class="tvguide__hide" data-action="click->cable-guide#close">
       <i class="fa-solid fa-compress-alt"></i> Hide Guide
     </button>
 
-    <div class="tvguide__body" data-cable-guide-target="body">
+    <%# The scrolling element, so the scroll listener has to be here -- scroll does not
+        bubble, and the guide needs to know the viewer is awake to stop the grid hauling
+        itself back to the present under somebody reading tomorrow evening. %>
+    <div class="tvguide__body" data-cable-guide-target="body"
+         data-action="scroll->cable-guide#scrolled">
       <p class="tvguide__loading">Loading listings&hellip;</p>
     </div>
   </div>

@@ -18,17 +18,21 @@ import { Controller } from "@hotwired/stimulus"
 // of it off the render.
 const STALE_AFTER = 5 * 60 * 1000
 
-// How often the clock is consulted. A cell boundary is a whole minute wide at any sane
-// zoom, so this is about the line moving smoothly rather than about catching the change.
-const TICK = 5000
-
-// The panel follows the pointer, and goes back to what is actually playing when the
-// pointer stops. Long enough to read a synopsis without it snatching the text away.
-const REVERT_AFTER = 8000
+// How often the clock is consulted. A second, because one of the things it drives is a
+// clock and a clock that moves in fives is a clock somebody notices. Everything else on
+// this schedule is cheap enough not to mind: a CSS variable, a class swapped on one cell,
+// and a handful of text nodes.
+const TICK = 1000
 
 // Left alone this long, the guide scrolls itself back to now. Somebody who wandered off
 // down tomorrow afternoon and came back should not have to find their way home.
-const RECENTER_AFTER = 5 * 60 * 1000
+const RECENTER_AFTER = 2 * 60 * 1000
+
+// Scrolling is how the guide is mostly used, so it has to count as being awake -- otherwise
+// the grid would haul itself back to the present under somebody halfway through reading
+// tomorrow evening. Scroll fires far too often to re-arm a pair of timers on each one, so
+// it is only acted on this often.
+const SCROLL_IDLE = 250
 
 // Where the line sits after a recentre: a third in, so there is a little of the past on
 // screen and most of the width is what has not happened yet.
@@ -48,11 +52,13 @@ const CLAIMED_KEYS = ["ArrowLeft", "ArrowRight", "Escape", "Enter"]
 export default class extends Controller {
   static targets = [
     "panel", "body", "grid", "clock", "nowLine",
-    "detailChannel", "detailTitle", "detailEpisode", "detailMeta", "detailGenre",
-    "detailPlot", "detailWatched"
+    "detailChannel", "detailTitle", "detailEpisode", "detailGenre", "detailPlot",
+    "detailWhen", "detailRuntime", "detailYear",
+    "detailImdb", "detailImdbScore", "detailLetterboxd", "detailLetterboxdScore",
+    "watched", "watchedIcon", "favorite", "favoriteIcon"
   ]
   static classes = ["open"]
-  static values = { url: String, channel: String }
+  static values = { url: String, channel: String, token: String }
 
   connect() {
     this.keyed = (event) => this.handleKey(event)
@@ -243,11 +249,16 @@ export default class extends Controller {
     if (!programme) return
 
     const data = programme.dataset
+    // What the heart acts on, since the panel describes whatever is being pointed at
+    // rather than whatever is playing.
+    this.described = data
 
-    this.detailChannelTarget.textContent = data.guideChannel ?? ""
+    // The channel by number and name, the way it is said everywhere else on the box.
+    this.detailChannelTarget.textContent =
+      [data.guideNumber && `Ch ${data.guideNumber}`, data.guideChannel].filter(Boolean).join(" - ")
     this.detailChannelTarget.href = data.guideChannelUrl ?? "#"
     // The show, which is also all the cell in the grid says.
-    this.detailTitleTarget.textContent = data.guideTitle ? `“${data.guideTitle}”` : ""
+    this.detailTitleTarget.textContent = data.guideTitle ?? ""
     this.detailTitleTarget.href = data.guideWatchUrl ?? "#"
 
     // And which episode of it, which the grid deliberately leaves out -- an afternoon of
@@ -257,25 +268,39 @@ export default class extends Controller {
       data.guideEpisode, data.guideEpisodeTitle
     ].filter(Boolean).join("  ·  "))
 
-    // What the catalogue knows about it beyond its name. Runtime is the programme's own,
-    // not the cell's width: the slot runs on to the next five-minute mark and the
+    // What the catalogue knows about it beyond its name, each part its own element so the
+    // two marks can sit against the scores they belong to. Runtime is the programme's own
+    // and not the cell's width: the slot runs on to the next five-minute mark and the
     // difference is the commercial break.
-    this.line(this.detailMetaTarget, [
-      this.span(data), data.guideYear, data.guideRuntime, data.guideRating,
-      data.guideNumber && `Ch ${data.guideNumber} - ${data.guideChannel}`
-    ].filter(Boolean).join("  ·  "))
+    this.line(this.detailWhenTarget, this.span(data))
+    this.line(this.detailRuntimeTarget, data.guideRuntime)
+    this.line(this.detailYearTarget, data.guideYear)
+
+    this.line(this.detailImdbTarget, data.guideRating, this.detailImdbScoreTarget)
+
+    // Films only, and only for a member who has linked an account -- the cell carries the
+    // address at all only when both are true, so its absence is the whole of the check.
+    this.line(this.detailLetterboxdTarget, data.guideLetterboxdUrl, null)
+    this.detailLetterboxdTarget.href = data.guideLetterboxdUrl ?? "#"
+    this.detailLetterboxdScoreTarget.textContent = data.guideLetterboxdScore ?? ""
 
     this.line(this.detailGenreTarget, data.guideGenre)
 
     this.detailPlotTarget.textContent = data.guidePlot ?? ""
-    this.detailWatchedTarget.hidden = data.guideWatched !== "true"
+    this.showMark(this.watchedTarget, this.watchedIconTarget, data.guideWatched === "true",
+                  ["Mark as watched", "Watched -- press to unmark"])
+    this.showMark(this.favoriteTarget, this.favoriteIconTarget, data.guideFavorited === "true",
+                  ["Add to my favourites", "In your favourites -- press to remove"])
   }
 
-  // A line with nothing to say takes up no room. The panel is a fixed height and the
-  // synopsis is clamped to what is left of it, so an empty paragraph is a line of the
-  // synopsis gone -- and a film has two of these empty every time.
-  line(target, text) {
-    target.textContent = text ?? ""
+  // A part with nothing to say takes up no room, and the stylesheet draws the dots between
+  // whichever parts are left -- so a film with no rating does not strand a separator.
+  //
+  // `into` names where the text goes when the element has fixed markup of its own to keep:
+  // the two scores hang off a mark that must not be written over. Pass null to hide or show
+  // the element without touching what is inside it.
+  line(target, text, into = target) {
+    if (into) into.textContent = text ?? ""
     target.hidden = !text
   }
 
@@ -286,6 +311,98 @@ export default class extends Controller {
 
     const clock = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" })
     return `${clock.format(new Date(Number(guideStart)))} - ${clock.format(new Date(Number(guideEnd)))}`
+  }
+
+  // ---- the two marks --------------------------------------------------------------
+  //
+  // Both work the same way and the difference is a verb and an address, so they share the
+  // whole of it: press, ask the server, and only then move the glyph. Nothing is drawn
+  // optimistically -- a mark that flipped before the write landed would be a lie whenever
+  // the write failed, and these two are the only things in the guide that claim to have
+  // recorded something.
+
+  // Watched, or not. Goes through the ordinary entries#complete route, which is a toggle
+  // already -- the same one the banner under the picture uses.
+  watch() {
+    const id = this.described?.guideEntryId
+    if (!id) return
+
+    const on = this.described.guideWatched === "true"
+
+    this.toggleMark({
+      url: `/entries/${encodeURIComponent(id)}/complete`,
+      method: "PATCH",
+      target: this.watchedTarget,
+      icon: this.watchedIconTarget,
+      titles: ["Mark as watched", "Watched -- press to unmark"],
+      attribute: "guideWatched",
+      id: id,
+      on: !on
+    })
+  }
+
+  // In the member's own favourites channel, or not. Adding files a copy there; removing
+  // takes that copy out again, never the row that was playing.
+  favorite() {
+    const id = this.described?.guideEntryId
+    if (!id) return
+
+    const on = this.described.guideFavorited === "true"
+
+    this.toggleMark({
+      url: `/entries/${encodeURIComponent(id)}/favorite`,
+      method: on ? "DELETE" : "POST",
+      target: this.favoriteTarget,
+      icon: this.favoriteIconTarget,
+      titles: ["Add to my favourites", "In your favourites -- press to remove"],
+      attribute: "guideFavorited",
+      id: id,
+      on: !on
+    })
+  }
+
+  async toggleMark({ url, method, target, icon, titles, attribute, id, on }) {
+    if (this.marking) return
+
+    this.marking = true
+    this.rest()
+
+    try {
+      const response = await fetch(url, {
+        method: method,
+        headers: { "X-CSRF-Token": this.tokenValue, Accept: "application/json" }
+      })
+      if (!response.ok) return this.markRefused(target)
+
+      // Every cell showing this film, not only the one under the pointer: a film is
+      // scheduled more than once a day, and a mark that reverted on the next cell along
+      // would look like the press had not taken.
+      this.bodyTarget
+        ?.querySelectorAll(`.tvguide__programme[data-guide-entry-id="${CSS.escape(id)}"]`)
+        .forEach((cell) => { cell.dataset[attribute] = String(on) })
+      if (this.described?.guideEntryId === id) this.described[attribute] = String(on)
+
+      this.showMark(target, icon, on, titles)
+    } catch {
+      this.markRefused(target)
+    } finally {
+      this.marking = false
+    }
+  }
+
+  // Hollow for off, solid for on, which is the whole of what these two say.
+  showMark(target, icon, on, [off, upon]) {
+    icon.classList.toggle("fa-solid", on)
+    icon.classList.toggle("fa-regular", !on)
+    target.classList.toggle("tvguide__mark--on", on)
+    target.title = on ? upon : off
+  }
+
+  // A mark that will not take costs nothing that matters -- the channel is still playing,
+  // which is what the viewer came for. It shakes its head and stays as it was.
+  markRefused(target) {
+    target.classList.add("tvguide__mark--refused")
+    setTimeout(() => target.classList.remove("tvguide__mark--refused"), 1200)
   }
 
   // ---- tuning ---------------------------------------------------------------------
@@ -337,12 +454,27 @@ export default class extends Controller {
 
   // ---- being left alone -----------------------------------------------------------
 
-  // Any sign of life. Two things are waiting on it: the panel, which goes back to what is
-  // playing shortly after the pointer stops, and the grid, which finds its way back to now
-  // after rather longer.
+  // Scrolling, throttled to something a timer can live with. Only the idle clocks care,
+  // and they are minutes long -- a quarter second of coarseness is nothing to them.
+  scrolled() {
+    if (this.scrollIdle) return
+
+    this.scrollIdle = setTimeout(() => {
+      this.scrollIdle = null
+      this.rest()
+    }, SCROLL_IDLE)
+  }
+
+  // Any sign of life. One thing waits on it: the grid finding its way back to the present,
+  // and the panel going back to what is playing along with it.
+  //
+  // The panel used to give up on its own, a few seconds after the pointer stopped moving --
+  // which meant reading a synopsis for longer than eight seconds made it vanish while the
+  // pointer was still sitting on the programme it described. Being still is not the same as
+  // being gone. So there is one idle clock now, not two, and what it does when it runs out
+  // it does all at once: the grid comes home and the panel goes back to what is on.
   rest() {
     this.clearIdleTimers()
-    this.revertTimer = setTimeout(() => this.describeCurrent(), REVERT_AFTER)
     this.recentreTimer = setTimeout(() => {
       this.recentre({ smooth: true })
       this.describeCurrent()
@@ -351,8 +483,17 @@ export default class extends Controller {
   }
 
   clearIdleTimers() {
-    clearTimeout(this.revertTimer)
     clearTimeout(this.recentreTimer)
+    clearTimeout(this.scrollIdle)
+    this.scrollIdle = null
+  }
+
+  // The clock in the corner, pressed. The grid is three days wide and the present is one
+  // spot on it; this is the way back from the other two.
+  jumpToNow() {
+    this.recentre({ smooth: true })
+    this.describeCurrent()
+    this.rest()
   }
 
   // Put the line marking now a third of the way across, so there is a little of what has

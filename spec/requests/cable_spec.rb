@@ -604,6 +604,88 @@ RSpec.describe 'Cable', type: :request do
       expect(response.body).to include("data-guide-channel-url=\"#{list_path(channel)}\"")
     end
 
+    # The panel beside the picture is filled in the browser from what the cells carry, so
+    # anything it shows has to be on them -- and has to be gathered in one query for the
+    # lot, since a day of listings across six channels runs to hundreds of cells.
+    describe 'what the panel is filled from' do
+      it 'marks a film already sitting in the viewer\'s favourites channel' do
+        favourites = create(:list, user: user, name: 'My Favourites')
+        user.update!(favorite_list: favourites)
+        create(:entry, list: favourites, name: 'The Death of Harvey', media: 'movie',
+                       imdb: entry.imdb, position: 1)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).to include('data-guide-favorited="true"')
+      end
+
+      # A favourite is a copy filed in the member's own channel, so it never shares an id
+      # with the row the schedule is playing. Comparing ids would report every heart empty.
+      it 'matches on the film rather than on the row' do
+        favourites = create(:list, user: user, name: 'My Favourites')
+        user.update!(favorite_list: favourites)
+        copy = create(:entry, list: favourites, name: 'The Death of Harvey', media: 'movie',
+                              imdb: entry.imdb, position: 1)
+
+        expect(copy.id).not_to eq(entry.id)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        # The other channel's film is not in there, so both answers are on the page: the
+        # point is that the copy is recognised at all, with an id of its own.
+        expect(response.body).to include('data-guide-favorited="true"')
+      end
+
+      it 'leaves the heart empty for a film that is not in there' do
+        user.update!(favorite_list: create(:list, user: user, name: 'My Favourites'))
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).to include('data-guide-favorited="false"')
+      end
+
+      # Letterboxd catalogues films, and only for a member who has linked an account --
+      # the same two guards the watch page's own button leans on.
+      it 'offers Letterboxd on a film once the member has linked an account' do
+        user.update!(letterboxd_enabled: true, username: 'nic')
+        entry.user_entry_for!(user).update!(letterboxd_score: 4.5)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).to include("data-guide-letterboxd-url=\"#{letterboxd_review_path(entry)}\"")
+        expect(response.body).to include('data-guide-letterboxd-score="4.5"')
+      end
+
+      it 'offers no Letterboxd mark to a member who has not linked one' do
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).not_to include('data-guide-letterboxd-url')
+      end
+
+      it 'gathers the favourites and the scores without a query per cell' do
+        user.update!(letterboxd_enabled: true, username: 'nic',
+                     favorite_list: create(:list, user: user, name: 'My Favourites'))
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        counted = 0
+        subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |_, _, _, _, payload|
+          counted += 1 if payload[:sql]&.include?('user_entries') || payload[:sql]&.include?('"entries"')
+        end
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+        ActiveSupport::Notifications.unsubscribe(subscriber)
+
+        # A handful for the slots, the favourites channel and the scores -- not one per cell.
+        expect(counted).to be < 20
+      end
+    end
+
     # A channel showing one series all afternoon is a column of cells reading the same
     # thing if each of them carries its own episode number, with the only word that varies
     # pushed off the right-hand edge. So the cell says the show and the panel says the rest.
@@ -651,7 +733,7 @@ RSpec.describe 'Cable', type: :request do
         travel_to(midnight + 11.minutes) { get cable_guide_path }
 
         expect(response.body).to include('data-guide-runtime="43 min"')
-        expect(response.body).to include('data-guide-rating="9.2/10"')
+        expect(response.body).to include('data-guide-rating="9.2"')
         expect(response.body).to include('data-guide-genre="Sci-Fi · Drama"')
       end
     end
@@ -695,6 +777,89 @@ RSpec.describe 'Cable', type: :request do
 
       expect(home).to be_present
       expect(home).to include(%(href="#{root_path}"))
+    end
+
+    # A schedule is a shuffle, so "this afternoon is a poor line-up" has no smaller fix
+    # than dealing again. The button is on the guide because that is where you are when you
+    # can see that it is.
+    describe 'dealing today again' do
+      it 'offers an admin the button and nobody else' do
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+        expect(response.body).not_to include('tvguide__rebuild')
+
+        user.update!(admin: true)
+        travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+        expect(response.body).to include('tvguide__rebuild')
+        expect(response.body).to include(cable_regenerate_path)
+      end
+
+      it 'lays today out again for every channel on the dial' do
+        user.update!(admin: true)
+        before_slots = CableSlot.where(airs_on: date).order(:id).pluck(:id)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { post cable_regenerate_path }
+
+        after_slots = CableSlot.where(airs_on: date).order(:id).pluck(:id)
+        expect(after_slots).not_to eq(before_slots)
+        expect(CableSlot.where(list: channel, airs_on: date)).to be_any
+        expect(CableSlot.where(list: second_channel, airs_on: date)).to be_any
+      end
+
+      # A day is dealt from its own bag, and the rule against playing the same thing twice
+      # running only holds inside the day dealing it. Rebuilding today alone leaves a seam
+      # at midnight: a tomorrow written against an afternoon that no longer exists.
+      it 'deals tomorrow again too, so there is no seam at midnight' do
+        user.update!(admin: true)
+        CableSchedule.build_day!(channel, date + 1)
+        before_slots = CableSlot.where(list: channel, airs_on: date + 1).order(:id).pluck(:id)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { post cable_regenerate_path }
+
+        after_slots = CableSlot.where(list: channel, airs_on: date + 1).order(:id).pluck(:id)
+        expect(after_slots).not_to eq(before_slots)
+        expect(CableSlot.where(list: channel, airs_on: date + 1)).to be_any
+        expect(CableSlot.where(list: second_channel, airs_on: date + 1)).to be_any
+      end
+
+      # Yesterday is a record of what the channels actually played, not a day to deal again.
+      it 'leaves yesterday alone' do
+        user.update!(admin: true)
+        CableSchedule.build_day!(channel, date - 1)
+        yesterday = CableSlot.where(list: channel, airs_on: date - 1).order(:position)
+                             .pluck(:entry_id, :starts_at)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { post cable_regenerate_path }
+
+        expect(CableSlot.where(list: channel, airs_on: date - 1).order(:position)
+                        .pluck(:entry_id, :starts_at)).to eq(yesterday)
+      end
+
+      it 'sends the viewer back to the channel, so the page reloads onto the new day' do
+        user.update!(admin: true)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) do
+          post cable_regenerate_path, headers: { 'HTTP_REFERER' => cable_channel_path(channel) }
+        end
+
+        expect(response).to redirect_to(cable_channel_path(channel))
+      end
+
+      # The same terms as /admin: rewriting the dial is the admin's own job, not part of
+      # what they are looking at when viewing the site as somebody else.
+      it 'refuses a viewer with no admin account, and changes nothing' do
+        sign_in user
+        before_slots = CableSlot.where(airs_on: date).order(:id).pluck(:id)
+
+        travel_to(midnight + 11.minutes) { post cable_regenerate_path }
+
+        expect(response).to have_http_status(:redirect)
+        expect(CableSlot.where(airs_on: date).order(:id).pluck(:id)).to eq(before_slots)
+      end
     end
   end
 

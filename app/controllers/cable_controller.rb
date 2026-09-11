@@ -15,7 +15,8 @@
 # entries#complete route -- that is a thing the viewer chose to do, not a side effect of the
 # page having been rendered.
 class CableController < ApplicationController
-  before_action :set_channel, except: :guide
+  before_action :set_channel, except: %i[guide regenerate]
+  before_action :require_admin, only: :regenerate
 
   # The listing behind the guide button: the whole dial at once, a few hours of it.
   #
@@ -29,10 +30,13 @@ class CableController < ApplicationController
     @zone = CableSchedule.resolve_zone(params[:tz])
     @window = CableSchedule.guide_window(in_zone: @zone)
 
-    # A day of listings spans two or three cable days, and a day nobody laid out is a gap
-    # in the middle of the grid. The job lays tomorrow out at noon; this covers the days
-    # before it has ever run, and the day after tomorrow for a window that reaches it.
-    CableSchedule.days_covered(@window).each do |date|
+    # A day nobody laid out is a gap in the middle of the grid. The job lays tomorrow out
+    # each morning; this covers the days before it has ever run.
+    #
+    # Today forward only. The window now reaches three days behind the present, and a past
+    # day is not filled in on demand -- see days_to_fill. What was on last Tuesday is
+    # whatever was really on, or nothing.
+    CableSchedule.days_to_fill(@window).each do |date|
       CableSchedule.channels.each { |channel| CableSchedule.ensure_day!(channel, date) }
     end
 
@@ -40,8 +44,43 @@ class CableController < ApplicationController
     @rows = CableSchedule.guide(at: @now, in_zone: @zone)
     @playing = List.find_by(id: params[:channel])
     @watched = watched_entry_ids(@rows)
+    @favorited = favorited_keys(@rows)
+    @letterboxd = letterboxd_scores(@rows)
 
     render partial: "cable/guide", formats: [:html]
+  end
+
+  # Tear up the listings from here on and lay them out again, for every channel on the dial.
+  #
+  # The one write under /cable, and it is deliberately blunt: a schedule is a shuffle, so
+  # "this afternoon is a poor line-up" has no smaller fix than dealing again.
+  #
+  # Tomorrow as well as today, and that is not thoroughness for its own sake. A day is laid
+  # out from a shuffled bag that is refilled as it empties, and the refill's one rule is not
+  # to play the same thing twice running -- a rule that only holds within the day it is
+  # dealing. Rebuilding today alone leaves a seam at midnight where the new deal meets the
+  # old one: the same film can land either side of it, and the evening's run is followed by
+  # a tomorrow that was written against a different afternoon. Both days are ahead of the
+  # viewer, so both get dealt.
+  #
+  # Yesterday is not touched. It is a record of what the channels actually played.
+  #
+  # It does pull the current programme out from under everybody watching: the slot they are
+  # in is deleted and the new day is a different shuffle, so the next thing the page asks
+  # for is a different film. That is the cost of the button and there is no version of it
+  # without that cost, which is why only an admin gets one.
+  def regenerate
+    today = CableSchedule.today
+
+    CableSchedule.channels.each do |channel|
+      CableSchedule.build_day!(channel, today)
+      CableSchedule.build_day!(channel, today + 1)
+    end
+
+    # Back to the channel it was pressed on, which reloads the page whole: the guide is
+    # fetched fresh, the schedule under it is new, and whatever the channel is showing now
+    # is whatever the new day says.
+    redirect_back(fallback_location: cable_path, notice: "Today and tomorrow have been laid out again.")
   end
 
   def show
@@ -126,6 +165,15 @@ class CableController < ApplicationController
 
   private
 
+  # The same terms as /admin and /sidekiq: the check is on `true_user`, and it refuses while
+  # impersonating. Rewriting the dial is the admin's own job, not part of what they are
+  # looking at when they view the site as somebody else.
+  def require_admin
+    return if true_user&.admin? && !impersonating?
+
+    redirect_back(fallback_location: cable_path, alert: 'Only admins can rebuild the schedule.')
+  end
+
   # A moment to render the channel as of, honoured only for a speculative fetch.
   #
   # Gating it on the preload header rather than on how far ahead it is: the point is not
@@ -156,6 +204,38 @@ class CableController < ApplicationController
     return Set.new if ids.empty?
 
     Set.new(UserEntry.where(user: current_user, entry_id: ids, completed: true).pluck(:entry_id))
+  end
+
+  # Which of the listed films are already in this viewer's favourites channel, as one query
+  # for the lot -- the same reason watched_entry_ids exists.
+  #
+  # Matched on what the film is rather than on which row it is. A favourite is a copy filed
+  # in the member's own channel, so it never shares an id with the row the schedule is
+  # playing; comparing ids would report every heart empty for ever.
+  def favorited_keys(rows)
+    list = current_user&.favorite_list
+    return Set.new unless list
+
+    Set.new(list.entries.pluck(:imdb, :source_key, :name).map do |imdb, source_key, name|
+      imdb.presence || source_key.presence || name.to_s.strip.downcase
+    end)
+  end
+
+  # This viewer's Letterboxd scores for the listed films, in one query. Asking each entry
+  # in turn is a query per cell, and a day of listings across six channels runs to hundreds.
+  #
+  # A read, like the rest of the guide: no tracking row is created for a film somebody has
+  # only seen the name of in a grid.
+  def letterboxd_scores(rows)
+    return {} unless current_user&.letterboxd_enabled?
+
+    ids = rows.flat_map { |row| row[:slots].map(&:entry_id) }.uniq
+    return {} if ids.empty?
+
+    UserEntry.where(user: current_user, entry_id: ids)
+             .where.not(letterboxd_score: nil)
+             .pluck(:entry_id, :letterboxd_score)
+             .to_h
   end
 
   # The dial is the default channels and nothing else. An id that is not on it -- a channel

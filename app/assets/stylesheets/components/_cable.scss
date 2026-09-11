@@ -107,15 +107,24 @@ body.cable__mode .cinema__screen {
 }
 
 .tvguide__detail-channel {
-  display: block;
+  display: -webkit-box;
   margin: 0 0 6px;
-  /* Clear of the home button, which sits in this corner. Only this line needs it: it is
-     the one at the top of the panel, and a long channel name would otherwise run under
-     the button and be read through it. */
-  padding-right: 120px;
-  font-size: 1.9rem;
+  /* Clear of the buttons in this corner. Only this line needs it: it is the one at the top
+     of the panel, and a long channel name would otherwise run under them and be read
+     through them. Wide enough for both, since the second only appears for an admin and a
+     gutter that changed width with who is looking would be worse than one that is always
+     there. */
+  padding-right: 250px;
+  /* Smaller than it was, because it carries the dial number now -- "Ch 1 - Movies to Watch
+     Before You Die" against a gutter that wide ran to three lines and pushed the synopsis
+     out of the panel. Two lines and then stop. */
+  font-size: 1.45rem;
   font-weight: 700;
+  line-height: 1.2;
   letter-spacing: 0.01em;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .tvguide__detail-channel,
@@ -149,11 +158,102 @@ body.cable__mode .cinema__screen {
   color: #cfd4ff;
 }
 
+/* One line of facts, each part its own element so a mark can sit against the score it
+   belongs to. The dots are drawn here rather than joined into the text, so whichever parts
+   are missing take their separator with them -- a film with no rating strands nothing. */
 .tvguide__detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
   margin: 0 0 8px;
   font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.85);
   font-variant-numeric: tabular-nums;
+}
+
+/* A dot before every showing part that has a showing part before it, which is every one of
+   them but the first. */
+.tvguide__detail-meta > *:not([hidden]) ~ *:not([hidden])::before {
+  content: "·";
+  margin-right: 7px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* A mark and the score it belongs to, kept together. */
+.tvguide__score {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.tvguide__score i {
+  font-size: 1.15em;
+}
+
+/* Both marks are set in the same white as the line they sit in. Their brand colours are
+   what they wear everywhere else on the site, and against a solid blue panel at this size
+   the yellow and the green read as two warnings rather than as two logos. */
+.tvguide__score--letterboxd,
+.tvguide__score--letterboxd:hover,
+.tvguide__score--letterboxd:focus-visible {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.tvguide__score--letterboxd:hover,
+.tvguide__score--letterboxd:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+/* The row of marks under the facts: what you have seen, and what you have kept. */
+.tvguide__detail-marks {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 12px;
+  min-height: 22px;
+}
+
+/* Drawn as marks rather than as buttons, because that is what they are read as. Hollow for
+   off and solid for on is the whole of what they say -- no colour change, so the pair reads
+   the same way the eye does everywhere else on the site.
+
+   Dimmed while off, so a panel describing a film nobody has touched does not look like two
+   things switched on. */
+.tvguide__mark {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.tvguide__mark--on {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.tvguide__mark:hover,
+.tvguide__mark:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+/* It would not take. Shakes its head and stays as it was, which is all a mark can usefully
+   say about a request that failed. */
+.tvguide__mark--refused {
+  animation: tvguide-refused 0.4s ease-in-out 2;
+}
+
+@keyframes tvguide-refused {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
 }
 
 /* The genres, in the small caps the old guides set their category tags in. */
@@ -165,39 +265,41 @@ body.cable__mode .cinema__screen {
   color: rgba(255, 255, 255, 0.55);
 }
 
-.tvguide__detail-watched {
-  margin: 0 0 12px;
-  font-size: 0.85rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #6ff09a;
-}
-
 .tvguide__detail-plot {
   margin: 0;
   font-size: 0.92rem;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.72);
-  /* Four lines and then stop: the panel is a fixed height and a long synopsis would push
-     the rest of it out of the box. */
+  /* Three lines and then stop: the panel is a fixed height, and there is more above the
+     synopsis than there used to be -- a row of marks and a line of genres. */
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* The way out of cable, in the corner the box kept its exit in. The guide covers the whole
-   screen while it is up, banner and all, so the home button on the banner cannot be reached
-   from here and this is the one that answers.
-
-   Bevelled like everything else raised on the grid -- lit on the top and left, black on the
-   bottom and right -- because that is what a button looked like drawn by a character
-   generator, and it is the same two colours the channel gutter and the cells are drawn in. */
-.tvguide__home {
+/* The guide's own buttons, in the corner the box kept its exit in. The guide covers the
+   whole screen while it is up, banner and all, so the home button on the banner cannot be
+   reached from here and these are what answer. */
+.tvguide__controls {
   position: absolute;
   top: 0;
   right: 0;
   z-index: 3;
+  display: flex;
+}
+
+/* button_to wraps its button in a form, which would otherwise be a block in the middle of
+   the row and put Home on a line of its own. */
+.tvguide__rebuild-form {
+  display: contents;
+}
+
+/* Bevelled like everything else raised on the grid -- lit on the top and left, black on the
+   bottom and right -- because that is what a button looked like drawn by a character
+   generator, and it is the same two colours the channel gutter and the cells are drawn in. */
+.tvguide__home,
+.tvguide__rebuild {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -206,17 +308,28 @@ body.cable__mode .cinema__screen {
   border: 2px solid;
   border-color: #4a4ac8 #000 #000 #4a4ac8;
   color: #ffd42a;
+  font-family: inherit;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   text-decoration: none;
+  cursor: pointer;
+}
+
+/* Duller than Home until it is pointed at. It rewrites the whole dial and is pressed once
+   in a blue moon; it should not sit in the corner competing with the way out. */
+.tvguide__rebuild {
+  background: #14144e;
+  color: #9aa2e8;
 }
 
 /* Lit the way the tuned channel's gutter is lit, which is this guide's one way of saying
    a thing is selected. */
 .tvguide__home:hover,
-.tvguide__home:focus-visible {
+.tvguide__home:focus-visible,
+.tvguide__rebuild:hover,
+.tvguide__rebuild:focus-visible {
   background: #ffd42a;
   color: #05052e;
   text-shadow: none;
@@ -272,13 +385,85 @@ body.cable__mode .cinema__screen {
 
 /* ---- the time header ---- */
 
-.tvguide__times {
-  display: flex;
+/* Both header rows move as one: the days over the times. Sticky here rather than on each
+   of them, so the second does not have to know how tall the first is. */
+.tvguide__header {
   position: sticky;
   top: 0;
   /* Over the rows, which scroll under it, but below the gutter, which crosses it. */
   z-index: 3;
   background: #05052e;
+}
+
+.tvguide__times {
+  display: flex;
+}
+
+/* ---- the day band ----
+ *
+ * Which day the part of the track you are looking at belongs to. The track is three days
+ * long and every column label repeats on each of them, so without this a listing scrolled
+ * to at random says a time and nothing else.
+ */
+.tvguide__days {
+  display: flex;
+  height: 26px;
+}
+
+/* Over the gutter's own column, and held there: the channel names below are pinned to the
+   left edge, and a day label sliding under them would be read through the callsigns. */
+.tvguide__days-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: 0 0 var(--guide-gutter, 180px);
+  width: var(--guide-gutter, 180px);
+  background: #05052e;
+  border-bottom: 2px solid #000;
+}
+
+.tvguide__days-track {
+  position: relative;
+  flex: 1 1 auto;
+}
+
+/* One band per day, placed by time like everything else on the grid rather than flowed --
+   the first and last are partial for a viewer outside the schedule's zone, and a band is as
+   wide as the part of its day the window holds.
+
+   `clip`, not `hidden`, for the same reason the programme cells use it: `hidden` would make
+   this a scroll container, and the label inside would then stick to a box that never
+   scrolls instead of to the guide. */
+.tvguide__day {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  background: #14144e;
+  border: 2px solid;
+  border-color: #4a4ac8 #000 #000 #4a4ac8;
+  overflow: hidden;
+  overflow: clip;
+}
+
+/* Holds station against the gutter as its day scrolls past, so the day you are looking at
+   is named wherever inside it you have scrolled to. The same trick as .tvguide__name, and
+   it needs the same two things: a band that clips rather than scrolls, and a label sized to
+   its text so it has somewhere to slide to. */
+.tvguide__day-name {
+  position: sticky;
+  /* Clear of the gutter, which is itself pinned at the left edge. */
+  left: calc(var(--guide-gutter, 180px) + 8px);
+  flex: 0 1 auto;
+  padding: 0 8px;
+  color: #cfd4ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The running clock, in the corner cell the channel numbers sit under. */
@@ -288,7 +473,9 @@ body.cable__mode .cinema__screen {
   width: var(--guide-gutter, 180px);
 }
 
-/* The one cell that has to hold still in both directions, so it outranks everything. */
+/* The one cell that has to hold still in both directions, so it outranks everything.
+   A button as well as a clock: it says what time it is and takes you there, which is worth
+   having when the far end of tomorrow is two days of scrolling from the present. */
 .tvguide__corner {
   position: sticky;
   left: 0;
@@ -296,12 +483,24 @@ body.cable__mode .cinema__screen {
   background: #05052e;
   padding: 7px 10px;
   color: #ffd42a;
+  font-family: inherit;
+  font-size: 1rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  text-align: left;
   border: 2px solid;
   /* The bevel: light where a light above would catch it, dark where it would not. Two
      borders and no gradient, which is all the hardware could do and all this needs. */
   border-color: #4a4ac8 #000 #000 #4a4ac8;
+  cursor: pointer;
+}
+
+.tvguide__corner:hover,
+.tvguide__corner:focus-visible {
+  background: #ffd42a;
+  color: #05052e;
+  text-shadow: none;
+  outline: none;
 }
 
 .tvguide__columns {
@@ -316,6 +515,8 @@ body.cable__mode .cinema__screen {
   font-variant-numeric: tabular-nums;
   border: 2px solid;
   border-color: #4a4ac8 #000 #000 #4a4ac8;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 /* ---- the channel rows ---- */
@@ -490,6 +691,21 @@ body.cable__mode .cinema__screen {
    Placed in the same track units as the cells, from a variable the controller rewrites
    every few seconds. It is drawn by the clock rather than by the render, so it goes on
    moving for as long as the guide is open, and the cell it is inside moves with it. */
+/* Midnight, down the whole dial. Placed in the same units as everything else on the grid
+   -- hours from the left edge of the track -- so it lands on the column boundary at any
+   zoom. Dimmer than the line marking now and behind the programmes rather than over them:
+   it is there to be found when looked for, not to cut the listing into pieces. */
+.tvguide__daybreak {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--guide-gutter, 180px) + var(--guide-hour-width) * var(--guide-day-hours, 0));
+  width: 2px;
+  background: rgba(255, 212, 42, 0.45);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .tvguide__now {
   position: absolute;
   top: 0;
