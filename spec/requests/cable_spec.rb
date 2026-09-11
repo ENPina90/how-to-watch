@@ -725,7 +725,25 @@ RSpec.describe 'Cable', type: :request do
         expect(CableSlot.where(list: second_channel, airs_on: date)).to be_any
       end
 
-      it 'leaves the days either side of today alone' do
+      # A day is dealt from its own bag, and the rule against playing the same thing twice
+      # running only holds inside the day dealing it. Rebuilding today alone leaves a seam
+      # at midnight: a tomorrow written against an afternoon that no longer exists.
+      it 'deals tomorrow again too, so there is no seam at midnight' do
+        user.update!(admin: true)
+        CableSchedule.build_day!(channel, date + 1)
+        before_slots = CableSlot.where(list: channel, airs_on: date + 1).order(:id).pluck(:id)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { post cable_regenerate_path }
+
+        after_slots = CableSlot.where(list: channel, airs_on: date + 1).order(:id).pluck(:id)
+        expect(after_slots).not_to eq(before_slots)
+        expect(CableSlot.where(list: channel, airs_on: date + 1)).to be_any
+        expect(CableSlot.where(list: second_channel, airs_on: date + 1)).to be_any
+      end
+
+      # Yesterday is a record of what the channels actually played, not a day to deal again.
+      it 'leaves yesterday alone' do
         user.update!(admin: true)
         CableSchedule.build_day!(channel, date - 1)
         yesterday = CableSlot.where(list: channel, airs_on: date - 1).order(:position)

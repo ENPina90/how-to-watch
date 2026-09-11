@@ -70,6 +70,54 @@ RSpec.describe CableSchedule do
     end
   end
 
+  # The seam between two days is a place the viewer is actually sitting, and a film that
+  # runs to midnight and starts again is the most visible repeat a channel can make. The
+  # bag's own rule against it only reaches as far as the day it is dealing, so the day being
+  # laid out is told what the one before ended with.
+  describe 'the seam between two days' do
+    before { 3.times { |i| film("Film #{i}", 90, i + 1) } }
+
+    it 'does not open a day with the programme the day before closed on' do
+      described_class.build_day!(channel, date)
+      closing = CableSlot.where(list: channel, airs_on: date).in_order.last
+
+      described_class.build_day!(channel, date + 1)
+      opening = CableSlot.where(list: channel, airs_on: date + 1).in_order.first
+
+      expect(opening.entry_id).not_to eq(closing.entry_id)
+    end
+
+    # Ten deals, because one passing could be the shuffle being kind.
+    it 'holds across repeated deals' do
+      described_class.build_day!(channel, date)
+
+      10.times do
+        described_class.build_day!(channel, date + 1)
+        closing = CableSlot.where(list: channel, airs_on: date).in_order.last
+        opening = CableSlot.where(list: channel, airs_on: date + 1).in_order.first
+
+        expect(opening.entry_id).not_to eq(closing.entry_id)
+      end
+    end
+
+    # A channel with one programme has nothing else to open with, and a day it cannot fill
+    # is worse than a repeat nobody can avoid.
+    it 'still fills a day on a channel with only one programme' do
+      Entry.where(list: channel).where.not(name: 'Film 0').destroy_all
+      described_class.build_day!(channel, date)
+      described_class.build_day!(channel, date + 1)
+
+      slots = CableSlot.where(list: channel, airs_on: date + 1).in_order.to_a
+      expect(slots.first.starts_at).to eq(midnight + 1.day)
+      expect(slots.last.ends_at).to eq(midnight + 2.days)
+    end
+
+    # Nothing to be told at the start of a channel's history, and no reason to refuse.
+    it 'lays out a day with nothing before it' do
+      expect(described_class.build_day!(channel, date)).to be_positive
+    end
+  end
+
   describe 'a day that is not 24 hours long' do
     before { 3.times { |i| film("Film #{i}", 90, i + 1) } }
 

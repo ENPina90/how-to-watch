@@ -254,9 +254,13 @@ module CableSchedule
     day_start = zone.local(date.year, date.month, date.day)
     day_end = day_start + 1.day
     cursor = day_start
-    bag = refill(programmes, nil)
+    # What the day before ended with, so this one does not open with it. The bag's rule
+    # against playing the same thing twice running reaches only as far as the day it is
+    # dealing, and the seam between two days is a place the viewer is actually sitting --
+    # a film that runs to midnight and starts again is the most visible repeat there is.
+    last = entry_before(channel, day_start)
+    bag = refill(programmes, last)
     placed = false
-    last = nil
     rows = []
 
     while cursor < day_end && rows.length < MAX_SLOTS_PER_DAY
@@ -295,6 +299,17 @@ module CableSchedule
     end
 
     rows
+  end
+
+  # The programme this channel was showing as the day before ran out, where that day was
+  # ever laid out. Read before the transaction that replaces this day, so it is the real
+  # previous day rather than a half-written one -- and nil at the start of a channel's
+  # history, which puts no constraint on the first programme of its first day.
+  def entry_before(channel, day_start)
+    CableSlot.where(list: channel)
+             .where(ends_at: ..day_start)
+             .order(ends_at: :desc)
+             .first&.entry
   end
 
   # Everything the channel can play, including what it borrows from the channels inside it

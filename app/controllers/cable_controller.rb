@@ -48,24 +48,37 @@ class CableController < ApplicationController
     render partial: "cable/guide", formats: [:html]
   end
 
-  # Tear up today's listings and lay them out again, for every channel on the dial.
+  # Tear up the listings from here on and lay them out again, for every channel on the dial.
   #
   # The one write under /cable, and it is deliberately blunt: a schedule is a shuffle, so
-  # "this afternoon is a poor line-up" has no smaller fix than dealing again. Today rather
-  # than tomorrow because today is the one being complained about -- tomorrow's can wait for
-  # the job, which will overwrite it anyway.
+  # "this afternoon is a poor line-up" has no smaller fix than dealing again.
+  #
+  # Tomorrow as well as today, and that is not thoroughness for its own sake. A day is laid
+  # out from a shuffled bag that is refilled as it empties, and the refill's one rule is not
+  # to play the same thing twice running -- a rule that only holds within the day it is
+  # dealing. Rebuilding today alone leaves a seam at midnight where the new deal meets the
+  # old one: the same film can land either side of it, and the evening's run is followed by
+  # a tomorrow that was written against a different afternoon. Both days are ahead of the
+  # viewer, so both get dealt.
+  #
+  # Yesterday is not touched. It is a record of what the channels actually played.
   #
   # It does pull the current programme out from under everybody watching: the slot they are
   # in is deleted and the new day is a different shuffle, so the next thing the page asks
   # for is a different film. That is the cost of the button and there is no version of it
   # without that cost, which is why only an admin gets one.
   def regenerate
-    CableSchedule.channels.each { |channel| CableSchedule.build_day!(channel, CableSchedule.today) }
+    today = CableSchedule.today
+
+    CableSchedule.channels.each do |channel|
+      CableSchedule.build_day!(channel, today)
+      CableSchedule.build_day!(channel, today + 1)
+    end
 
     # Back to the channel it was pressed on, which reloads the page whole: the guide is
     # fetched fresh, the schedule under it is new, and whatever the channel is showing now
     # is whatever the new day says.
-    redirect_back(fallback_location: cable_path, notice: "Today's schedule has been laid out again.")
+    redirect_back(fallback_location: cable_path, notice: "Today and tomorrow have been laid out again.")
   end
 
   def show
