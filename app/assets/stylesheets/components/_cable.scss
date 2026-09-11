@@ -217,41 +217,36 @@ body.cable__mode .cinema__screen {
   min-height: 22px;
 }
 
-/* Drawn as a mark rather than a button, because it sits beside one. It fills once and then
-   stays filled: pressing it again would mean deleting a row from a channel the member
-   built, which is not what pressing a heart asks for. */
-.tvguide__favorite {
+/* Drawn as marks rather than as buttons, because that is what they are read as. Hollow for
+   off and solid for on is the whole of what they say -- no colour change, so the pair reads
+   the same way the eye does everywhere else on the site.
+
+   Dimmed while off, so a panel describing a film nobody has touched does not look like two
+   things switched on. */
+.tvguide__mark {
   padding: 0;
   background: none;
   border: 0;
   color: rgba(255, 255, 255, 0.55);
-  font-size: 1rem;
+  font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
+  transition: color 0.15s ease;
 }
 
-/* The heart is drawn in the button's colour, so it has to be let out from under the same
-   blanket rule -- otherwise it is white whether it is filled or not. */
-.page-container .tvguide__favorite i {
-  color: inherit !important;
+.tvguide__mark--on {
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.tvguide__favorite:hover,
-.tvguide__favorite:focus-visible {
-  color: #ff6b8a;
+.tvguide__mark:hover,
+.tvguide__mark:focus-visible {
+  color: #fff;
   outline: none;
 }
 
-.tvguide__favorite--on,
-.tvguide__favorite--on:hover {
-  color: #ff6b8a;
-  cursor: default;
-}
-
-/* It would not take. Shakes its head and stays empty, which is all a heart can usefully
+/* It would not take. Shakes its head and stays as it was, which is all a mark can usefully
    say about a request that failed. */
-.tvguide__favorite--refused {
-  color: #ff6b6b;
+.tvguide__mark--refused {
   animation: tvguide-refused 0.4s ease-in-out 2;
 }
 
@@ -268,14 +263,6 @@ body.cable__mode .cinema__screen {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.55);
-}
-
-.tvguide__detail-watched {
-  margin: 0;
-  font-size: 0.85rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #6ff09a;
 }
 
 .tvguide__detail-plot {

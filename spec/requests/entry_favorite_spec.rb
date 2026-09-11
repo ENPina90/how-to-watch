@@ -81,6 +81,77 @@ RSpec.describe 'Adding an entry to favourites', type: :request do
     expect(response.parsed_body['error']).to be_present
   end
 
+  describe 'taking it out again' do
+    it 'removes the copy and leaves the film on the channel that was playing it' do
+      sign_in user
+      post favorite_entry_path(entry)
+
+      expect { delete favorite_entry_path(entry) }
+        .to change { favourites.entries.count }.by(-1)
+
+      expect(entry.reload).to be_persisted
+      expect(entry.list).to eq(channel)
+    end
+
+    it 'answers with the heart emptied' do
+      sign_in user
+      post favorite_entry_path(entry)
+      delete favorite_entry_path(entry)
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['favorited']).to be(false)
+    end
+
+    # Nothing to undo is a success, not an error: the heart it was pressed on is already
+    # empty and saying so twice helps nobody.
+    it 'is content when there was nothing in there' do
+      sign_in user
+
+      expect { delete favorite_entry_path(entry) }
+        .not_to change { favourites.entries.count }
+
+      expect(response).to have_http_status(:success)
+    end
+
+    # The copy and the original are different rows. Matching loosely enough to find the
+    # copy must never be loose enough to reach out of the favourites channel.
+    it 'never reaches outside the favourites channel' do
+      other = create(:list, user: user, name: 'Someone Else\'s')
+      twin = create(:entry, list: other, name: entry.name, media: 'movie',
+                            imdb: entry.imdb, position: 1)
+
+      sign_in user
+      delete favorite_entry_path(entry)
+
+      expect(twin.reload).to be_persisted
+      expect(entry.reload).to be_persisted
+    end
+
+    it 'takes the episodes with it' do
+      series = create(:entry, list: channel, media: 'series', name: 'Babylon 5',
+                              imdb: 'tt0000005', position: 2)
+      Subentry.create!(entry: series, season: 1, episode: 1, name: 'Midnight on the Firing Line')
+
+      sign_in user
+      post favorite_entry_path(series)
+      copy = favourites.entries.find_by(imdb: 'tt0000005')
+
+      expect { delete favorite_entry_path(series) }
+        .to change { Subentry.where(entry_id: copy.id).count }.to(0)
+
+      expect(series.reload.subentries.count).to eq(1)
+    end
+
+    it 'refuses a visitor with no account' do
+      entry
+      AppSetting.update_access_mode!('open')
+
+      expect { delete favorite_entry_path(entry) }.not_to change { Entry.count }
+
+      expect(response).to have_http_status(:redirect)
+    end
+  end
+
   it 'refuses a visitor with no account' do
     entry
     AppSetting.update_access_mode!('open')

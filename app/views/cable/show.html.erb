@@ -238,21 +238,33 @@
 
         <p class="tvguide__detail-genre" data-cable-guide-target="detailGenre" hidden></p>
 
-        <p class="tvguide__detail-marks">
-          <span class="tvguide__detail-watched" data-cable-guide-target="detailWatched" hidden>
-            <i class="fa-solid fa-eye"></i> Watched
-          </span>
-          <%# Files a copy of the film in this member's own favourites channel. Adds only:
-              a heart that emptied again would be a delete button drawn as a toggle, taking
-              a row out of a channel they built. Absent for a guest, who has no channel to
-              file anything in. %>
-          <% if user_signed_in? %>
-            <button type="button" class="tvguide__favorite" data-cable-guide-target="favorite"
+        <%# Two marks that are also two switches. Both are drawn hollow for off and solid
+            for on, which is the whole of what they say -- there is no room beside a
+            picture for a word as well, and the pair of glyphs is the same pair the rest of
+            the site uses for these two states.
+
+            Absent for a guest: neither has anywhere to record an answer. %>
+        <% if user_signed_in? %>
+          <p class="tvguide__detail-marks">
+            <%# Marking something watched is the one thing on /cable that writes, and it
+                goes through the ordinary entries#complete route -- the same one the banner
+                below uses. A thing the viewer chose to do, not a side effect of the page
+                having been rendered. %>
+            <button type="button" class="tvguide__mark" data-cable-guide-target="watched"
+                    data-action="click->cable-guide#watch" title="Mark as watched">
+              <i class="fa-regular fa-eye" data-cable-guide-target="watchedIcon"></i>
+            </button>
+
+            <%# Files a copy of the film in this member's own favourites channel, and takes
+                it out again. A copy, because an entry belongs to one channel -- so
+                favouriting cannot move a film off the channel that was playing it, and
+                un-favouriting removes the copy rather than the original. %>
+            <button type="button" class="tvguide__mark" data-cable-guide-target="favorite"
                     data-action="click->cable-guide#favorite" title="Add to my favourites">
               <i class="fa-regular fa-heart" data-cable-guide-target="favoriteIcon"></i>
             </button>
-          <% end %>
-        </p>
+          </p>
+        <% end %>
 
         <p class="tvguide__detail-plot" data-cable-guide-target="detailPlot"></p>
       </div>

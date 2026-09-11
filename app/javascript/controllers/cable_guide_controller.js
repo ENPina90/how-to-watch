@@ -55,7 +55,7 @@ export default class extends Controller {
     "detailChannel", "detailTitle", "detailEpisode", "detailGenre", "detailPlot",
     "detailWhen", "detailRuntime", "detailYear",
     "detailImdb", "detailImdbScore", "detailLetterboxd", "detailLetterboxdScore",
-    "detailWatched", "favorite", "favoriteIcon"
+    "watched", "watchedIcon", "favorite", "favoriteIcon"
   ]
   static classes = ["open"]
   static values = { url: String, channel: String, token: String }
@@ -287,61 +287,10 @@ export default class extends Controller {
     this.line(this.detailGenreTarget, data.guideGenre)
 
     this.detailPlotTarget.textContent = data.guidePlot ?? ""
-    this.detailWatchedTarget.hidden = data.guideWatched !== "true"
-    this.showFavourite(data.guideFavorited === "true")
-  }
-
-  // ---- the heart ------------------------------------------------------------------
-
-  // Files the programme being pointed at in this member's own favourites channel.
-  //
-  // Adds only, so a filled heart is done and says so by refusing to be pressed again --
-  // emptying it would mean deleting a row from a channel they built, which is not what
-  // pressing a heart asks for.
-  async favorite() {
-    const id = this.described?.guideEntryId
-    if (!id || this.favouriting || this.favoriteIconTarget.classList.contains("fa-solid")) return
-
-    this.favouriting = true
-    this.rest()
-
-    try {
-      const response = await fetch(`/entries/${encodeURIComponent(id)}/favorite`, {
-        method: "POST",
-        headers: { "X-CSRF-Token": this.tokenValue, Accept: "application/json" }
-      })
-      if (!response.ok) return this.favouriteFailed()
-
-      // Every cell showing this film, not only the one under the pointer: it is scheduled
-      // more than once a day, and a heart that emptied again on the next cell along would
-      // look like the press had not taken.
-      this.bodyTarget
-        ?.querySelectorAll(`.tvguide__programme[data-guide-entry-id="${CSS.escape(id)}"]`)
-        .forEach((cell) => { cell.dataset.guideFavorited = "true" })
-      if (this.described.guideEntryId === id) this.described.guideFavorited = "true"
-
-      this.showFavourite(true)
-    } catch {
-      this.favouriteFailed()
-    } finally {
-      this.favouriting = false
-    }
-  }
-
-  // A heart that will not take costs nothing that matters -- the channel is still playing,
-  // which is what the viewer came for. It shakes its head and stays empty.
-  favouriteFailed() {
-    this.favoriteTarget.classList.add("tvguide__favorite--refused")
-    setTimeout(() => this.favoriteTarget.classList.remove("tvguide__favorite--refused"), 1200)
-  }
-
-  showFavourite(filled) {
-    if (!this.hasFavoriteIconTarget) return
-
-    this.favoriteIconTarget.classList.toggle("fa-solid", filled)
-    this.favoriteIconTarget.classList.toggle("fa-regular", !filled)
-    this.favoriteTarget.classList.toggle("tvguide__favorite--on", filled)
-    this.favoriteTarget.title = filled ? "In your favourites" : "Add to my favourites"
+    this.showMark(this.watchedTarget, this.watchedIconTarget, data.guideWatched === "true",
+                  ["Mark as watched", "Watched -- press to unmark"])
+    this.showMark(this.favoriteTarget, this.favoriteIconTarget, data.guideFavorited === "true",
+                  ["Add to my favourites", "In your favourites -- press to remove"])
   }
 
   // A part with nothing to say takes up no room, and the stylesheet draws the dots between
@@ -362,6 +311,98 @@ export default class extends Controller {
 
     const clock = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" })
     return `${clock.format(new Date(Number(guideStart)))} - ${clock.format(new Date(Number(guideEnd)))}`
+  }
+
+  // ---- the two marks --------------------------------------------------------------
+  //
+  // Both work the same way and the difference is a verb and an address, so they share the
+  // whole of it: press, ask the server, and only then move the glyph. Nothing is drawn
+  // optimistically -- a mark that flipped before the write landed would be a lie whenever
+  // the write failed, and these two are the only things in the guide that claim to have
+  // recorded something.
+
+  // Watched, or not. Goes through the ordinary entries#complete route, which is a toggle
+  // already -- the same one the banner under the picture uses.
+  watch() {
+    const id = this.described?.guideEntryId
+    if (!id) return
+
+    const on = this.described.guideWatched === "true"
+
+    this.toggleMark({
+      url: `/entries/${encodeURIComponent(id)}/complete`,
+      method: "PATCH",
+      target: this.watchedTarget,
+      icon: this.watchedIconTarget,
+      titles: ["Mark as watched", "Watched -- press to unmark"],
+      attribute: "guideWatched",
+      id: id,
+      on: !on
+    })
+  }
+
+  // In the member's own favourites channel, or not. Adding files a copy there; removing
+  // takes that copy out again, never the row that was playing.
+  favorite() {
+    const id = this.described?.guideEntryId
+    if (!id) return
+
+    const on = this.described.guideFavorited === "true"
+
+    this.toggleMark({
+      url: `/entries/${encodeURIComponent(id)}/favorite`,
+      method: on ? "DELETE" : "POST",
+      target: this.favoriteTarget,
+      icon: this.favoriteIconTarget,
+      titles: ["Add to my favourites", "In your favourites -- press to remove"],
+      attribute: "guideFavorited",
+      id: id,
+      on: !on
+    })
+  }
+
+  async toggleMark({ url, method, target, icon, titles, attribute, id, on }) {
+    if (this.marking) return
+
+    this.marking = true
+    this.rest()
+
+    try {
+      const response = await fetch(url, {
+        method: method,
+        headers: { "X-CSRF-Token": this.tokenValue, Accept: "application/json" }
+      })
+      if (!response.ok) return this.markRefused(target)
+
+      // Every cell showing this film, not only the one under the pointer: a film is
+      // scheduled more than once a day, and a mark that reverted on the next cell along
+      // would look like the press had not taken.
+      this.bodyTarget
+        ?.querySelectorAll(`.tvguide__programme[data-guide-entry-id="${CSS.escape(id)}"]`)
+        .forEach((cell) => { cell.dataset[attribute] = String(on) })
+      if (this.described?.guideEntryId === id) this.described[attribute] = String(on)
+
+      this.showMark(target, icon, on, titles)
+    } catch {
+      this.markRefused(target)
+    } finally {
+      this.marking = false
+    }
+  }
+
+  // Hollow for off, solid for on, which is the whole of what these two say.
+  showMark(target, icon, on, [off, upon]) {
+    icon.classList.toggle("fa-solid", on)
+    icon.classList.toggle("fa-regular", !on)
+    target.classList.toggle("tvguide__mark--on", on)
+    target.title = on ? upon : off
+  }
+
+  // A mark that will not take costs nothing that matters -- the channel is still playing,
+  // which is what the viewer came for. It shakes its head and stays as it was.
+  markRefused(target) {
+    target.classList.add("tvguide__mark--refused")
+    setTimeout(() => target.classList.remove("tvguide__mark--refused"), 1200)
   }
 
   // ---- tuning ---------------------------------------------------------------------
