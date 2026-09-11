@@ -316,6 +316,18 @@ body.cable__mode .cinema__screen {
   font-variant-numeric: tabular-nums;
   border: 2px solid;
   border-color: #4a4ac8 #000 #000 #4a4ac8;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* The column a day begins in, which says the date instead of a time nobody needs told --
+   it is always midnight. Reversed out, because on a track four days long this is the only
+   thing that says where you are, and it has to be findable at a glance while scrolling. */
+.tvguide__column--day {
+  background: #ffd42a;
+  color: #05052e;
+  text-shadow: none;
+  letter-spacing: 0.06em;
 }
 
 /* ---- the channel rows ---- */
@@ -490,6 +502,21 @@ body.cable__mode .cinema__screen {
    Placed in the same track units as the cells, from a variable the controller rewrites
    every few seconds. It is drawn by the clock rather than by the render, so it goes on
    moving for as long as the guide is open, and the cell it is inside moves with it. */
+/* Midnight, down the whole dial. Placed in the same units as everything else on the grid
+   -- hours from the left edge of the track -- so it lands on the column boundary at any
+   zoom. Dimmer than the line marking now and behind the programmes rather than over them:
+   it is there to be found when looked for, not to cut the listing into pieces. */
+.tvguide__daybreak {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--guide-gutter, 180px) + var(--guide-hour-width) * var(--guide-day-hours, 0));
+  width: 2px;
+  background: rgba(255, 212, 42, 0.45);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .tvguide__now {
   position: absolute;
   top: 0;

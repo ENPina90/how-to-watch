@@ -29,10 +29,13 @@ class CableController < ApplicationController
     @zone = CableSchedule.resolve_zone(params[:tz])
     @window = CableSchedule.guide_window(in_zone: @zone)
 
-    # A day of listings spans two or three cable days, and a day nobody laid out is a gap
-    # in the middle of the grid. The job lays tomorrow out at noon; this covers the days
-    # before it has ever run, and the day after tomorrow for a window that reaches it.
-    CableSchedule.days_covered(@window).each do |date|
+    # A day nobody laid out is a gap in the middle of the grid. The job lays tomorrow out
+    # each morning; this covers the days before it has ever run.
+    #
+    # Today forward only. The window now reaches three days behind the present, and a past
+    # day is not filled in on demand -- see days_to_fill. What was on last Tuesday is
+    # whatever was really on, or nothing.
+    CableSchedule.days_to_fill(@window).each do |date|
       CableSchedule.channels.each { |channel| CableSchedule.ensure_day!(channel, date) }
     end
 

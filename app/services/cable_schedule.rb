@@ -28,11 +28,6 @@ module CableSchedule
   # day filled with them is thousands of rows.
   MIN_MINUTES = 5
 
-  # How many days of played-out schedule to keep. Yesterday is worth having while somebody
-  # is still watching a programme that started before midnight; anything older is history
-  # nothing reads.
-  RETAIN_DAYS = 2
-
   # Programmes end on the clock, not when the film happens to stop. A slot runs to the next
   # five-minute mark and whatever is left after the film has ended is a commercial break --
   # which means every slot also *starts* on a five-minute mark, and the listing reads the
@@ -110,13 +105,23 @@ module CableSchedule
     before + [current] + after
   end
 
-  # A full day of listings, scrollable. The visible width is a few hours; the rest is what
-  # you scroll to, which is what the guide is for.
-  GUIDE_HOURS = 24
+  # How far behind the present the guide reaches. Three days, so the question "what was on
+  # last night" has an answer: the schedule is kept that long, and scrolling left through it
+  # is how a listing is read backwards. RETAIN_DAYS is worked out from this.
+  GUIDE_LEAD_HOURS = 72
 
-  # How much of the window sits behind the present. Enough to scroll back and see what you
-  # just missed, not so much that the day is mostly over before it starts.
-  GUIDE_LEAD_HOURS = 2
+  # How far ahead. Tomorrow is the last day anything lays out -- the job builds it and
+  # nothing builds the day after -- so the window stops at the end of it. A fixed width
+  # would have run past that into a day nobody has scheduled, which is a stretch of empty
+  # grid that looks like six channels going off air at once.
+  GUIDE_AHEAD_DAYS = 1
+
+  # How many days of played-out schedule to keep, which is a restatement of the lead above
+  # rather than a number of its own -- and is declared here, next to it, so the two cannot
+  # drift apart. A day the viewer can scroll to and the pruning has deleted is an empty row,
+  # and nothing tells that apart from a channel that was off air. One day of margin on top,
+  # for a guide left open across midnight.
+  RETAIN_DAYS = (GUIDE_LEAD_HOURS / 24.0).ceil + 1
 
   # The guide opens on a half hour, the way the printed listings did -- the columns are :00
   # and :30 and nothing else, so a window starting at 7:47 would label every one of them
@@ -130,8 +135,23 @@ module CableSchedule
     local = at.in_time_zone(in_zone)
     start = local.change(min: local.min < 30 ? 0 : 30, sec: 0, usec: 0) - GUIDE_LEAD_HOURS.hours
 
-    start...(start + GUIDE_HOURS.hours)
+    start...guide_window_end(at)
   end
+
+  # Midnight at the end of the last day laid out, in the schedule's own zone -- cable days
+  # are dates there, so this is a date question rather than a number of hours from now.
+  # Which makes the window a different width at breakfast than at bedtime, and that is the
+  # point: it is as wide as there are listings, and the grid is drawn from the window rather
+  # than from a constant.
+  def guide_window_end(at = Time.current)
+    ends_on = at.in_time_zone(zone).to_date + GUIDE_AHEAD_DAYS + 1
+
+    zone.local(ends_on.year, ends_on.month, ends_on.day)
+  end
+
+  # How wide the window is, in hours. The unit the grid is laid out in: every column, every
+  # programme and the line marking now are all a multiple of one hour.
+  def guide_hours(window) = (window.end - window.begin) / 3600.0
 
   # A viewer's zone name, or the schedule's own when it means nothing. Names come from the
   # browser, so they are checked rather than trusted -- and an unknown one is somebody's
@@ -166,11 +186,25 @@ module CableSchedule
 
   # The cable days a window touches. The window is in the viewer's zone and `airs_on` is a
   # date in the schedule's, so the two have to be converted rather than compared.
+  #
+  # Read off the last instant inside the window rather than off its end, because the range
+  # is half-open and the end now lands exactly on midnight every time -- so taking the end
+  # at face value would claim a day the window stops at the very start of and never shows.
   def days_covered(window)
     first = window.begin.in_time_zone(zone).to_date
-    last = window.end.in_time_zone(zone).to_date
+    last = (window.end - 1.second).in_time_zone(zone).to_date
 
     (first..last).to_a
+  end
+
+  # Of the days a window touches, the ones worth laying out: today and anything after it.
+  #
+  # A day that has been and gone is not filled in on demand. The listing for it is whatever
+  # the channel actually played, and a schedule invented after the fact is not a record of
+  # anything -- it is a plausible-looking day nobody watched, written into the past.
+  # So the guide shows what was really there, and an empty stretch to the left is honest.
+  def days_to_fill(window)
+    days_covered(window).select { |date| date >= today }
   end
 
   # Lay out one channel's day, replacing whatever was there. In a transaction because a

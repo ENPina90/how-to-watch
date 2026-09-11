@@ -397,16 +397,15 @@ RSpec.describe CableSchedule do
   end
 
   describe 'the guide window' do
-    # It runs a full day, opening a couple of hours behind the present so there is
-    # something to scroll back to, and it always opens on a half hour -- the columns are
-    # :00 and :30, and a window starting at 7:47 would label every one of them oddly.
+    # It reaches three days behind the present, so "what was on last night" has an answer,
+    # and it always opens on a half hour -- the columns are :00 and :30, and a window
+    # starting at 7:47 would label every one of them oddly.
     let(:lead) { described_class::GUIDE_LEAD_HOURS.hours }
 
     it 'opens on the half hour containing now, less the lead-in' do
       window = described_class.guide_window(at: midnight + 7.hours + 47.minutes)
 
       expect(window.begin).to eq(midnight + 7.hours + 30.minutes - lead)
-      expect(window.end).to eq(window.begin + described_class::GUIDE_HOURS.hours)
     end
 
     it 'opens on the hour when now is in its first half' do
@@ -415,10 +414,42 @@ RSpec.describe CableSchedule do
       expect(window.begin).to eq(midnight + 7.hours - lead)
     end
 
-    it 'covers a whole day' do
+    it 'reaches three days back' do
       window = described_class.guide_window(at: midnight + 7.hours)
 
-      expect(window.end - window.begin).to eq(24.hours)
+      expect(window.begin).to eq(midnight + 7.hours - 72.hours)
+      expect(described_class.days_covered(window).first).to eq(date - 3)
+    end
+
+    # Tomorrow is the last day anything lays out, so the window stops at the end of it
+    # rather than at a fixed width -- which would have run on into a day nobody has
+    # scheduled and drawn a stretch of empty grid for it.
+    it 'stops at the end of tomorrow rather than at a fixed width' do
+      morning = described_class.guide_window(at: midnight + 7.hours)
+      evening = described_class.guide_window(at: midnight + 22.hours)
+
+      expect(morning.end).to eq(midnight + 2.days)
+      expect(evening.end).to eq(midnight + 2.days)
+      expect(described_class.guide_hours(evening)).to be < described_class.guide_hours(morning)
+    end
+
+    # Half-open, and the end lands exactly on midnight every time -- so taking it at face
+    # value would claim a day the window stops at the very start of and never shows.
+    it 'does not claim the day it stops at the start of' do
+      window = described_class.guide_window(at: midnight + 7.hours)
+
+      expect(described_class.days_covered(window).last).to eq(date + 1)
+    end
+
+    # A day already played out is not laid out on demand: what was on is whatever was
+    # really on, and a schedule invented afterwards is a day nobody watched written into
+    # the past.
+    it 'offers only today and later as days worth filling' do
+      window = described_class.guide_window(at: midnight + 7.hours)
+
+      travel_to(midnight + 7.hours) do
+        expect(described_class.days_to_fill(window)).to eq([date, date + 1])
+      end
     end
 
     it 'keeps the present inside it, with the past behind and the rest ahead' do
