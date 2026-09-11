@@ -107,7 +107,7 @@ body.cable__mode .cinema__screen {
 }
 
 .tvguide__detail-channel {
-  display: block;
+  display: -webkit-box;
   margin: 0 0 6px;
   /* Clear of the buttons in this corner. Only this line needs it: it is the one at the top
      of the panel, and a long channel name would otherwise run under them and be read
@@ -115,9 +115,16 @@ body.cable__mode .cinema__screen {
      gutter that changed width with who is looking would be worse than one that is always
      there. */
   padding-right: 250px;
-  font-size: 1.9rem;
+  /* Smaller than it was, because it carries the dial number now -- "Ch 1 - Movies to Watch
+     Before You Die" against a gutter that wide ran to three lines and pushed the synopsis
+     out of the panel. Two lines and then stop. */
+  font-size: 1.45rem;
   font-weight: 700;
+  line-height: 1.2;
   letter-spacing: 0.01em;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .tvguide__detail-channel,
@@ -151,11 +158,117 @@ body.cable__mode .cinema__screen {
   color: #cfd4ff;
 }
 
+/* One line of facts, each part its own element so a mark can sit against the score it
+   belongs to. The dots are drawn here rather than joined into the text, so whichever parts
+   are missing take their separator with them -- a film with no rating strands nothing. */
 .tvguide__detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
   margin: 0 0 8px;
   font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.85);
   font-variant-numeric: tabular-nums;
+}
+
+/* A dot before every showing part that has a showing part before it, which is every one of
+   them but the first. */
+.tvguide__detail-meta > *:not([hidden]) ~ *:not([hidden])::before {
+  content: "·";
+  margin-right: 7px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* A mark and the score it belongs to, kept together. */
+.tvguide__score {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.tvguide__score i {
+  font-size: 1.15em;
+}
+
+/* IMDb's own yellow and Letterboxd's own green, which is how both marks are recognised.
+   Scoped under .page-container and marked important to get out from under the layout's
+   blanket `.page-container i { color: #fff !important }`, which is what every other
+   component with a coloured icon has to do -- see the sidebar's controls and the
+   subscription pills. */
+.page-container .tvguide__score--imdb i {
+  color: #f5c518 !important;
+}
+
+.tvguide__score--letterboxd,
+.tvguide__score--letterboxd:hover,
+.tvguide__score--letterboxd:focus-visible {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.page-container .tvguide__score--letterboxd i {
+  color: #00e054 !important;
+}
+
+.tvguide__score--letterboxd:hover,
+.tvguide__score--letterboxd:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+/* The row of marks under the facts: what you have seen, and what you have kept. */
+.tvguide__detail-marks {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 12px;
+  min-height: 22px;
+}
+
+/* Drawn as a mark rather than a button, because it sits beside one. It fills once and then
+   stays filled: pressing it again would mean deleting a row from a channel the member
+   built, which is not what pressing a heart asks for. */
+.tvguide__favorite {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* The heart is drawn in the button's colour, so it has to be let out from under the same
+   blanket rule -- otherwise it is white whether it is filled or not. */
+.page-container .tvguide__favorite i {
+  color: inherit !important;
+}
+
+.tvguide__favorite:hover,
+.tvguide__favorite:focus-visible {
+  color: #ff6b8a;
+  outline: none;
+}
+
+.tvguide__favorite--on,
+.tvguide__favorite--on:hover {
+  color: #ff6b8a;
+  cursor: default;
+}
+
+/* It would not take. Shakes its head and stays empty, which is all a heart can usefully
+   say about a request that failed. */
+.tvguide__favorite--refused {
+  color: #ff6b6b;
+  animation: tvguide-refused 0.4s ease-in-out 2;
+}
+
+@keyframes tvguide-refused {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
 }
 
 /* The genres, in the small caps the old guides set their category tags in. */
@@ -168,7 +281,7 @@ body.cable__mode .cinema__screen {
 }
 
 .tvguide__detail-watched {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 0.85rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -180,10 +293,10 @@ body.cable__mode .cinema__screen {
   font-size: 0.92rem;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.72);
-  /* Four lines and then stop: the panel is a fixed height and a long synopsis would push
-     the rest of it out of the box. */
+  /* Three lines and then stop: the panel is a fixed height, and there is more above the
+     synopsis than there used to be -- a row of marks and a line of genres. */
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

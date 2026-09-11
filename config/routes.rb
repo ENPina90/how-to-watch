@@ -140,6 +140,9 @@ Rails.application.routes.draw do
       patch :repair_image
       patch :migrate_poster
       post :duplicate
+      # File a copy in the member's own favourites channel. A write, and per-user rather
+      # than shared -- it touches nobody's copy but the one it creates.
+      post :favorite
       patch :shuffle_current
       patch :increment_current
       patch :decrement_current

@@ -604,6 +604,88 @@ RSpec.describe 'Cable', type: :request do
       expect(response.body).to include("data-guide-channel-url=\"#{list_path(channel)}\"")
     end
 
+    # The panel beside the picture is filled in the browser from what the cells carry, so
+    # anything it shows has to be on them -- and has to be gathered in one query for the
+    # lot, since a day of listings across six channels runs to hundreds of cells.
+    describe 'what the panel is filled from' do
+      it 'marks a film already sitting in the viewer\'s favourites channel' do
+        favourites = create(:list, user: user, name: 'My Favourites')
+        user.update!(favorite_list: favourites)
+        create(:entry, list: favourites, name: 'The Death of Harvey', media: 'movie',
+                       imdb: entry.imdb, position: 1)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).to include('data-guide-favorited="true"')
+      end
+
+      # A favourite is a copy filed in the member's own channel, so it never shares an id
+      # with the row the schedule is playing. Comparing ids would report every heart empty.
+      it 'matches on the film rather than on the row' do
+        favourites = create(:list, user: user, name: 'My Favourites')
+        user.update!(favorite_list: favourites)
+        copy = create(:entry, list: favourites, name: 'The Death of Harvey', media: 'movie',
+                              imdb: entry.imdb, position: 1)
+
+        expect(copy.id).not_to eq(entry.id)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        # The other channel's film is not in there, so both answers are on the page: the
+        # point is that the copy is recognised at all, with an id of its own.
+        expect(response.body).to include('data-guide-favorited="true"')
+      end
+
+      it 'leaves the heart empty for a film that is not in there' do
+        user.update!(favorite_list: create(:list, user: user, name: 'My Favourites'))
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).to include('data-guide-favorited="false"')
+      end
+
+      # Letterboxd catalogues films, and only for a member who has linked an account --
+      # the same two guards the watch page's own button leans on.
+      it 'offers Letterboxd on a film once the member has linked an account' do
+        user.update!(letterboxd_enabled: true, username: 'nic')
+        entry.user_entry_for!(user).update!(letterboxd_score: 4.5)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).to include("data-guide-letterboxd-url=\"#{letterboxd_review_path(entry)}\"")
+        expect(response.body).to include('data-guide-letterboxd-score="4.5"')
+      end
+
+      it 'offers no Letterboxd mark to a member who has not linked one' do
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(response.body).not_to include('data-guide-letterboxd-url')
+      end
+
+      it 'gathers the favourites and the scores without a query per cell' do
+        user.update!(letterboxd_enabled: true, username: 'nic',
+                     favorite_list: create(:list, user: user, name: 'My Favourites'))
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        counted = 0
+        subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |_, _, _, _, payload|
+          counted += 1 if payload[:sql]&.include?('user_entries') || payload[:sql]&.include?('"entries"')
+        end
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+        ActiveSupport::Notifications.unsubscribe(subscriber)
+
+        # A handful for the slots, the favourites channel and the scores -- not one per cell.
+        expect(counted).to be < 20
+      end
+    end
+
     # A channel showing one series all afternoon is a column of cells reading the same
     # thing if each of them carries its own episode number, with the only word that varies
     # pushed off the right-hand edge. So the cell says the show and the panel says the rest.
@@ -651,7 +733,7 @@ RSpec.describe 'Cable', type: :request do
         travel_to(midnight + 11.minutes) { get cable_guide_path }
 
         expect(response.body).to include('data-guide-runtime="43 min"')
-        expect(response.body).to include('data-guide-rating="9.2/10"')
+        expect(response.body).to include('data-guide-rating="9.2"')
         expect(response.body).to include('data-guide-genre="Sci-Fi · Drama"')
       end
     end

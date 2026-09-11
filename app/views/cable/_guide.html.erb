@@ -113,6 +113,7 @@
               # The show, and the episode of it, kept apart: the cell gets the show and the
               # panel gets the rest. See CableHelper::Programme for why.
               programme = cable_programme(slot)
+              letterboxd_offered = current_user&.letterboxd_enabled? && letterboxd_reviewable?(slot.entry)
             %>
             <a class="tvguide__programme"
                href="<%= cable_channel_path(channel) %>"
@@ -134,6 +135,19 @@
                data-guide-runtime="<%= cable_runtime(slot) %>"
                data-guide-rating="<%= cable_rating(slot) %>"
                data-guide-genre="<%= cable_genres(slot) %>"
+               <%# Letterboxd catalogues films, so the mark is offered on films only, and
+                   only to a member who has linked an account -- the same two guards the
+                   watch page's own Letterboxd button leans on. The score is this member's
+                   own, read from the batch rather than per cell. %>
+               <% if letterboxd_offered %>
+                 data-guide-letterboxd-url="<%= letterboxd_review_path(slot.entry) %>"
+                 data-guide-letterboxd-score="<%= @letterboxd[slot.entry_id] %>"
+               <% end %>
+               <%# What the heart acts on, and whether it is already filled. A favourite is
+                   a copy filed in the member's own channel, so "already there" is a
+                   question about the film rather than about this row's id. %>
+               data-guide-entry-id="<%= slot.entry_id %>"
+               data-guide-favorited="<%= @favorited.include?(slot.entry.catalogue_key) %>"
                <%# Where this programme lives outside the schedule: its own page on the
                    watch side, played from the beginning the ordinary way. %>
                data-guide-watch-url="<%= watch_entry_path(slot.entry, channel: channel.id,

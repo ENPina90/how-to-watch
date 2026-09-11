@@ -52,11 +52,13 @@ const CLAIMED_KEYS = ["ArrowLeft", "ArrowRight", "Escape", "Enter"]
 export default class extends Controller {
   static targets = [
     "panel", "body", "grid", "clock", "nowLine",
-    "detailChannel", "detailTitle", "detailEpisode", "detailMeta", "detailGenre",
-    "detailPlot", "detailWatched"
+    "detailChannel", "detailTitle", "detailEpisode", "detailGenre", "detailPlot",
+    "detailWhen", "detailRuntime", "detailYear",
+    "detailImdb", "detailImdbScore", "detailLetterboxd", "detailLetterboxdScore",
+    "detailWatched", "favorite", "favoriteIcon"
   ]
   static classes = ["open"]
-  static values = { url: String, channel: String }
+  static values = { url: String, channel: String, token: String }
 
   connect() {
     this.keyed = (event) => this.handleKey(event)
@@ -247,11 +249,16 @@ export default class extends Controller {
     if (!programme) return
 
     const data = programme.dataset
+    // What the heart acts on, since the panel describes whatever is being pointed at
+    // rather than whatever is playing.
+    this.described = data
 
-    this.detailChannelTarget.textContent = data.guideChannel ?? ""
+    // The channel by number and name, the way it is said everywhere else on the box.
+    this.detailChannelTarget.textContent =
+      [data.guideNumber && `Ch ${data.guideNumber}`, data.guideChannel].filter(Boolean).join(" - ")
     this.detailChannelTarget.href = data.guideChannelUrl ?? "#"
     // The show, which is also all the cell in the grid says.
-    this.detailTitleTarget.textContent = data.guideTitle ? `“${data.guideTitle}”` : ""
+    this.detailTitleTarget.textContent = data.guideTitle ?? ""
     this.detailTitleTarget.href = data.guideWatchUrl ?? "#"
 
     // And which episode of it, which the grid deliberately leaves out -- an afternoon of
@@ -261,25 +268,90 @@ export default class extends Controller {
       data.guideEpisode, data.guideEpisodeTitle
     ].filter(Boolean).join("  ·  "))
 
-    // What the catalogue knows about it beyond its name. Runtime is the programme's own,
-    // not the cell's width: the slot runs on to the next five-minute mark and the
+    // What the catalogue knows about it beyond its name, each part its own element so the
+    // two marks can sit against the scores they belong to. Runtime is the programme's own
+    // and not the cell's width: the slot runs on to the next five-minute mark and the
     // difference is the commercial break.
-    this.line(this.detailMetaTarget, [
-      this.span(data), data.guideYear, data.guideRuntime, data.guideRating,
-      data.guideNumber && `Ch ${data.guideNumber} - ${data.guideChannel}`
-    ].filter(Boolean).join("  ·  "))
+    this.line(this.detailWhenTarget, this.span(data))
+    this.line(this.detailRuntimeTarget, data.guideRuntime)
+    this.line(this.detailYearTarget, data.guideYear)
+
+    this.line(this.detailImdbTarget, data.guideRating, this.detailImdbScoreTarget)
+
+    // Films only, and only for a member who has linked an account -- the cell carries the
+    // address at all only when both are true, so its absence is the whole of the check.
+    this.line(this.detailLetterboxdTarget, data.guideLetterboxdUrl, null)
+    this.detailLetterboxdTarget.href = data.guideLetterboxdUrl ?? "#"
+    this.detailLetterboxdScoreTarget.textContent = data.guideLetterboxdScore ?? ""
 
     this.line(this.detailGenreTarget, data.guideGenre)
 
     this.detailPlotTarget.textContent = data.guidePlot ?? ""
     this.detailWatchedTarget.hidden = data.guideWatched !== "true"
+    this.showFavourite(data.guideFavorited === "true")
   }
 
-  // A line with nothing to say takes up no room. The panel is a fixed height and the
-  // synopsis is clamped to what is left of it, so an empty paragraph is a line of the
-  // synopsis gone -- and a film has two of these empty every time.
-  line(target, text) {
-    target.textContent = text ?? ""
+  // ---- the heart ------------------------------------------------------------------
+
+  // Files the programme being pointed at in this member's own favourites channel.
+  //
+  // Adds only, so a filled heart is done and says so by refusing to be pressed again --
+  // emptying it would mean deleting a row from a channel they built, which is not what
+  // pressing a heart asks for.
+  async favorite() {
+    const id = this.described?.guideEntryId
+    if (!id || this.favouriting || this.favoriteIconTarget.classList.contains("fa-solid")) return
+
+    this.favouriting = true
+    this.rest()
+
+    try {
+      const response = await fetch(`/entries/${encodeURIComponent(id)}/favorite`, {
+        method: "POST",
+        headers: { "X-CSRF-Token": this.tokenValue, Accept: "application/json" }
+      })
+      if (!response.ok) return this.favouriteFailed()
+
+      // Every cell showing this film, not only the one under the pointer: it is scheduled
+      // more than once a day, and a heart that emptied again on the next cell along would
+      // look like the press had not taken.
+      this.bodyTarget
+        ?.querySelectorAll(`.tvguide__programme[data-guide-entry-id="${CSS.escape(id)}"]`)
+        .forEach((cell) => { cell.dataset.guideFavorited = "true" })
+      if (this.described.guideEntryId === id) this.described.guideFavorited = "true"
+
+      this.showFavourite(true)
+    } catch {
+      this.favouriteFailed()
+    } finally {
+      this.favouriting = false
+    }
+  }
+
+  // A heart that will not take costs nothing that matters -- the channel is still playing,
+  // which is what the viewer came for. It shakes its head and stays empty.
+  favouriteFailed() {
+    this.favoriteTarget.classList.add("tvguide__favorite--refused")
+    setTimeout(() => this.favoriteTarget.classList.remove("tvguide__favorite--refused"), 1200)
+  }
+
+  showFavourite(filled) {
+    if (!this.hasFavoriteIconTarget) return
+
+    this.favoriteIconTarget.classList.toggle("fa-solid", filled)
+    this.favoriteIconTarget.classList.toggle("fa-regular", !filled)
+    this.favoriteTarget.classList.toggle("tvguide__favorite--on", filled)
+    this.favoriteTarget.title = filled ? "In your favourites" : "Add to my favourites"
+  }
+
+  // A part with nothing to say takes up no room, and the stylesheet draws the dots between
+  // whichever parts are left -- so a film with no rating does not strand a separator.
+  //
+  // `into` names where the text goes when the element has fixed markup of its own to keep:
+  // the two scores hang off a mark that must not be written over. Pass null to hide or show
+  // the element without touching what is inside it.
+  line(target, text, into = target) {
+    if (into) into.textContent = text ?? ""
     target.hidden = !text
   }
 

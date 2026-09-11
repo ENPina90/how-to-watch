@@ -45,6 +45,11 @@
          would disagree with the column right next to it for anybody not in that zone. %>
      data-cable-guide-zone-value="<%= CableSchedule.zone.tzinfo.name %>"
      data-cable-guide-open-class="cinema__screen--guide"
+     <%# The heart is the one thing in the guide that writes, so it needs a token. Signed in
+         only: a guest has no favourites channel to file anything in. %>
+     <% if user_signed_in? %>
+       data-cable-guide-token-value="<%= form_authenticity_token %>"
+     <% end %>
      data-cinema-fullscreen-idle-class="cinema__screen--idle"
      <%# Unlike the watch page, the chrome here goes away windowed as well. A cable channel
          is something playing in a room rather than a page being worked through, and its
@@ -199,6 +204,7 @@
           where it plays from the beginning and counts towards what you have seen. Neither
           carries data-cinema-move, so they are ordinary navigations rather than a tune. %>
       <div class="tvguide__detail">
+        <%# The channel, by number and name, the way it is said everywhere else on the box. %>
         <a class="tvguide__detail-channel" data-cable-guide-target="detailChannel" href="#"></a>
         <h2 class="tvguide__detail-title">
           <a data-cable-guide-target="detailTitle" href="#"></a>
@@ -207,11 +213,47 @@
             afternoon of one series would otherwise be a column of identical cells -- so
             this is the only place the rest of it is said. Empty, and gone, for a film. %>
         <p class="tvguide__detail-episode" data-cable-guide-target="detailEpisode" hidden></p>
-        <p class="tvguide__detail-meta" data-cable-guide-target="detailMeta" hidden></p>
-        <p class="tvguide__detail-genre" data-cable-guide-target="detailGenre" hidden></p>
-        <p class="tvguide__detail-watched" data-cable-guide-target="detailWatched" hidden>
-          <i class="fa-solid fa-eye"></i> Watched
+
+        <%# One line of facts, each its own element so the two marks can sit against the
+            scores they belong to. The dots between them are drawn by the stylesheet from
+            whichever parts are showing, so a film with no rating does not leave one
+            stranded. %>
+        <p class="tvguide__detail-meta">
+          <span data-cable-guide-target="detailWhen" hidden></span>
+          <span data-cable-guide-target="detailRuntime" hidden></span>
+          <span data-cable-guide-target="detailYear" hidden></span>
+          <span class="tvguide__score tvguide__score--imdb" data-cable-guide-target="detailImdb" hidden>
+            <i class="fa-brands fa-imdb"></i>
+            <span data-cable-guide-target="detailImdbScore"></span>
+          </span>
+          <%# Out of cable, like the other two links in this panel: it opens Letterboxd's
+              own review prompt in a new tab. The score beside it is this member's own, and
+              is absent until they have logged one. %>
+          <a class="tvguide__score tvguide__score--letterboxd" data-cable-guide-target="detailLetterboxd"
+             href="#" target="_blank" rel="noopener noreferrer" hidden>
+            <i class="fa-brands fa-square-letterboxd"></i>
+            <span data-cable-guide-target="detailLetterboxdScore"></span>
+          </a>
         </p>
+
+        <p class="tvguide__detail-genre" data-cable-guide-target="detailGenre" hidden></p>
+
+        <p class="tvguide__detail-marks">
+          <span class="tvguide__detail-watched" data-cable-guide-target="detailWatched" hidden>
+            <i class="fa-solid fa-eye"></i> Watched
+          </span>
+          <%# Files a copy of the film in this member's own favourites channel. Adds only:
+              a heart that emptied again would be a delete button drawn as a toggle, taking
+              a row out of a channel they built. Absent for a guest, who has no channel to
+              file anything in. %>
+          <% if user_signed_in? %>
+            <button type="button" class="tvguide__favorite" data-cable-guide-target="favorite"
+                    data-action="click->cable-guide#favorite" title="Add to my favourites">
+              <i class="fa-regular fa-heart" data-cable-guide-target="favoriteIcon"></i>
+            </button>
+          <% end %>
+        </p>
+
         <p class="tvguide__detail-plot" data-cable-guide-target="detailPlot"></p>
       </div>
     </div>

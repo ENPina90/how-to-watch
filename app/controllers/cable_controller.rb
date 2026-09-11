@@ -44,6 +44,8 @@ class CableController < ApplicationController
     @rows = CableSchedule.guide(at: @now, in_zone: @zone)
     @playing = List.find_by(id: params[:channel])
     @watched = watched_entry_ids(@rows)
+    @favorited = favorited_keys(@rows)
+    @letterboxd = letterboxd_scores(@rows)
 
     render partial: "cable/guide", formats: [:html]
   end
@@ -202,6 +204,38 @@ class CableController < ApplicationController
     return Set.new if ids.empty?
 
     Set.new(UserEntry.where(user: current_user, entry_id: ids, completed: true).pluck(:entry_id))
+  end
+
+  # Which of the listed films are already in this viewer's favourites channel, as one query
+  # for the lot -- the same reason watched_entry_ids exists.
+  #
+  # Matched on what the film is rather than on which row it is. A favourite is a copy filed
+  # in the member's own channel, so it never shares an id with the row the schedule is
+  # playing; comparing ids would report every heart empty for ever.
+  def favorited_keys(rows)
+    list = current_user&.favorite_list
+    return Set.new unless list
+
+    Set.new(list.entries.pluck(:imdb, :source_key, :name).map do |imdb, source_key, name|
+      imdb.presence || source_key.presence || name.to_s.strip.downcase
+    end)
+  end
+
+  # This viewer's Letterboxd scores for the listed films, in one query. Asking each entry
+  # in turn is a query per cell, and a day of listings across six channels runs to hundreds.
+  #
+  # A read, like the rest of the guide: no tracking row is created for a film somebody has
+  # only seen the name of in a grid.
+  def letterboxd_scores(rows)
+    return {} unless current_user&.letterboxd_enabled?
+
+    ids = rows.flat_map { |row| row[:slots].map(&:entry_id) }.uniq
+    return {} if ids.empty?
+
+    UserEntry.where(user: current_user, entry_id: ids)
+             .where.not(letterboxd_score: nil)
+             .pluck(:entry_id, :letterboxd_score)
+             .to_h
   end
 
   # The dial is the default channels and nothing else. An id that is not on it -- a channel
