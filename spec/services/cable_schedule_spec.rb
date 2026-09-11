@@ -118,6 +118,57 @@ RSpec.describe CableSchedule do
       expect(described_class.build_day!(channel, date)).to eq(0)
       expect(described_class.on_air(channel, at: midnight + 3.hours)).to be_nil
     end
+
+    # An entry that cannot be played places no slot, so it moves the clock on by nothing.
+    # A channel where that is true of every entry used to fill bag after bag against a day
+    # that never got any shorter -- a request that never came back and a worker that never
+    # freed up. It gives up and goes off air now, which is a page the viewer can read.
+    #
+    # Reached only by an entry the earlier filter lets through: one with an id but no
+    # template to put it in, rather than one with no id at all.
+    it 'gives up rather than spinning when nothing on the channel has a template' do
+      create(:entry, list: channel, name: 'No template', media: 'documentary', length: 90,
+                     position: 1, imdb: 'tt2222222')
+
+      # Under a clock, because the failure this guards against is not a wrong answer but
+      # no answer: without the guard in `plan` this call never returns and the example
+      # would hang the suite rather than fail it.
+      expect { Timeout.timeout(10) { described_class.build_day!(channel, date) } }
+        .not_to raise_error
+
+      expect(CableSlot.where(list: channel).count).to eq(0)
+      expect(described_class.on_air(channel, at: midnight + 3.hours)).to be_nil
+    end
+
+    it 'still fills the day from the one entry that can be played' do
+      film('Playable', 90, 1)
+      create(:entry, list: channel, name: 'No template', media: 'documentary', length: 90,
+                     position: 2, imdb: 'tt2222222')
+
+      described_class.build_day!(channel, date)
+      slots = CableSlot.where(list: channel).in_order.to_a
+
+      expect(slots.first.starts_at).to eq(midnight)
+      expect(slots.last.ends_at).to eq(midnight + 1.day)
+      expect(slots.map { |slot| slot.entry.name }.uniq).to eq(['Playable'])
+    end
+
+    # A season or an episode number nobody filled in leaves the provider's template with a
+    # hole in it and no URL, which says nothing about the other episodes of that show. A
+    # channel holding one series would have gone off air for the day on an unlucky draw.
+    it 'tries a show\'s other episodes before passing over the show' do
+      series = create(:entry, list: channel, media: 'series', name: 'Show', length: nil,
+                              position: 1, imdb: 'tt3333333')
+      Subentry.create!(entry: series, season: nil, episode: nil, name: 'Unnumbered', length: 30)
+      Subentry.create!(entry: series, season: 1, episode: 2, name: 'Numbered', length: 30)
+
+      described_class.build_day!(channel, date)
+      slots = CableSlot.where(list: channel).in_order.to_a
+
+      expect(slots.first.starts_at).to eq(midnight)
+      expect(slots.last.ends_at).to eq(midnight + 1.day)
+      expect(slots.map { |slot| slot.subentry.name }.uniq).to eq(['Numbered'])
+    end
   end
 
   describe 'what is on' do
