@@ -3,7 +3,7 @@
 **Purpose:** the map of this codebase. Read this before diagnosing anything; the last
 section ("Debugging map") goes from symptom → the file that actually owns the behavior.
 
-**Last verified:** 2026-08-26 against `master` @ `0da6db3`.
+**Last verified:** 2026-09-11 against `master` @ `1ac4aef`.
 
 ---
 
@@ -18,6 +18,15 @@ same list independently.
 Metadata comes from TMDB and OMDB; posters are mirrored into Cloudinary; playback URLs
 are generated from provider URL templates.
 
+Built on top of that, and newer: **cable** (§5.9), where a channel plays to a schedule and
+you join whatever is already running; **watch parties** (§5.10), where a room watches
+together with the host's player as the clock; **voting** (§5.11) on what to put on; and an
+**admin dashboard** (§5.14) with the sweeps that tell an admin when a provider, a poster or
+an embed has stopped working.
+
+The distinction worth holding on to is that the original app is per-viewer in every
+respect, and cable is per-viewer in none of them.
+
 ---
 
 ## 2. Stack
@@ -31,7 +40,8 @@ are generated from provider URL templates.
 | Assets | Sprockets + **`dartsass-rails`** for CSS (compiled to `app/assets/builds`, then digested by Sprockets, with `autoprefixer-rails` as a postprocessor), **importmap-rails** for JS |
 | Files | Active Storage → **Cloudinary** (`config.active_storage.service = :cloudinary` in *both* dev and prod) |
 | Jobs | Active Job → **Sidekiq** in production (Redis-backed); `:async` in development, `:test` in test (see §8) |
-| Redis | Railway `Redis` service on the private network; used by Sidekiq and available to Action Cable |
+| Redis | Railway `Redis` service on the private network; used by Sidekiq **and by Action Cable**, which watch parties depend on (§5.9) |
+| Periodic | `sidekiq-cron`, schedule in `config/schedule.yml`, registered on the Sidekiq **server** only (§8) |
 | Hosting | Railway: `how-to-watch` (web) + `worker` (Sidekiq), plus `Postgres` and `Redis` |
 
 ---
@@ -87,7 +97,7 @@ the entry's own `source_key`: a Drive file id, mega key, YouTube id, or a full U
 
 | Model | Grain | Holds |
 |---|---|---|
-| `UserEntry` | user × entry | `completed`, `completed_at`, `last_watched_at`, `review` (1–10), `comment` |
+| `UserEntry` | user × entry | `completed`, `completed_at`, `last_watched_at`, `review` (1–10), `comment`, `player_progress` (seconds, §5.8) |
 | `UserListPosition` | user × list | `current_position` (an `entries.position` value) |
 | `UserEntryPosition` | user × entry | `current_subentry_id` — which episode you're on |
 | `Subscription` | user × list | which channels appear in your sidebar |
@@ -97,14 +107,32 @@ returning nil; the `!` variants (`user_entry_for!`, `position_for_user!`) create
 use the preloaded association when the caller eager-loaded it, so controllers that render
 many entries should `includes(:user_entries)` / `includes(:user_list_positions)`.
 
-Rule of thumb: **anything user-specific is in one of these four tables.** The columns
-`entries.completed`, `lists.current`, and `entries.current_id` are the pre-multi-user
-versions and are only touched by legacy paths.
+Rule of thumb: **anything user-specific is in one of these four tables** — and note the
+two places that deliberately read none of them: `/cable` (§5.9) and the guide, where what
+plays is a question about the clock rather than about you.
+
+The columns `entries.completed`, `lists.current`, and `entries.current_id` are the
+pre-multi-user versions and are only touched by legacy paths.
 
 ### 3.3 Dead / legacy tables still in the schema
 
 `follows`, `list_user_entries` (superseded by `subscriptions` + `user_list_positions`),
 `failed_entries` (write-only error log from CSV/OMDB imports).
+
+### 3.4 Everything else in the schema
+
+Added after the core above, and each one is the subject of its own request flow in §5.
+
+| Model | What it is |
+|---|---|
+| `CableSlot` | one programme in one channel's day: entry, `starts_at`/`ends_at`, optional `subentry`, optional `break_reel`. **Identical for every viewer** — see §5.9 |
+| `CommercialReel` | an advert that fills the gap between programmes on `/cable`. Admin-managed under `/admin/commercial_reels` |
+| `WatchParty` + `WatchPartyMembership` | a room watching the same thing at once, addressed by `token`. §5.10 |
+| `VoteSession` + `VoteOption` + `Vote` | one round of voting on a channel: a shortlist on a screen, phones voting via QR. §5.11 |
+| `Notification` | something the app wants to tell one person. §5.12 |
+| `AppSetting` | the site's own switches, **as a single row** — access mode and the up-next threshold. §5.13 |
+| `Visit` | deliberately thin traffic counting for the admin dashboard: a cookie token, a day, a page count, an optional user id. No path, no referrer, no address |
+| `Current` | `ActiveSupport::CurrentAttributes`; memoises `AppSetting.current` for the length of a request |
 
 ---
 
@@ -144,6 +172,20 @@ truncated URL. `rails sources:audit` reports anything that stops resolving.
 **Manual entries**: the form takes a pasted URL (`Entry#source_url`, virtual) and
 `Source.classify_url` turns Drive/mega/YouTube/archive links into a direct provider plus
 `source_key`; anything unrecognised goes to the catch-all `custom` provider.
+
+**A `Source` also carries, beyond its templates:**
+- **Expiry.** `valid_until` makes a source *perishable*; `expired?` / `expiring_soon?` /
+  `expiry_state` / `days_until_expiry` read it and `renew!` pushes it out. A daily
+  `SourceExpiryScanJob` warns admins through a `Notification` before a domain lapses.
+- **Order.** `Source.reorder!` sets the `position` admins drag them into, which is also the
+  order `resolved_source` falls back through.
+- **Sync adapters.** `SYNC_ADAPTERS[slug]` → `sync_adapter`, and `syncable?` is what decides
+  whether a watch party can actually drive a provider's player (§5.10). Alongside it:
+  `resume_param` / `resumable?` (start a film part-way in, which is how `/cable` joins a
+  programme already running and how up-next resumes), `subtitle_param` (cable turns
+  subtitles off by default) and `preconnect_origins` (emitted on the player page).
+- **`probe_url` / `probe_label`** back `GET /sources/:id/test`: play a known title through
+  this provider alone, to answer "is this domain still up" without hunting for an entry.
 
 **Known limitation:** `Subentry#calculate_absolute_episode_number` counts episodes within
 one entry, but each season is its own entry here, so it returns the plain episode number.
@@ -233,6 +275,122 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
 
 ---
 
+### 5.8 Progress and up next
+
+`UserEntry#player_progress` holds where the viewer got to, in seconds. It is written by
+`POST /entries/:id/progress` — **POST rather than PATCH because `navigator.sendBeacon`,
+which is how the position is saved as the page goes away, can only send POST.**
+
+Completion is a fraction of runtime, not a position: `UserEntry::COMPLETION_FRACTION`
+(0.95). `AppSetting#up_next_fraction` decides how far in the up-next card appears, and is
+validated into `UP_NEXT_RANGE`, which **floors at the completion fraction**. Below that
+floor the fullscreen path stops raising the card at all, silently — the floor exists to
+prevent exactly that. `PATCH /entries/:id/runtime` is the player correcting the catalogue
+when a file turns out to run to something other than what TMDB said.
+
+### 5.9 Cable — `GET /cable`, `GET /cable/:id`, `GET /cable/guide`
+
+Channels that are **already running** when you turn them on. This is the one part of the
+app where nothing is per-viewer, and the module comment in `app/services/cable_schedule.rb`
+is emphatic about why: two people opening the same channel at the same second must see the
+same frame, so nothing here reads `UserListPosition`, `UserEntryPosition` or
+`player_progress` — **and nothing here writes them either.** Marking something watched is
+the one exception and it goes out through the ordinary `entries#complete` route, because
+that is something the viewer chose rather than a side effect of rendering a page.
+
+- A day is laid out in advance into `cable_slots`, entries shuffled and laid end to end
+  from midnight to midnight in `CableSchedule::DEFAULT_ZONE` (`America/Toronto`, overridable
+  with `CABLE_TIME_ZONE`) — not UTC, so "tomorrow" means the viewer's tomorrow.
+- Slots start and end on a five-minute grid (`BREAK_GRID`), so a listing reads 8:00 and 9:05
+  rather than 8:07 and 9:53. Whatever is left between the film ending and the next mark is a
+  commercial break, filled by a `CommercialReel`. A break is 0–4 minutes, never more.
+- Runtime gaps are guessed (`FALLBACK_MINUTES`, 100 for a film, 30 otherwise) rather than
+  dropping the entry, and `MIN_MINUTES` (5) keeps bad catalogue data from filling a day with
+  thousands of rows. `MAX_SLOTS_PER_DAY` (200) is the backstop.
+- `CableScheduleJob` deals tomorrow daily and fills today **only if it is empty**
+  (`ensure_day!` leaves an existing schedule alone, so it can never pull a running programme
+  out from under anybody). `CableSchedule.prune!` keeps `RETAIN_DAYS` (2).
+- `cable#show` and `cable#guide` also call `ensure_day!` on the way through, so the dial
+  never has a dead channel on it after a deploy or a newly-defaulted channel.
+- **Route order is load-bearing**: `get 'cable/guide'` must stay above `get 'cable/:id'`, or
+  "guide" is read as a channel id, cast to nothing, and quietly serves channel one.
+- The guide renders in the *viewer's* zone (`params[:tz]`) even though the schedule itself
+  is a set of fixed instants.
+
+### 5.10 Watch parties — `resources :watch_parties, param: :token`
+
+The only Action Cable feature, and the only reason the `redis` gem is pinned (see the
+Gemfile comment: Action Cable's pubsub adapter declares `redis < 6`, so on 6.x every
+broadcast raises `Gem::LoadError` while the socket still connects and the subscription still
+takes — nothing is ever delivered).
+
+- The **host's player is the clock**: it reports where it is and everyone else is moved to
+  match. When the host changes episode the whole room follows.
+- Addressed by `token` rather than id, because the token *is* the invitation — `show` is the
+  link people paste to each other.
+- `WatchPartyContext` keeps the token in the **session**, so a room follows the person
+  around the site instead of belonging to one page, and drops a token whose party has closed
+  so a dead room does not put a bar on every page.
+- Only providers where `Source#syncable?` can actually be driven. On the rest the party
+  still holds everyone on the same entry and shows how far apart they are; it just cannot
+  close the gap.
+- `CloseAbandonedWatchPartiesJob` runs every 15 minutes. `ABANDONED_AFTER` is 2 minutes,
+  comfortably longer than the 45-second presence staleness, because a reload is a disconnect
+  too; the `created_at` age check keeps a room from being reaped in the seconds between the
+  host opening it and their browser opening the socket.
+
+### 5.11 Voting — `resource :vote` nested under a list
+
+A shortlist put on one screen, voted on by the phones in the room via a QR code (`rqrcode`).
+`VoteSession.open_for(list, count)` replaces whatever round was open and draws its options
+**at random** rather than taking the first few — the point is to decide between things
+nobody has already picked out. `standings` breaks ties by ballot order so a tie reads the
+same way twice instead of shuffling under whoever refreshes. `VotesController` deliberately
+**skips `AccessControl`**: a room scanning a QR code is a different question from who may
+browse the site.
+
+### 5.12 Notifications — `resources :notifications`
+
+Deliberately generic, so a second table is never needed: `kind` says what sort of thing it
+is, polymorphic `subject` points at what it is about, and anything kind-specific lives in
+`data`. Kinds so far are all admin-facing sweep results — `source_expiring`,
+`broken_poster`, `unplayable_embed`, `missing_runtime` — and `ADMIN_ONLY_KINDS` is enforced
+**on write and again on read**, so an account that loses its admin flag stops seeing them
+without needing a sweep.
+
+`dedupe_key` is what makes dismissal safe for a warning that is really a *state* rather than
+an event: it carries the date being warned about, so renewing a provider retires the
+dismissed row and a later warning about the new date is a new notification.
+
+### 5.13 Who gets in without an account
+
+`AppSetting#access_mode` is one of `secure` (nothing — sign in first), `moderate` (browse:
+the channel index, a channel's page, search) or `open` (browse **and** watch). Writes always
+need an account: there is nowhere to record a position, a review or a new channel without
+one.
+
+The permitted actions are a table in `app/controllers/concerns/access_control.rb` rather
+than declarations scattered across controllers, so the whole answer to "what can a stranger
+reach" reads top to bottom. Two rules hold it down whatever the table says: **only GETs are
+ever allowed through**, and **anything unlisted falls through to Devise**, so a new
+controller is closed until somebody decides otherwise.
+
+`AppSetting` is a single row, enforced by an `only_row` validation — every reader takes
+`first`, so a second row would be settings nobody can see and an edit that appears to do
+nothing. It is created on first read, so a fresh database needs no seed, and memoised per
+request through `Current`.
+
+### 5.14 Admin dashboard — `/admin`
+
+`Admin::BaseController` turns away everyone else. The dashboard shows `AdminStatistics`
+(counts and grouped counts over one seven-day window, gathered so the view holds no
+queries), the site switches, and buttons that run the poster and embed sweeps on demand —
+the same jobs the weekly schedule runs, so there is one implementation and one set of
+results. `POST reset_source` moves every channel onto one provider.
+`Visit` backs the traffic figures.
+
+---
+
 ## 6. Front end
 
 - **No JS build step.** `config/importmap.rb` pins everything; controllers are eager-loaded
@@ -308,15 +466,46 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
 | `LetterboxdFeed` | Reads a member's public Letterboxd diary (RSS) |
 | `LetterboxdList` | Reconciles that diary into a channel |
 | `LetterboxdFilm` | Builds links to a film on Letterboxd |
+| `CableSchedule` | Lays out and reads the cable day (§5.9). `module_function`, no per-user state |
+| `CommercialCatalog` | The reels available to fill a break |
+| `SourceCatalog` / `ChannelSourceReset` | The provider list; moving every channel onto one provider |
+| `VidsrcAvailability` / `VidsrcCatalog` | Asks VidSrc whether it actually holds a file for an entry |
+| `EmbedAvailabilityAudit` / `UnplayableEmbedNotifier` | The sweep behind `embed_availability_scan`, and the notifications it raises |
+| `PosterAudit` / `BrokenPosterNotifier` | Same shape, for posters whose image has gone |
+| `MissingRuntimeAudit` / `MissingRuntimeNotifier` | Same shape, for scheduled entries cable has to guess a runtime for |
+| `SourceExpiryNotifier` | Warns admins before a provider domain lapses (§4) |
+| `AdminStatistics` | The dashboard's numbers, one seven-day window throughout |
+| `DeploymentStatus` | Which build is actually running, recorded by the worker at boot |
+| `YoutubeVideoFacts` | Reads a commercial reel's runtime off YouTube |
+| `GoogleImageSearch` / `RemoteImage` | Extra poster sources; fetching and validating a remote image |
 
 ---
 
 ## 8. Background jobs
 
-`LetterboxdSyncJob` refreshes one member's Letterboxd channel from their public diary.
-Two more run from `Entry` `after_commit` callbacks:
-`CheckEntrySourceJob` (validates a new entry's URL → `entries.stream`) and
-`AttachPosterFromPicJob` (mirrors `pic` into Cloudinary).
+Two run from `Entry` `after_commit` callbacks: `CheckEntrySourceJob` (validates a new
+entry's URL → `entries.stream`) and `AttachPosterFromPicJob` (mirrors `pic` into
+Cloudinary). `LetterboxdSyncJob` refreshes one member's Letterboxd channel on demand.
+
+**The rest are periodic**, registered from `config/schedule.yml` by `sidekiq-cron`:
+
+| Job | When (UTC) | What |
+|---|---|---|
+| `CableScheduleJob` | daily | Deal tomorrow for every channel; fill today if empty (§5.9) |
+| `CloseAbandonedWatchPartiesJob` | every 15 min | Close rooms nobody has open (§5.10) |
+| `SourceExpiryScanJob` | daily | Warn admins about lapsing provider domains |
+| `LetterboxdWeeklyRefreshJob` | Mondays | Re-read every linked member's diary |
+| `BrokenPosterScanJob` | Mondays | Poster URLs that no longer answer with an image |
+| `EmbedAvailabilityScanJob` | Tuesdays | Entries VidSrc has no file for |
+| `MissingRuntimeScanJob` | Wednesdays | Scheduled entries cable must guess a runtime for |
+
+The schedule is loaded **on the Sidekiq server only** (`config/initializers/sidekiq.rb`) —
+a web process registering them too would have several dynos racing to own the same
+schedule. Registration touches Redis and is wrapped in a rescue: a failure there would
+otherwise take the whole worker down at boot, and processing queued jobs matters more than
+a weekly refresh the next restart will register anyway. The same hook calls
+`DeploymentStatus.record_worker!`, so the dashboard can show which build is actually
+running rather than which was last deployed.
 
 **TMDB responses are cached** for 12 hours in a bounded per-process `:memory_store` — not
 Redis, which is Sidekiq's and runs `noeviction` (cache growth there would fail enqueues).
@@ -374,7 +563,19 @@ neither needs a local Redis.
     watching this now". They are navigation targets, not actions.
   - The watch page sets `data-turbo="false"`, so its controls are `button_to` forms —
     `data-turbo-method` links would silently fall back to GET there.
-- `sources` (admin only), `/watch_now`, `/health`, `/letterboxd/*`.
+- `sources` (admin only) — plus member `renew` / `deactivate` (both PATCH: they change how
+  the app plays things) and `test` (GET: it only plays something), and collection `reorder`.
+- `/cable`, `/cable/:id`, `/cable/guide` — all GET, none of them write. **`cable/guide` must
+  stay declared above `cable/:id`** (§5.9).
+- `watch_parties`, keyed by `param: :token` rather than id (§5.10).
+- `resource :vote` nested under a list, with `cast` / `close` / `remove_option` (§5.11).
+- `notifications` with member `dismiss` and collection `dismiss_all` (§5.12).
+- `namespace :admin` — `dashboard` (`show` / `update`, plus `reset_source`,
+  `run_poster_scan`, `run_embed_scan`, all POST because they enqueue or rewrite) and
+  `commercial_reels` (§5.14).
+- `resource :profile` — the account page; email and password stay with Devise.
+- `/watch_now`, `/health`, `/letterboxd/*` (`check` is reachable signed out, because the
+  sign-up form asks before the account exists).
 
 ---
 
@@ -413,26 +614,32 @@ neither needs a local Redis.
 
 ## 11a. Tests
 
-RSpec is the live suite (`bundle exec rspec` — 31 examples). `spec/rails_helper.rb` calls
+RSpec is the live suite (`bundle exec rspec` — **~1,230 examples, green, under a minute**). `spec/rails_helper.rb` calls
 `Rails.application.reload_routes_unless_loaded` because Rails 8 draws routes lazily and
 Devise registers its mappings during that draw; without it every `sign_in` fails. The test
 env uses the `:test` job adapter, since entry callbacks enqueue network-touching jobs.
 The `test/` Minitest tree is leftover generator stubs and does not run clean.
-`bundle exec rubocop` works again (~1,169 mostly-style offenses, not yet addressed).
+`bundle exec rubocop` works but has never been brought to clean (~5,000 mostly-style
+offenses, ~4,550 autocorrectable). Do **not** run a blanket `-a`/`-A`: it would rewrite
+nearly every file in the repo and bury whatever real change it was run alongside.
+
+Specs worth knowing about, because they encode decisions rather than behaviour:
+`javascript_modules_spec.rb` (§6 — the only coverage the JS has),
+`list_show_payload_spec.rb` and the two `*_queries_spec.rb` files (§6, per-card cost and
+query counts), and `entry_write_verbs_spec.rb` / `list_write_verbs_spec.rb` (§10, that
+nothing which writes is reachable by GET).
 
 ---
 
-## 12. Uncommitted work in the tree (as of 2026-08-21)
+## 12. Keeping this document honest
 
-Not yet committed, and it matters when reading `git log`:
-- `app/jobs/check_entry_source_job.rb` — **new, untracked**.
-- `Entry`: callbacks moved to `after_commit`, `normalize_media` added, source check moved
-  into the job, poster attach always async.
-- `UrlCheckerService`: open/read/total timeouts + 64 KB read cap.
-- `Source#template_for` downcases the media key; `db/seeds/sources.rb` gains an anime
-  template for vidsrc.ru.
-- Two migrations already reflected in `schema.rb`: `fix_vidsrc_ru_tv_templates`,
-  `normalize_entry_media_case`.
+Everything above was read out of the code at the verification date in the header. The
+sections most likely to drift, in order: §7 (services are added often), §8 (so are periodic
+jobs), §4 (providers die and `Source` grows options), and §5.9 (cable is the newest part of
+the app and still moving).
+
+If you are reading this well after that date, `git log --stat docs/ARCHITECTURE.md` will
+tell you how far behind it is likely to be. Trust the code; update the section you touched.
 
 ---
 
@@ -453,10 +660,21 @@ Not yet committed, and it matters when reading `git log`:
 | Filtering a list returns everything | `ListsController#load_entries` builds `@position_items`; the default `Position` view renders that rather than the grouped `@entries`, so a filter has to be applied there too. |
 | Adding a series creates no episodes | `OmdbApi.get_series_episodes` → needs `entry.season` and (ideally) `entry.tmdb`. Failures here surface as the misleading flash "This already exists in your list". |
 | Sort/group setting doesn't stick | `ListsController#load_entries` — writes are guarded to explicit params, and `settings` is read back as the default. |
-| Slow list page, but the query count is flat | it is the views, not the DB. See §6.1: anything rendered *per card* is multiplied by the list size, and the big lists run past a thousand entries. |
+| Slow list page, but the query count is flat | it is the views, not the DB. See §6: anything rendered *per card* is multiplied by the list size, and the big lists run past a thousand entries. |
 | Slow list page | check the preloads first: `ListsController#with_card_data` + `resolve_card_entries` (index) and the `includes(:user_entries).with_attached_poster` in `load_entries` (show). Losing either turns `completed_by?` / `current_entry` back into a query per row. `find_now_playing_for_sidebar` also runs on every page. **A preload here is easy to defeat without touching it:** anything that reloads the association (`all_items_by_position` did) throws it away silently. `spec/requests/list_show_queries_spec.rb` and `list_index_queries_spec.rb` assert the query counts stay flat. |
 | A write succeeds that shouldn't | `EntriesController#check_edit_permissions` — it guards only the actions named in its `before_action`. Actions writing *shared* entry state belong there; the per-user ones (`complete`, `review`, current-position) deliberately do not. |
 | Worker crashes at boot with `libffi.so.8: cannot open shared object file` | Railpack's runtime image lacks libffi, which `sassc-rails → sassc → ffi` needs at Rails boot. Fixed with `RAILPACK_DEPLOY_APT_PACKAGES=libffi8 libpq5` on the service. `/mise/installs/...` paths in a trace mean Railpack; `/nix/store/...` means Nixpacks. |
 | Job "didn't run" | check `/sidekiq` (admin) for retries/dead jobs, then `railway logs --service worker`. In development jobs run on `:async` in-process, so a dev-only failure is a different animal. |
 | Mobile layout differs from desktop | user-agent sniffing in both controllers → `*_mobile` views + `layouts/mobile`. |
+| A cable channel is off air / a gap in the guide | nobody laid that day out. `CableSchedule.ensure_day!` runs from `cable#show`, `cable#guide` and `CableScheduleJob`; check the worker ran and that the channel is `default`. |
+| Cable shows a different programme to two people | something read a per-user table. Nothing under §5.9 may touch `UserListPosition`, `UserEntryPosition` or `player_progress`. |
+| A programme runs far too long or too short | no runtime in the catalogue, so `CableSchedule::FALLBACK_MINUTES` guessed. `MissingRuntimeScanJob` reports these; `PATCH /entries/:id/runtime` corrects one. |
+| `/cable/guide` serves channel one | the `cable/guide` route slipped below `cable/:id` (§5.9). |
+| Watch party connects but nothing ever arrives | the `redis` gem resolved to 6.x — Action Cable's adapter declares `< 6` and every broadcast raises `Gem::LoadError` while the socket still looks healthy (§5.10). |
+| A watch party will not keep guests in step | `Source#syncable?` is false for that provider; the room can only hold everyone on the same entry. |
+| A room vanishes while people are in it | `CloseAbandonedWatchPartiesJob` + `WatchParty::ABANDONED_AFTER`; check `last_seen_at` on the memberships. |
+| Up-next card never appears in fullscreen | `AppSetting#up_next_fraction` set below `UserEntry::COMPLETION_FRACTION` — `UP_NEXT_RANGE` exists to floor exactly this (§5.8). |
+| Progress is not saved when the tab closes | `POST /entries/:id/progress` — `sendBeacon` can only POST; a PATCH route here silently drops the write. |
+| A dismissed warning keeps coming back (or never does) | `Notification#dedupe_key` — it carries the date warned about, by design (§5.12). |
+| A signed-out visitor sees too much / too little | `AppSetting#access_mode` and the table in `access_control.rb`. Only GETs pass; unlisted actions fall through to Devise (§5.13). |
 | Admin-only UI missing | `users.admin`; sources CRUD and default-list toggles are admin-gated. Check the impersonation banner first — an admin viewing as someone else has no admin powers by design (§5.6). |
