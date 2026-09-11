@@ -183,6 +183,7 @@ class Entry < ApplicationRecord
   def section_keys(criteria, user: nil)
     case criteria
     when 'Position' then []
+    when 'Title' then [Entry.title_letter(name)]
     when 'Genre' then genre.to_s.split(',').map(&:strip).reject(&:empty?).presence || ['Other']
     when 'Year' then year.present? ? ["#{(year / 10) * 10}s"] : []
     when 'Watched' then [completed_by?(user) ? 'Watched' : 'Unwatched']
@@ -190,6 +191,19 @@ class Entry < ApplicationRecord
     when 'Length' then [length_section || 'Other']
     else [public_send(criteria.downcase).presence || 'Other']
     end
+  end
+
+  # The letter a title files under. Case-folded, so "the Thing" and "The Thing" land in the
+  # same place, and everything that does not begin with a letter shares one bucket -- a
+  # section each for "1917" and "2001" is a rail of sections holding one film apiece.
+  #
+  # The name as it stands, leading articles and all: a channel sorted by title should put
+  # things where somebody reading the titles would look for them, and half this catalogue
+  # is filed under names that begin with "The" on every other site that lists them.
+  def self.title_letter(name)
+    first = name.to_s.strip[0].to_s.upcase
+
+    first.match?(/[A-Z]/) ? first : '#'
   end
 
   # The show this entry belongs to. A series or a season carries it in `series` once the

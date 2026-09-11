@@ -50,6 +50,31 @@
   min-height: 200px;
 }
 
+/* The heart on a result. Square rather than the width of its label, because it has none --
+   hollow for out and solid for in is the whole of what it says, the same as the one in the
+   cable guide's panel. */
+.search-favorite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+}
+
+.search-favorite:disabled {
+  opacity: 0.6;
+}
+
+/* It would not take. Shakes its head and stays as it was. */
+.search-favorite--refused {
+  animation: search-favorite-refused 0.4s ease-in-out 2;
+}
+
+@keyframes search-favorite-refused {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
 /* Modal Styling */
 #listSelectionModal .list-option button {
   transition: all 0.2s ease-in-out;

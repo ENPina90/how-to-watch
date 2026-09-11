@@ -30,6 +30,37 @@ RSpec.describe ImdbEntryImporter do
     expect(result[:entry].tmdb).to eq('24428')
   end
 
+  # A series row on its own has nothing to play: the episodes carry the season and episode
+  # numbers a provider's template asks for. Without them a show lands in a channel looking
+  # right and is off air the moment anybody opens it.
+  it 'brings a series\' episodes with it' do
+    allow(OmdbApi).to receive(:get_movie).and_return(omdb_payload.merge('Type' => 'series'))
+    expect(OmdbApi).to receive(:get_series_episodes).with(an_instance_of(Entry))
+
+    result = described_class.new(list: list, imdb_id: 'tt0848228').call
+
+    expect(result[:status]).to eq(:created)
+    expect(result[:entry].media).to eq('series')
+  end
+
+  it 'asks for no episodes when the entry is a film' do
+    expect(OmdbApi).not_to receive(:get_series_episodes)
+
+    described_class.new(list: list, imdb_id: 'tt0848228').call
+  end
+
+  # The entry itself was created. Losing the episodes is a reason to log, not a reason to
+  # throw the row away and report that nothing was added.
+  it 'keeps the series when the episode import fails' do
+    allow(OmdbApi).to receive(:get_movie).and_return(omdb_payload.merge('Type' => 'series'))
+    allow(OmdbApi).to receive(:get_series_episodes).and_raise(StandardError, 'OMDB down')
+
+    result = described_class.new(list: list, imdb_id: 'tt0848228').call
+
+    expect(result[:status]).to eq(:created)
+    expect(result[:entry]).to be_persisted
+  end
+
   it 'reports not_found when OMDB has nothing' do
     allow(OmdbApi).to receive(:get_movie).and_return(nil)
 
