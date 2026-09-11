@@ -6,9 +6,13 @@ require 'json'
 
 class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
+  include NoPlaybackOnMobile
+  skip_before_action :refuse_playback_on_mobile
   before_action :set_list, only: %i[new create]
   before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime favorite unfavorite]
   before_action :authenticate_user!, only: %i[favorite unfavorite]
+  # Watching is off in the phone view; everything else this controller does is not.
+  before_action :refuse_playback_on_mobile, only: :watch
   # Everything here writes state shared by everyone who can see the entry -- its position
   # in the list, its provider, its poster, the `stream` flag. The per-user actions
   # (complete, review, shuffle_current and friends) are deliberately absent: they write

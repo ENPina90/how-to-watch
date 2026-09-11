@@ -2,6 +2,8 @@ require 'open-uri'
 require 'json'
 
 class PagesController < ApplicationController
+  include NoPlaybackOnMobile
+
   def watch_now
     @imdb_id = params[:imdb]&.strip
     @title = params[:title]&.strip || 'Movie'

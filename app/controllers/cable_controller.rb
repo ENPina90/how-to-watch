@@ -15,6 +15,11 @@
 # entries#complete route -- that is a thing the viewer chose to do, not a side effect of the
 # page having been rendered.
 class CableController < ApplicationController
+  # The listings are the one part of cable the phone view keeps -- see the concern. A
+  # channel is a picture playing to a room, and `show` is the page that plays it.
+  include NoPlaybackOnMobile
+  skip_before_action :refuse_playback_on_mobile, only: :guide
+
   before_action :set_channel, except: %i[guide regenerate]
   before_action :require_admin, only: :regenerate
 
