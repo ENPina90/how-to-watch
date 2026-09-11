@@ -59,7 +59,7 @@
       <div class="tvguide__days-gutter"></div>
       <div class="tvguide__days-track" style="width: <%= track.call(window_hours) %>">
         <% day_bands.each do |band| %>
-          <div class="tvguide__day<%= ' tvguide__day--today' if band[:day].to_date == @now.in_time_zone(@zone).to_date %>"
+          <div class="tvguide__day"
                style="left: <%= track.call(band[:from]) %>; width: <%= track.call(band[:to] - band[:from]) %>">
             <span class="tvguide__day-name"><%= cable_day(band[:day], @zone) %></span>
           </div>

@@ -357,12 +357,6 @@ body.cable__mode .cinema__screen {
   overflow: clip;
 }
 
-/* Today, lit the way the tuned channel's gutter is -- the one band you should be able to
-   find without reading any of them. */
-.tvguide__day--today {
-  background: #ffd42a;
-}
-
 /* Holds station against the gutter as its day scrolls past, so the day you are looking at
    is named wherever inside it you have scrolled to. The same trick as .tvguide__name, and
    it needs the same two things: a band that clips rather than scrolls, and a label sized to
@@ -380,11 +374,6 @@ body.cable__mode .cinema__screen {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.tvguide__day--today .tvguide__day-name {
-  color: #05052e;
-  text-shadow: none;
 }
 
 /* The running clock, in the corner cell the channel numbers sit under. */
