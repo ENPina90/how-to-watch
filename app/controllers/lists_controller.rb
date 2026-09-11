@@ -10,7 +10,7 @@ class ListsController < ApplicationController
   # have none of the attributes the groupings read.
   CHILD_SECTION = 'Channels'
 
-  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :entry_index, :nested_entries, :top_entries, :add_season, :toggle_default, :next_entry, :previous_entry, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
+  before_action :set_list, only: [:show, :edit, :update, :destroy, :watch_current, :entry_index, :nested_entries, :top_entries, :add_season, :toggle_default, :toggle_favorite, :next_entry, :previous_entry, :move_to_list, :subscribe, :unsubscribe, :mark_all_complete, :mark_all_incomplete]
   before_action :check_edit_permissions, only: [:edit, :update, :destroy, :mark_all_complete, :mark_all_incomplete]
   # Under an access mode that lets strangers browse, a private channel still is not theirs
   # to read -- including the pieces of it that load on their own.
@@ -416,6 +416,27 @@ class ListsController < ApplicationController
       end
       format.html { redirect_to list_path(@list) }
     end
+  end
+
+  # A member's favourite channel: the one "add to favourites" files into and the one the
+  # phone view opens on. Theirs alone to set, and only over a channel they created -- the
+  # edit page is reachable for a default channel somebody else owns, so ownership is
+  # checked here rather than leaning on the edit permission.
+  def toggle_favorite
+    unless current_user && @list.user_id == current_user.id
+      return redirect_back(fallback_location: list_path(@list),
+                           alert: 'You can only favourite a channel you created.')
+    end
+
+    if current_user.favorite?(@list)
+      current_user.unfavorite!
+      message = "#{@list.name} is no longer your favourite channel"
+    else
+      current_user.favorite!(@list)
+      message = "#{@list.name} is now your favourite channel"
+    end
+
+    redirect_to edit_list_path(@list), notice: message
   end
 
   def move_to_list
