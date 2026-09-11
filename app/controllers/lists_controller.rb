@@ -28,8 +28,8 @@ class ListsController < ApplicationController
     # subscribe to -- so a signed-out visitor gets the browsing view instead of an empty
     # one built for somebody who is not there.
     if @is_mobile && current_user
-      # For mobile, find the user's favorites list (mobile: true)
-      @favorites_list = current_user.lists.find_by(mobile: true)
+      # The channel the member has favourited -- the auto-created one until they move it.
+      @favorites_list = current_user.favorite_list
       # Get all subscribed lists with entry counts
       @subscribed_lists = current_user.subscribed_lists
                                     .left_joins(:entries)
@@ -545,7 +545,7 @@ class ListsController < ApplicationController
   end
 
   def add_to_favorites
-    favorites_list = current_user.lists.find_by(mobile: true)
+    favorites_list = current_user.favorite_list
     return render json: { error: 'Favorites channel not found' }, status: :not_found unless favorites_list
 
     render_import(ImdbEntryImporter.new(list: favorites_list, imdb_id: params[:imdb], tmdb_id: params[:tmdb]).call)
