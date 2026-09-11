@@ -18,9 +18,11 @@ import { Controller } from "@hotwired/stimulus"
 // of it off the render.
 const STALE_AFTER = 5 * 60 * 1000
 
-// How often the clock is consulted. A cell boundary is a whole minute wide at any sane
-// zoom, so this is about the line moving smoothly rather than about catching the change.
-const TICK = 5000
+// How often the clock is consulted. A second, because one of the things it drives is a
+// clock and a clock that moves in fives is a clock somebody notices. Everything else on
+// this schedule is cheap enough not to mind: a CSS variable, a class swapped on one cell,
+// and a handful of text nodes.
+const TICK = 1000
 
 // The panel follows the pointer, and goes back to what is actually playing when the
 // pointer stops. Long enough to read a synopsis without it snatching the text away.
