@@ -15,7 +15,10 @@ class ListSearchController extends Controller {
     apiKey: String,
     // The channel being viewed, when the search happens on one. Blank everywhere else,
     // which reads as 0.
-    currentListId: Number
+    currentListId: Number,
+    // The member's own favourites channel. Blank for a guest and for anybody who has not
+    // picked one -- which reads as 0 and switches the heart off entirely.
+    favoriteListId: Number
   };
 
   connect() {
@@ -226,6 +229,74 @@ class ListSearchController extends Controller {
     button.disabled = false;
 
     setTimeout(() => { button.innerHTML = original; }, 3000);
+  }
+
+  // The heart on a result: puts the film in the member's own favourites channel, or takes
+  // it out again. The same switch the cable guide's panel offers, on the same two
+  // endpoints -- adding goes through the favourites importer, since a search result is an
+  // OMDB record rather than an entry that exists yet, and removing goes through the copy
+  // it created, which does exist and is the row that has to go.
+  favorite(event) {
+    event.preventDefault();
+    const button = event.currentTarget;
+    if (button.disabled) return;
+
+    const id = button.dataset.favoriteEntryId;
+    button.disabled = true;
+
+    const request = id
+      ? fetch(`/entries/${id}/favorite`, { method: 'DELETE', headers: this.jsonHeaders() })
+      : fetch('/lists/add_to_favorites', {
+          method: 'POST',
+          headers: { ...this.jsonHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imdb: button.dataset.imdbId, tmdb: button.dataset.tmdbId })
+        });
+
+    request
+      .then(response => {
+        if (!response.ok) throw new Error('Favourite failed');
+
+        return response.json();
+      })
+      .then(body => {
+        // What is in the favourites channel has changed, so the index this overlay marked
+        // its results from is out of date.
+        this.favorites = null;
+        this.showFavorite(button, id ? null : body.entry_id);
+      })
+      .catch(error => {
+        console.error('Error changing favourites:', error);
+        this.refuseFavorite(button);
+      })
+      .finally(() => { button.disabled = false; });
+  }
+
+  // Hollow for out, solid for in, and the id it would remove kept on the button so the
+  // next press knows which way it is going.
+  showFavorite(button, entryId) {
+    const icon = button.querySelector('i');
+
+    if (entryId) {
+      button.dataset.favoriteEntryId = entryId;
+    } else {
+      delete button.dataset.favoriteEntryId;
+    }
+
+    icon.classList.toggle('fa-solid', Boolean(entryId));
+    icon.classList.toggle('fa-regular', !entryId);
+    button.title = entryId ? 'In your favourites' : 'Add to my favourites';
+  }
+
+  refuseFavorite(button) {
+    button.classList.add('search-favorite--refused');
+    setTimeout(() => button.classList.remove('search-favorite--refused'), 1200);
+  }
+
+  jsonHeaders() {
+    return {
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+      'Accept': 'application/json'
+    };
   }
 
   // The other face of the + button: a result the channel already holds offers to take it
@@ -490,11 +561,47 @@ class ListSearchController extends Controller {
   // Stamps each result with the id of the entry it already is on this channel, if any --
   // which is what turns its + button into a remove button.
   marked(results) {
-    return this.entryIndex().then(entries => results.map(result => {
-      const held = entries.find(entry => this.sameEntry(entry, result));
+    return Promise.all([this.entryIndex(), this.favoriteIndex()]).then(([entries, favorites]) => {
+      return results.map(result => {
+        const held = entries.find(entry => this.sameEntry(entry, result));
+        const kept = favorites.find(entry => this.sameEntry(entry, result));
 
-      return { ...result, entryId: held?.id };
-    }));
+        // Worked out here rather than in the template. Mustache cannot ask whether a
+        // number is greater than zero, and a section tag cannot stand where an attribute
+        // name goes -- the browser parses the template as HTML first and would read it as
+        // part of an attribute. So the heart arrives as plain values.
+        return {
+          ...result,
+          entryId: held?.id,
+          favoriteEntryId: kept?.id || '',
+          favoritable: this.favoritesId > 0,
+          favoriteIcon: kept ? 'fa-solid' : 'fa-regular',
+          favoriteTitle: kept ? 'In your favourites' : 'Add to my favourites'
+        };
+      });
+    });
+  }
+
+  get favoritesId() {
+    return this.favoriteListIdValue;
+  }
+
+  // What is already in the favourites channel, fetched the same way and on the same terms
+  // as what is already on the channel being viewed: once per page, and thrown away
+  // whenever this overlay changes what is in there.
+  favoriteIndex() {
+    if (!(this.favoritesId > 0)) return Promise.resolve([]);
+
+    this.favorites ||= fetch(`/lists/${this.favoritesId}/entry_index`, {
+      headers: { 'Accept': 'application/json' }
+    })
+      .then(response => (response.ok ? response.json() : []))
+      .catch(error => {
+        console.error('Error loading favourites:', error);
+        return [];
+      });
+
+    return this.favorites;
   }
 
   // A movie or a series is its imdb id and nothing else; an episode is its series' id plus

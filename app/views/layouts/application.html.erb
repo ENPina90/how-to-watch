@@ -70,6 +70,28 @@
                   <i class="fas fa-plus me-1"></i>{{addLabel}}
                 </button>
                 {{/entryId}}
+                {{#favoritable}}
+                <%# The member's own favourites channel, on the same switch the cable
+                    guide's panel uses: hollow for out, solid for in. Absent for anybody
+                    who has not picked a favourites channel -- a heart with nowhere to file
+                    anything is a button that can only fail. %>
+                <%# Every Mustache tag here sits in an attribute *value* or between
+                    elements, never where an attribute name goes. The browser parses this
+                    template as HTML before Mustache is handed it, and a `{{#tag}}` in
+                    attribute-name position is read as the start of an attribute called
+                    `{{#tag}}data-...` -- lowercased, re-quoted, and no longer a Mustache
+                    tag by the time the innerHTML comes back out. Which is why the state is
+                    worked out in the controller and arrives here as plain values. %>
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm search-favorite"
+                        data-action="click->list-search#favorite"
+                        data-imdb-id="{{imdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-favorite-entry-id="{{favoriteEntryId}}"
+                        title="{{favoriteTitle}}">
+                  <i class="{{favoriteIcon}} fa-heart"></i>
+                </button>
+                {{/favoritable}}
                 <% end %>
               </div>
             </div>
@@ -122,6 +144,28 @@
                   <i class="fas fa-plus me-1"></i>{{addLabel}}
                 </button>
                 {{/entryId}}
+                {{#favoritable}}
+                <%# The member's own favourites channel, on the same switch the cable
+                    guide's panel uses: hollow for out, solid for in. Absent for anybody
+                    who has not picked a favourites channel -- a heart with nowhere to file
+                    anything is a button that can only fail. %>
+                <%# Every Mustache tag here sits in an attribute *value* or between
+                    elements, never where an attribute name goes. The browser parses this
+                    template as HTML before Mustache is handed it, and a `{{#tag}}` in
+                    attribute-name position is read as the start of an attribute called
+                    `{{#tag}}data-...` -- lowercased, re-quoted, and no longer a Mustache
+                    tag by the time the innerHTML comes back out. Which is why the state is
+                    worked out in the controller and arrives here as plain values. %>
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm search-favorite"
+                        data-action="click->list-search#favorite"
+                        data-imdb-id="{{imdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-favorite-entry-id="{{favoriteEntryId}}"
+                        title="{{favoriteTitle}}">
+                  <i class="{{favoriteIcon}} fa-heart"></i>
+                </button>
+                {{/favoritable}}
                 <% end %>
                 <button type="button"
                         class="btn btn-outline-primary btn-sm"

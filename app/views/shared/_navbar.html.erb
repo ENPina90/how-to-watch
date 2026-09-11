@@ -13,6 +13,11 @@
            <%# The channel being viewed, so a + button can add to it outright. Blank
                anywhere else, which the controller reads as no channel. %>
            data-list-search-current-list-id-value="<%= @list.id if controller_name == 'lists' && action_name == 'show' %>"
+           <%# The member's own favourites channel, so a result can say whether it is
+               already in there and the heart on it can put it in or take it out. Blank for
+               a guest and for anybody who has not picked one, which is what switches the
+               heart off entirely. %>
+           data-list-search-favorite-list-id-value="<%= current_user&.favorite_list_id %>"
            data-list-search-user-lists-value="<%= user_signed_in? && current_user.lists.any? ? current_user.lists.left_joins(:entries).group('lists.id').select('lists.id, lists.name, COUNT(entries.id) as entries_count').map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>">
 
         <div class="search-container">
