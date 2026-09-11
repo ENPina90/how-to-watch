@@ -272,7 +272,21 @@ module CableSchedule
       records: entries, associations: [:provider, :subentries, { list: :provider }]
     ).call
 
-    entries.reject { |entry| entry.imdb.blank? && entry.source_key.blank? }
+    entries.reject { |entry| unschedulable?(entry) }
+  end
+
+  # An entry with nothing to put in a template cannot be played, and one already known to be
+  # broken should not be put on air to find out again -- a channel is watched rather than
+  # worked through, so a dead programme is four minutes of black frame before the clock
+  # moves the channel on by itself.
+  #
+  # `stream` is three-valued and only `false` means broken: it is nil for an entry nothing
+  # has ever checked, and dropping those would take most of a young channel off the air on
+  # no evidence. The same reading EmbedAvailabilityScanJob takes of the column.
+  def unschedulable?(entry)
+    return true if entry.imdb.blank? && entry.source_key.blank?
+
+    entry.stream == false
   end
 
   # A fresh shuffle, arranged so the seam between two bags does not play the same thing

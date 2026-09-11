@@ -103,6 +103,30 @@ RSpec.describe CableSchedule do
       expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Playable'])
     end
 
+    # A channel is watched rather than worked through: a programme that cannot play is four
+    # minutes of black frame before the clock moves the channel on by itself, and nobody
+    # watching gets to skip it. So a link already reported broken stays off the air.
+    it 'skips an entry whose stream is reported broken' do
+      film('Working', 90, 1)
+      create(:entry, list: channel, name: 'Broken', media: 'movie', length: 90,
+                     position: 2, imdb: 'tt9999999', stream: false)
+
+      described_class.build_day!(channel, date)
+
+      expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Working'])
+    end
+
+    # Three-valued, and only false means broken. An entry nothing has ever checked is not
+    # evidence of anything, and dropping those would take most of a young channel off air.
+    it 'still schedules an entry nothing has checked yet' do
+      create(:entry, list: channel, name: 'Unchecked', media: 'movie', length: 90,
+                     position: 1, imdb: 'tt8888888', stream: nil)
+
+      described_class.build_day!(channel, date)
+
+      expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Unchecked'])
+    end
+
     it 'gives a programme with no runtime a default rather than dropping it' do
       create(:entry, list: channel, name: 'Unknown length', media: 'movie', length: nil,
                      position: 1, imdb: 'tt1111111')
