@@ -31,11 +31,11 @@ embed_availability_scan:
   queue: default
   description: "Ask VidSrc which entries it actually holds a file for, and tell admins about the ones it does not."
 
-# 12:00 America/Toronto. Fixed in UTC, so through the winter it fires at 11:00 local
-# instead -- an hour either side of noon makes no difference to a job that lays out a day
-# that has not started yet.
+# 07:00 America/Toronto. Fixed in UTC, so through the winter it fires at 06:00 local
+# instead -- an hour either side makes no difference to a job that lays out a day that has
+# not started yet.
 cable_schedule:
-  cron: "0 16 * * *"   # daily at 16:00 UTC
+  cron: "0 11 * * *"   # daily at 11:00 UTC
   class: "CableScheduleJob"
   queue: default
   description: "Lay out tomorrow's programme for every cable channel, and fill today's if it is empty."
