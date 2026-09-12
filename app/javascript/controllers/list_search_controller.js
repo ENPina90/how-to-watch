@@ -30,6 +30,9 @@ class ListSearchController extends Controller {
     this.listTemplate = document.querySelector("#listSearchListTemplate");
     this.episodeTemplate = document.querySelector("#listSearchEpisodeTemplate");
     this.selectedMovie = null;
+    // Whether the channel picker, if it opens, is choosing where to put an entry or which
+    // channel's custom-entry form to open.
+    this.pendingDetails = false;
     this.currentSearchType = 'movie'; // Default to movie search
 
     // Listen for global modal open events
@@ -172,12 +175,46 @@ class ListSearchController extends Controller {
     event.preventDefault();
     const button = event.currentTarget;
     this.selectedMovie = this.itemFrom(button);
+    // A picker dismissed without a choice leaves the flag behind it, and the next picker is
+    // this one -- which would send an add off to the form instead of adding it.
+    this.pendingDetails = false;
 
     if (this.currentListIdValue > 0) {
       this.addToCurrentList(button);
     } else {
       this.openPicker();
     }
+  }
+
+  // "+ Details" on a result: the same lookup the + button would have posted, taken to the
+  // custom-entry form instead of to the database. Nothing exists until Create Entry is
+  // pressed there, which is the point -- a fanedit, a personal cut or a rip with its own
+  // runtime can be corrected while it is still a form.
+  details(event) {
+    event.preventDefault();
+    this.selectedMovie = this.itemFrom(event.currentTarget);
+
+    if (this.currentListIdValue > 0) return this.openDetails(this.currentListIdValue);
+
+    // Nowhere to put it yet: the form lives under a channel, so the picker has to name one
+    // first. addToList reads this flag and comes back here instead of adding.
+    this.pendingDetails = true;
+    this.openPicker();
+  }
+
+  openDetails(listId) {
+    const item = this.selectedMovie;
+    const params = new URLSearchParams();
+
+    // An episode is filed under its series' imdb id, and the form is told the season and
+    // episode so it can ask TMDB about the episode rather than about the show.
+    params.set('imdb', item.seriesImdbID || item.imdbID || '');
+    if (item.tmdbID) params.set('tmdb', item.tmdbID);
+    if (item.season) params.set('season', item.season);
+    if (item.episode) params.set('episode', item.episode);
+    if (item.type) params.set('type', item.type);
+
+    window.location.href = `/lists/${listId}/entries/new?${params}`;
   }
 
   itemFrom(button) {
@@ -357,7 +394,9 @@ class ListSearchController extends Controller {
     const modalPoster = document.querySelector('#modalMoviePoster');
     const listContainer = document.querySelector('#listSelectionContainer');
 
-    modalTitle.textContent = `Add "${this.selectedMovie.title}" to a channel`;
+    modalTitle.textContent = this.pendingDetails
+      ? `Make an entry from "${this.selectedMovie.title}" in which channel?`
+      : `Add "${this.selectedMovie.title}" to a channel`;
     modalPoster.src = this.selectedMovie.poster;
     modalPoster.alt = this.selectedMovie.title;
 
@@ -377,7 +416,6 @@ class ListSearchController extends Controller {
       <div class="list-option mb-2">
         <button type="button"
                 class="btn btn-outline-primary w-100 d-flex justify-content-between align-items-center"
-                data-action="click->list-search#addToList"
                 data-list-id="${list.id}"
                 data-list-name="${list.name}">
           <span>${list.name}</span>
@@ -387,6 +425,15 @@ class ListSearchController extends Controller {
     `).join('');
 
     listContainer.innerHTML = listsHtml;
+
+    // Wired by hand rather than with a data-action, because this modal is not inside the
+    // element this controller is mounted on -- it sits at the end of the layout, next to
+    // the other page-level modals, while the controller is the search box in the navbar.
+    // Stimulus only binds actions on its own subtree, so every channel button in here was
+    // inert: outside a channel page the + buttons opened this and then nothing happened.
+    listContainer.querySelectorAll('button[data-list-id]').forEach((button) => {
+      button.addEventListener('click', (event) => this.addToList(event));
+    });
   }
 
   addToList(event) {
@@ -401,6 +448,13 @@ class ListSearchController extends Controller {
     const button = event.currentTarget;
     const listId = button.dataset.listId;
     const listName = button.dataset.listName;
+
+    // The picker was opened by "+ Details", so naming a channel means going to its form
+    // rather than writing anything into it.
+    if (this.pendingDetails) {
+      this.pendingDetails = false;
+      return this.openDetails(listId);
+    }
 
     console.log('Adding to list:', listId, listName);
 
