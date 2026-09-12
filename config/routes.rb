@@ -39,6 +39,21 @@ Rails.application.routes.draw do
         patch :fetch_duration
       end
     end
+
+    # The dial itself: which channels /cable offers, in what order, and the buttons that
+    # rewrite what they are playing. The guide links here in place of the rebuild button it
+    # used to carry -- one button on a page over the picture could only ever be the one
+    # thing, and the dial needs more than that.
+    get 'cable', to: 'cable#show', as: :cable
+
+    # A channel on the dial. `create` marks a channel default and `destroy` unmarks it, so
+    # neither touches the channel itself -- nothing here can delete somebody's list.
+    # Nested under cable/ in the path because that is the only thing the flag means.
+    resources :cable_channels, only: %i[create destroy], path: 'cable/channels' do
+      # The order they were dragged into. PATCH, and the whole order at once -- see
+      # CableSchedule.reorder_dial!, which is the same bargain /sources makes.
+      collection { patch :reorder }
+    end
   end
 
   # Does this Letterboxd handle have a readable diary? Reachable signed out: the sign-up
@@ -81,7 +96,9 @@ Rails.application.routes.draw do
   # player to hang the grid over. Before the :id route for the same reason as `guide`.
   get 'cable/listings', to: 'cable#listings', as: :cable_listings
   # The one thing under /cable that writes anything, which is why it is the one POST.
-  # Admin only, and it rewrites today for every channel at once.
+  # Admin only, and it rewrites today and tomorrow for every channel at once. Kept here
+  # rather than under /admin because it is cable's own action -- the button that presses it
+  # is what lives on /admin/cable, along with the rest of the dial's settings.
   post 'cable/regenerate', to: 'cable#regenerate', as: :cable_regenerate
   get 'cable/:id', to: 'cable#show', as: :cable_channel
 
