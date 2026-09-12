@@ -635,6 +635,60 @@ RSpec.describe CableSchedule do
     end
   end
 
+  # What the sidebar's Now Playing card reads: the whole dial at once rather than one
+  # channel, because it is drawn on every page of the site that has a sidebar.
+  describe 'the whole dial as it stands' do
+    let(:second_channel) { create(:list, user: user, provider: provider, default: true) }
+
+    before do
+      film('Loop', 60, 1)
+      create(:entry, list: second_channel, name: 'Other', media: 'movie', length: 60,
+                     position: 1, imdb: 'tt9000001')
+      described_class.build_day!(channel, date)
+      described_class.build_day!(second_channel, date)
+    end
+
+    it 'pairs every channel with what it is showing, in dial order' do
+      dial = described_class.on_air_now(at: midnight + 6.hours)
+
+      expect(dial.map { |row| row[:channel] }).to eq([channel, second_channel])
+      expect(dial.map { |row| row[:number] }).to eq([1, 2])
+      expect(dial.map { |row| row[:slot] }).to eq(
+        [described_class.on_air(channel, at: midnight + 6.hours),
+         described_class.on_air(second_channel, at: midnight + 6.hours)]
+      )
+    end
+
+    # There is nothing to say about a dark channel, so it is simply absent -- and the
+    # numbering is the dial's, so the channel that is left keeps the number it had.
+    it 'leaves out a channel that is off air' do
+      CableSlot.where(list: channel).delete_all
+
+      dial = described_class.on_air_now(at: midnight + 6.hours)
+
+      expect(dial.map { |row| row[:channel] }).to eq([second_channel])
+      expect(dial.first[:number]).to eq(2)
+    end
+
+    it 'is empty when the whole dial is dark' do
+      CableSlot.delete_all
+
+      expect(described_class.on_air_now(at: midnight + 6.hours)).to be_empty
+    end
+
+    it 'is empty when there is no dial at all' do
+      List.update_all(default: false)
+
+      expect(described_class.on_air_now(at: midnight + 6.hours)).to be_empty
+    end
+
+    # A read, like everything else under /cable.
+    it 'records nothing about anybody' do
+      expect { described_class.on_air_now(at: midnight + 6.hours) }
+        .not_to change { [UserEntry.count, UserListPosition.count, UserEntryPosition.count] }
+    end
+  end
+
   describe 'pruning' do
     before do
       film('First', 60, 1)

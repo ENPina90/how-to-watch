@@ -40,7 +40,7 @@ a plain `rails server` serves stale stylesheets. `bin/dev` uses foreman if prese
 falls back to backgrounding the watcher itself.
 
 ```sh
-bundle exec rspec                                   # the whole suite (~1,360 examples, under a minute)
+bundle exec rspec                                   # the whole suite (~1,370 examples, under a minute)
 bundle exec rspec spec/models/source_spec.rb        # one file
 bundle exec rspec spec/models/source_spec.rb:42     # one example by line
 bundle exec rspec spec/requests                     # one directory

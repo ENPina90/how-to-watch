@@ -17,7 +17,7 @@ import { Controller } from "@hotwired/stimulus"
 const REVERT_AFTER = 6000
 
 export default class extends Controller {
-  static targets = ["title", "context", "when", "label", "schedule"]
+  static targets = ["title", "context", "when", "label", "schedule", "start"]
   static classes = ["showing"]
 
   connect() {
@@ -71,6 +71,11 @@ export default class extends Controller {
 
     this.titleTarget.textContent = slot.slotTitle ? `“${slot.slotTitle}”` : ""
     this.titleTarget.href = slot.slotUrl ?? "#"
+    // The same address, said as a button. It follows the arrows rather than staying on
+    // what is playing: the banner describes one programme at a time, and this offers to
+    // start whichever one that is.
+    this.startTarget.href = slot.slotUrl ?? "#"
+    this.startTarget.hidden = !slot.slotUrl
     this.contextTarget.textContent = slot.slotContext ?? ""
     this.whenTarget.textContent = this.span(slot)
     // Says which way you are looking, so a time on its own is never mistaken for now.

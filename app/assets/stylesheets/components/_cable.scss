@@ -265,6 +265,40 @@ body.cable__mode .cinema__screen {
   color: rgba(255, 255, 255, 0.55);
 }
 
+/* Start from the beginning: the panel's one plain button, and the only thing in it that
+   leaves cable on purpose. Drawn as a button rather than as another link because the two
+   links above it are a channel name and a heading -- neither of them looks like something
+   you press, and this is most of what anybody opens the guide to do. */
+.tvguide__detail-actions {
+  margin: 0 0 12px;
+}
+
+.tvguide__start,
+.tvguide__start:hover,
+.tvguide__start:focus-visible {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  background: rgba(255, 212, 42, 0.14);
+  border: 1px solid rgba(255, 212, 42, 0.5);
+  color: #ffd42a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tvguide__start:hover,
+.tvguide__start:focus-visible {
+  background: #ffd42a;
+  color: #17306b;
+  outline: none;
+}
+
 .tvguide__detail-plot {
   margin: 0;
   font-size: 0.92rem;
@@ -1141,6 +1175,40 @@ body.cable__mode .cinema__screen--guide {
 
 .cable-hud--peeking .cable-hud__title {
   color: #fff;
+}
+
+/* The same address as the title, said as a button. Quiet enough that the banner is still a
+   caption rather than a toolbar -- it is one step from the picture, not a control the eye
+   has to get past to read what is on. */
+.cable-hud__start,
+.cable-hud__start:hover,
+.cable-hud__start:focus-visible {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+  padding: 4px 11px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-shadow: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.cable-hud__start:hover,
+.cable-hud__start:focus-visible {
+  background: #ffd42a;
+  border-color: #ffd42a;
+  color: #17306b;
+  outline: none;
 }
 
 /* The pad. Up and down tune, left and right only look -- the same shape for both, because

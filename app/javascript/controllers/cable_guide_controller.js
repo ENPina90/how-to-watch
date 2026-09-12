@@ -52,7 +52,7 @@ const CLAIMED_KEYS = ["ArrowLeft", "ArrowRight", "Escape", "Enter"]
 export default class extends Controller {
   static targets = [
     "panel", "body", "grid", "clock", "nowLine",
-    "detailChannel", "detailTitle", "detailEpisode", "detailGenre", "detailPlot",
+    "detailChannel", "detailTitle", "detailEpisode", "detailGenre", "detailPlot", "detailStart",
     "detailWhen", "detailRuntime", "detailYear",
     "detailImdb", "detailImdbScore", "detailLetterboxd", "detailLetterboxdScore",
     "watched", "watchedIcon", "favorite", "favoriteIcon"
@@ -260,6 +260,10 @@ export default class extends Controller {
     // The show, which is also all the cell in the grid says.
     this.detailTitleTarget.textContent = data.guideTitle ?? ""
     this.detailTitleTarget.href = data.guideWatchUrl ?? "#"
+    // The same address again, as a button. It describes whatever is being pointed at, not
+    // whatever is playing -- the panel's whole job -- so it offers to start that.
+    this.detailStartTarget.href = data.guideWatchUrl ?? "#"
+    this.detailStartTarget.hidden = !data.guideWatchUrl
 
     // And which episode of it, which the grid deliberately leaves out -- an afternoon of
     // one series is a column of identical cells if every one of them carries its number.

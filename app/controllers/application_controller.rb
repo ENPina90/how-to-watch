@@ -15,6 +15,10 @@ class ApplicationController < ActionController::Base
 
   # Views ask this to decide what to draw and where to point their links.
   helper_method :mobile_request?
+  # What the sidebar's Now Playing card shows away from the player. Here rather than in a
+  # helper because it keeps its place on the dial in the session, and the session is the
+  # controller's to write.
+  helper_method :cable_now_playing
 
   # Health check endpoint for Railway
   def health
@@ -32,6 +36,27 @@ class ApplicationController < ActionController::Base
     session[:view_mode] = VIEW_MODES.include?(mode) ? mode : nil
 
     redirect_back(fallback_location: root_path)
+  end
+
+  # What is on the dial this second, for the sidebar's Now Playing card: one row of
+  # CableSchedule.on_air_now, or nil when every channel is off air.
+  #
+  # A rotation rather than a fixed channel. The card is the only window onto cable from
+  # outside /cable, and pinning it to channel one would mean the rest of the dial was never
+  # seen from anywhere else on the site. The place in the rotation lives in the session, so
+  # it advances as the member moves around rather than jumping about within one page --
+  # a random pick per render would re-draw a different channel on every turbo visit and
+  # show the same one twice as often as not.
+  #
+  # Deliberately not cached across the request: the sidebar draws it once.
+  def cable_now_playing
+    dial = CableSchedule.on_air_now
+    return nil if dial.empty?
+
+    # Modulo the size we actually got, so a channel going off air -- or a new one being
+    # marked default -- cannot leave the stored position pointing past the end.
+    session[:cable_dial] = (session[:cable_dial].to_i + 1) % dial.size
+    dial[session[:cable_dial]]
   end
 
   private
