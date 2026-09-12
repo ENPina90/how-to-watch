@@ -141,15 +141,16 @@ export default class extends Controller {
     const crossedUpNext = finished || (nearlyOver && !this.nearlyOver && played);
     this.nearlyOver = nearlyOver;
 
-    // In fullscreen, the exit is what raises the up-next card: it fires fullscreenchange
-    // like any other, so one path covers the exit below, the player's own control and a
-    // viewer pressing escape through the credits. Windowed there is no exit to wait for,
-    // and the card is raised here instead -- otherwise somebody who watches in a window
-    // never gets offered the next entry at all.
-    if (crossedUpNext) {
-      if (this.fullscreen) this.leaveFullscreen();
-      else this.upNext();
-    }
+    // The card goes up over the film, in fullscreen and windowed alike. It lives inside
+    // the element that goes fullscreen precisely so it can, and taking the screen back to
+    // show it threw the viewer out of fullscreen for the last fifteen seconds of every
+    // film -- which is the one stretch where being thrown out is most annoying, and where
+    // a stinger is most likely to be playing.
+    //
+    // The screen is still handed back when nothing takes the card: auto-next off for this
+    // channel, or a viewer who already pressed Stop. Then the film really is just ending,
+    // and the ring of controls behind the player is the only thing to hand them.
+    if (crossedUpNext && !this.upNext() && this.fullscreen) this.leaveFullscreen();
 
     if (crossedWatched) return this.save({ finished: finished, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
@@ -230,13 +231,17 @@ export default class extends Controller {
   // On the document because the card lives outside the cinema frame, in another corner of
   // the page. Raising it twice is harmless -- it ignores a second call while it is already
   // counting down, or once the viewer has stopped it -- but it is raised once.
+  //
+  // Answers whether anything took it. The card cancels the event when it is showing or
+  // already counting, which is how this knows whether there is something on screen to
+  // offer the viewer -- and so whether the screen needs handing back instead.
   upNext() {
-    this.dispatch("up-next", { target: document });
+    return this.dispatch("up-next", { target: document, cancelable: true }).defaultPrevented;
   }
 
-  // Hand the page back once the credits are rolling, so the ring of controls -- next
-  // entry, shuffle, home -- is there to use rather than behind a full-screen player the
-  // viewer has to dismiss first.
+  // Hand the page back when the film has ended with nothing to offer in its place, so the
+  // ring of controls -- next entry, shuffle, home -- is there to use rather than behind a
+  // full-screen player the viewer has to dismiss first.
   //
   // Leaving fullscreen needs no user gesture; only entering does. And the request belongs
   // to the top-level document even when the player inside the frame made it, which is what

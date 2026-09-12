@@ -5,7 +5,9 @@
 
     No backdrop, and it sits low on the screen rather than over the middle of it: the film
     is still running when this appears, and somebody watching the last of it should not
-    have to move a panel off the picture to see it. %>
+    have to move a panel off the picture to see it. Fullscreen is not interrupted to show
+    it either -- this markup is inside the element that goes fullscreen so that it does not
+    have to be. %>
 <div class="modal fade up-next" id="autoAdvanceModal" tabindex="-1" aria-labelledby="autoAdvanceModalLabel" aria-hidden="true"
      data-controller="auto-advance"
      data-action="player-progress:up-next@document->auto-advance#start"
