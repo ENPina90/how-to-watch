@@ -401,13 +401,18 @@ class ListsController < ApplicationController
   # The star beside the channel's name. Making a channel default subscribes everyone to it
   # (List#handle_default_subscription_changes), which is why only an admin may touch it --
   # the same rule `default` has always been permitted under in list_params.
+  #
+  # Through CableSchedule rather than writing the flag here, because `default` is what puts
+  # a channel on the cable dial and the dial has a second column now -- where the channel
+  # sits on it. Two paths setting the same flag and only one of them giving the channel a
+  # place is how the star and /admin/cable would come to disagree.
   def toggle_default
     unless current_user&.can_set_default?
       return redirect_back(fallback_location: list_path(@list),
                            alert: 'Only an admin can set the default channel.')
     end
 
-    @list.update(default: !@list.default?)
+    @list.default? ? CableSchedule.remove_channel!(@list) : CableSchedule.add_channel!(@list)
 
     respond_to do |format|
       format.turbo_stream do

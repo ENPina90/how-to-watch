@@ -53,9 +53,75 @@ module CableSchedule
   # The line-up: the channels /cable offers, in a fixed order so that "the channel below"
   # means the same thing to everybody and stays the same between page loads.
   #
-  # Ordered by id rather than by name so that renaming a channel does not silently move it
-  # in the dial, the way renaming a TV channel does not.
-  def channels = List.where(default: true).order(:id)
+  # The order is `cable_position`, which an admin drags into place on /admin/cable. Not by
+  # name -- renaming a channel must not silently move it in the dial, the way renaming a
+  # television channel does not move it. Id order, which this used to be, had that property
+  # too, but it is the order the rows happened to be created in and there was no way to
+  # change it short of recreating a channel.
+  #
+  # `id` breaks the tie, which is also what carries a channel with no position at all:
+  # null sorts last under a plain ASC in Postgres, so a channel marked default by some path
+  # that does not set one lands at the end of the dial rather than the front of it.
+  def channels = List.where(default: true).order(:cable_position, :id)
+
+  # Put the dial in this order, given the channel ids from top to bottom.
+  #
+  # The whole order arrives at once rather than "this one moved to index N" -- the same
+  # bargain Source.reorder! makes and for the same reason: there are a handful of channels,
+  # so the saving is not worth having, and renumbering 1..N repairs any collision or gap
+  # left by an earlier write as a side effect of the next drag.
+  #
+  # Ids that are not on the dial are ignored rather than rejected. A channel taken off in
+  # another tab should not make the drag that is already on screen fail.
+  def reorder_dial!(ids)
+    ordered = ids.map(&:to_i).uniq
+    on_dial = channels.pluck(:id).to_set
+
+    List.transaction do
+      ordered.select { |id| on_dial.include?(id) }.each_with_index do |id, index|
+        List.where(id: id).update_all(cable_position: index + 1, updated_at: Time.current)
+      end
+    end
+  end
+
+  # Put a channel on the dial, at the end of it.
+  #
+  # `default` is the flag that decides what /cable offers, and setting it has a consequence
+  # beyond cable: List#handle_default_subscription_changes subscribes every account to a
+  # channel that becomes default, so this also puts the channel in everybody's sidebar.
+  # That is existing behaviour and deliberate -- a channel on the dial is a channel the site
+  # is offering everyone -- but it is worth knowing that the button does it.
+  #
+  # Today is laid out here rather than left to the next page load. Every page that reads
+  # the schedule fills a day it finds empty, so the channel would not stay off air either
+  # way; doing it now means the dial answers immediately instead of reading as off air
+  # until somebody opens it. Tomorrow is left to the job, which deals it each morning --
+  # it is not a day anybody can be looking at yet.
+  def add_channel!(list)
+    last = channels.maximum(:cable_position).to_i
+    list.update!(default: true, cable_position: last + 1)
+
+    ensure_day!(list, today)
+
+    list
+  end
+
+  # Take a channel off the dial.
+  #
+  # Its slots are left where they are. They are unreachable -- every page under /cable reads
+  # `channels` -- and prune! sweeps them within a couple of days, so deleting them here
+  # would buy nothing except the case it would break: a channel put back on the dial the
+  # same day keeps the day it was already playing rather than being dealt a new one on top
+  # of viewers who were watching it.
+  #
+  # Subscriptions are left alone too, which is the same decision List makes when the flag
+  # is cleared by any other path: being unsubscribed from a channel is something a member
+  # does, not something that happens to them because an admin rearranged the dial.
+  def remove_channel!(list)
+    list.update!(default: false, cable_position: nil)
+
+    list
+  end
 
   # The number this channel answers to, counting from one. The guide's rows and the HUD's
   # badge both show it, so it is worked out in one place rather than by whoever is counting.
