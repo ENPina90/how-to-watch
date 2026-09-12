@@ -323,17 +323,11 @@ body.cable__mode .cinema__screen {
   display: flex;
 }
 
-/* button_to wraps its button in a form, which would otherwise be a block in the middle of
-   the row and put Home on a line of its own. */
-.tvguide__rebuild-form {
-  display: contents;
-}
-
 /* Bevelled like everything else raised on the grid -- lit on the top and left, black on the
    bottom and right -- because that is what a button looked like drawn by a character
    generator, and it is the same two colours the channel gutter and the cells are drawn in. */
 .tvguide__home,
-.tvguide__rebuild {
+.tvguide__settings {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -351,9 +345,9 @@ body.cable__mode .cinema__screen {
   cursor: pointer;
 }
 
-/* Duller than Home until it is pointed at. It rewrites the whole dial and is pressed once
-   in a blue moon; it should not sit in the corner competing with the way out. */
-.tvguide__rebuild {
+/* Duller than Home until it is pointed at. It leaves the channel for an admin page and is
+   pressed once in a blue moon; it should not sit in the corner competing with the way out. */
+.tvguide__settings {
   background: #14144e;
   color: #9aa2e8;
 }
@@ -362,12 +356,38 @@ body.cable__mode .cinema__screen {
    a thing is selected. */
 .tvguide__home:hover,
 .tvguide__home:focus-visible,
-.tvguide__rebuild:hover,
-.tvguide__rebuild:focus-visible {
+.tvguide__settings:hover,
+.tvguide__settings:focus-visible {
   background: #ffd42a;
   color: #05052e;
   text-shadow: none;
   outline: none;
+}
+
+/* Both of these are links, and a link inside .page-container is painted white -- black in
+   light mode -- by a rule carrying !important. An !important of our own is not enough to
+   answer that: ties between important declarations are broken on specificity, and
+   `body.light-mode .page-container a` is two classes and two elements. Hence the length of
+   this selector rather than a repeat of the colours above: three classes beats it in both
+   themes, and the guide is drawn the same way whichever theme the rest of the site is in --
+   a television guide is not a page with a light mode.
+
+   The buttons were declared as colours above and rendering white all along. It only became
+   worth fixing when the second one stopped being a <button>, which that rule never touched,
+   and became a link, which it does -- taking the legible dark-on-yellow hover with it. */
+.page-container .tvguide a.tvguide__home {
+  color: #ffd42a !important;
+}
+
+.page-container .tvguide a.tvguide__settings {
+  color: #9aa2e8 !important;
+}
+
+.page-container .tvguide a.tvguide__home:hover,
+.page-container .tvguide a.tvguide__home:focus-visible,
+.page-container .tvguide a.tvguide__settings:hover,
+.page-container .tvguide a.tvguide__settings:focus-visible {
+  color: #05052e !important;
 }
 
 /* The bar between the picture and the grid, which is where these always put it. */
