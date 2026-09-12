@@ -1,476 +1,131 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>How To Watch - Mobile</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>How To Watch</title>
+    <%# `viewport-fit=cover` so the bar can reach the top edge on a notched phone; the
+        safe-area padding on .m-bar is what keeps its contents out from under the notch. %>
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <meta name="tmdb-key" content="<%= ENV["TMDB_API_KEY"] %>">
 
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
-
-    <!-- Font Awesome -->
-
-    <!-- Bootstrap -->
   </head>
 
-  <body>
-    <!-- Mobile Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-      <div class="container-fluid">
-        <a class="navbar-brand" href="/">
-          <i class="fa-solid fa-tv me-2"></i>How To Watch
-        </a>
+  <body class="m-body">
+    <%# One bar on every page: the way home, the field, and the menu. What the field does
+        depends on the page -- on the home page it filters the channels already on screen,
+        and on a channel it searches everything and offers to add what it finds. Both are
+        one controller, told which it is. %>
+    <div data-controller="mobile-shell"
+         data-mobile-shell-mode-value="<%= @mobile_search_mode || 'filter' %>"
+         data-mobile-shell-list-id-value="<%= @list&.id %>">
 
-        <div class="navbar-nav ms-auto">
+      <div class="m-bar">
+        <%= link_to root_path, class: "m-bar__home", "aria-label": "Channels" do %>
+          <i class="fa-solid fa-house"></i>
+        <% end %>
+
+        <%# Hidden where the field has no job: the listings page has nothing to filter and
+            nothing to add to, and a search box that does nothing is worse than no box. %>
+        <div class="m-bar__search" <%= 'hidden' if @mobile_search_mode == 'none' %>>
+          <input type="search"
+                 class="m-bar__input"
+                 autocomplete="off"
+                 enterkeyhint="search"
+                 placeholder="<%= @mobile_search_placeholder || 'Filter your channels' %>"
+                 aria-label="<%= @mobile_search_placeholder || 'Filter your channels' %>"
+                 data-mobile-shell-target="input"
+                 data-action="input->mobile-shell#typed">
+        </div>
+
+        <button type="button" class="m-bar__menu-button" aria-label="Menu"
+                data-action="click->mobile-shell#toggleMenu">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+
+        <div class="m-menu" data-mobile-shell-target="menu" hidden>
+          <%# The listings are the one part of cable the phone view keeps: reading what is
+              on is not watching it. %>
+          <%= link_to cable_listings_path, class: "m-menu__item" do %>
+            <i class="fa-solid fa-table-list"></i> TV Guide
+          <% end %>
+
+          <%# The way out. The phone view plays nothing, so somebody who does mean to watch
+              on their phone needs to be able to say so rather than go and find a laptop. %>
+          <%= button_to view_mode_path, params: { mode: 'desktop' },
+                        class: "m-menu__item", form_class: "d-contents" do %>
+            <i class="fa-solid fa-display"></i> Full site
+          <% end %>
+
           <% if user_signed_in? %>
-            <div class="nav-item dropdown">
-              <a href="#" class="nav-link dropdown-toggle" id="mobileNavbarDropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <%= current_user.display_name %>
-              </a>
-              <div class="dropdown-menu dropdown-menu-end" aria-labelledby="mobileNavbarDropdown">
-                <%= link_to "Log out", destroy_user_session_path, data: {turbo_method: :delete}, class: "dropdown-item" %>
-                <%= render "shared/impersonation_menu" %>
-              </div>
-            </div>
+            <%= button_to destroy_user_session_path, method: :delete,
+                          class: "m-menu__item", form_class: "d-contents" do %>
+              <i class="fa-solid fa-right-from-bracket"></i> Log out
+            <% end %>
           <% else %>
-            <a class="nav-link" href="<%= new_user_session_path %>">Login</a>
+            <%= link_to new_user_session_path, class: "m-menu__item" do %>
+              <i class="fa-solid fa-right-to-bracket"></i> Log in
+            <% end %>
           <% end %>
         </div>
       </div>
-    </nav>
 
-    <%= render "shared/impersonation_banner" %>
-
-    <!-- Main Content -->
-    <main class="main-content" style="margin-top: 70px;">
-      <%= yield %>
-    </main>
-
-    <!-- Toast Container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
-
-    <!-- Mobile Search Templates -->
-    <template id="mobileSearchMovieTemplate">
-      {{#movies}}
-      <div class="mobile-result-card">
-        <div class="mobile-poster-container">
-          <img src="{{Poster}}" class="mobile-poster" alt="{{Title}} poster">
+      <%# Where a search puts its results. Empty until there is something to show, and it
+          covers the page rather than hanging off the field: there is no room on a phone
+          for a listing and its results at once. %>
+      <div class="m-overlay" data-mobile-shell-target="overlay" hidden>
+        <div class="m-overlay__types">
+          <button type="button" class="m-overlay__type m-overlay__type--on"
+                  data-mobile-shell-target="movieType"
+                  data-action="click->mobile-shell#searchMovies">Movies</button>
+          <button type="button" class="m-overlay__type"
+                  data-mobile-shell-target="showType"
+                  data-action="click->mobile-shell#searchShows">Series</button>
         </div>
-        <div class="mobile-movie-info">
-          <h6 class="mobile-movie-title">{{Title}}</h6>
-          <p class="mobile-movie-meta">{{Year}}{{#Rating}} • {{.}}/10{{/Rating}}</p>
-          <button type="button"
-                  class="btn btn-primary mobile-add-btn"
-                  data-action="click->mobile-search#showListSelectionModal"
-                  data-imdb-id="{{imdbID}}"
-                  data-tmdb-id="{{tmdbID}}"
-                  data-title="{{Title}}"
-                  data-poster="{{Poster}}">
-            <i class="fa-solid fa-plus me-1"></i>Add to Channel
-          </button>
-        </div>
+        <div class="m-overlay__results" data-mobile-shell-target="results"></div>
       </div>
-      {{/movies}}
-    </template>
 
-    <template id="mobileSearchShowTemplate">
-      {{#movies}}
-      <div class="mobile-result-card">
-        <div class="mobile-poster-container">
-          <img src="{{Poster}}" class="mobile-poster" alt="{{Title}} poster">
-        </div>
-        <div class="mobile-movie-info">
-          <h6 class="mobile-movie-title">{{Title}}</h6>
-          <p class="mobile-movie-meta">{{Year}} • {{totalSeasons}} seasons</p>
-          <button type="button"
-                  class="btn btn-primary mobile-add-btn"
-                  data-action="click->mobile-search#showListSelectionModal"
-                  data-imdb-id="{{imdbID}}"
-                  data-tmdb-id="{{tmdbID}}"
-                  data-title="{{Title}}"
-                  data-poster="{{Poster}}">
-            <i class="fa-solid fa-plus me-1"></i>Add to Channel
-          </button>
-        </div>
-      </div>
-      {{/movies}}
-    </template>
+      <%= render "shared/impersonation_banner" %>
+      <%= render "shared/flashes" %>
 
-    <!-- Mobile Channel Selection Modal -->
-    <div class="modal fade" id="mobileListSelectionModal" tabindex="-1" aria-labelledby="mobileListSelectionModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content mobile-modal-content">
-          <div class="modal-header mobile-modal-header">
-            <h5 class="modal-title" id="mobileListSelectionModalLabel">Add to Channel</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body mobile-modal-body">
-            <div class="mobile-modal-movie-info">
-              <h6 id="mobileModalMovieTitle" class="mobile-modal-title"></h6>
-              <p id="mobileModalMovieYear" class="mobile-modal-year"></p>
-            </div>
-            <div class="mobile-modal-lists">
-              <h6 class="mobile-modal-subtitle">Select a channel:</h6>
-              <div id="mobileListSelectionContainer">
-                <!-- Channel options will be populated by JavaScript -->
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer mobile-modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          </div>
-        </div>
-      </div>
+      <%# Inside the controller, not after it: the page's own rows are targets -- the home
+          page's channels are what the field filters -- and a Stimulus target is only found
+          within the element the controller is on. %>
+      <main class="m-page"><%= yield %></main>
     </div>
 
-    <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background-color: #f8f9fa;
-      }
-
-      .main-content {
-        min-height: calc(100vh - 70px);
-        padding: 20px 0;
-        position: relative;
-        z-index: 1;
-      }
-
-      .navbar-brand {
-        font-weight: bold;
-        font-size: 1.2rem;
-      }
-
-      .search-input {
-        font-size: 16px; /* Prevents zoom on iOS */
-        padding: 12px 16px;
-        border-radius: 25px;
-        border: 2px solid #e9ecef;
-        transition: all 0.3s ease;
-      }
-
-      .search-input:focus {
-        border-color: #dc3545;
-        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
-        outline: none;
-      }
-
-      .card {
-        border: none;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        border-radius: 12px;
-        overflow: hidden;
-      }
-
-      .btn-primary {
-        background-color: #dc3545;
-        border-color: #dc3545;
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-      }
-
-      .btn-primary:hover {
-        background-color: #c82333;
-        border-color: #bd2130;
-        transform: translateY(-1px);
-      }
-
-      .btn-success {
-        background-color: #28a745;
-        border-color: #28a745;
-      }
-
-      .mobile-favorites-info {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      }
-
-      .mobile-favorites-info h5 {
-        margin-bottom: 10px;
-        font-weight: 600;
-      }
-
-      .mobile-favorites-info .btn {
-        margin-top: 15px;
-        background-color: rgba(255,255,255,0.2);
-        border: 1px solid rgba(255,255,255,0.3);
-        color: white;
-      }
-
-      .mobile-favorites-info .btn:hover {
-        background-color: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-        color: white;
-      }
-
-      /* Mobile Search Results Styling */
-      .mobile-result-card {
-        display: flex;
-        align-items: center;
-        background: white;
-        border-radius: 12px;
-        margin-bottom: 12px;
-        padding: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        border: 1px solid #e9ecef;
-      }
-
-      .mobile-poster-container {
-        flex-shrink: 0;
-        width: 80px;
-        height: 120px;
-        margin-right: 12px;
-        border-radius: 8px;
-        overflow: hidden;
-      }
-
-      .mobile-poster {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .mobile-movie-info {
-        flex: 1;
-        min-width: 0;
-      }
-
-      .mobile-movie-title {
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 4px;
-        color: #333;
-        line-height: 1.3;
-      }
-
-      .mobile-movie-meta {
-        font-size: 14px;
-        color: #666;
-        margin-bottom: 12px;
-      }
-
-      .mobile-add-btn {
-        width: 100%;
-        padding: 8px 16px;
-        font-size: 14px;
-        font-weight: 500;
-        border-radius: 8px;
-        background-color: #dc3545;
-        border-color: #dc3545;
-        transition: all 0.3s ease;
-      }
-
-      .mobile-add-btn:hover {
-        background-color: #c82333;
-        border-color: #bd2130;
-        transform: translateY(-1px);
-      }
-
-      .mobile-add-btn:disabled {
-        background-color: #28a745;
-        border-color: #28a745;
-        transform: none;
-      }
-
-      /* Mobile List Show Styling */
-      .mobile-list-container {
-        padding: 15px;
-        max-width: 100%;
-      }
-
-      .mobile-list-title {
-        font-size: 1.5rem;
-        font-weight: 600;
-        margin-bottom: 15px;
-        color: #333;
-      }
-
-      .mobile-list-title a {
-        color: #333;
-        text-decoration: none;
-      }
-
-      .mobile-list-title a:hover {
-        color: #dc3545;
-      }
-
-      .mobile-list-info {
-        background: #f8f9fa;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 20px;
-      }
-
-      .mobile-entries-container {
-        background: white;
-        border-radius: 12px;
-        padding: 15px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      }
-
-      /* Mobile breadcrumb styling */
-      .mobile-list-container .breadcrumb {
-        background: transparent;
-        padding: 0;
-        margin: 0;
-        font-size: 0.9rem;
-      }
-
-      .mobile-list-container .breadcrumb-item a {
-        color: #6c757d;
-        text-decoration: none;
-      }
-
-      .mobile-list-container .breadcrumb-item a:hover {
-        color: #dc3545;
-      }
-
-      .mobile-list-container .breadcrumb-item.active {
-        color: #333;
-        font-weight: 500;
-      }
-
-      /* Mobile badge styling */
-      .mobile-list-container .badge {
-        font-size: 0.8rem;
-        padding: 6px 10px;
-      }
-
-      /* Mobile button styling */
-      .mobile-list-container .btn {
-        font-size: 0.9rem;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-weight: 500;
-      }
-
-      .mobile-list-container .btn-primary {
-        background-color: #dc3545;
-        border-color: #dc3545;
-      }
-
-      .mobile-list-container .btn-primary:hover {
-        background-color: #c82333;
-        border-color: #bd2130;
-      }
-
-      .mobile-list-container .btn-outline-primary {
-        color: #dc3545;
-        border-color: #dc3545;
-      }
-
-      .mobile-list-container .btn-outline-primary:hover {
-        background-color: #dc3545;
-        border-color: #dc3545;
-        color: white;
-      }
-
-      /* Mobile Modal Styling */
-      .mobile-modal-content {
-        border-radius: 16px;
-        border: none;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-      }
-
-      .mobile-modal-header {
-        background: #f8f9fa;
-        border-bottom: 1px solid #e9ecef;
-        border-radius: 16px 16px 0 0;
-        padding: 20px;
-      }
-
-      .mobile-modal-header .modal-title {
-        font-size: 1.3rem;
-        font-weight: 600;
-        color: #333;
-        margin: 0;
-      }
-
-      .mobile-modal-body {
-        padding: 20px;
-      }
-
-      .mobile-modal-movie-info {
-        text-align: center;
-        margin-bottom: 25px;
-        padding-bottom: 20px;
-        border-bottom: 1px solid #e9ecef;
-      }
-
-      .mobile-modal-title {
-        font-size: 1.2rem;
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 8px;
-      }
-
-      .mobile-modal-year {
-        font-size: 1rem;
-        color: #666;
-        margin: 0;
-      }
-
-      .mobile-modal-subtitle {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 15px;
-      }
-
-      .mobile-modal-lists {
-        max-height: 300px;
-        overflow-y: auto;
-      }
-
-      .mobile-list-option {
-        display: block;
-        width: 100%;
-        padding: 15px;
-        margin-bottom: 10px;
-        background: #f8f9fa;
-        border: 2px solid #e9ecef;
-        border-radius: 12px;
-        text-align: left;
-        font-size: 1rem;
-        font-weight: 500;
-        color: #333;
-        text-decoration: none;
-        transition: all 0.3s ease;
-        cursor: pointer;
-      }
-
-      .mobile-list-option:hover {
-        background: #dc3545;
-        border-color: #dc3545;
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
-      }
-
-      .mobile-list-option:active {
-        transform: translateY(0);
-      }
-
-      .mobile-modal-footer {
-        background: #f8f9fa;
-        border-top: 1px solid #e9ecef;
-        border-radius: 0 0 16px 16px;
-        padding: 15px 20px;
-      }
-
-      .mobile-modal-footer .btn {
-        padding: 10px 20px;
-        font-size: 1rem;
-        font-weight: 500;
-        border-radius: 8px;
-      }
-    </style>
+    <%# The card a search result is drawn as: the same shape as the ones on a channel, so a
+        result and a thing you already have look like the same kind of object. %>
+    <template id="mobileResultTemplate">
+      {{#results}}
+      <div class="m-card" data-mobile-shell-target="result">
+        <button type="button" class="m-card__flip" data-action="click->mobile-shell#flip">
+          <div class="m-card__faces">
+            <div class="m-card__face">
+              <img src="{{Poster}}" alt="{{Title}}" loading="lazy">
+            </div>
+            <div class="m-card__face m-card__face--back">
+              <div class="m-card__back-title">{{Title}}</div>
+              <div class="m-card__meta">{{Year}}{{#Rating}} &middot; {{.}}{{/Rating}}</div>
+              <div class="m-card__meta">{{Genre}}</div>
+              <div class="m-card__plot">{{Plot}}</div>
+            </div>
+          </div>
+        </button>
+        <div class="m-card__title">{{Title}}</div>
+        <%# Every Mustache tag here sits in an attribute value or between elements, never
+            where an attribute name goes -- the browser parses this template as HTML before
+            Mustache is handed it, and a section tag in that position comes back out
+            lowercased and re-quoted, which stops the whole template parsing. %>
+        <button type="button" class="m-add"
+                data-action="click->mobile-shell#add"
+                data-imdb-id="{{imdbID}}"
+                data-tmdb-id="{{tmdbID}}"
+                data-type="{{addType}}">+ {{addLabel}}</button>
+      </div>
+      {{/results}}
+    </template>
   </body>
 </html>

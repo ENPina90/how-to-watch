@@ -77,6 +77,9 @@ Rails.application.routes.draw do
   # Before the :id route, and it has to stay there -- "guide" would otherwise be read as a
   # channel id, cast to nothing, and quietly serve channel one.
   get 'cable/guide', to: 'cable#guide', as: :cable_guide
+  # The same listing as a page of its own, which is what the phone view gets -- it has no
+  # player to hang the grid over. Before the :id route for the same reason as `guide`.
+  get 'cable/listings', to: 'cable#listings', as: :cable_listings
   # The one thing under /cable that writes anything, which is why it is the one POST.
   # Admin only, and it rewrites today for every channel at once.
   post 'cable/regenerate', to: 'cable#regenerate', as: :cable_regenerate

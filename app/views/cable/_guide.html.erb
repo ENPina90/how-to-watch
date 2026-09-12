@@ -178,6 +178,10 @@
     <%# Where we are on the track. Drawn over the rows rather than in one of them, because
         it is a fact about the time and crosses every channel at once. Its position is set
         by the clock rather than by this render -- see cable_guide_controller. %>
-    <div class="tvguide__now" data-cable-guide-target="nowLine"></div>
+    <div class="tvguide__now" data-cable-guide-target="nowLine"
+         data-mobile-listings-target="nowLine"
+         <%# On the phone's listings page there is no clock ticking to place this, so it is
+             placed here instead -- the one render is the whole of that page's life. %>
+         style="--guide-now-hours: <%= hours.call(@now).round(5) %>"></div>
   </div>
 </div>

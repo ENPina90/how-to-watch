@@ -1,0 +1,43 @@
+<%# One film or show on the phone grid. Two faces on one 2:3 box: the poster, and what the
+    catalogue knows about it. The title sits under the card rather than over the poster,
+    since over it a long one covers the face of the thing being recognised. %>
+<%
+  watched = user && entry.completed_by?(user)
+  number = entry.media == 'episode' && entry.season.present? ? "S#{entry.season}E#{entry.episode}" : nil
+%>
+<div class="m-card <%= 'm-card--watched' if watched %>" data-controller="mobile-card">
+  <button type="button" class="m-card__flip" data-action="click->mobile-card#flip"
+          aria-label="Details for <%= entry.name %>">
+    <div class="m-card__faces">
+      <div class="m-card__face">
+        <%= entry_poster_image_tag(entry, class: "", loading: "lazy") %>
+      </div>
+      <div class="m-card__face m-card__face--back">
+        <div class="m-card__back-title"><%= entry.name %></div>
+        <div class="m-card__meta">
+          <%= [number, entry.year, entry.length.present? && entry.length.to_i.positive? ? "#{entry.length} min" : nil,
+               entry.rating.to_f.positive? ? entry.rating : nil].compact_blank.join(" · ") %>
+        </div>
+        <div class="m-card__meta"><%= entry.genre %></div>
+        <div class="m-card__plot"><%= entry.plot %></div>
+      </div>
+    </div>
+  </button>
+
+  <div class="m-card__row">
+    <span class="m-card__title"><%= entry.name %></span>
+
+    <%# The one write on this page. Marking something watched is most of what the phone
+        view is for, and it goes through the same route every other card in the app uses. %>
+    <% if user %>
+      <button type="button" class="m-card__mark <%= 'm-card__mark--on' if watched %>"
+              data-controller="mobile-watched"
+              data-mobile-watched-entry-id-value="<%= entry.id %>"
+              data-mobile-watched-on-value="<%= watched %>"
+              data-action="click->mobile-watched#toggle"
+              title="<%= watched ? 'Watched' : 'Mark as watched' %>">
+        <i class="fa-<%= watched ? 'solid' : 'regular' %> fa-eye"></i>
+      </button>
+    <% end %>
+  </div>
+</div>

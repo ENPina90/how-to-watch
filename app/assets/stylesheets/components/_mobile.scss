@@ -1,0 +1,495 @@
+/* The phone view.
+ *
+ * A different shape from the full site rather than a squeezed copy of it. It is for three
+ * things -- putting something on a channel while out, marking something watched, and
+ * reading the cable listings -- and it plays nothing, so there is no player chrome, no
+ * sidebars and no controls. What is left is a list of channels, a grid of posters, and one
+ * search field.
+ *
+ * Dark, like the rest of the app. Sized in rem so the whole thing follows the phone's own
+ * text size, which is the one accessibility setting people actually change.
+ */
+
+$m-bg: #0a0a0a;
+$m-surface: #16161a;
+$m-surface-raised: #1f1f25;
+$m-line: #2c2c34;
+$m-text: #f2f2f4;
+$m-dim: #9a9aa6;
+$m-accent: #1a936f;
+
+.m-body {
+  background: $m-bg;
+  color: $m-text;
+  /* The bar is fixed; this is the room it needs plus a thumb's worth of breathing space. */
+  padding-top: 4.25rem;
+  padding-bottom: 2rem;
+  min-height: 100vh;
+}
+
+/* ---- the bar -------------------------------------------------------------------------
+ *
+ * One row, fixed to the top, on every page: the way home, the search field, and the menu.
+ * Fixed rather than sticky because the pages under it scroll independently and a search
+ * field that scrolls away is a search field you scroll back up to find.
+ */
+.m-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1030;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: $m-surface;
+  border-bottom: 1px solid $m-line;
+}
+
+.m-bar__home,
+.m-bar__menu-button {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  color: $m-text;
+  background: $m-surface-raised;
+  font-size: 1rem;
+}
+
+.m-bar__home:hover,
+.m-bar__menu-button:hover {
+  color: $m-accent;
+}
+
+.m-bar__search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 16px or iOS zooms the whole page in when the field takes focus. */
+.m-bar__input {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  background: $m-surface-raised;
+  border: 1px solid $m-line;
+  border-radius: 0.5rem;
+  color: $m-text;
+  font-size: 1rem;
+}
+
+.m-bar__input::placeholder {
+  color: $m-dim;
+}
+
+.m-bar__input:focus {
+  outline: none;
+  border-color: $m-accent;
+}
+
+/* ---- the menu ---- */
+
+.m-menu {
+  position: absolute;
+  top: 100%;
+  right: 0.75rem;
+  min-width: 12rem;
+  padding: 0.35rem;
+  background: $m-surface-raised;
+  border: 1px solid $m-line;
+  border-radius: 0.6rem;
+  box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.55);
+}
+
+.m-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.4rem;
+  color: $m-text;
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.m-menu__item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: $m-text;
+}
+
+.m-menu__item i {
+  width: 1.1rem;
+  color: $m-dim;
+}
+
+/* ---- pages ---- */
+
+.m-page {
+  padding: 0 0.75rem;
+}
+
+.m-heading {
+  margin: 1.25rem 0 0.6rem;
+  color: $m-dim;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.m-empty {
+  padding: 2.5rem 1rem;
+  color: $m-dim;
+  text-align: center;
+}
+
+/* ---- the channel list ----
+ *
+ * The home page, and the whole of it: the channels this member follows, their own
+ * favourites first. A row is a name and a count, which is what you pick a channel by.
+ */
+.m-channels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.m-channel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: $m-surface;
+  border: 1px solid $m-line;
+  border-radius: 0.6rem;
+  color: $m-text;
+}
+
+.m-channel:hover {
+  color: $m-text;
+  border-color: $m-accent;
+}
+
+.m-channel__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m-channel__count {
+  flex: 0 0 auto;
+  color: $m-dim;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The member's own favourites, marked so it can be found without reading the names. */
+.m-channel--favourite .m-channel__mark {
+  color: #ff6b8a;
+}
+
+.m-channel__mark {
+  flex: 0 0 auto;
+  color: $m-dim;
+}
+
+/* ---- the poster grid ----
+ *
+ * Two across on a phone, three on anything wider. Posters are 2:3, and the title sits
+ * under the card rather than over it: over it, a long one covers the face of the poster,
+ * which is the thing being recognised.
+ */
+.m-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 560px) {
+  .m-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.m-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* The two faces of a card, on one 2:3 box. Perspective on the wrapper and not the face, or
+   each face gets its own vanishing point and the turn looks bent. */
+.m-card__flip {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  perspective: 900px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.m-card__faces {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.45s ease;
+  transform-style: preserve-3d;
+}
+
+.m-card--flipped .m-card__faces {
+  transform: rotateY(180deg);
+}
+
+.m-card__face {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  backface-visibility: hidden;
+  border: 1px solid $m-line;
+}
+
+.m-card__face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.m-card__face--back {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem;
+  background: $m-surface-raised;
+  overflow-y: auto;
+}
+
+.m-card__back-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.m-card__meta {
+  color: $m-dim;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.m-card__plot {
+  color: rgba(242, 242, 244, 0.8);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.m-card__title {
+  font-size: 0.8rem;
+  line-height: 1.25;
+  color: $m-text;
+  /* Two lines and then stop, so a long title cannot push the row below it out of line. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* A film already seen is dimmed rather than badged: the grid is scanned for what to watch
+   next, and the ones already done should fall back rather than shout. */
+.m-card--watched .m-card__face img {
+  opacity: 0.35;
+}
+
+.m-card__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.m-card__mark {
+  flex: 0 0 auto;
+  padding: 0.1rem 0.2rem;
+  color: $m-dim;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.m-card__mark--on {
+  color: $m-text;
+}
+
+.m-card__mark--refused {
+  animation: m-refused 0.4s ease-in-out 2;
+}
+
+@keyframes m-refused {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* ---- the search overlay ----
+ *
+ * Covers the page under the bar rather than hanging off the field. On a phone there is no
+ * room for a listing and its results at once, and a panel that only covers part of the
+ * screen is a panel you scroll the wrong thing inside.
+ */
+.m-overlay {
+  position: fixed;
+  inset: 4.25rem 0 0;
+  z-index: 1020;
+  display: flex;
+  flex-direction: column;
+  background: $m-bg;
+}
+
+.m-overlay__types {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid $m-line;
+}
+
+.m-overlay__type {
+  flex: 1 1 0;
+  padding: 0.55rem;
+  background: $m-surface;
+  border: 1px solid $m-line;
+  border-radius: 0.5rem;
+  color: $m-dim;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.m-overlay__type--on {
+  background: $m-accent;
+  border-color: $m-accent;
+  color: #04120d;
+}
+
+/* The results are the same cards a channel is drawn with, so they get the same grid: a
+   result and a thing you already have should look like the same kind of object. */
+.m-overlay__results {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-content: start;
+}
+
+@media (min-width: 560px) {
+  .m-overlay__results {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* The loading spinner and "nothing found" are single messages, not cards, so they span the
+   whole row rather than sitting in the first column. */
+.m-overlay__results > .m-overlay__state,
+.m-overlay__results > .text-center {
+  grid-column: 1 / -1;
+}
+
+.m-overlay__state {
+  padding: 2.5rem 1rem;
+  color: $m-dim;
+  text-align: center;
+}
+
+/* The + under a result. Full width of the card, because a thumb is not a mouse pointer. */
+.m-add {
+  width: 100%;
+  padding: 0.4rem;
+  background: $m-surface-raised;
+  border: 1px solid $m-line;
+  border-radius: 0.4rem;
+  color: $m-text;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.m-add:hover {
+  border-color: $m-accent;
+}
+
+.m-add--done {
+  background: $m-accent;
+  border-color: $m-accent;
+  color: #04120d;
+}
+
+.m-add--refused {
+  border-color: #c0392b;
+  color: #ff8a7a;
+}
+
+/* ---- the cable listings ----
+ *
+ * The desktop grid, at a zoom that suits a phone. An hour is 420px on a laptop, which puts
+ * about one and a half programmes on a phone screen; at 150 a row shows a few hours at
+ * once, which is what makes it a listing rather than a keyhole.
+ *
+ * The guide's own stylesheet does the rest -- this is the same markup, so it is the same
+ * grid, and there is no phone-shaped copy of it to keep in step.
+ */
+.m-listings {
+  padding-bottom: 1.5rem;
+}
+
+.m-listings__title {
+  margin: 1rem 0 0.25rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.m-listings__note {
+  margin: 0 0 1rem;
+  color: $m-dim;
+  font-size: 0.85rem;
+}
+
+/* The guide draws itself as a panel that fills its container; on a phone it is a block on
+   a page, so it is given a height to fill and left to scroll inside it. */
+.m-listings__grid {
+  position: relative;
+  /* As tall as the dial needs and no taller: a fixed height leaves a field of empty grid
+     under six channels, and the page has nothing else on it to fill the gap. */
+  max-height: 70vh;
+  border: 1px solid $m-line;
+  border-radius: 0.6rem;
+  overflow: auto;
+}
+
+.m-listings__grid .tvguide__grid {
+  --guide-hour-width: 150px;
+  --guide-gutter: 108px;
+}
+
+.m-listings__grid .tvguide__corner,
+.m-listings__grid .tvguide__channel,
+.m-listings__grid .tvguide__days-gutter {
+  flex: 0 0 108px;
+  width: 108px;
+}
+
+.m-listings__grid .tvguide__programme {
+  font-size: 0.72rem;
+}
+
+.m-listings__grid .tvguide__row {
+  height: 46px;
+}

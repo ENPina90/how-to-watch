@@ -1,122 +1,17 @@
-<div class="mobile-list-container" data-controller="edit search entry-anchor mobile-search" data-search-id-value="<%= @list.id %>" data-mobile-search-user-lists-value="<%= user_signed_in? && @subscribed_lists.any? ? @subscribed_lists.map { |list| { id: list.id, name: list.name, entries_count: list.entries_count } }.to_json : '[]' %>" data-mobile-search-current-list-id-value="<%= @list.id %>">
-  <!-- Mobile Search Bar -->
-  <div class="mobile-search-container"
-       style="position: relative; margin-bottom: 20px;">
+<%# A channel on a phone: what is in it, as posters. Tap one and it turns over to say what
+    it is. There is no play button anywhere on this page -- the phone view does not play --
+    so the only things a card does are turn over and be marked watched. %>
+<h1 class="m-heading"><%= @list.name %></h1>
 
-    <div class="search-container">
-      <input type="text"
-             class="form-control search-input"
-             placeholder="Search movies, series, and channels"
-             id="mobile-entry-search"
-                 name="q"
-                 aria-label="Search movies, series, and channels"
-                 autocomplete="off"
-                 data-mobile-search-target="input"
-             data-action="input->mobile-search#performSearch"
-             style="width: 100%; max-width: 400px; margin: 0 auto; display: block; visibility: visible; opacity: 1; background: white; border: 2px solid #dc3545; font-size: 18px; padding: 15px;">
-    </div>
-
-    <!-- Search Results Overlay -->
-    <div data-mobile-search-target="results"
-         class="search-results-overlay position-absolute d-none"
-         style="top: 100%; left: 0; right: 0; width: 100vw; max-height: 80vh; overflow-y: auto; z-index: 1000; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-top: 10px; margin-left: -20px;">
-
-      <!-- Movie/Show Toggle Buttons at top of overlay -->
-      <div class="p-3 border-bottom bg-light rounded-top"
-           data-mobile-search-target="typeButtons">
-        <div class="btn-group w-100" role="group">
-          <input type="radio" class="btn-check" name="searchType" id="mobileMovieType" autocomplete="off" checked
-                 data-action="change->mobile-search#switchToMovieSearch">
-          <label class="btn btn-outline-primary btn-sm" for="mobileMovieType">Movies</label>
-
-          <input type="radio" class="btn-check" name="searchType" id="mobileShowType" autocomplete="off"
-                 data-action="change->mobile-search#switchToShowSearch">
-          <label class="btn btn-outline-primary btn-sm" for="mobileShowType">Series</label>
-        </div>
-      </div>
-
-      <!-- Search Results Content -->
-      <div data-mobile-search-target="resultsContent" class="p-3"></div>
-    </div>
-  </div>
-
-  <!-- Mobile Channel Header -->
-  <div class="mobile-list-header">
-    <% unless @list.top_level? %>
-      <nav aria-label="breadcrumb" class="mb-2">
-        <% if @list.parent_lists.size == 1 %>
-          <!-- Single parent path -->
-          <ol class="breadcrumb justify-content-center">
-            <% @list.primary_ancestors.reverse.each do |ancestor| %>
-              <li class="breadcrumb-item">
-                <%= link_to ancestor.name, list_path(ancestor), class: "text-decoration-none" %>
-              </li>
-            <% end %>
-            <li class="breadcrumb-item active" aria-current="page"><%= @list.name %></li>
-          </ol>
-        <% else %>
-          <!-- Multiple parent paths -->
-          <div class="text-center">
-            <small class="text-muted">This channel appears in:</small>
-            <div class="d-flex flex-wrap justify-content-center gap-2 mt-1">
-              <% @list.parent_lists.each do |parent| %>
-                <span class="badge bg-secondary">
-                  <%= link_to parent.name, list_path(parent), class: "text-white text-decoration-none" %>
-                </span>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-      </nav>
+<% if @mobile_entries.any? %>
+  <div class="m-grid">
+    <% @mobile_entries.each do |entry| %>
+      <%= render "lists/mobile_entry", entry: entry, user: current_user %>
     <% end %>
-
-    <h1 class="mobile-list-title text-center">
-      <%= render 'lists/header_count', count: @list.total_entry_count, list: @list %>
-      - <%= link_to @list.name, list_path(@list) %>
-    </h1>
-
-    <!-- Mobile Channel Info -->
-    <div class="mobile-list-info text-center mb-3">
-      <%= render 'lists/default_toggle', list: @list, user: current_user %>
-      <%= link_to list_vote_path(@list), class: "mobile-action", title: "Vote" do %>
-        <i class="fa-solid fa-check-to-slot"></i>
-      <% end %>
-
-      <!-- Mobile Channel Actions - Only essential actions for mobile -->
-      <% if current_user&.can_edit_list?(@list) %>
-        <div class="mobile-list-actions">
-          <%= link_to edit_list_path(@list), class: "btn btn-outline-primary btn-sm me-2" do %>
-            <i class="fa-solid fa-pen me-1"></i>Edit
-          <% end %>
-          <%= link_to new_list_entry_path(@list), class: "btn btn-primary btn-sm me-2" do %>
-            <i class="fa-solid fa-plus me-1"></i>Add Entry
-          <% end %>
-        </div>
-      <% end %>
-
-      <%= render 'lists/subscription_button', list: @list, user: current_user %>
-    </div>
   </div>
-
-  <!-- Mobile Entries Container -->
-  <div id="entries-container" class="mobile-entries-container">
-    <%= render "entries", list: @list, entries: @entries, sections: @sections, random_selection: @random_selection, list_entries: @list_entries, minimal: @minimal %>
-  </div>
-
-  <%# Three modals for the whole page, not three per card. %>
-  <%= render 'entries/review_modal_list' %>
-  <%= render 'shared/trailer_modal' %>
-  <%= render 'shared/poster_selector_modal' %>
-
-  <%= render 'shared/edit_modal' %>
-</div>
-
-<style>
-.mobile-list-header {
-  margin-bottom: 20px;
-}
-
-.mobile-list-actions {
-  margin: 10px 0;
-}
-</style>
+<% else %>
+  <p class="m-empty">
+    Nothing on this channel yet.<br>
+    Search above to add something.
+  </p>
+<% end %>

@@ -30,12 +30,12 @@ class ListsController < ApplicationController
     if @is_mobile && current_user
       # The channel the member has favourited -- the auto-created one until they move it.
       @favorites_list = current_user.favorite_list
-      # Get all subscribed lists with entry counts
-      @subscribed_lists = current_user.subscribed_lists
-                                    .left_joins(:entries)
-                                    .group('lists.id')
-                                    .select('lists.*, COUNT(entries.id) as entries_count')
-                                    .order('lists.name ASC')
+      @mobile_channels = mobile_channels_for(current_user)
+      # The field in the bar filters these rows rather than searching anything: a dozen
+      # names already on screen is not a question worth a round trip.
+      @mobile_search_mode = 'filter'
+      @mobile_search_placeholder = 'Filter your channels'
+
       render :index_mobile, layout: 'mobile'
       return
     end
@@ -167,12 +167,15 @@ class ListsController < ApplicationController
     @random_selection = @list_entries.reject { |entry| entry.completed_by?(current_user) }.sample(3)
 
     if @is_mobile
-      # Get all subscribed lists with entry counts for mobile search
-      @subscribed_lists = current_user.subscribed_lists
-                                    .left_joins(:entries)
-                                    .group('lists.id')
-                                    .select('lists.*, COUNT(entries.id) as entries_count')
-                                    .order('lists.name ASC')
+      # Posters and titles, in the channel's own order. The phone view does not offer the
+      # groupings -- there is no rail to put their sections in and no room for one -- so
+      # this reads the channel straight rather than through load_entries' grouped shape.
+      @mobile_entries = @list.entries.includes(:user_entries).with_attached_poster.order(:position)
+      # On a channel the field searches everything and offers to add what it finds, which
+      # is the whole reason this half of the app exists.
+      @mobile_search_mode = 'search'
+      @mobile_search_placeholder = "Add to #{@list.name}"
+
       render :show_mobile, layout: 'mobile'
       return
     end
@@ -632,6 +635,34 @@ class ListsController < ApplicationController
 
   def set_list
     @list = List.find(params[:id] || params[:list_id])
+  end
+
+  # The channels the phone home page offers: what this member follows, with their own
+  # favourites first because that is the one they came for most of the time.
+  #
+  # `entries_count` rather than a count per row: the page draws one number per channel and
+  # asking each of them for it is a query apiece.
+  def mobile_channels_for(user)
+    followed = user.subscribed_lists
+                   .left_joins(:entries)
+                   .group('lists.id')
+                   .select('lists.*, COUNT(entries.id) as entries_count')
+                   .order('lists.name ASC')
+                   .to_a
+
+    favourite = user.favorite_list
+    return followed if favourite.nil?
+
+    # Theirs whether or not they subscribe to it -- it is the channel "add to favourites"
+    # writes into, so it has to be reachable from the page that lists their channels.
+    [followed.find { |list| list.id == favourite.id } || with_entry_count(favourite)] +
+      followed.reject { |list| list.id == favourite.id }
+  end
+
+  def with_entry_count(list)
+    List.left_joins(:entries).group('lists.id')
+        .select('lists.*, COUNT(entries.id) as entries_count')
+        .find_by(id: list.id)
   end
 
   def load_entries
