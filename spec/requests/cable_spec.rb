@@ -780,18 +780,30 @@ RSpec.describe 'Cable', type: :request do
     end
 
     # A schedule is a shuffle, so "this afternoon is a poor line-up" has no smaller fix
-    # than dealing again. The button is on the guide because that is where you are when you
-    # can see that it is.
+    # than dealing again. The button used to be on the guide, which had room for exactly one
+    # admin control; it is on /admin/cable now, with the rest of the dial's settings, and
+    # the guide carries the way there.
     describe 'dealing today again' do
-      it 'offers an admin the button and nobody else' do
+      it 'offers an admin the way to the settings and nobody else' do
         sign_in user
         travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
-        expect(response.body).not_to include('tvguide__rebuild')
+        expect(response.body).not_to include('tvguide__settings')
 
         user.update!(admin: true)
         travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
-        expect(response.body).to include('tvguide__rebuild')
-        expect(response.body).to include(cable_regenerate_path)
+        expect(response.body).to include('tvguide__settings')
+        expect(response.body).to include(admin_cable_path)
+      end
+
+      # The guide is a page over a playing picture; the button that pulls the programme out
+      # from under it does not belong there.
+      it 'no longer puts the rebuild button on the guide itself' do
+        user.update!(admin: true)
+
+        sign_in user
+        travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+        expect(response.body).not_to include(cable_regenerate_path)
       end
 
       it 'lays today out again for every channel on the dial' do

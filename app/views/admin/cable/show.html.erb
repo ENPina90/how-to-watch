@@ -1,0 +1,247 @@
+<%# The cable dial's settings page.
+
+    The guide over a playing channel had room for one admin button, so rebuilding the
+    schedule was the only thing an admin could do to the dial and everything else -- which
+    channels are on it, what order they sit in -- was a console job. This is the page those
+    belong on. The guide links here now.
+
+    Three things, in the order they are wanted: the dial itself, what to put on it, and the
+    buttons that rewrite what it is playing. %>
+<div class="admin-dashboard cable-admin">
+  <header class="admin-header cable-admin__header">
+    <div>
+      <h1 class="admin-title">Cable</h1>
+      <p class="admin-subtitle">
+        The channels <%= link_to '/cable', cable_path %> offers, in the order the dial steps
+        through them. Everything here is the same for every viewer — a cable channel is a
+        picture playing to a room, so how far into a programme you are is a question about
+        the clock rather than about you.
+      </p>
+    </div>
+    <%= link_to cable_path, class: 'admin-save' do %>
+      <i class="fa-solid fa-tv"></i> Watch
+    <% end %>
+  </header>
+
+  <section class="admin-section">
+    <h2 class="admin-section__title">The dial</h2>
+
+    <% if @channels.empty? %>
+      <p class="admin-note">
+        Nothing is on the dial, so <code>/cable</code> has no channels at all. Add one below.
+      </p>
+    <% else %>
+      <p class="admin-note">
+        Drag by the handle to reorder. The number is what the guide's gutter and the banner's
+        badge show, and what “the channel below” means — it is a channel's place on the dial,
+        not its id, so moving one here renumbers the rest.
+      </p>
+
+      <%# One drag sends the whole order, which also renumbers 1..N and repairs any gap an
+          earlier write left. See CableSchedule.reorder_dial!. %>
+      <div class="cable-dial"
+           data-controller="cable-dial"
+           data-cable-dial-url-value="<%= reorder_admin_cable_channels_path %>">
+        <% @channels.each_with_index do |channel, index| %>
+          <%
+            today_slots = @slot_counts[[channel.id, @today]].to_i
+            tomorrow_slots = @slot_counts[[channel.id, @tomorrow]].to_i
+            playing = @on_air[channel.id]
+          %>
+          <article class="cable-dial__row <%= 'cable-dial__row--dark' if today_slots.zero? %>"
+                   data-channel-id="<%= channel.id %>">
+            <%# The grip is the drag handle so the link and the button stay clickable. %>
+            <span class="cable-dial__grip" title="Drag to reorder">
+              <i class="fa-solid fa-grip-vertical"></i>
+            </span>
+
+            <span class="cable-dial__number"><%= index + 1 %></span>
+
+            <div class="cable-dial__identity">
+              <%# The channel's own page, which is where you go to change what is in it --
+                  nothing on this page edits a channel's contents. %>
+              <h3 class="cable-dial__name">
+                <%= link_to channel.name.presence || "Channel ##{channel.id}", list_path(channel) %>
+              </h3>
+              <span class="cable-dial__owner">
+                <%= pluralize(@entry_counts[channel.id].to_i, 'entry') %>
+                <% if channel.user %>· <%= channel.user.username.presence || channel.user.email %><% end %>
+              </span>
+            </div>
+
+            <div class="cable-dial__state">
+              <% if playing %>
+                <%# What it is actually showing this second, which is the only thing on this
+                    page that says the channel works. %>
+                <strong class="cable-dial__playing"><%= cable_programme(playing[:slot]).show %></strong>
+                <span>until <%= cable_time(playing[:slot].ends_at) %></span>
+              <% elsif today_slots.zero? %>
+                <strong class="cable-dial__off">Off air</strong>
+                <span>nothing laid out for today</span>
+              <% else %>
+                <%# Slots for today but none covering this instant: the day ran out before
+                    midnight, which a rebuild fixes. %>
+                <strong class="cable-dial__off">Nothing on</strong>
+                <span>a gap in today's schedule</span>
+              <% end %>
+            </div>
+
+            <div class="cable-dial__days">
+              <span><strong><%= today_slots %></strong> today</span>
+              <span><strong><%= tomorrow_slots %></strong> tomorrow</span>
+            </div>
+
+            <div class="cable-dial__actions">
+              <%# Clears the `default` flag and nothing else: the channel, its entries and
+                  everybody's subscription to it are left exactly as they are. The confirm
+                  is there because the dial is what every viewer sees, not because anything
+                  is being destroyed. %>
+              <%= button_to admin_cable_channel_path(channel), method: :delete,
+                            class: 'btn btn-sm btn-outline-danger',
+                            form_class: 'cable-dial__form',
+                            data: { turbo_confirm: "Take #{channel.name} off the dial? " \
+                                                   'The channel itself is not touched.' },
+                            title: 'Take this channel off the dial' do %>
+                <i class="fa-solid fa-xmark"></i> Off the dial
+              <% end %>
+            </div>
+          </article>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="admin-section">
+    <h2 class="admin-section__title">Add a channel</h2>
+
+    <% if @candidates.empty? %>
+      <p class="admin-note">
+        Every public channel is already on the dial. A private channel cannot join it —
+        putting one there would show every account a list its owner chose not to share.
+      </p>
+    <% else %>
+      <%= form_with url: admin_cable_channels_path, method: :post, class: 'cable-add' do |form| %>
+        <label class="cable-add__label" for="cable_add_list_id">Put on the dial</label>
+        <%# Labelled with the entry count, because that is what decides whether the channel
+            can fill a day: a channel of three films repeats eight times before midnight. %>
+        <%= form.select :list_id,
+                        @candidates.map { |list|
+                          name = list.name.presence || "Channel ##{list.id}"
+                          ["#{name} — #{pluralize(@candidate_counts[list.id].to_i, 'entry')}", list.id]
+                        },
+                        { include_blank: 'Choose a public channel…' },
+                        class: 'cable-add__select', id: 'cable_add_list_id' %>
+        <%= form.submit 'Add', class: 'admin-save' %>
+      <% end %>
+      <p class="admin-note">
+        It joins at the end of the dial and today is laid out immediately, so it is on air
+        as soon as it appears above; tomorrow is dealt with the rest each morning. Because
+        being on the dial is the site offering a channel to everyone, every account is also
+        subscribed to it — taking it off again does not unsubscribe anybody.
+      </p>
+    <% end %>
+  </section>
+
+  <section class="admin-section">
+    <h2 class="admin-section__title">The schedule</h2>
+
+    <div class="admin-stats">
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= @channels.size %></span>
+        <span class="admin-stat__label">Channels on the dial</span>
+        <span class="admin-stat__note">
+          <%= @channels.count { |channel| @slot_counts[[channel.id, @today]].to_i.zero? } %> off air today
+        </span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= @reels_timed %>/<%= @reels_total %></span>
+        <span class="admin-stat__label">Reels with a runtime</span>
+        <span class="admin-stat__note"><%= link_to 'Manage', admin_commercial_reels_path %></span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= @channels.sum { |c| @slot_counts[[c.id, @today]].to_i } %></span>
+        <span class="admin-stat__label">Programmes today</span>
+        <span class="admin-stat__note">
+          <%= @channels.sum { |c| @slot_counts[[c.id, @tomorrow]].to_i } %> laid out for tomorrow
+        </span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat__value"><%= CableSchedule.zone.name.split('/').last.tr('_', ' ') %></span>
+        <span class="admin-stat__label">The dial's clock</span>
+        <span class="admin-stat__note">
+          days run midnight to midnight here · <%= cable_clock(Time.current) %> now
+        </span>
+      </div>
+    </div>
+
+    <%# The rebuild button, which is what used to be on the guide. Kept a real form post
+        rather than a Turbo one for the same reason it always was: the schedule the page was
+        describing has just been replaced, so what is wanted is the page loaded again from
+        nothing. %>
+    <div class="cable-admin__rebuild">
+      <%= button_to cable_regenerate_path, class: 'admin-save',
+                    form_class: 'cable-admin__rebuild-form', data: { turbo: false },
+                    title: "Lay today's and tomorrow's schedule out again for every channel" do %>
+        <i class="fa-solid fa-rotate"></i> Deal the schedule again
+      <% end %>
+      <p class="admin-note">
+        A schedule is a shuffle, so “this afternoon is a poor line-up” has no smaller fix
+        than dealing again. Today <em>and</em> tomorrow, for every channel: a day is dealt
+        from its own bag and the rule against playing the same thing twice running only
+        holds within the day dealing it, so rebuilding today alone leaves a seam at midnight.
+        Yesterday is left alone — it is a record of what the channels actually played.
+        <br>
+        <strong>It pulls the current programme out from under anybody watching.</strong>
+        The slot they are in is deleted and the new day is a different shuffle, so the next
+        thing their page asks for is a different film. There is no version of the button
+        without that.
+      </p>
+    </div>
+
+    <p class="admin-note">
+      Tomorrow is laid out for every channel each morning by <code>CableScheduleJob</code>,
+      which also fills today if it is empty — after a deploy, for a channel added here, or
+      for a day the worker was down for. A channel with no schedule for right now reads as
+      off air rather than as an error, so a missing day is quiet: the counts above are how
+      you see it.
+    </p>
+  </section>
+
+  <section class="admin-section">
+    <h2 class="admin-section__title">What the dial depends on</h2>
+
+    <div class="cable-admin__links">
+      <%# The two other pages a dead channel is usually fixed from. Neither is reachable
+          from /cable itself, which is the reason they are here. %>
+      <%= link_to admin_commercial_reels_path, class: 'cable-admin__link' do %>
+        <span class="cable-admin__link-title">
+          <i class="fa-solid fa-film"></i> Commercial reels
+        </span>
+        <span class="cable-admin__link-blurb">
+          What plays in the gap between programmes. A film is matched to the reel covering
+          its own year, and a period with no reel gets a caption instead.
+        </span>
+      <% end %>
+
+      <%= link_to sources_path, class: 'cable-admin__link' do %>
+        <span class="cable-admin__link-title">
+          <i class="fa-solid fa-satellite-dish"></i> Source providers
+        </span>
+        <span class="cable-admin__link-blurb">
+          Where the picture comes from. Every embed on the dial is a provider's template, so
+          a channel that has gone black is nearly always fixed by editing one row there.
+        </span>
+      <% end %>
+
+      <%= link_to admin_dashboard_path, class: 'cable-admin__link' do %>
+        <span class="cable-admin__link-title">
+          <i class="fa-solid fa-gauge-high"></i> Dashboard
+        </span>
+        <span class="cable-admin__link-blurb">
+          Site statistics, the access modes, and the sweeps that find broken posters and
+          unplayable entries — which are what take a programme off the air.
+        </span>
+      <% end %>
+    </div>
+  </section>
+</div>

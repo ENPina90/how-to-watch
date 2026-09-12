@@ -529,3 +529,245 @@
     justify-content: flex-start;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The cable dial
+
+   Rides on .admin-dashboard for its page frame, like the reel list does, so only
+   the dial's rows and the two blocks under them need styles of their own.
+   --------------------------------------------------------------------------- */
+
+.cable-admin__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+// The Watch button is a link rather than a submit, so it needs the padding .admin-save
+// otherwise gets from being an input.
+.cable-admin .admin-save {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #1db954;
+  border: none;
+  border-radius: 8px;
+  color: #0a0a0a;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.cable-admin .admin-save:hover {
+  background-color: #1ed760;
+  color: #0a0a0a;
+}
+
+.cable-dial {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+// A channel number is a fact about where the row sits, so the row is laid out on a grid
+// rather than flowed: every number, name and count lines up down the page whatever the
+// channel is called.
+.cable-dial__row {
+  display: grid;
+  grid-template-columns: auto 2.5rem minmax(0, 1.6fr) minmax(0, 1.2fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background-color: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+}
+
+// A channel with no schedule for today is not broken, but it is the one state on this page
+// worth seeing without reading: it is showing every viewer an off-air card.
+.cable-dial__row--dark {
+  border-left: 3px solid #ffb020;
+}
+
+.cable-dial__row--dragging {
+  opacity: 0.4;
+}
+
+// The server refused the drag, so the order on screen is not the order the dial is in.
+// Said in the border because the rows themselves are still perfectly readable and would
+// otherwise look correct.
+.cable-dial--unsaved .cable-dial__row {
+  border-color: #ff6b6b;
+}
+
+.cable-dial__grip {
+  cursor: grab;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.cable-dial__grip:active {
+  cursor: grabbing;
+}
+
+// Drawn the way the guide's gutter draws it: a channel number is the one number on the
+// page that is an identity rather than a measurement.
+.cable-dial__number {
+  font-family: $headers-font;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  color: #ffd42a;
+  font-variant-numeric: tabular-nums;
+}
+
+.cable-admin .cable-dial__name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.cable-admin .cable-dial__name a {
+  color: inherit !important;
+  text-decoration: none;
+}
+
+.cable-admin .cable-dial__name a:hover {
+  color: #1db954 !important;
+}
+
+.cable-dial__owner {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.cable-dial__state,
+.cable-dial__days {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.cable-dial__state strong {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  overflow-wrap: anywhere;
+}
+
+.cable-dial__state .cable-dial__off {
+  color: #ffb020;
+}
+
+.cable-dial__days {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cable-dial__days strong {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+// button_to renders a form, which would otherwise take a line of its own in the grid cell.
+.cable-dial__form {
+  display: inline;
+  margin: 0;
+}
+
+// One row: what to put on the dial, and the button that does it. Wraps rather than
+// squeezing the select, which holds channel names.
+.cable-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 12px;
+}
+
+.cable-add__label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cable-add__select {
+  flex: 1 1 260px;
+  max-width: 460px;
+  padding: 9px 12px;
+  background-color: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  color: #fff;
+}
+
+.cable-add__select:focus {
+  outline: none;
+  border-color: #1db954;
+}
+
+.cable-admin__rebuild {
+  margin-top: 20px;
+}
+
+.cable-admin__rebuild-form {
+  display: inline-block;
+  margin: 0 0 10px;
+}
+
+// The three pages a dead channel is usually fixed from, as cards rather than a list of
+// links: each needs a sentence saying what it has to do with cable, which a link does not
+// have room for.
+.cable-admin__links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.cable-admin .cable-admin__link {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  background-color: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  text-decoration: none;
+}
+
+.cable-admin .cable-admin__link:hover {
+  border-color: #1db954;
+}
+
+.cable-admin__link-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.cable-admin__link-blurb {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 860px) {
+  .cable-dial__row {
+    grid-template-columns: auto 2.5rem minmax(0, 1fr);
+    row-gap: 10px;
+  }
+
+  // The grip and the number keep their columns; everything else takes the full width under
+  // them rather than being squeezed into a fifth of it.
+  .cable-dial__state,
+  .cable-dial__days,
+  .cable-dial__actions {
+    grid-column: 2 / -1;
+    text-align: left;
+  }
+
+  .cable-dial__days {
+    flex-direction: row;
+    gap: 14px;
+  }
+}

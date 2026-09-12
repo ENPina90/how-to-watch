@@ -53,6 +53,11 @@ class CableController < ApplicationController
   # The one write under /cable, and it is deliberately blunt: a schedule is a shuffle, so
   # "this afternoon is a poor line-up" has no smaller fix than dealing again.
   #
+  # Pressed from /admin/cable now rather than from the guide, which is why it stays a
+  # redirect_back: the page it was pressed on is the page to return to, and that is the
+  # settings page or -- for anybody who still has the guide's old button in a cached page --
+  # the channel they were watching.
+  #
   # Tomorrow as well as today, and that is not thoroughness for its own sake. A day is laid
   # out from a shuffled bag that is refilled as it empties, and the refill's one rule is not
   # to play the same thing twice running -- a rule that only holds within the day it is
@@ -75,10 +80,11 @@ class CableController < ApplicationController
       CableSchedule.build_day!(channel, today + 1)
     end
 
-    # Back to the channel it was pressed on, which reloads the page whole: the guide is
-    # fetched fresh, the schedule under it is new, and whatever the channel is showing now
-    # is whatever the new day says.
-    redirect_back(fallback_location: cable_path, notice: "Today and tomorrow have been laid out again.")
+    # Back to the page it was pressed on, loaded whole: from the settings page that is the
+    # new programme counts, and from a channel it is the guide fetched fresh, a new schedule
+    # under it, and the player pointed at whatever the new day says is on.
+    redirect_back(fallback_location: admin_cable_path,
+                  notice: "Today and tomorrow have been laid out again.")
   end
 
   def show

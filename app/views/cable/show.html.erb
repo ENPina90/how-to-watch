@@ -285,20 +285,20 @@
 
     <%# The corner the box kept its own buttons in. %>
     <div class="tvguide__controls">
-      <%# Deal today's listings again. Admin only, and on the same terms as /admin: the
-          check is on the real account, and it is gone while viewing the site as somebody
-          else. Left of Home because it is the rarer of the two and Home is the one the eye
-          goes to the corner for.
+      <%# The dial's settings, on /admin/cable. Admin only, and on the same terms as /admin:
+          the check is on the real account, and it is gone while viewing the site as
+          somebody else. Left of Home because it is the rarer of the two and Home is the one
+          the eye goes to the corner for.
 
-          A real form post rather than a Turbo one: the schedule under this page has just
-          been replaced, so what is wanted is the page loaded again from nothing -- new
-          listings, new programme, a player pointed at whatever is on now. %>
+          A link rather than the rebuild button this used to be. One button over a playing
+          picture could only ever be the one thing, which made dealing the schedule again
+          the only thing an admin could do to the dial -- the line-up and its order were a
+          console job. Rebuilding is on that page now, next to them. %>
       <% if true_user&.admin? && !impersonating? %>
-        <%= button_to cable_regenerate_path, class: "tvguide__rebuild",
-                      form_class: "tvguide__rebuild-form", data: { turbo: false },
-                      title: "Lay today's schedule out again for every channel" do %>
-          <i class="fa-solid fa-rotate"></i>
-          <span>Rebuild</span>
+        <%= link_to admin_cable_path, class: "tvguide__settings",
+                    title: "The dial: which channels are on it, in what order, and the schedule" do %>
+          <i class="fa-solid fa-sliders"></i>
+          <span>Settings</span>
         <% end %>
       <% end %>
 
