@@ -1,7 +1,7 @@
-<%# Raised by the player-progress controller once the film is effectively over: on coming
-    out of fullscreen, or at the credits mark for somebody watching in a window. It listens
-    on the document because the two live in different corners of the page -- the player is
-    inside the cinema frame, this sits outside it.
+<%# Raised by the player-progress controller a fixed lead before the film ends, and on
+    coming out of fullscreen past the completion mark. It listens on the document because
+    the two live in different corners of the page -- the player is inside the cinema frame,
+    this sits outside it.
 
     No backdrop, and it sits low on the screen rather than over the middle of it: the film
     is still running when this appears, and somebody watching the last of it should not
@@ -12,7 +12,10 @@
      data-bs-backdrop="false"
      data-auto-advance-entry-id-value="<%= entry.id %>"
      data-auto-advance-channel-id-value="<%= channel.id %>"
-     data-auto-advance-is-ordered-value="<%= channel.ordered? %>">
+     data-auto-advance-is-ordered-value="<%= channel.ordered? %>"
+     <%# The same number that decided when this was raised, so the count reaches zero as
+         the film does rather than at a moment of its own. %>
+     data-auto-advance-seconds-value="<%= AppSetting.up_next_lead_seconds %>">
   <div class="modal-dialog">
     <div class="modal-content up-next__card">
       <div class="up-next__text">
@@ -25,7 +28,7 @@
               unseen, so there is no particular entry to name here. %>
           <%= channel.ordered? ? 'Next entry in' : 'Another entry in' %>
           <%# Overwritten before the card is ever shown; the controller owns the count. %>
-          <strong data-auto-advance-target="countdown">30</strong>s
+          <strong data-auto-advance-target="countdown"><%= AppSetting.up_next_lead_seconds %></strong>s
         </span>
       </div>
 

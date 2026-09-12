@@ -3,20 +3,24 @@ import { Modal } from "bootstrap"
 
 // The up-next card: what happens when a film ends and nobody has said otherwise.
 //
-// It is raised by `player-progress` coming out of fullscreen with the film effectively
-// over, not by the entry being marked watched -- a rewatch is marked from the first
-// second, and would otherwise be offered the next entry over its opening titles.
+// It is raised by `player-progress` a fixed lead before the end, not by the entry being
+// marked watched -- a rewatch is marked from the first second, and would otherwise be
+// offered the next entry over its opening titles.
 //
-// Thirty seconds is long enough to read and act on, and long enough to sit through a
-// stinger, which is the thing most likely to be interrupted by getting this wrong.
-const COUNTDOWN_SECONDS = 30
+// It counts for as long as the lead that raised it, so it reaches zero as the film does
+// rather than at some other moment of its own -- one number,
+// AppSetting#up_next_lead_seconds, passed in from the page.
+const DEFAULT_COUNTDOWN_SECONDS = 15
 
 export default class extends Controller {
   static targets = ["countdown"]
   static values = {
     entryId: Number,
     channelId: Number,
-    isOrdered: Boolean
+    isOrdered: Boolean,
+    // AppSetting#up_next_lead_seconds. From the page rather than a constant here, because
+    // it is the same number that decided when this card was raised.
+    seconds: Number
   }
 
   connect() {
@@ -36,10 +40,16 @@ export default class extends Controller {
   start() {
     if (this.stopped || this.timer) return
 
-    this.timeLeft = COUNTDOWN_SECONDS
+    this.timeLeft = this.countdownSeconds
     this.render()
     this.modal.show()
     this.timer = setInterval(() => this.tick(), 1000)
+  }
+
+  // Guarded rather than trusted: a 0 from a page that did not pass one would advance the
+  // channel the instant the card appeared.
+  get countdownSeconds() {
+    return this.secondsValue > 0 ? this.secondsValue : DEFAULT_COUNTDOWN_SECONDS
   }
 
   tick() {
