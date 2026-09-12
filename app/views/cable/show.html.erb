@@ -238,6 +238,19 @@
 
         <p class="tvguide__detail-genre" data-cable-guide-target="detailGenre" hidden></p>
 
+        <%# The same address the title above carries, said as a button. Pointing at a cell
+            halfway through an afternoon and wanting the film from the top is most of what
+            anybody opens the guide to do, and a heading that happens to be a link is not a
+            way to offer it. Out of cable: the ordinary watch player, from the beginning,
+            counting towards what you have seen. No data-cinema-move, so it navigates
+            rather than tuning. %>
+        <p class="tvguide__detail-actions">
+          <a class="tvguide__start" data-cable-guide-target="detailStart" href="#">
+            <i class="fa-solid fa-backward-fast"></i>
+            <span>Start from the beginning</span>
+          </a>
+        </p>
+
         <%# Two marks that are also two switches. Both are drawn hollow for off and solid
             for on, which is the whole of what they say -- there is no room beside a
             picture for a word as well, and the pair of glyphs is the same pair the rest of

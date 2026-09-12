@@ -35,6 +35,21 @@
       <span class="cable-hud__when" data-cable-hud-target="when"></span>
       <span class="cable-hud__label" data-cable-hud-target="label"></span>
     </p>
+
+    <%# The same address as the title above it, said as a button because the title does not
+        look like one -- joining a film twenty minutes in and wanting it from the top is the
+        commonest thing anybody asks of a cable channel, and until now the only way to do it
+        was to guess that the headline was a link.
+
+        It follows the arrows: walk the banner to what is on next and this offers to start
+        that instead, which is the other half of what the arrows are for. Out of cable
+        either way -- the ordinary watch player, from the beginning, counting towards what
+        you have seen. No data-cinema-move, so it is a navigation rather than a tune. %>
+    <a class="cable-hud__start" data-cable-hud-target="start" href="#"
+       title="Play this from the beginning on its own page">
+      <i class="fa-solid fa-backward-fast"></i>
+      <span>Start from the beginning</span>
+    </a>
   </div>
 
   <%# Up and down tune; left and right only look. The two kinds are deliberately the same
