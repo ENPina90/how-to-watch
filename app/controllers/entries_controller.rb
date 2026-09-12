@@ -8,7 +8,7 @@ class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   include NoPlaybackOnMobile
   skip_before_action :refuse_playback_on_mobile
-  before_action :set_list, only: %i[new create]
+  before_action :set_list, only: %i[new create csv_template import_csv]
   before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime favorite unfavorite]
   before_action :authenticate_user!, only: %i[favorite unfavorite]
   # Watching is off in the phone view; everything else this controller does is not.
@@ -20,12 +20,56 @@ class EntriesController < ApplicationController
   before_action :check_edit_permissions,
                 only: %i[edit update destroy update_poster
                          update_position reportlink set_source repair_image migrate_poster]
+  # A spreadsheet writes as many rows as it has lines, so unlike the one-at-a-time create it
+  # asks first whose channel it is filling.
+  before_action :check_list_edit_permissions, only: :import_csv
   # An entry is as private as the channel it lives in.
   before_action -> { refuse_guest_on_private!(@entry.list) }, only: %i[show watch]
 
+  # The custom-entry form. There is no search box on it any more: the navbar search is on
+  # every page, and its "+ Details" button arrives here with these params so the form opens
+  # already filled in from the API without anything having been created yet.
   def new
-    @entry = Entry.new
-    @ids = @list.entries.map {|entry| "#{entry.id}-#{entry.imdb}"}.join('/')
+    prefill = EntryPrefill.new(
+      list:    @list,
+      imdb:    params[:imdb],
+      tmdb:    params[:tmdb],
+      season:  params[:season],
+      episode: params[:episode],
+      type:    params[:type]
+    ).call
+
+    @entry = prefill.entry
+    # The channel being filled comes first whether or not it is the member's own, so the
+    # dropdown cannot open showing a channel other than the one they are standing on.
+    @user_lists = template_lists
+    flash.now[:alert] = prefill.error if prefill.error
+  end
+
+  # A blank spreadsheet shaped like what import_csv reads back. Generated per request rather
+  # than kept as a file, because half of it is the list of channels this member can file a
+  # row into.
+  def csv_template
+    send_data EntryCsvTemplate.new(template_lists).generate,
+              filename: EntryCsvTemplate.filename_for(@list),
+              type: 'text/csv',
+              disposition: 'attachment'
+  end
+
+  # The same sheet filled in. Everything it managed and everything it did not is reported in
+  # one flash: a file of twenty rows where three were already in the channel is a successful
+  # import that the person who uploaded it still needs to hear about.
+  def import_csv
+    result = EntryCsvImporter.new(file: params[:file], list: @list, user: current_user).call
+
+    if result.created.any?
+      flash[:notice] = result.summary
+      flash[:alert] = (result.skipped + result.errors).join(' · ') if result.any_problems?
+      redirect_to list_path(@list)
+    else
+      flash[:alert] = [result.summary, *result.skipped, *result.errors].join(' · ')
+      redirect_to new_list_entry_path(@list)
+    end
   end
 
   def show
@@ -39,16 +83,28 @@ class EntriesController < ApplicationController
 
   def create
     if params[:custom]
-      @entry = Entry.new(entry_params)
-      @entry.list = @list
-      @entry.position = @list.entries.count + 1
+      # Fetched after the row has saved and not allowed to take it down with it, the way
+      # `update` does it: an address that turns out to have no image behind it should not
+      # throw away the name and the runtime that were typed in the same breath.
+      attributes = entry_params.to_h
+      poster_url = attributes.delete('poster_url')
+      # The form's channel dropdown is honoured, and only as far as the member's own
+      # channels: it was being read and then overwritten with the channel the form was
+      # opened from, so picking another one in it did nothing.
+      list = custom_entry_list(attributes.delete('list_id'))
+
+      @entry = Entry.new(attributes)
+      @entry.list = list
+      @entry.position = Entry.next_position(list)
       @entry.media = 'fanedit' if @entry.media.blank?
       if @entry.save
-        redirect_to list_path(@list)
-        flash.now[:notice] = "#{@entry.name} successfully created"
+        poster_error = poster_url.present? ? attach_poster_from_url(poster_url)[:error] : nil
+        flash[:notice] = "#{@entry.name} successfully created"
+        flash[:alert] = poster_error if poster_error
+        redirect_to list_path(list)
       else
-        flash.now[:notice] = "Something went wrong"
-        render :new
+        flash.now[:alert] = @entry.errors.full_messages.to_sentence.presence || 'Something went wrong'
+        render :new, status: :unprocessable_entity
       end
     else
       # Debug logging
@@ -918,6 +974,29 @@ class EntriesController < ApplicationController
       end
     end
 
+    # Where a hand-made entry lands: whichever of the member's own channels the form's
+    # dropdown named, and the channel the form was opened from for anything else -- an id
+    # from elsewhere must not be a way to write into a channel the dropdown never offered.
+    def custom_entry_list(list_id)
+      return @list if list_id.blank? || list_id.to_i == @list.id
+
+      template_lists.find { |list| list.id == list_id.to_i } || @list
+    end
+
+    # The channels a `channel` cell may name, which is also what the sheet lists as its
+    # choices. The one being filled comes first whether or not it belongs to this member,
+    # since they are standing on it.
+    def template_lists
+      ([@list] + (current_user ? current_user.lists.order(:name).to_a : [])).uniq
+    end
+
+    def check_list_edit_permissions
+      return if current_user&.can_edit_list?(@list)
+
+      flash[:alert] = 'You cannot add to that channel.'
+      redirect_to list_path(@list)
+    end
+
     def set_list
       @list = List.find(params[:list_id])
     rescue ActiveRecord::RecordNotFound
@@ -970,6 +1049,7 @@ class EntriesController < ApplicationController
         :source_key,
         :imdb,
         :tmdb,
+        :series_imdb,
         :language,
         :review,
         :season,

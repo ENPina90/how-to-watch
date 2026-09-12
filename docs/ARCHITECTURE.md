@@ -244,13 +244,20 @@ jumps to a random unwatched entry.
 ### 5.5 Adding content
 | Path | Entry point | Notes |
 |---|---|---|
-| Search → add to open list | `search_controller.js` (TMDB, client-side) → `POST /lists/:list_id/entries` | `entries#create` re-fetches from OMDB, then `Entry.create_from_source` |
 | Add a whole season | `episodes_controller.js` → `POST /lists/:id/add_season` | → `SeasonImporter`; one TMDB call (two for anime past season 1) |
 | Add a single episode | `entries#create` with `season`/`episode`/`tmdb` | → `EpisodeImporter`, creating a standalone `media: "episode"` entry |
-| Global navbar search | `list_search_controller.js` → `POST /lists/add_to_list` (JSON) | |
+| Global navbar search | `list_search_controller.js` → `POST /lists/:list_id/entries` | `entries#create` re-fetches from OMDB, then `Entry.create_from_source`. Off a channel page it asks the picker which channel first |
+| "+ Details" on a search result | `list_search_controller.js#details` → `GET /lists/:id/entries/new?imdb=…` | → `EntryPrefill`. **Creates nothing**: the form opens filled in and the row exists only once Create Entry is pressed |
+| By hand | `GET /lists/:id/entries/new` → `entries#create` with `custom` | The custom-entry form: a fanedit, a personal cut, anything the APIs describe badly. No search box of its own |
+| A spreadsheet of them | `GET .../entries/csv_template`, `POST .../entries/import_csv` | → `EntryCsvTemplate` / `EntryCsvImporter`; inside the request, capped at `MAX_ROWS` |
 | Mobile | `mobile_search_controller.js` → `POST /lists/add_to_favorites` (JSON) | targets `current_user.favorite_list`; 404s when there is none |
 | Top-rated episodes | `lists#top_entries` → `ImdbScraper` | scrapes IMDb search HTML |
 | Watch without saving | `GET /watch_now?imdb=…` → `pages#watch_now` | transient, no DB write |
+
+The `/entries/new` page used to carry a second search of its own (`search_controller.js`,
+its own mustache card templates, a Movie/Series/Anime tab row). It does not any more: the
+navbar search is on every page, and its "+ Details" button reaches this form with the
+metadata already in it. The page is now only the manual form plus the CSV round trip.
 
 `Entry.create_from_source` normalizes OMDB payloads (`OmdbApi.normalize_omdb_data`) and, on
 failure, records a `FailedEntry` and returns an error **string** — callers must check
@@ -471,7 +478,9 @@ results. `POST reset_source` moves every channel onto one provider.
 | `ImdbScraper` | scrapes IMDb search results for top-rated episodes (HTTParty + Nokogiri) |
 | `UrlCheckerService` | fetches a source URL and checks for a non-empty `<title>` → sets `entries.stream` |
 | `ImageRepairService` / `PosterMigrationService` | fix broken `pic` URLs; copy `pic` → Active Storage/Cloudinary. Return `{status: :migrated|:repaired|:valid|:failed|:skipped|:error, message:}` — **status values are symbols** |
-| `CsvImporterService` / `CsvExporterService` | seed/export via `db/seed_data/*.csv` |
+| `EntryPrefill` | Builds an **unsaved** Entry from OMDB (or TMDB, for a standalone episode) for the custom-entry form to open filled in |
+| `EntryCsvTemplate` / `EntryCsvImporter` | The blank sheet `/entries/new` hands out and reads back. `COLUMNS` is the contract between them; a row with an `imdb` id is looked up and what was typed wins over what the lookup said |
+| `CsvImporterService` / `CsvExporterService` | seed/export via `db/seed_data/*.csv` — the *seed* pair, unrelated to the two above |
 | `DatabaseBackupService` / `DatabaseMigrationHelper` | `rake db:backup:*`, pg_dump + Active Storage manifest |
 | `LetterboxdFeed` | Reads a member's public Letterboxd diary (RSS) |
 | `LetterboxdList` | Reconciles that diary into a channel |
@@ -562,6 +571,9 @@ neither needs a local Redis.
   `move_to_list`, `subscribe`, `unsubscribe`, `mark_all_complete/incomplete`,
   `toggle_default`, `toggle_favorite`; collection `search` (JSON).
 - Two non-RESTful posts outside the resource: `/lists/add_to_favorites`, `/lists/add_to_list`.
+- `entries` nested under a list: `new` / `create`, plus collection `csv_template` (GET — it
+  only generates a file) and `import_csv` (POST — it writes a spreadsheet's worth of rows,
+  and `check_list_edit_permissions` asks whose channel it is first).
 - `entries` member routes are split by side effect: **writes are PATCH/POST**
   (`complete`, `review`, `complete_without_review`, `reportlink`, `repair_image`,
   `migrate_poster`, `duplicate`, `shuffle_current`, `increment_current`,
@@ -624,7 +636,7 @@ neither needs a local Redis.
 
 ## 11a. Tests
 
-RSpec is the live suite (`bundle exec rspec` — **~1,230 examples, green, under a minute**). `spec/rails_helper.rb` calls
+RSpec is the live suite (`bundle exec rspec` — **~1,360 examples, green, under a minute**). `spec/rails_helper.rb` calls
 `Rails.application.reload_routes_unless_loaded` because Rails 8 draws routes lazily and
 Devise registers its mappings during that draw; without it every `sign_in` fails. The test
 env uses the `:test` job adapter, since entry callbacks enqueue network-touching jobs.

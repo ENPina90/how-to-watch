@@ -1,207 +1,100 @@
-<div class="container" data-controller='search' data-search-id-value="<%= @list.id %>" data-search-entries="<%= @ids %>" data-search-key="<%= "#{ENV['OMDB_API_KEY_1']}-#{ENV['OMDB_API_KEY_2']}-#{ENV['OMDB_API_KEY_3']}"%>">
+<%# Making an entry by hand: a fanedit, a personal cut, a rip, a recording -- anything the
+    metadata APIs describe badly or not at all. There is no search box on this page any
+    more. The navbar search is on every page and its "+ Details" button lands here with the
+    form already filled in from the API, so the one search does both jobs instead of this
+    page carrying a second one that only worked here. %>
+<div class="container">
   <div class="row justify-content-center layout-title">
     <h1 class="text-center">
       <%= render 'lists/header_count', count: @list.entries.count, list: @list %>
       - <%= link_to @list.name, list_path(@list) %>
     </h1>
-    <div class="list-input">
-      <div class="list-options">
-      </div>
-      <div class="col-8" id="search">
-        <% if params['type'].nil? || params['type'] == 'movie' %>
-          <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#tmdbSearch' } } %>
-        <% elsif params['type'] == 'show' || params['type'] == 'anime' %>
-          <%= text_field_tag :entry, nil, { class: 'd-flex form-control', data: { search_target: 'input', action: 'input->search#tmdbShow' } } %>
-        <% else %>
-          <h5>Coming soon</h5>
-        <% end %>
-      </div>
-      <div class="list-options">
-      </div>
+
+    <%# Where the Movie/Series/Anime tabs used to be. They chose which search box to draw,
+        and there is no search box left to choose between. %>
+    <div class="new-entry-actions" data-controller="csv-upload">
+      <%# Outside the form it submits, by id: the button belongs up here with the other two
+          and the fields belong below, and an HTML form attribute is the whole of what that
+          takes. %>
+      <%= button_tag type: 'submit', form: 'custom-entry-form', class: 'btn btn-primary' do %>
+        <i class="fa-solid fa-plus me-1"></i>Create Entry
+      <% end %>
+
+      <%# A file download rather than a page, so Turbo is told to stay out of it: a visit it
+          cannot render leaves the page looking as though the click did nothing. %>
+      <%= link_to csv_template_list_entries_path(@list), class: 'btn btn-outline-primary', data: { turbo: false } do %>
+        <i class="fa-solid fa-file-arrow-down me-1"></i>Download CSV
+      <% end %>
+
+      <%# The picker is the button. A bare file input sitting in a row of buttons reads as a
+          different kind of control from the two beside it, and it needs a second click to
+          do anything. %>
+      <%= form_with url: import_csv_list_entries_path(@list), multipart: true,
+                    data: { turbo: false, csv_upload_target: 'form' }, class: 'd-inline' do %>
+        <%= file_field_tag :file, accept: '.csv,text/csv',
+              class: 'd-none',
+              data: { csv_upload_target: 'input', action: 'change->csv-upload#submit' } %>
+        <button type="button" class="btn btn-outline-primary" data-action="click->csv-upload#choose">
+          <i class="fa-solid fa-file-arrow-up me-1"></i>Upload CSV
+        </button>
+      <% end %>
     </div>
-    <ul class="menu">
-      <li class="<%= 'active' if params['type'].nil? || params['type'] == 'movie' %>">
-        <%= link_to 'Movie', new_list_entry_path(@list, type: 'movie') %>
-      </li>
-      <li class="<%= 'active' if params['type'] == 'show' %>">
-        <%= link_to 'Series', new_list_entry_path(@list, type: 'show') %>
-      </li>
-      <li class="<%= 'active' if params['type'] == 'anime' %>">
-        <%= link_to 'Anime', new_list_entry_path(@list, type: 'anime') %>
-      </li>
-    </ul>
+
+    <p class="new-entry-hint">
+      Download the CSV for a blank sheet with a column for every field below, the channels
+      you can file a row into, and the media types that are allowed. Fill it in, upload it,
+      and every row becomes an entry in <strong><%= @list.name %></strong> — or in whichever
+      channel its <code>channel</code> cell names. A row with an <code>imdb</code> id has the
+      rest looked up for it, and anything you typed wins over what the lookup said.
+      <%= EntryCsvImporter::MAX_ROWS %> rows to an upload.
+    </p>
   </div>
+
   <div class="row justify-content-center list-layout">
-    <div class="col-8 d-flex justify-content-center">
-      <div data-search-target="results">
-        <%= simple_form_for([@list, @entry], custom: true) do |f|%>
-          <%= f.input :list_id, collection: List.where(user: current_user), selected: @list.id %>
-          <%= f.input :name %>
-          <%= f.input :pic, label: "Poster URL (or upload below)" %>
-          <%= f.input :poster, as: :file, label: "Upload Poster Image" %>
-          <%= f.input :source_url, label: "Source URL", hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
-          <%= f.input :media, collection: [['Fanedit', 'fanedit'], ['Movie', 'movie'], ['Series', 'show'], ['Episode', 'episode'], ['Other', 'other']]  %>
-          <%= f.input :series %>
-          <%= f.input :plot %>
-          <%= f.input :category %>
-          <%= f.input :note %>
-          <%= f.input :review %>
-          <%= hidden_field_tag :custom, true %>
-          <%= f.submit %>
-        <% end %>
-      </div>
+    <div class="col-8">
+      <%= simple_form_for([@list, @entry], custom: true, html: { id: 'custom-entry-form' }) do |f| %>
+        <%= f.input :list_id, label: 'Channel', collection: @user_lists, selected: @entry.list_id || @list.id %>
+        <%= f.input :name %>
+        <%# The values the app can actually draw: `entries/entry_#{media}` is a partial name,
+            so an entry saved as anything outside this set has no card. The two that were
+            offered here before -- `show` and `other` -- were both outside it. %>
+        <%= f.input :media, collection: [['Fanedit', 'fanedit'], ['Movie', 'movie'], ['Series', 'series'], ['Anime', 'anime'], ['Episode', 'episode']] %>
+        <%= f.input :source_url, label: 'Source URL',
+              input_html: { value: @entry.current_source_url },
+              hint: 'Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id.' %>
+
+        <%# Three ways to the same picture, and they are not the same thing. `pic` points at
+            somebody else's host for as long as it stays up -- which is what the
+            broken-poster audit spends its time finding out about -- while the two below keep
+            a copy. The prefill fills `pic` with whatever the API had. %>
+        <%= f.input :pic, label: 'Poster URL (linked, not stored)' %>
+        <%= f.input :poster_url, as: :url, label: 'Fetch a poster from a link',
+              input_html: { value: nil, placeholder: 'https://…' },
+              hint: 'Downloads the image and keeps a copy, so it does not go dead later.' %>
+        <%= f.input :poster, as: :file, label: 'Upload a poster image' %>
+
+        <%= f.input :imdb, label: 'IMDb id', hint: 'Entries with no source URL play from this.' %>
+        <%= f.input :tmdb, label: 'TMDB id' %>
+        <%= f.input :year %>
+        <%# What the cable schedule lays a slot out by. Left blank it falls back to a flat
+            guess, and a guess that is short cuts the programme off partway through. %>
+        <%= f.input :length, label: 'Runtime (minutes)',
+              hint: 'Used by the cable schedule. Left blank it guesses, and a short guess cuts the programme off.' %>
+        <%= f.input :series %>
+        <%= f.input :season %>
+        <%= f.input :episode %>
+        <%= f.input :category %>
+        <%= f.input :genre %>
+        <%= f.input :rating %>
+        <%= f.input :director %>
+        <%= f.input :writer %>
+        <%= f.input :actors %>
+        <%= f.input :plot %>
+        <%= f.input :note %>
+        <%= f.input :review %>
+        <%= hidden_field_tag :custom, true %>
+        <%# No submit down here: Create Entry at the top of the page is this form's, by id. %>
+      <% end %>
     </div>
   </div>
 </div>
-</div>
-<template id="movieCardTemplate">
-  {{#movies}}
-  <div class="grid-card" id="{{imdbID}}">
-    <div class="card-picture">
-      <a href="/watch_now?imdb={{imdbID}}&title={{Title}}&type=movie&poster={{Poster}}"><img src="{{Poster}}" class="card-img-top" alt="Watch {{Title}} now"></a>
-      <span class="fa-stack fa-4x play-button">
-        <i class="fa-solid fa-circle fa-stack-2x icon-background"></i>
-        <a href="/watch_now?imdb={{imdbID}}&title={{Title}}&type=movie&poster={{Poster}}"><i class="fa-solid fa-play fa-stack-1x icon-foreground"></i></a>
-      </span>
-    </div>
-    <div class="card-stuff w-100 d-flex justify-content-center align-items-center p-auto">
-      <div class="card-spacer"></div>
-      <div class="card-title">
-        <h5 class="card-header"><bold>{{Title}}</bold></h5>
-      </div>
-      <div class="card-details">
-        <div class="d-flex justify-content-between">
-          <p>{{Year}}</p>
-          <p>{{Rating}}</p>
-        </div>
-        <p class="mb-4"><small>{{Genre}}</small></p>
-        <p class="card-plot">{{Plot}}</p>
-      </div>
-      <div class="card-menu">
-        <a href="/watch_now?imdb={{imdbID}}&title={{Title}}&type=movie&poster={{Poster}}" class="text-white">
-          <i class="fa-solid fa-play"></i>
-        </a>
-        <!-- Conditionally render the turbo-frame -->
-        {{#isInList}}
-        <turbo-frame id="entry-{{imdbID}}-partial">
-          <form action="/entries/{{entryId}}" method="post" data-turbo-confirm="Are you sure?" data-turbo-frame="entry-{{imdbID}}-partial">
-            <input type="hidden" name="_method" value="delete">
-            <button class="btn btn-danger w-100 d-flex justify-content-center align-items-center" type="submit">
-              <i class="fa-solid fa-trash"></i> Delete
-            </button>
-          </form>
-        </turbo-frame>
-        {{/isInList}}
-
-        {{^isInList}}
-        <turbo-frame id="entry_{{imdbID}}_partial">
-          <form action="/lists/<%= @list.id %>/entries" method="post">
-            <input class='d-none' name='imdb' value='{{imdbID}}'>
-            <input class='d-none' name='tmdb' value='{{tmdbID}}'>
-            <button type="submit" name="create" value="create" class="btn btn-primary w-100 d-flex justify-content-center align-items-center" data-controller="button" data-action="click->button#start">
-              <span class="static-text">+ Movie</span><span class="ellipsis"></span>
-            </button>
-          </form>
-        </turbo-frame>
-        {{/isInList}}
-      </div>
-    </div>
-  </div>
-  {{/movies}}
-</template>
-<template id="showCardTemplate">
-  {{#movies}}
-  <div class="card mb-4 pb-2" style="height: 25vh;">
-    <div class="row g-0">
-      <div class="col-6 pt-2 px-2">
-        <img src="{{Poster}}" class="card-img-top" alt="{{Title}} poster">
-      </div>
-      <div class="col-6" style="100%">
-        <div class="card-body">
-          <h6 class="card-title">{{Title}}</h6>
-          <p class="card-text">{{Year}}</p>
-          <p class="card-text">{{totalSeasons}}</p>
-          <turbo-frame id="entry_{{imdbID}}_partial">
-            <form action="/lists/<%= @list.id %>/entries" method='post'>
-              <input class='d-none' name='imdb' value='{{imdbID}}'>
-              <input class='d-none' name='tmdb' value='{{tmdbID}}'>
-              <input class='d-none' name='type' value='<%= params[:type] || "show" %>'>
-              <button type='submit' name='create' value='create' class="btn btn-primary">
-                + <%= params[:type] == 'anime' ? 'Anime' : 'Series' %>
-              </button>
-            </form>
-          </turbo-frame>
-          <button class="btn btn-primary"
-                    data-action="click->search#seeEpisodes"
-                    data-tmdb-id="{{tmdbID}}">
-            See Episodes
-          </button><%=  %>
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#topEntriesModal{{tmdbID}}">
-            Top Entries
-          </button>
-
-          <%# <a href="{{url}}" >+ movie</a> %>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal fade" id="topEntriesModal{{tmdbID}}" tabindex="-1" aria-labelledby="topEntriesModalLabel{{tmdbID}}" aria-hidden="true" data-controller="slider" data-slider-list-id="<%= @list.id %>" data-slider-tmdb-id="{{tmdbID}}">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="topEntriesModalLabel{{tmdbID}}">Add Top <span class="fw-bold text-nowrap" data-slider-target="sliderValueDisplay">25</span> Episodes of <strong>{{Title}}</strong></h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <label for="topNumberSlider" class="form-label">Select number of episodes to add:</label>
-          <input type="range" class="form-range" min="1" max="20" id="topNumberSlider" value="10" data-action="input->slider#updateSliderValue" data-slider-target="slider">
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-primary d-flex justify-content-center align-items-center w-50  ps-3" data-controller="button" data-action="click->button#start click->slider#addTopEntries">
-            <span class="static-text">Top Entries</span><span class="ellipsis text-start" style="width: 16px;"></span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-  {{/movies}}
-</template>
-<template id="episodeCardTemplate">
-  {{#movies}}
-  <div class="card mb-4">
-    <div class="row g-0">
-      <div class="col-md-3">
-        <img src="{{Poster}}" class="card-img-top h-100" alt="{{Title}} poster" style="object-fit: cover;">
-      </div>
-      <div class="col-md-9">
-        <div class="card-body">
-          <h6 class="card-title">{{Title}}</h6>
-          <p class="card-text"><small class="text-muted">S{{Season}}E{{Episode}}</small></p>
-          {{#Plot}}
-            <p class="card-text"><small>{{Plot}}</small></p>
-          {{/Plot}}
-          <div class="d-flex gap-2 mt-2">
-            <a href="/watch_now?imdb={{seriesImdbID}}&title={{Title}}&type=tv&tmdb={{tmdbID}}&season={{Season}}&episode={{Episode}}&poster={{Poster}}"
-               class="btn btn-success btn-sm">
-              <i class="fa-solid fa-play me-1"></i>Watch Now
-            </a>
-            <turbo-frame id="entry_S{{Season}}E{{Episode}}_partial">
-              <form action="/lists/<%= @list.id %>/entries" method='post'>
-                <input class='d-none' name='imdb' value='{{seriesImdbID}}'>
-                <input class='d-none' name='tmdb' value='{{tmdbID}}'>
-                <input class='d-none' name='series_imdb' value='{{seriesImdbID}}'>
-                <input class='d-none' name='season' value='{{Season}}'>
-                <input class='d-none' name='episode' value='{{Episode}}'>
-                <button type='submit' name='create' value='create' class="btn btn-primary btn-sm d-flex justify-content-center align-items-center" data-controller="button"  data-action="click->button#start">
-                  <span class="static-text">+ Episode</span><span class="ellipsis"></span>
-                </button>
-              </form>
-            </turbo-frame>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {{/movies}}
-</template>

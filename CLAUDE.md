@@ -40,7 +40,7 @@ a plain `rails server` serves stale stylesheets. `bin/dev` uses foreman if prese
 falls back to backgrounding the watcher itself.
 
 ```sh
-bundle exec rspec                                   # the whole suite (~1,230 examples, under a minute)
+bundle exec rspec                                   # the whole suite (~1,360 examples, under a minute)
 bundle exec rspec spec/models/source_spec.rb        # one file
 bundle exec rspec spec/models/source_spec.rb:42     # one example by line
 bundle exec rspec spec/requests                     # one directory
@@ -76,7 +76,7 @@ local Redis is required.
   Written Sept 2025; check them against the code before following.
 
 **`ARCHITECTURE.md` is partly stale.** It was last verified 2026-08-26 and predates several
-subsystems now in the tree (see below); its "31 examples" test count is long out of date.
+subsystems now in the tree (see below).
 Trust the code over the doc, and update the doc when you touch what it describes.
 
 ## Architecture notes

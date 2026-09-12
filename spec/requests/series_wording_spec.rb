@@ -23,28 +23,34 @@ RSpec.describe 'Series wording', :needs_provider, type: :request do
     expect(response.body).to include('aria-label="Search movies, series, and channels"')
   end
 
-  it 'labels the add button and the type menu on /entries/new' do
-    get new_list_entry_path(list, type: 'show')
+  # The overlay's + button is labelled in JavaScript rather than in the template -- the
+  # mustache render fills {{addLabel}} in -- so the wording is pinned where it is written.
+  # The /entries/new page used to carry a second copy of this label; it has no search on it
+  # any more.
+  it 'names the overlay\'s add button Series' do
+    labels = Rails.root.join('app/javascript/controllers/list_search_controller.js').read
 
-    expect(response.body).to include('>Series</a>')
-    expect(response.body).to include('+ Series')
-    expect(response.body).not_to include('>Show</a>')
+    expect(labels).to include("show: 'Series'")
+    expect(labels).not_to include("show: 'Show'")
   end
 
-  # Labels, not values: the media column and the type param still say show.
+  # Labels, not values: the type param, the template ids and the controller methods still
+  # say show.
   it 'leaves the wiring alone' do
-    get new_list_entry_path(list, type: 'show')
+    get list_path(list)
 
-    expect(response.body).to include(new_list_entry_path(list, type: 'show'))
     expect(response.body).to include('id="listSearchShowTemplate"')
     expect(response.body).to include('list-search#switchToShowSearch')
   end
 
-  it 'offers Series as a media label over the value the column stores' do
+  # `show` was the label's value here too, and it is not a media type the app can draw:
+  # `entries/entry_show` is not a partial. The column stores `series`.
+  it 'offers Series as a media option the card renderer understands' do
     get new_list_entry_path(list)
 
     media = response.body[/<select[^>]*entry_media.*?<\/select>/m]
 
-    expect(media).to include('<option value="show">Series</option>')
+    expect(media).to include('<option value="series">Series</option>')
+    expect(media).not_to include('value="show"')
   end
 end
