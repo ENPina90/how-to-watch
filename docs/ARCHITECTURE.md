@@ -299,11 +299,33 @@ Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
 which is how the position is saved as the page goes away, can only send POST.**
 
 Completion is a fraction of runtime, not a position: `UserEntry::COMPLETION_FRACTION`
-(0.95). `AppSetting#up_next_fraction` decides how far in the up-next card appears, and is
-validated into `UP_NEXT_RANGE`, which **floors at the completion fraction**. Below that
-floor the fullscreen path stops raising the card at all, silently — the floor exists to
-prevent exactly that. `PATCH /entries/:id/runtime` is the player correcting the catalogue
-when a file turns out to run to something other than what TMDB said.
+(0.95). The **up-next card** is timed separately, by `AppSetting#up_next_lead_seconds`
+(15): the card appears that long before the end and counts down for that long, so it
+reaches zero as the film does. One number doing both jobs, because two of them can
+disagree and no reading of "the countdown" wants them to.
+
+`AppSetting#up_next_mark_for` applies the floor — never earlier than the completion mark —
+and `player_progress_controller` applies the same rule client-side. It has to be a floor at
+the point of use rather than a validation: whether 15 seconds is too long a lead is a
+question about the film's length, and fifteen seconds before the end of a two-minute clip
+is well before it counts as watched. Both routes to the card are gated on the film counting
+as watched, so a mark earlier than that is a card that never appears.
+
+**Fullscreen is not interrupted to show the card.** `entries/_auto_advance_modal` is
+rendered inside `.cinema__screen`, which is the element that goes fullscreen, so the card
+draws over the picture. `player-progress:up-next` is **cancelable**: the card cancels it
+when it takes it, and only when nothing does — auto-next off for the channel, or a viewer
+who pressed Stop — does the player hand the screen back, which is what leaves the ring of
+controls reachable.
+
+`POST /entries/:id/progress` normally answers `204`. The one report that crosses the
+completion mark answers with a **turbo stream redrawing the watched eye**, because the page
+it sits on is not going to be rendered again while a film plays on it. Everything else
+stays `204`: the report arrives on every pause and seek, and a stream per report would
+re-render the card twelve times a minute to say what it already says.
+
+`PATCH /entries/:id/runtime` is the player correcting the catalogue when a file turns out
+to run to something other than what TMDB said.
 
 ### 5.9 Cable — `GET /cable`, `GET /cable/:id`, `GET /cable/guide`
 
@@ -714,7 +736,8 @@ tell you how far behind it is likely to be. Trust the code; update the section y
 | Watch party connects but nothing ever arrives | the `redis` gem resolved to 6.x — Action Cable's adapter declares `< 6` and every broadcast raises `Gem::LoadError` while the socket still looks healthy (§5.10). |
 | A watch party will not keep guests in step | `Source#syncable?` is false for that provider; the room can only hold everyone on the same entry. |
 | A room vanishes while people are in it | `CloseAbandonedWatchPartiesJob` + `WatchParty::ABANDONED_AFTER`; check `last_seen_at` on the memberships. |
-| Up-next card never appears in fullscreen | `AppSetting#up_next_fraction` set below `UserEntry::COMPLETION_FRACTION` — `UP_NEXT_RANGE` exists to floor exactly this (§5.8). |
+| Up-next card never appears | The lead is longer than what the entry has left after the completion mark. `AppSetting#up_next_mark_for` floors it, so this should not happen — if it does, check the runtime on the entry (§5.8). |
+| Watched eye stays hollow after a film ends | `POST /entries/:id/progress` answers the crossing with a turbo stream; check `player_progress_controller` is actually connected — a bad import there fails silently in the browser and the whole controller never registers (§5.8). |
 | Progress is not saved when the tab closes | `POST /entries/:id/progress` — `sendBeacon` can only POST; a PATCH route here silently drops the write. |
 | A dismissed warning keeps coming back (or never does) | `Notification#dedupe_key` — it carries the date warned about, by design (§5.12). |
 | A signed-out visitor sees too much / too little | `AppSetting#access_mode` and the table in `access_control.rb`. Only GETs pass; unlisted actions fall through to Devise (§5.13). |
