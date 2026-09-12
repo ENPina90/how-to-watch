@@ -1,5 +1,9 @@
 import { Controller } from "@hotwired/stimulus";
 import { playerAdapterFor, isControllable } from "services/player_adapter";
+// The vendored turbo build exports the namespace and nothing else -- there is no named
+// `renderStreamMessage` to import, which is a browser-only failure: the module simply does
+// not register and the controller silently never connects.
+import { Turbo } from "@hotwired/turbo-rails";
 
 // Keeps a record of where this viewer got to, so the next visit picks up there.
 //
@@ -294,8 +298,18 @@ export default class extends Controller {
       return;
     }
 
-    // Nothing comes back and nothing on screen depends on it, so a failure is dropped:
-    // the next pause, or leaving the page, will say the same thing again.
-    fetch(this.urlValue, { method: "POST", body: body }).catch(() => {});
+    // Usually nothing comes back. The exception is the report that crosses the completion
+    // mark, which answers with the watched eye redrawn -- the page it sits on is not going
+    // to be rendered again while a film plays on it, so the server hands back the one piece
+    // of it that has changed. Anything else, and any failure, is dropped: the next pause or
+    // leaving the page will say the same thing again.
+    fetch(this.urlValue, {
+      method: "POST",
+      body: body,
+      headers: { Accept: "text/vnd.turbo-stream.html" },
+    })
+      .then((response) => (response.ok && response.status !== 204 ? response.text() : null))
+      .then((stream) => { if (stream) Turbo.renderStreamMessage(stream); })
+      .catch(() => {});
   }
 }

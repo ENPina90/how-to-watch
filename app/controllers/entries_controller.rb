@@ -586,12 +586,35 @@ class EntriesController < ApplicationController
   # the tracking off entirely; a session that lapses mid-film is a write like any other and
   # goes to the sign-in page, where nothing is listening for the answer.
   def progress
-    current_user.user_entry_for!(@entry).record_progress!(
+    user_entry = current_user.user_entry_for!(@entry)
+    was_completed = user_entry.completed?
+
+    user_entry.record_progress!(
       params[:progress],
       duration: params[:duration],
       finished: params[:finished].to_s == 'true',
       unattended: params[:unattended].to_s == 'true'
     )
+
+    # The eye in the ring is drawn from the row this just wrote, and the page it is on is
+    # not going to be rendered again -- the viewer is watching a film on it. Sitting through
+    # to the end left it hollow until they navigated somewhere, which reads as the app not
+    # having noticed.
+    #
+    # Only on the crossing. This is called on every pause and every seek, and a stream per
+    # report would be a card re-rendered twelve times a minute to say what it already says.
+    #
+    # The association is reset rather than trusted: completed_by? reads it where it is
+    # loaded, and what is in it was read before this request wrote to it.
+    if !was_completed && user_entry.completed?
+      @entry.user_entries.reset
+
+      return render turbo_stream: turbo_stream.replace(
+        "completed-#{@entry.id}",
+        partial: 'entries/completion_status',
+        locals: { entry: @entry, user: current_user }
+      )
+    end
 
     head :no_content
   end
