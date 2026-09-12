@@ -95,6 +95,37 @@ body.cinema__mode #sidebarCollapseBtn {
   line-height: 1.3;
 }
 
+/* What is on, said under the poster as well as over it. The overlay answers a hover; the
+   point of the card away from the player is to answer "is anything on" at a glance, and a
+   caption that has to be uncovered does not. */
+.now-playing-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 200px;
+  color: #ffffff;
+  line-height: 1.25;
+}
+
+/* The channel, in the small caps its number is said in everywhere else on the box. */
+.now-playing-channel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #1db954;
+}
+
+/* One line and then stop: the sidebar is 280px and a long episode title would otherwise
+   push the poster's caption into three. */
+.now-playing-programme {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Default page container margin when sidebar is visible */
 body.has-sidebar #pageContainer,
 body.has-sidebar .page-container {

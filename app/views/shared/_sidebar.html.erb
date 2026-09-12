@@ -46,51 +46,69 @@
 
     <!-- Now Playing Content (Collapsible) -->
     <div id="nowPlayingContent" class="p-3 pt-3 <%= 'd-none' if @now_playing_collapsed %>" style="transition: all 0.3s ease;">
-      <%
-        # Priority: 1) Current entry on watch page, 2) List's current entry, 3) Context-specific
-        now_playing = if defined?(@entry) && @entry
-          # On watch page - show the entry being watched
-          @entry
-        elsif @list && current_user
-          # On list show page - show user's current entry in that list
-          @list.current_entry(current_user)
-        elsif current_user && controller_name == 'lists' && action_name == 'index'
-          # On list index - show current entry from a random subscribed list
-          random_list = current_user.subscribed_lists.sample
-          random_list&.current_entry(current_user)
-        elsif current_user
-          # Other pages - use most recently updated position
-          most_recent_position = current_user.user_list_positions
-                                            .joins(:list)
-                                            .where(lists: { private: [false, nil] })
-                                            .or(current_user.user_list_positions.joins(:list).where(lists: { user_id: current_user.id }))
-                                            .order(updated_at: :desc)
-                                            .first
-          most_recent_position&.current_entry
-        else
-          # Other pages - show global now playing
-          @now_playing_entry || find_now_playing_for_sidebar
-        end
-      %>
-      <% if now_playing && now_playing.persisted? %>
-        <%= link_to watch_entry_path(now_playing), class: "text-decoration-none now-playing-card" do %>
+      <%# Two things can honestly be called "now playing", and which one this is depends on
+          whether there is a picture on the screen beside it.
+
+          On the player page there is, and it is `@entry` -- the film this member is
+          watching, which cinema-navigation swaps this card for as they move between
+          channels. Everywhere else nothing of theirs is playing at all, and the card used
+          to show where they had got to in some channel, which is a bookmark rather than a
+          programme: the heading promised live and the card answered with a resume point, or
+          with a stand-by caption when it had nothing to resume.
+
+          So away from the player it shows the dial. Cable runs whether or not anybody is
+          looking, which makes it the only thing in the app that is genuinely on right now,
+          and pressing the card tunes to that channel. Which channel rotates -- see
+          ApplicationController#cable_now_playing. %>
+      <% if defined?(@entry) && @entry&.persisted? %>
+        <%= link_to watch_entry_path(@entry), class: "text-decoration-none now-playing-card" do %>
           <div class="d-flex flex-column align-items-center text-center">
             <div class="now-playing-poster-container" style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); position: relative;">
-              <%= entry_poster_image_tag(now_playing, class: 'img-fluid', style: 'width: 100%; height: 100%; object-fit: cover;') %>
+              <%= entry_poster_image_tag(@entry, class: 'img-fluid', style: 'width: 100%; height: 100%; object-fit: cover;') %>
               <div class="now-playing-overlay">
                 <div class="overlay-content">
-                  <p class="mb-1"><strong><%= now_playing.list.name %></strong></p>
-                  <% if now_playing.series.present? %>
-                    <p class="mb-1 text-muted small"><%= now_playing.series %></p>
+                  <p class="mb-1"><strong><%= @entry.list.name %></strong></p>
+                  <% if @entry.series.present? %>
+                    <p class="mb-1 text-muted small"><%= @entry.series %></p>
                   <% end %>
-                  <p class="mb-2"><%= now_playing.name %></p>
+                  <p class="mb-2"><%= @entry.name %></p>
                   <i class="fa-solid fa-play fa-3x"></i>
                 </div>
               </div>
             </div>
           </div>
         <% end %>
+      <% elsif (on_air = cable_now_playing) %>
+        <% slot = on_air[:slot] %>
+        <%= link_to cable_channel_path(on_air[:channel]), class: "text-decoration-none now-playing-card",
+                    title: "Tune to #{on_air[:channel].name}" do %>
+          <div class="d-flex flex-column align-items-center text-center">
+            <div class="now-playing-poster-container" style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); position: relative;">
+              <%= entry_poster_image_tag(slot.entry, class: 'img-fluid', style: 'width: 100%; height: 100%; object-fit: cover;') %>
+              <div class="now-playing-overlay">
+                <div class="overlay-content">
+                  <p class="mb-1"><strong>Ch <%= on_air[:number] %> &middot; <%= on_air[:channel].name %></strong></p>
+                  <%# The same headline-and-context split the banner under the picture uses,
+                      so a programme is named the same way wherever it is named. %>
+                  <% if (context = cable_programme_context(slot)).present? %>
+                    <p class="mb-1 text-muted small"><%= context %></p>
+                  <% end %>
+                  <p class="mb-2"><%= cable_programme_headline(slot) %></p>
+                  <i class="fa-solid fa-play fa-3x"></i>
+                </div>
+              </div>
+            </div>
+            <%# Said outside the overlay as well as in it: the whole point of the card is to
+                answer "what is on" without having to hover over it. %>
+            <p class="now-playing-caption mb-0">
+              <span class="now-playing-channel">Ch <%= on_air[:number] %> &middot; <%= on_air[:channel].name %></span>
+              <span class="now-playing-programme"><%= cable_programme_headline(slot) %></span>
+            </p>
+          </div>
+        <% end %>
       <% else %>
+        <%# Nothing of this member's is playing and every channel on the dial is dark -- or
+            there is no dial yet. The stand-by card is what a television shows then. %>
         <div class="d-flex flex-column align-items-center text-center">
           <div style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden;">
             <img src="/images/please_stand_by.png" class="img-fluid" style="width: 100%; height: 100%; object-fit: cover;" alt="No content">
