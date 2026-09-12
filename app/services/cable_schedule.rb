@@ -81,6 +81,30 @@ module CableSchedule
     CableSlot.where(list: channel).on_air_at(at).includes(:entry, :subentry).first
   end
 
+  # The whole dial as it stands this second: every channel that has something on, paired
+  # with the slot it is showing and its number, in dial order. Channels that are off air are
+  # simply absent -- there is nothing to say about them.
+  #
+  # Shaped like `guide`'s rows on purpose, and fetched in one query rather than one per
+  # channel, because the sidebar's Now Playing card asks this on every page of the site that
+  # draws a sidebar.
+  #
+  # A read, like the rest of cable: nothing here records that anybody looked.
+  def on_air_now(at: Time.current)
+    dial = channels.to_a
+    return [] if dial.empty?
+
+    playing = CableSlot.where(list_id: dial.map(&:id))
+                       .on_air_at(at)
+                       .includes(:entry, :subentry)
+                       .index_by(&:list_id)
+
+    dial.each_with_index.filter_map do |channel, index|
+      slot = playing[channel.id]
+      slot && { channel: channel, number: index + 1, slot: slot }
+    end
+  end
+
   # How much of the running order the HUD's arrows can step through without tuning: a
   # little of what has been, more of what is coming, because that is the direction anybody
   # asks about.
