@@ -256,10 +256,12 @@ RSpec.describe 'JavaScript modules' do
   describe 'the shared search behaviour' do
     let(:shared) { Rails.root.join('app/javascript/services/tmdb_search_behavior.js') }
     let(:controllers) do
-      %w[list_search mobile_search].map { |name| Rails.root.join("app/javascript/controllers/#{name}_controller.js") }
+      %w[list_search mobile_shell].map { |name| Rails.root.join("app/javascript/controllers/#{name}_controller.js") }
     end
 
     # These six were byte-identical copies in both controllers before they were extracted.
+    # The phone side of it is mobile_shell now -- the bar it lives on does the filtering and
+    # the menu as well as the search -- but the rule is the same: one copy, mixed in.
     SHARED_METHODS = %w[tmdbSearch tmdbShow showOverlay handleClickOutside hideResults showToast].freeze
 
     it 'holds the only copy of the methods both controllers share' do

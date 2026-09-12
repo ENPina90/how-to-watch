@@ -1,0 +1,20 @@
+<%# The cable listings on a phone: the same grid, as a page rather than a panel over a
+    picture. There is no picture here -- the phone view plays nothing -- so this is the
+    whole of what cable is in this half of the app.
+
+    The grid is the desktop partial unchanged. Its cells carry `data-cinema-move` and
+    actions for the cable-guide controller, and neither is on this page: Stimulus ignores
+    an action whose controller is absent, and the links fall back to being links to a
+    channel, which the phone view refuses and redirects. The one thing worth changing is
+    the zoom -- see _mobile.scss, where an hour is narrow enough that a phone shows more
+    than one programme at a time. %>
+<div class="m-listings" data-controller="mobile-listings">
+  <h1 class="m-listings__title">TV Guide</h1>
+  <p class="m-listings__note">What is on, and what is on next. Watching happens on the full site.</p>
+
+  <%# The grid scrolls inside this rather than the page scrolling sideways, and the
+      controller above puts the present on screen when it opens. %>
+  <div class="m-listings__grid" data-mobile-listings-target="scroller">
+    <%= render "cable/guide" %>
+  </div>
+</div>

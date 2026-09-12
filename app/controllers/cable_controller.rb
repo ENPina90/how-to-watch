@@ -18,7 +18,7 @@ class CableController < ApplicationController
   # The listings are the one part of cable the phone view keeps -- see the concern. A
   # channel is a picture playing to a room, and `show` is the page that plays it.
   include NoPlaybackOnMobile
-  skip_before_action :refuse_playback_on_mobile, only: :guide
+  skip_before_action :refuse_playback_on_mobile, only: %i[guide listings]
 
   before_action :set_channel, except: %i[guide regenerate]
   before_action :require_admin, only: :regenerate
@@ -29,30 +29,23 @@ class CableController < ApplicationController
   # wanted on purpose, it is the same for everybody so it answers the same way each time,
   # and a grid built into the page would go stale sitting there while a channel played.
   def guide
-    # Times are shown in the viewer's own zone. The schedule itself is a set of instants,
-    # pinned in one fixed zone so everybody sees the same programme at the same moment --
-    # but what time that moment *is* belongs to whoever is reading the listing.
-    @zone = CableSchedule.resolve_zone(params[:tz])
-    @window = CableSchedule.guide_window(in_zone: @zone)
-
-    # A day nobody laid out is a gap in the middle of the grid. The job lays tomorrow out
-    # each morning; this covers the days before it has ever run.
-    #
-    # Today forward only. The window now reaches three days behind the present, and a past
-    # day is not filled in on demand -- see days_to_fill. What was on last Tuesday is
-    # whatever was really on, or nothing.
-    CableSchedule.days_to_fill(@window).each do |date|
-      CableSchedule.channels.each { |channel| CableSchedule.ensure_day!(channel, date) }
-    end
-
-    @now = Time.current
-    @rows = CableSchedule.guide(at: @now, in_zone: @zone)
-    @playing = List.find_by(id: params[:channel])
-    @watched = watched_entry_ids(@rows)
-    @favorited = favorited_keys(@rows)
-    @letterboxd = letterboxd_scores(@rows)
+    load_listings
 
     render partial: "cable/guide", formats: [:html]
+  end
+
+  # The same grid as a page of its own, for a viewer who has no player to hang it over.
+  # That is the phone view, where cable is a listing and nothing else: reading what is on
+  # is not watching it, so this is the one part of cable that survives there.
+  def listings
+    return redirect_to cable_path unless mobile_request?
+
+    load_listings
+    # Nothing on this page to filter and nothing to add to, so the bar's field is put away
+    # rather than left as a control that does nothing.
+    @mobile_search_mode = 'none'
+
+    render :listings, layout: "mobile"
   end
 
   # Tear up the listings from here on and lay them out again, for every channel on the dial.
@@ -169,6 +162,33 @@ class CableController < ApplicationController
   end
 
   private
+
+  # Everything the grid is drawn from. Shared by the panel the guide button opens over the
+  # picture and the page the phone view gets, because they are the same listing.
+  #
+  # Times are shown in the viewer's own zone. The schedule itself is a set of instants,
+  # pinned in one fixed zone so everybody sees the same programme at the same moment -- but
+  # what time that moment *is* belongs to whoever is reading the listing.
+  def load_listings
+    @zone = CableSchedule.resolve_zone(params[:tz])
+    @window = CableSchedule.guide_window(in_zone: @zone)
+
+    # A day nobody laid out is a gap in the middle of the grid. The job lays tomorrow out
+    # each morning; this covers the days before it has ever run.
+    #
+    # Today forward only. A day that has already been is not filled in on demand -- see
+    # days_to_fill. What was on yesterday is whatever was really on, or nothing.
+    CableSchedule.days_to_fill(@window).each do |date|
+      CableSchedule.channels.each { |channel| CableSchedule.ensure_day!(channel, date) }
+    end
+
+    @now = Time.current
+    @rows = CableSchedule.guide(at: @now, in_zone: @zone)
+    @playing = List.find_by(id: params[:channel])
+    @watched = watched_entry_ids(@rows)
+    @favorited = favorited_keys(@rows)
+    @letterboxd = letterboxd_scores(@rows)
+  end
 
   # The same terms as /admin and /sidekiq: the check is on `true_user`, and it refuses while
   # impersonating. Rewriting the dial is the admin's own job, not part of what they are
