@@ -70,6 +70,20 @@
                   <i class="fas fa-plus me-1"></i>{{addLabel}}
                 </button>
                 {{/entryId}}
+                <%# Takes the result to the custom-entry form filled in from the API instead
+                    of creating it here. Offered whether or not it is already on the channel:
+                    a fanedit or a personal cut of something the channel already holds is a
+                    different entry, and this is the only way to make one. %>
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        data-action="click->list-search#details"
+                        data-imdb-id="{{imdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-title="{{Title}}"
+                        data-poster="{{Poster}}"
+                        title="Fill in a custom entry from this">
+                  <i class="fa-solid fa-plus me-1"></i>Details
+                </button>
                 {{#favoritable}}
                 <%# The member's own favourites channel, on the same switch the cable
                     guide's panel uses: hollow for out, solid for in. Absent for anybody
@@ -144,6 +158,21 @@
                   <i class="fas fa-plus me-1"></i>{{addLabel}}
                 </button>
                 {{/entryId}}
+                <%# Takes the result to the custom-entry form filled in from the API instead
+                    of creating it here. Offered whether or not it is already on the channel:
+                    a fanedit or a personal cut of something the channel already holds is a
+                    different entry, and this is the only way to make one. %>
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        data-action="click->list-search#details"
+                        data-imdb-id="{{imdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-title="{{Title}}"
+                        data-poster="{{Poster}}"
+                        data-type="{{#anime}}anime{{/anime}}"
+                        title="Fill in a custom entry from this">
+                  <i class="fa-solid fa-plus me-1"></i>Details
+                </button>
                 {{#favoritable}}
                 <%# The member's own favourites channel, on the same switch the cable
                     guide's panel uses: hollow for out, solid for in. Absent for anybody
@@ -300,6 +329,23 @@
                   <i class="fas fa-plus me-1"></i>Episode
                 </button>
                 {{/entryId}}
+                <%# Takes the result to the custom-entry form filled in from the API instead
+                    of creating it here. Offered whether or not it is already on the channel:
+                    a fanedit or a personal cut of something the channel already holds is a
+                    different entry, and this is the only way to make one. %>
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        data-action="click->list-search#details"
+                        data-imdb-id="{{seriesImdbID}}"
+                        data-series-imdb-id="{{seriesImdbID}}"
+                        data-tmdb-id="{{tmdbID}}"
+                        data-title="{{Title}}"
+                        data-poster="{{Poster}}"
+                        data-season="{{Season}}"
+                        data-episode="{{Episode}}"
+                        title="Fill in a custom entry from this">
+                  <i class="fa-solid fa-plus me-1"></i>Details
+                </button>
                 <% end %>
               </div>
             </div>

@@ -149,6 +149,16 @@ body.light-mode .list-input {
   border-bottom: 2px solid #000000;
 }
 
+/* The CSV note under the custom-entry buttons: quiet, but quiet against cream. */
+body.light-mode .new-entry-hint {
+  color: rgba(0, 0, 0, 0.6);
+
+  code {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: #0f5c46;
+  }
+}
+
 body.light-mode .border-top-bottom {
   border-top: 2px solid #000000;
   border-bottom: 2px solid #000000;

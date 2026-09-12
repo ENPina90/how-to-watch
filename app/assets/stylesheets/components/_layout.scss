@@ -197,6 +197,38 @@
   gap: 16px;
 }
 
+/* The three things the custom-entry page can do, in the slot the Movie/Series/Anime tabs
+   used to occupy. Centred in the sticky title block like the tabs were, and wrapping rather
+   than scrolling sideways: there are three of them, not eight groupings. */
+.new-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 20px 0 0;
+}
+
+/* What the CSV round trip is, said once, under the buttons that do it. Sized down and held
+   to a readable measure so it reads as a note rather than as part of the form. */
+.new-entry-hint {
+  width: 100%;
+  max-width: 720px;
+  margin: 12px auto 16px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+
+  code {
+    color: #1a936f;
+    background-color: rgba(0, 0, 0, 0.35);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+}
+
 /* Adding and searching read as the icons they are, not as buttons with chrome. */
 .list-action {
   display: inline-flex;

@@ -146,32 +146,45 @@ RSpec.describe 'Forms render', :needs_provider, type: :request do
     expect(response.body).to include('name="user[password]"')
   end
 
+  # Nothing but the custom-entry form now. The search that used to sit on top of it -- one
+  # box per media type, its own mustache templates, its own + buttons -- has gone: the navbar
+  # search is on every page and reaches this form through "+ Details".
   describe 'the add-entry page' do
-    it 'renders a search box for each type the menu links to' do
-      %w[movie show anime].each do |type|
-        get new_list_entry_path(list, type: type)
-
-        expect(response).to be_successful
-        expect(response.body).to include('data-search-target="input"'), "no search box for #{type}"
-      end
-    end
-
-    it 'falls through for a type with no search behind it' do
-      # `custom` used to render a box wired to search#custom, which the controller never
-      # defined. The always-present manual form below is what creates a custom entry.
-      get new_list_entry_path(list, type: 'custom')
+    it 'renders the custom-entry form' do
+      get new_list_entry_path(list)
 
       expect(response).to be_successful
-      expect(response.body).to include('Coming soon')
       expect(response.body).to include('name="entry[name]"')
+      expect(response.body).to include('name="entry[media]"')
+      expect(response.body).to include('name="custom"')
     end
 
-    it 'carries the mustache templates the search controller renders into' do
-      get new_list_entry_path(list, type: 'movie')
+    it 'carries no search box of its own' do
+      get new_list_entry_path(list)
 
-      %w[movieCardTemplate showCardTemplate episodeCardTemplate].each do |id|
-        expect(response.body).to include(%(<template id="#{id}">))
-      end
+      expect(response.body).not_to include('data-search-target="input"')
+      expect(response.body).not_to include('<template id="movieCardTemplate">')
+    end
+
+    # The poster fields the edit form and the change-poster modal already had: a link to
+    # keep pointing at, a link to copy, and a file.
+    it 'offers all three ways to a poster' do
+      get new_list_entry_path(list)
+
+      expect(response.body).to include('name="entry[pic]"')
+      expect(response.body).to include('name="entry[poster_url]"')
+      expect(response.body).to include('name="entry[poster]"')
+    end
+
+    # The submit lives up in the button row with the two CSV buttons, so it is attached to
+    # the form by id rather than by being inside it.
+    it 'submits from the button row above the fields' do
+      get new_list_entry_path(list)
+
+      expect(response.body).to include('id="custom-entry-form"')
+      expect(response.body).to include('form="custom-entry-form"')
+      expect(response.body).to include(csv_template_list_entries_path(list))
+      expect(response.body).to include(import_csv_list_entries_path(list))
     end
   end
 

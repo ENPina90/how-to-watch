@@ -125,7 +125,14 @@ Rails.application.routes.draw do
       delete 'options/:option_id', action: :remove_option, as: :option
     end
 
-    resources :entries, only: [:new, :create]
+    resources :entries, only: [:new, :create] do
+      collection do
+        # The blank spreadsheet, and the way back in with it filled. The download only
+        # generates a file, so it is a GET; the upload creates entries, so it is not.
+        get :csv_template
+        post :import_csv
+      end
+    end
   end
 
   # Watch parties. The token is the invitation, so it addresses the room rather than an
