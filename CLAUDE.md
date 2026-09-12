@@ -111,7 +111,11 @@ Nothing constructs a provider URL outside a template, and there is no legacy fal
   identical for every viewer; how far into a programme you are is a question about the
   clock, not about you. `CableScheduleJob` deals tomorrow daily and backfills today if
   empty. `/cable/guide` is the TV guide; note the route ordering comment in
-  `config/routes.rb` — `cable/guide` must stay above `cable/:id`.
+  `config/routes.rb` — `cable/guide` must stay above `cable/:id`. The dial is
+  `lists.default` ordered by `lists.cable_position`, and `/admin/cable` is where both are
+  set: drag to reorder, add or remove a channel, and deal the schedule again. Go through
+  `CableSchedule.add_channel!` / `remove_channel!` rather than writing `default` directly —
+  a channel on the dial needs a place on it, and setting the flag subscribes every account.
 - **Watch parties** (`WatchParty`, `WatchPartyChannel`, `watch_party_context.rb`) — the
   only Action Cable feature. The host's player is the clock; guests join by token and are
   moved to match. Only providers where `Source#syncable?` can be driven this way.
@@ -125,7 +129,7 @@ Nothing constructs a provider URL outside a template, and there is no legacy fal
   `app/controllers/concerns/access_control.rb` rather than scattered declarations; only
   GETs pass through, and anything unlisted falls through to Devise.
 - **Admin dashboard** (`app/controllers/admin/`) — statistics, the site switches, commercial
-  reels, and on-demand runs of the scheduled sweeps.
+  reels, the cable dial, and on-demand runs of the scheduled sweeps.
 
 ### Impersonation
 
