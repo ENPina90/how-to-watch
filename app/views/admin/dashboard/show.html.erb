@@ -216,26 +216,34 @@
     <h2 class="admin-section__title">When "Up next" appears</h2>
 
     <%= form_with model: @setting, url: admin_dashboard_path, method: :patch, class: "admin-reset" do |f| %>
-      <%= f.label :up_next_percent, 'Start the countdown once a film is', class: "admin-reset__label" %>
-      <%= f.number_field :up_next_percent, value: @setting.up_next_percent,
-                         min: (AppSetting::UP_NEXT_RANGE.begin * 100).round, max: 100, step: 0.5,
+      <%= f.label :up_next_lead_seconds, 'Start the countdown', class: "admin-reset__label" %>
+      <%= f.number_field :up_next_lead_seconds, value: @setting.up_next_lead_seconds,
+                         min: AppSetting::UP_NEXT_LEAD_RANGE.begin,
+                         max: AppSetting::UP_NEXT_LEAD_RANGE.end, step: 1,
                          class: "admin-reset__select admin-up-next__field" %>
-      <span class="admin-reset__label">% through</span>
+      <span class="admin-reset__label">seconds before the end</span>
       <%= f.submit "Save", class: "admin-save" %>
     <% end %>
 
     <p class="admin-note">
-      A percentage rather than a countdown of seconds, because it is a share of the runtime:
-      at <%= @setting.up_next_percent %>% the card appears
-      <strong><%= distance_of_time_in_words(@setting.up_next_seconds_before_end(120)) %></strong>
-      before the end of a two-hour film, and
-      <strong><%= pluralize(@setting.up_next_seconds_before_end(22), 'second') %></strong>
-      before the end of a 22-minute episode. Raise it to have the card appear later.
+      One number, and it does two jobs: the card appears this long before the film ends, and
+      counts down for this long — so it reaches zero as the film does rather than at some
+      other moment of its own.
       <br>
-      In fullscreen this is also the moment the page takes the screen back, so the ring of
-      controls is there to use. It cannot be set earlier than
-      <%= (AppSetting::UP_NEXT_RANGE.begin * 100).round %>% — that is when a film counts as
-      watched, and the fullscreen route to the card is gated on it.
+      A lead rather than a share of the runtime, which is what this used to be. The same 98%
+      is two and a half minutes of a feature and twenty seconds of an episode, and "just
+      before it ends" is one of those and not the other.
+      <br>
+      It is quietly pulled back on anything short enough that
+      <%= pluralize(@setting.up_next_lead_seconds, 'second') %> would land before the film
+      counted as watched — both routes to the card are gated on that, so a mark earlier than
+      it is a card that never appears. On a 22-minute episode that comes to
+      <strong><%= pluralize(@setting.up_next_seconds_before_end(22), 'second') %></strong>
+      before the end; on a two-hour film,
+      <strong><%= pluralize(@setting.up_next_seconds_before_end(120), 'second') %></strong>.
+      <br>
+      Fullscreen is no longer interrupted to show it: the card is drawn inside the element
+      that goes fullscreen, and the screen is only handed back when nothing takes the card.
     </p>
   </section>
 

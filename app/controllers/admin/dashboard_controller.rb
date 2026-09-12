@@ -25,7 +25,7 @@ module Admin
 
       # Two forms post here, each carrying only its own field, so whichever arrived is the
       # one being changed.
-      return update_up_next(settings[:up_next_percent]) if settings.key?(:up_next_percent)
+      return update_up_next(settings[:up_next_lead_seconds]) if settings.key?(:up_next_lead_seconds)
 
       mode = settings.fetch(:access_mode, nil)
 
@@ -73,18 +73,20 @@ module Admin
 
     private
 
-    # The floor is the completion mark and it is not arbitrary: below it the fullscreen
-    # route to the up-next card stops firing, silently. See AppSetting::UP_NEXT_RANGE.
-    def update_up_next(percent)
-      AppSetting.update_up_next_percent!(percent)
+    # The bounds are not the interesting limit -- the one that matters is the completion
+    # mark, and it cannot be checked here because it depends on the film. AppSetting
+    # #up_next_mark_for applies it per runtime, so a lead longer than a short entry has
+    # left in it is quietly pulled back rather than being a setting that does nothing.
+    def update_up_next(seconds)
+      AppSetting.update_up_next_lead!(seconds)
 
       redirect_to admin_dashboard_path,
-                  notice: "Up next now appears #{AppSetting.current.up_next_percent}% of the way through."
+                  notice: "Up next now appears #{helpers.pluralize(AppSetting.up_next_lead_seconds, 'second')} " \
+                          'before the end, and counts down to it.'
     rescue ActiveRecord::RecordInvalid
-      floor = (AppSetting::UP_NEXT_RANGE.begin * 100).round
+      range = AppSetting::UP_NEXT_LEAD_RANGE
       redirect_to admin_dashboard_path,
-                  alert: "Pick a percentage between #{floor} and 100. Earlier than #{floor}% is before " \
-                         'a film counts as watched, and the card would stop appearing for anyone in fullscreen.'
+                  alert: "Pick a whole number of seconds between #{range.begin} and #{range.end}."
     end
 
     def reset_summary(result, source)

@@ -127,9 +127,10 @@
              own reported duration stands in. %>
          data-player-progress-runtime-value="<%= @entry.length.to_i * 60 %>"
          data-player-progress-fraction-value="<%= UserEntry::COMPLETION_FRACTION %>"
-         <%# When the up-next card appears. Set on the admin dashboard rather than compiled
-             in, so the timing can be tuned without a deploy. %>
-         data-player-progress-credits-value="<%= AppSetting.up_next_fraction %>"
+         <%# How long before the end the up-next card appears, and how long it then counts
+             down for. Set on the admin dashboard rather than compiled in, so the timing can
+             be tuned without a deploy. %>
+         data-player-progress-up-next-lead-value="<%= AppSetting.up_next_lead_seconds %>"
        <% end %>>
   <%= render 'entries/source_switcher' %>
 

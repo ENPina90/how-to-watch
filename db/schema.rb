@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_12_143000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -45,7 +45,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
   create_table "app_settings", force: :cascade do |t|
     t.string "access_mode", default: "secure", null: false
     t.datetime "created_at", null: false
-    t.float "up_next_fraction", default: 0.98, null: false
+    t.integer "up_next_lead_seconds", default: 15, null: false
     t.datetime "updated_at", null: false
   end
 

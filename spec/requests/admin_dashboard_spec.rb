@@ -262,43 +262,44 @@ RSpec.describe 'The admin dashboard', type: :request do
     end
   end
   # The up-next card used to appear at a constant compiled into the player controller, so
-  # moving it was a deploy.
+  # moving it was a deploy. It was a share of the runtime after that, and is a lead before
+  # the end now -- which is what anybody means by "just before it ends".
   describe 'when the up-next card appears' do
-    it 'shows the current setting, and what it means in real time' do
+    it 'shows the current setting, and what it means for a long film and a short one' do
       sign_in admin
 
       get admin_dashboard_path
 
-      expect(response.body).to include('98')
-      expect(response.body).to include('two-hour film')
+      expect(response.body).to include('15')
+      expect(response.body).to include('seconds before the end')
+      expect(response.body).to include('22-minute episode')
     end
 
-    it 'saves a later mark' do
+    it 'saves a longer lead' do
       sign_in admin
 
-      patch admin_dashboard_path, params: { app_setting: { up_next_percent: '99' } }
+      patch admin_dashboard_path, params: { app_setting: { up_next_lead_seconds: '45' } }
 
-      expect(AppSetting.current.up_next_fraction).to be_within(0.0001).of(0.99)
+      expect(AppSetting.up_next_lead_seconds).to eq(45)
       expect(response).to redirect_to(admin_dashboard_path)
     end
 
-    # Below the completion mark the fullscreen route to the card stops firing, silently.
-    it 'refuses a mark earlier than the film counts as watched' do
+    it 'refuses a lead outside the bounds' do
       sign_in admin
 
-      patch admin_dashboard_path, params: { app_setting: { up_next_percent: '40' } }
+      patch admin_dashboard_path, params: { app_setting: { up_next_lead_seconds: '9000' } }
 
-      expect(AppSetting.current.up_next_fraction).to eq(0.98)
+      expect(AppSetting.up_next_lead_seconds).to eq(15)
       follow_redirect!
-      expect(response.body).to include('before a film counts as watched')
+      expect(response.body).to include('whole number of seconds')
     end
 
-    it 'refuses a mark past the end of the film' do
+    it 'refuses a lead of nothing at all' do
       sign_in admin
 
-      patch admin_dashboard_path, params: { app_setting: { up_next_percent: '140' } }
+      patch admin_dashboard_path, params: { app_setting: { up_next_lead_seconds: '0' } }
 
-      expect(AppSetting.current.up_next_fraction).to eq(0.98)
+      expect(AppSetting.up_next_lead_seconds).to eq(15)
     end
 
     it 'still saves the access mode, which posts to the same place' do
@@ -307,15 +308,15 @@ RSpec.describe 'The admin dashboard', type: :request do
       patch admin_dashboard_path, params: { app_setting: { access_mode: 'open' } }
 
       expect(AppSetting.current.access_mode).to eq('open')
-      expect(AppSetting.current.up_next_fraction).to eq(0.98)
+      expect(AppSetting.up_next_lead_seconds).to eq(15)
     end
 
     it 'turns away a user who is not an admin' do
       sign_in create(:user)
 
-      patch admin_dashboard_path, params: { app_setting: { up_next_percent: '99' } }
+      patch admin_dashboard_path, params: { app_setting: { up_next_lead_seconds: '45' } }
 
-      expect(AppSetting.current.up_next_fraction).to eq(0.98)
+      expect(AppSetting.up_next_lead_seconds).to eq(15)
     end
   end
 end

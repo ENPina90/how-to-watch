@@ -1,5 +1,9 @@
 import { Controller } from "@hotwired/stimulus";
 import { playerAdapterFor, isControllable } from "services/player_adapter";
+// The vendored turbo build exports the namespace and nothing else -- there is no named
+// `renderStreamMessage` to import, which is a browser-only failure: the module simply does
+// not register and the controller silently never connects.
+import { Turbo } from "@hotwired/turbo-rails";
 
 // Keeps a record of where this viewer got to, so the next visit picks up there.
 //
@@ -29,23 +33,18 @@ import { playerAdapterFor, isControllable } from "services/player_adapter";
 //   the completion mark (from the server) is when the film counts as watched. Past it,
 //   coming out of fullscreen means the film is over rather than interrupted, and the
 //   up-next card is offered;
-//   the credits mark, later, is when the page takes the screen back by itself -- or, for
-//   somebody who never went fullscreen and so has no screen to take back, offers the card
-//   where the exit would have.
+//   the up-next mark, later, is when the card is offered by itself -- a fixed lead before
+//   the end, so the countdown runs out as the film does.
 //
 // Playback itself is not saved. The player reports every ~5s while playing, and writing a
 // row twelve times a minute per viewer buys nothing: anyone who leaves mid-film leaves the
 // page, and leaving the page saves.
 const SAVE_INTERVAL = 2000;
 
-// When to hand the screen back, if the page did not say. Deliberately later than the
-// completion mark: a film counts as watched once the credits start, but a stinger after
-// them is still the film, and taking the screen off somebody waiting for one is worse than
-// leaving it a minute longer.
-//
-// The live value is AppSetting#up_next_fraction, passed in as `credits` -- this is only the
-// fallback for a page rendered without it.
-const DEFAULT_CREDITS_FRACTION = 0.98;
+// How long before the end the up-next card comes up, if the page did not say. The live
+// value is AppSetting#up_next_lead_seconds; this is only the fallback for a page rendered
+// without it.
+const DEFAULT_UP_NEXT_LEAD = 15;
 
 // How much faster than wall-clock the position may move and still count as playback. The
 // player reports about every five seconds and a film advances about a second per second,
@@ -63,10 +62,10 @@ export default class extends Controller {
     runtime: Number,
     // UserEntry::COMPLETION_FRACTION, passed rather than repeated so there is one of it.
     fraction: Number,
-    // AppSetting#up_next_fraction: how far through the film the up-next card appears.
-    // Adjustable from the admin dashboard, which is why it arrives from the page rather
-    // than living here as a constant.
-    credits: Number,
+    // AppSetting#up_next_lead_seconds: how long before the end the up-next card appears,
+    // and how long it counts down for. Adjustable from the admin dashboard, which is why
+    // it arrives from the page rather than living here as a constant.
+    upNextLead: Number,
     // This player was warmed in the background before anybody flipped to it, so it has
     // been running with nobody in front of it and may already be past the point that
     // counts as watched. Set by cinema-navigation when it promotes a warmed frame.
@@ -142,31 +141,32 @@ export default class extends Controller {
     const crossedWatched = finished || (watched && !this.watched && played);
     this.watched = watched;
 
-    const credits = finished || this.past(state, this.creditsFraction);
-    const crossedCredits = finished || (credits && !this.credits && played);
-    this.credits = credits;
+    const nearlyOver = finished || this.pastUpNextMark(state);
+    const crossedUpNext = finished || (nearlyOver && !this.nearlyOver && played);
+    this.nearlyOver = nearlyOver;
 
-    // In fullscreen, the exit is what raises the up-next card: it fires fullscreenchange
-    // like any other, so one path covers the exit below, the player's own control and a
-    // viewer pressing escape through the credits. Windowed there is no exit to wait for,
-    // and the card is raised here instead -- otherwise somebody who watches in a window
-    // never gets offered the next entry at all.
-    if (crossedCredits) {
-      if (this.fullscreen) this.leaveFullscreen();
-      else this.upNext();
-    }
+    // The card goes up over the film, in fullscreen and windowed alike. It lives inside
+    // the element that goes fullscreen precisely so it can, and taking the screen back to
+    // show it threw the viewer out of fullscreen for the last fifteen seconds of every
+    // film -- which is the one stretch where being thrown out is most annoying, and where
+    // a stinger is most likely to be playing.
+    //
+    // The screen is still handed back when nothing takes the card: auto-next off for this
+    // channel, or a viewer who already pressed Stop. Then the film really is just ending,
+    // and the ring of controls behind the player is the only thing to hand them.
+    if (crossedUpNext && !this.upNext() && this.fullscreen) this.leaveFullscreen();
 
     if (crossedWatched) return this.save({ finished: finished, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
   }
 
-  // The configured mark, or the built-in one for a page that did not pass a usable value.
-  // Guarded rather than trusted: a 0 here would raise the up-next card the moment the
-  // player reported anything at all.
-  get creditsFraction() {
-    const configured = this.creditsValue;
+  // The configured lead, or the built-in one for a page that did not pass a usable value.
+  // Guarded rather than trusted: a 0 here would put the mark at the very end of the film,
+  // where the player may never report, and a negative one past it.
+  get upNextLead() {
+    const configured = this.upNextLeadValue;
 
-    return configured > 0 && configured <= 1 ? configured : DEFAULT_CREDITS_FRACTION;
+    return configured > 0 ? configured : DEFAULT_UP_NEXT_LEAD;
   }
 
   // Has the position moved the way playing moves it -- forward, at about the speed of the
@@ -189,10 +189,28 @@ export default class extends Controller {
 
   // Is the film this far through? The same rule the server applies for the completion
   // mark, on the same two numbers, so the two agree about when a film has been watched.
-  past({ progress, duration }, fraction) {
-    const runtime = this.runtimeValue > 0 ? this.runtimeValue : duration;
+  past(state, fraction) {
+    const runtime = this.runtimeFor(state);
 
-    return runtime > 0 && progress >= runtime * fraction;
+    return runtime > 0 && state.progress >= runtime * fraction;
+  }
+
+  // Is it within the lead of the end? The same rule AppSetting#up_next_mark_for applies,
+  // floor included: a lead longer than what is left after the completion mark would put
+  // the card up before the film counted as watched, and a two-minute clip is short enough
+  // for fifteen seconds to do exactly that.
+  pastUpNextMark(state) {
+    const runtime = this.runtimeFor(state);
+    if (!(runtime > 0)) return false;
+
+    return state.progress >= Math.max(runtime - this.upNextLead, runtime * this.fractionValue);
+  }
+
+  // The catalogue's runtime where there is one, the player's reported duration otherwise --
+  // the same preference the server has, for the same reason: the catalogue is the length of
+  // the film and the player is timing whatever file it was handed, adverts and all.
+  runtimeFor({ duration }) {
+    return this.runtimeValue > 0 ? this.runtimeValue : duration;
   }
 
   // Coming out of fullscreen past the completion mark means the film is over, whoever
@@ -217,13 +235,17 @@ export default class extends Controller {
   // On the document because the card lives outside the cinema frame, in another corner of
   // the page. Raising it twice is harmless -- it ignores a second call while it is already
   // counting down, or once the viewer has stopped it -- but it is raised once.
+  //
+  // Answers whether anything took it. The card cancels the event when it is showing or
+  // already counting, which is how this knows whether there is something on screen to
+  // offer the viewer -- and so whether the screen needs handing back instead.
   upNext() {
-    this.dispatch("up-next", { target: document });
+    return this.dispatch("up-next", { target: document, cancelable: true }).defaultPrevented;
   }
 
-  // Hand the page back once the credits are rolling, so the ring of controls -- next
-  // entry, shuffle, home -- is there to use rather than behind a full-screen player the
-  // viewer has to dismiss first.
+  // Hand the page back when the film has ended with nothing to offer in its place, so the
+  // ring of controls -- next entry, shuffle, home -- is there to use rather than behind a
+  // full-screen player the viewer has to dismiss first.
   //
   // Leaving fullscreen needs no user gesture; only entering does. And the request belongs
   // to the top-level document even when the player inside the frame made it, which is what
@@ -276,8 +298,18 @@ export default class extends Controller {
       return;
     }
 
-    // Nothing comes back and nothing on screen depends on it, so a failure is dropped:
-    // the next pause, or leaving the page, will say the same thing again.
-    fetch(this.urlValue, { method: "POST", body: body }).catch(() => {});
+    // Usually nothing comes back. The exception is the report that crosses the completion
+    // mark, which answers with the watched eye redrawn -- the page it sits on is not going
+    // to be rendered again while a film plays on it, so the server hands back the one piece
+    // of it that has changed. Anything else, and any failure, is dropped: the next pause or
+    // leaving the page will say the same thing again.
+    fetch(this.urlValue, {
+      method: "POST",
+      body: body,
+      headers: { Accept: "text/vnd.turbo-stream.html" },
+    })
+      .then((response) => (response.ok && response.status !== 204 ? response.text() : null))
+      .then((stream) => { if (stream) Turbo.renderStreamMessage(stream); })
+      .catch(() => {});
   }
 }
