@@ -333,6 +333,16 @@ that is something the viewer chose rather than a side effect of rendering a page
   "guide" is read as a channel id, cast to nothing, and quietly serves channel one.
 - The guide renders in the *viewer's* zone (`params[:tz]`) even though the schedule itself
   is a set of fixed instants.
+- **The way off a channel** is `watch_entry_path(entry, channel:, subentry:)` — the ordinary
+  player, from the beginning, counting towards what the viewer has seen. Three things offer
+  it: the banner's headline, the guide panel's, and the "Start from the beginning" button in
+  each of those (`cable-hud__start`, `tvguide__start`). The buttons follow whatever is being
+  *described* rather than whatever is playing, so the banner's arrows and a pointer moving
+  across the grid both re-aim them. None of the three carries `data-cinema-move`, so all
+  three are navigations out of cable rather than a change of channel.
+- **`CableSchedule.on_air_now`** is the whole dial in one query — every channel with
+  something on, paired with its slot and its number, shaped like `guide`'s rows. It exists
+  for the sidebar's Now Playing card (§6), which asks it on every page that draws a sidebar.
 
 ### 5.10 Watch parties — `resources :watch_parties, param: :token`
 
@@ -422,6 +432,15 @@ results. `POST reset_source` moves every channel onto one provider.
   `completed`, `sort`, `slider`, `view_toggle`, `randomize`, `trailer`, `hover_play`,
   `link`, `button`, `entry_anchor`, `entries_sidebar`, `auto_advance` (**countdown
   disabled in code**). Unused: `cinema`, `frame_loader`, `omdb`, `hello`.
+- **The sidebar's Now Playing card** (`shared/_sidebar`) answers two different questions
+  depending on where it is drawn. On the player there is a picture beside it and the card is
+  a caption for that picture: it names `@entry`, and `cinema_navigation_controller` swaps
+  `#nowPlayingContent` along with the frame and the chrome when the viewer changes channel.
+  Everywhere else nothing of theirs is playing, so it shows the **cable dial** — whatever is
+  on air this second — and pressing it tunes to that channel. Which channel rotates, one
+  step per render, from a position kept in the session
+  (`ApplicationController#cable_now_playing`). It falls through to the stand-by card only
+  when the whole dial is dark.
 - **Modals are page-level, never per card.** The trailer modal, the poster picker and
   the review modal are rendered **once** per list page (`shared/_trailer_modal`,
   `shared/_poster_selector_modal`, `entries/_review_modal_list`). Each is opened by a
@@ -636,7 +655,7 @@ neither needs a local Redis.
 
 ## 11a. Tests
 
-RSpec is the live suite (`bundle exec rspec` — **~1,360 examples, green, under a minute**). `spec/rails_helper.rb` calls
+RSpec is the live suite (`bundle exec rspec` — **~1,370 examples, green, under a minute**). `spec/rails_helper.rb` calls
 `Rails.application.reload_routes_unless_loaded` because Rails 8 draws routes lazily and
 Devise registers its mappings during that draw; without it every `sign_in` fails. The test
 env uses the `:test` job adapter, since entry callbacks enqueue network-touching jobs.
