@@ -18,12 +18,12 @@
   </head>
 
   <body class="m-body">
-    <%# One bar on every page: the way home, the field, and the menu. What the field does
-        depends on the page -- on the home page it filters the channels already on screen,
-        and on a channel it searches everything and offers to add what it finds. Both are
-        one controller, told which it is. %>
+    <%# One bar on every page: the way home, the field, and the menu. The field searches
+        everything and offers to add what it finds -- on a channel, to that channel; on the
+        home page, to the favourites or to a channel picked for it. Pages that set no mode
+        get no field, rather than one that does nothing. %>
     <div data-controller="mobile-shell"
-         data-mobile-shell-mode-value="<%= @mobile_search_mode || 'filter' %>"
+         data-mobile-shell-mode-value="<%= @mobile_search_mode || 'none' %>"
          data-mobile-shell-list-id-value="<%= @list&.id %>">
 
       <div class="m-bar">
@@ -31,9 +31,9 @@
           <i class="fa-solid fa-house"></i>
         <% end %>
 
-        <%# Hidden where the field has no job: the listings page has nothing to filter and
-            nothing to add to, and a search box that does nothing is worse than no box. %>
-        <div class="m-bar__search" <%= 'hidden' if @mobile_search_mode == 'none' %>>
+        <%# Hidden where the field has no job: the listings page has nothing to add to, and a
+            search box that does nothing is worse than no box. %>
+        <div class="m-bar__search" <%= 'hidden' if (@mobile_search_mode || 'none') == 'none' %>>
           <input type="search"
                  class="m-bar__input"
                  autocomplete="off"
@@ -123,11 +123,32 @@
             where an attribute name goes -- the browser parses this template as HTML before
             Mustache is handed it, and a section tag in that position comes back out
             lowercased and re-quoted, which stops the whole template parsing. %>
+        <%# From the home page there is no channel behind the search, so a result offers
+            the two places it could go: the heart files it in the favourites at once, and
+            the + opens the picker (lists/index_mobile) to choose one. From a channel it
+            offers that channel and nothing else. %>
+        {{#picker}}
+        <div class="m-card__actions">
+          <button type="button" class="m-add"
+                  aria-label="Add {{Title}} to your favourites"
+                  data-action="click->mobile-shell#favourite"
+                  data-imdb-id="{{imdbID}}"
+                  data-tmdb-id="{{tmdbID}}"><i class="fa-regular fa-heart"></i></button>
+          <button type="button" class="m-add"
+                  aria-label="Add {{Title}} to a channel"
+                  data-action="click->mobile-shell#pick"
+                  data-title="{{Title}}"
+                  data-imdb-id="{{imdbID}}"
+                  data-tmdb-id="{{tmdbID}}"><i class="fa-solid fa-plus"></i></button>
+        </div>
+        {{/picker}}
+        {{^picker}}
         <button type="button" class="m-add"
                 data-action="click->mobile-shell#add"
                 data-imdb-id="{{imdbID}}"
                 data-tmdb-id="{{tmdbID}}"
                 data-type="{{addType}}">+ {{addLabel}}</button>
+        {{/picker}}
       </div>
       {{/results}}
     </template>

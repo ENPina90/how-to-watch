@@ -31,10 +31,13 @@ class ListsController < ApplicationController
       # The channel the member has favourited -- the auto-created one until they move it.
       @favorites_list = current_user.favorite_list
       @mobile_channels = mobile_channels_for(current_user)
-      # The field in the bar filters these rows rather than searching anything: a dozen
-      # names already on screen is not a question worth a round trip.
-      @mobile_search_mode = 'filter'
-      @mobile_search_placeholder = 'Filter your channels'
+      # What a result's + offers. Not @mobile_channels: those include channels followed but
+      # not owned, which add_to_list refuses.
+      @mobile_add_channels = mobile_add_channels_for(current_user)
+      # The field searches everything, as it does on a channel. With no @list behind it, a
+      # result offers the favourites and the picker instead of one channel.
+      @mobile_search_mode = 'search'
+      @mobile_search_placeholder = 'Search movies and series'
 
       render :index_mobile, layout: 'mobile'
       return
@@ -683,6 +686,15 @@ class ListsController < ApplicationController
     # writes into, so it has to be reachable from the page that lists their channels.
     [followed.find { |list| list.id == favourite.id } || with_entry_count(favourite)] +
       followed.reject { |list| list.id == favourite.id }
+  end
+
+  # The channels a search result can be put on from the phone's home page: the member's own,
+  # because that is all add_to_list accepts. The favourite leads, as it does on the page.
+  def mobile_add_channels_for(user)
+    owned = user.lists.with_entries_count.order('lists.name ASC').to_a
+    favourite = owned.find { |list| list.id == user.favorite_list_id }
+
+    favourite ? [favourite] + (owned - [favourite]) : owned
   end
 
   def with_entry_count(list)

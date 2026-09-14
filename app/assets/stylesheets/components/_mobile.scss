@@ -437,6 +437,88 @@ $m-accent: #1a936f;
   color: #ff8a7a;
 }
 
+/* The heart and the + side by side, a half each: both are one tap, and neither is the
+   more likely one to want. */
+.m-card__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.m-card__actions .m-add {
+  flex: 1 1 0;
+  font-size: 0.85rem;
+}
+
+/* ---- the picker ----
+ *
+ * Which of the member's channels a result goes on. Covers the whole screen, bar included:
+ * it is a question that wants answering before anything else is touched, and the field in
+ * the bar would otherwise sit above it offering to start a different search.
+ */
+.m-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 1040;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem 1rem;
+  background: $m-bg;
+}
+
+.m-picker__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.m-picker__back {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 0.5rem;
+  color: $m-text;
+  background: $m-surface-raised;
+}
+
+.m-picker__title {
+  min-width: 0;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: $m-dim;
+}
+
+.m-picker__name {
+  color: $m-text;
+}
+
+.m-picker__channels {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+/* The rows are buttons here rather than links, so they shed a button's own look. */
+.m-picker .m-channel {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+}
+
+.m-channel--busy {
+  opacity: 0.55;
+}
+
+.m-channel--refused {
+  border-color: #c0392b;
+  animation: m-refused 0.4s ease-in-out 2;
+}
+
 /* ---- the cable listings ----
  *
  * The desktop grid, at a zoom that suits a phone. An hour is 420px on a laptop, which puts
