@@ -33,6 +33,15 @@ class RemoteImage
   OPEN_TIMEOUT = 5
   READ_TIMEOUT = 10
 
+  # The ways a connection fails before a byte is exchanged, which say something about the
+  # route to one address rather than about the image. Worth trying the host's next address
+  # for; a read timeout is not, since that address did answer and the next would double
+  # the wait.
+  UNREACHABLE = [
+    Errno::ENETUNREACH, Errno::EHOSTUNREACH, Errno::EADDRNOTAVAIL, Errno::ECONNREFUSED,
+    Net::OpenTimeout
+  ].freeze
+
   # Everything that is not somewhere on the public internet. IPAddr answers for most of it,
   # but not for the ranges that route somewhere surprising rather than nowhere: the shared
   # address space carriers use, the benchmarking range, and 0.0.0.0/8, which several
@@ -85,10 +94,10 @@ class RemoteImage
 
   def read_through_redirects(uri)
     MAX_REDIRECTS.times do
-      address = public_address_for(uri.host)
-      return failure('That address is not one this server will fetch from') if address.nil?
+      addresses = public_addresses_for(uri.host)
+      return failure('That address is not one this server will fetch from') if addresses.nil?
 
-      outcome, value = get(uri, address)
+      outcome, value = get(uri, addresses)
       return value unless outcome == :redirect
 
       return failure('That address redirects nowhere') if value.blank?
@@ -110,7 +119,21 @@ class RemoteImage
   # again. Otherwise a name that answers with a public address for the check and a private
   # one a moment later gets through -- the connection has to go to the address that was
   # actually vetted. The hostname stays on the request for Host and TLS.
-  def get(uri, address)
+  #
+  # Every address has been vetted, so each is tried in turn when the one before could not be
+  # reached. Taking only the first broke production: Railway's containers resolve IPv6 first
+  # and cannot route to it. The last failure is re-raised so `fetch` still reports it.
+  def get(uri, addresses)
+    addresses.each_with_index do |address, index|
+      return get_from(uri, address)
+    rescue *UNREACHABLE => e
+      raise if index == addresses.size - 1
+
+      Rails.logger.info("RemoteImage could not reach #{address} for #{uri.host} (#{e.class}), trying the next address")
+    end
+  end
+
+  def get_from(uri, address)
     http = Net::HTTP.new(uri.host, uri.port)
     http.ipaddr = address
     http.use_ssl = uri.scheme == 'https'
@@ -130,15 +153,15 @@ class RemoteImage
     end
   end
 
-  # One address for the host, or nil if any of them is somewhere this should not go. Any
+  # Every address for the host, or nil if any of them is somewhere this should not go. Any
   # rather than all: a name that resolves to both a public and a private address is a name
   # aimed at the private one.
-  def public_address_for(host)
+  def public_addresses_for(host)
     addresses = resolve(host)
     return nil if addresses.empty?
     return nil unless addresses.all? { |address| public_address?(address) }
 
-    addresses.first.to_s
+    addresses.map(&:to_s)
   end
 
   def resolve(host)
