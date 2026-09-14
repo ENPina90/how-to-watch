@@ -104,6 +104,10 @@ Rails.application.routes.draw do
   # rather than under /admin because it is cable's own action -- the button that presses it
   # is what lives on /admin/cable, along with the rest of the dial's settings.
   post 'cable/regenerate', to: 'cable#regenerate', as: :cable_regenerate
+  # Channel 0, Coming Attractions: trailers back to back rather than a schedule, and not a
+  # list, so there is no id to find it by. Before the :id route for the reason `guide` is --
+  # and a literal 0 rather than a word, because 0 is what the dial calls it.
+  get 'cable/0', to: 'cable#trailers', as: :cable_trailers
   get 'cable/:id', to: 'cable#show', as: :cable_channel
 
   # The phone view or the full one, by the viewer's own say-so rather than by what their

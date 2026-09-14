@@ -55,7 +55,7 @@
   <%# Up and down tune; left and right only look. The two kinds are deliberately the same
       shape, because on the remote they were. %>
   <div class="cable-hud__pad">
-    <%= link_to cable_channel_path(CableSchedule.sibling(channel, :previous)),
+    <%= link_to cable_sibling_path(channel, :previous),
                 class: "cable-hud__key cable-hud__key--up", title: "Channel up",
                 data: { cinema_move: true, cinema_channel: 'up' } do %>
       <i class="fa-solid fa-caret-up"></i>
@@ -79,7 +79,7 @@
       <i class="fa-solid fa-caret-right"></i>
     </button>
 
-    <%= link_to cable_channel_path(CableSchedule.sibling(channel, :next)),
+    <%= link_to cable_sibling_path(channel, :next),
                 class: "cable-hud__key cable-hud__key--down", title: "Channel down",
                 data: { cinema_move: true, cinema_preload: true, cinema_channel: 'down' } do %>
       <i class="fa-solid fa-caret-down"></i>

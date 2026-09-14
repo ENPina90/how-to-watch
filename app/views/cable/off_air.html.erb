@@ -11,9 +11,9 @@
         day; a channel with no playable entries stays dark until it has some.
       </p>
       <div class="d-flex gap-3 justify-content-center mt-4">
-        <%= link_to "Previous channel", cable_channel_path(CableSchedule.sibling(@channel, :previous)),
+        <%= link_to "Previous channel", cable_sibling_path(@channel, :previous),
                     class: "btn btn-outline-light" %>
-        <%= link_to "Next channel", cable_channel_path(CableSchedule.sibling(@channel, :next)),
+        <%= link_to "Next channel", cable_sibling_path(@channel, :next),
                     class: "btn btn-outline-light" %>
         <%= link_to "Home", root_path, class: "btn btn-outline-light" %>
       </div>

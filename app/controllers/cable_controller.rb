@@ -18,9 +18,10 @@ class CableController < ApplicationController
   # The listings are the one part of cable the phone view keeps -- see the concern. A
   # channel is a picture playing to a room, and `show` is the page that plays it.
   include NoPlaybackOnMobile
+  include TrailerPicking
   skip_before_action :refuse_playback_on_mobile, only: %i[guide listings]
 
-  before_action :set_channel, except: %i[guide regenerate]
+  before_action :set_channel, except: %i[guide regenerate trailers]
   before_action :require_admin, only: :regenerate
 
   # The listing behind the guide button: the whole dial at once, a few hours of it.
@@ -30,8 +31,37 @@ class CableController < ApplicationController
   # and a grid built into the page would go stale sitting there while a channel played.
   def guide
     load_listings
+    # Channel 0's row, which the phone's listings page leaves out: it is a row you can only
+    # tune to, and the phone view plays nothing.
+    @coming_attractions = true
 
     render partial: "cable/guide", formats: [:html]
+  end
+
+  # Channel 0: Coming Attractions. Trailers back to back -- the /trailers reel with the dial
+  # around it, so it can be tuned to, tuned away from, and read about in the guide.
+  #
+  # The one channel that is not a schedule, and it is allowed to behave like it: what is on
+  # is whichever trailer came up for this viewer rather than what everybody else is seeing,
+  # and it moves on when the player says the trailer ended rather than when the clock says.
+  # The rest of what makes it a channel -- the banner, the arrows, the guide staying up
+  # across a change -- is the ordinary cable page's.
+  def trailers
+    @trailer = next_trailer
+    # The film the trailer is for. The review prompt reads it by this name, as it does on every
+    # other channel -- marking the film watched from the banner opens it.
+    @entry = @trailer&.entry
+    @channel_number = 0
+    # What the guide's hearts and eyes show while this channel is the one described. One film,
+    # so asked of it directly rather than through the batches the grid needs.
+    @watched = @trailer.present? && user_signed_in? && @trailer.entry.completed_by?(current_user)
+    @favorited = @trailer.present? && favorited_keys([]).include?(@trailer.entry.catalogue_key)
+
+    @cable = true
+    @sidebar_collapsed = true
+    @hide_sidebar = true
+
+    render layout: "special_layout"
   end
 
   # The same grid as a page of its own, for a viewer who has no player to hang it over.

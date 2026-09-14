@@ -1,0 +1,160 @@
+<%# Channel 0: Coming Attractions. The cable page's screen, guide and banner around the
+    /trailers reel -- see cable/show for why the screen is split the way it is, and
+    trailers/show for how the reel moves on.
+
+    The screen answers both kinds of move, the trailer's and the clock's, because a change of
+    channel keeps whichever screen the viewer started on and swaps in only the chrome: tune
+    down to channel one from here and its clock is heard by this element. %>
+<% entry = @trailer&.entry %>
+<%= render 'cable/frame_guards' %>
+
+<div class="cinema__screen"
+     data-controller="cinema-fullscreen cinema-navigation cable-guide"
+     data-action="trailer-reel:next@document->cinema-navigation#moveFromEvent
+                  cable-clock:move@document->cinema-navigation#moveFromEvent
+                  cable-clock:warm@document->cinema-navigation#warmNext
+                  cinema-navigation:moved@document->cable-guide#channelChanged
+                  player-keys:fullscreen@document->cinema-fullscreen#toggle"
+     data-cable-guide-url-value="<%= cable_guide_path %>"
+     data-cable-guide-channel-value="<%= CableHelper::COMING_ATTRACTIONS_ID %>"
+     data-cable-guide-zone-value="<%= CableSchedule.zone.tzinfo.name %>"
+     data-cable-guide-open-class="cinema__screen--guide"
+     <% if user_signed_in? %>
+       data-cable-guide-token-value="<%= form_authenticity_token %>"
+     <% end %>
+     data-cinema-fullscreen-idle-class="cinema__screen--idle"
+     data-cinema-fullscreen-always-value="true"
+     data-cinema-fullscreen-idle-delay-value="4000"
+     data-cinema-navigation-moving-class="cinema__screen--moving"
+     data-cinema-navigation-preload-value="true"
+     style="--watch-controls-right: 120px;">
+
+  <div id="cinema-frames" class="cinema__frames">
+    <iframe id="cinema"
+            class="cinema__frame cinema__frame--live"
+            title="<%= entry ? "#{entry.name} trailer" : CableHelper::COMING_ATTRACTIONS %>"
+            referrerpolicy="origin"
+            allow="autoplay"
+            src="<%= @trailer&.embed_url || 'about:blank' %>"></iframe>
+  </div>
+
+  <%# The same strip over the scrubber every channel has. A trailer could be scrubbed without
+      harm, but the strip is outside the chrome and survives a change of channel, so leaving
+      it off here would only make channel 0 differ by which channel you loaded first. %>
+  <div class="cable-guard" aria-hidden="true"></div>
+
+  <button type="button" class="cinema__fullscreen" title="Fullscreen"
+          data-action="click->cable-guide#close click->cinema-fullscreen#toggle">
+    <i class="fa-solid fa-expand"></i>
+  </button>
+
+  <button type="button" class="cinema__guide-button" title="TV Guide" aria-label="TV Guide"
+          data-action="click->cable-guide#toggle">
+    <i class="fa-solid fa-table-list"></i>
+  </button>
+
+  <%# player-keys for fullscreen alone, as on /trailers. No cable-clock: there is no slot to
+      run out.
+
+      The data-guide-* attributes are for the guide. Its cell for channel 0 is one block across
+      the whole listing and says only "Trailers"; while this is the channel on screen, the
+      panel describes the film this trailer is for instead, read off here -- and these are
+      swapped in with every trailer, so the panel follows the reel. With the guide up the
+      banner is hidden, and the panel is the only way to the film. %>
+  <div id="cinema-chrome"
+       data-controller="player-keys trailer-reel"
+       data-player-keys-frame-value="cinema"
+       data-player-keys-transport-value="false"
+       data-trailer-reel-frame-value="cinema"
+       data-trailer-reel-url-value="<%= cable_trailers_path %>"
+       data-cable-channel-id="<%= CableHelper::COMING_ATTRACTIONS_ID %>"
+       <% if entry %>
+         data-guide-title="<%= entry.name %>"
+         data-guide-episode="Trailer"
+         data-guide-watch-url="<%= watch_entry_path(entry) %>"
+         data-guide-start=""
+         data-guide-end=""
+         data-guide-year="<%= entry.year %>"
+         data-guide-runtime="<%= cable_runtime_label(entry.length) %>"
+         data-guide-rating="<%= format('%.1f', entry.rating) if entry.rating.to_f.positive? %>"
+         data-guide-genre="<%= entry.genre.to_s.split(',').map(&:strip).compact_blank.join(' · ') %>"
+         data-guide-plot="<%= entry.plot %>"
+         data-guide-entry-id="<%= entry.id %>"
+         data-guide-watched="<%= @watched %>"
+         data-guide-favorited="<%= @favorited %>"
+       <% end %>>
+
+    <%# The channel banner, in the same shape as every other channel's. Left and right walk a
+        running order there; here there is none to walk, so left is spent and right is the
+        next trailer -- the one move this channel has that the others do not. %>
+    <div class="cable-hud">
+      <%= link_to trailers_path, class: 'cable-hud__badge', title: "Open #{CableHelper::COMING_ATTRACTIONS} on its own page" do %>
+        <span class="cable-hud__set">
+          <span class="cable-hud__aerial"></span>
+          <span class="cable-hud__number"><%= @channel_number %></span>
+        </span>
+      <% end %>
+
+      <div class="cable-hud__body">
+        <%= link_to CableHelper::COMING_ATTRACTIONS, trailers_path, class: 'cable-hud__channel' %>
+
+        <% if entry %>
+          <%= link_to "“#{entry.name}”", watch_entry_path(entry), class: 'cable-hud__title' %>
+          <p class="cable-hud__context"><%= trailer_facts(entry) %></p>
+          <p class="cable-hud__meta">
+            <span class="cable-hud__label">Trailer</span>
+          </p>
+          <%= link_to watch_entry_path(entry), class: 'cable-hud__start',
+                                               title: 'Watch the film this trailer is for' do %>
+            <i class="fa-solid fa-play"></i>
+            <span>Watch the film</span>
+          <% end %>
+        <% else %>
+          <p class="cable-hud__context">No trailers to show.</p>
+        <% end %>
+      </div>
+
+      <div class="cable-hud__pad">
+        <%= link_to cable_sibling_path(nil, :previous),
+                    class: "cable-hud__key cable-hud__key--up", title: "Channel up",
+                    data: { cinema_move: true, cinema_channel: 'up' } do %>
+          <i class="fa-solid fa-caret-up"></i>
+        <% end %>
+
+        <button type="button" class="cable-hud__key cable-hud__key--left" disabled
+                title="Trailers have no running order to look back along">
+          <i class="fa-solid fa-caret-left"></i>
+        </button>
+
+        <span class="cable-hud__sel">
+          <% if user_signed_in? && entry %>
+            <%= render 'entries/completion_status', entry: entry, user: current_user, minimal: true %>
+          <% end %>
+        </span>
+
+        <button type="button" class="cable-hud__key cable-hud__key--right" title="Next trailer"
+                data-action="click->trailer-reel#next">
+          <i class="fa-solid fa-caret-right"></i>
+        </button>
+
+        <%= link_to cable_sibling_path(nil, :next),
+                    class: "cable-hud__key cable-hud__key--down", title: "Channel down",
+                    data: { cinema_move: true, cinema_preload: true, cinema_channel: 'down' } do %>
+          <i class="fa-solid fa-caret-down"></i>
+        <% end %>
+      </div>
+
+      <%= link_to root_path, class: "cable-hud__home", title: "Home" do %>
+        <i class="fa-solid fa-house"></i>
+      <% end %>
+    </div>
+
+    <%# Opened by marking the film watched on a reviewable channel, as on every other channel.
+        Nothing to review between trailers when there are none. %>
+    <% if user_signed_in? && entry %>
+      <%= render 'entries/review_modal' %>
+    <% end %>
+  </div>
+
+  <%= render 'cable/guide_panel' %>
+</div>

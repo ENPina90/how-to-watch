@@ -20,6 +20,13 @@
          channel, asked what will be on at the moment it changes. %>
      data-action="cable-clock:move@document->cinema-navigation#moveFromEvent
                   cable-clock:warm@document->cinema-navigation#warmNext
+                  <%# Channel 0's trailer ending. Not this page's own event, but a change of
+                      channel keeps the screen it was made from and swaps in only the chrome --
+                      so a viewer who tuned up to channel 0 from here is listened to by this
+                      element, and without it the next trailer would be a full page load that
+                      took the guide and any fullscreen down with it. cable/trailers carries
+                      the clock's two for the same reason. %>
+                  trailer-reel:next@document->cinema-navigation#moveFromEvent
                   <%# The guide is not replaced by a move, so it has to be told about one:
                       its highlight follows the channel however the channel was changed. %>
                   cinema-navigation:moved@document->cable-guide#channelChanged

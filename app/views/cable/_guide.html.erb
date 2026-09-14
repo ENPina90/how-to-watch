@@ -87,6 +87,41 @@
   </div>
 
   <div class="tvguide__rows">
+    <%# Channel 0, above the rest. One block across the whole listing rather than a slot per
+        trailer: it has no schedule, and a row of two-minute cells nobody could read would
+        only be pretending to have one. The cell tunes like any other; while channel 0 is on
+        screen, the panel describes the trailer actually playing (see cable_guide_controller's
+        `withLive`), which is what `data-guide-live` asks for. %>
+    <% if @coming_attractions %>
+      <% zero = CableHelper::COMING_ATTRACTIONS_ID %>
+      <div class="tvguide__row tvguide__row--attractions <%= 'tvguide__row--tuned' if params[:channel].to_s == zero %>"
+           data-channel-id="<%= zero %>">
+        <a class="tvguide__channel" href="<%= cable_trailers_path %>"
+           data-cinema-move="true" data-cable-guide-tune="<%= zero %>">
+          <span class="tvguide__number"><%= zero %></span>
+          <span class="tvguide__callsign"><%= CableHelper::COMING_ATTRACTIONS %></span>
+        </a>
+
+        <div class="tvguide__programmes" style="width: <%= track.call(window_hours) %>">
+          <a class="tvguide__programme"
+             href="<%= cable_trailers_path %>"
+             data-cinema-move="true"
+             data-cable-guide-tune="<%= zero %>"
+             data-guide-live="true"
+             data-guide-start="<%= (window_start.to_f * 1000).round %>"
+             data-guide-end="<%= (@window.end.to_f * 1000).round %>"
+             data-guide-channel="<%= CableHelper::COMING_ATTRACTIONS %>"
+             data-guide-channel-url="<%= trailers_path %>"
+             data-guide-number="<%= zero %>"
+             data-guide-title="Trailers"
+             data-guide-plot="Trailers for films from across the catalogue, one after another. Tune in, and the film each one is for is a click away."
+             style="left: 0; width: <%= track.call(window_hours) %>">
+            <span class="tvguide__name">Trailers</span>
+          </a>
+        </div>
+      </div>
+    <% end %>
+
     <% @rows.each do |row| %>
       <%
         channel = row[:channel]

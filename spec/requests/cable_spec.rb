@@ -467,7 +467,7 @@ RSpec.describe 'Cable', type: :request do
     it 'keeps the channel arrows as moves' do
       travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
 
-      expect(response.body).to include(cable_channel_path(CableSchedule.sibling(channel, :next)))
+      expect(response.body).to include(cable_sibling_path(channel, :next))
       expect(response.body).to include('data-cinema-preload')
     end
 
@@ -479,6 +479,128 @@ RSpec.describe 'Cable', type: :request do
 
       expect(response).to be_successful
       expect(response.body).not_to include('completion-status')
+    end
+  end
+
+  # Channel 0: trailers back to back, on the dial but not on the schedule. It is allowed to
+  # behave a little differently from the rest; what it must share with them is being reachable
+  # by the arrows and the guide, and naming the film that is on.
+  describe 'channel 0' do
+    let!(:youtube) do
+      Source.create!(name: 'YouTube', slug: 'youtube', kind: 'direct', active: true,
+                     templates: { 'default' => 'https://www.youtube.com/embed/%{source_key}' })
+    end
+
+    before do
+      entry.update!(trailer: 'https://www.youtube.com/watch?v=aaaaaaaaaaa')
+      sign_in user
+    end
+
+    def arrow(direction)
+      response.body[/<a[^>]*cable-hud__key--#{direction}[^>]*>/]
+    end
+
+    it 'plays a trailer, with the dial around it' do
+      travel_to(midnight + 11.minutes) { get cable_trailers_path }
+
+      expect(response).to be_successful
+      expect(response.body).to include('youtube.com/embed/aaaaaaaaaaa')
+      expect(response.body).to include(%(<span class="cable-hud__number">0</span>))
+      expect(response.body).to include('Coming Attractions')
+    end
+
+    it 'is the reserved channel and not a list id cast from "0"' do
+      expect(cable_trailers_path).to eq('/cable/0')
+
+      travel_to(midnight + 11.minutes) { get '/cable/0' }
+
+      # Channel one's programme is not what is playing.
+      expect(response.body).not_to include('p.test/movie')
+      expect(response.body).to include('data-controller="player-keys trailer-reel"')
+    end
+
+    # The banner and, for when the guide is up and the banner hidden, the panel.
+    it 'links the trailer to the film it is for, in the banner and for the guide' do
+      travel_to(midnight + 11.minutes) { get cable_trailers_path }
+
+      expect(response.body).to include(%(class="cable-hud__title" href="#{watch_entry_path(entry)}"))
+      expect(response.body).to include(%(data-guide-watch-url="#{watch_entry_path(entry)}"))
+    end
+
+    it 'sits directly above channel one' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(arrow('up')).to include(%(href="#{cable_trailers_path}"))
+    end
+
+    it 'goes down to channel one, and up round to the last channel' do
+      last = create(:list, user: user, provider: provider, default: true, name: 'Channel Two')
+
+      travel_to(midnight + 11.minutes) { get cable_trailers_path }
+
+      expect(arrow('down')).to include(%(href="#{cable_channel_path(channel)}"))
+      expect(arrow('up')).to include(%(href="#{cable_channel_path(last)}"))
+    end
+
+    it 'comes back round to 0 going down from the last channel' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(arrow('down')).to include(%(href="#{cable_trailers_path}"))
+    end
+
+    it 'leaves /cable starting on channel one' do
+      travel_to(midnight + 11.minutes) { get cable_path }
+
+      expect(response.body).to include('The Death of Harvey')
+      expect(response.body).not_to include('youtube.com/embed/aaaaaaaaaaa')
+    end
+
+    it 'moves on to the next trailer in place' do
+      travel_to(midnight + 11.minutes) { get cable_trailers_path }
+
+      expect(response.body).to include(%(data-trailer-reel-url-value="#{cable_trailers_path}"))
+      expect(response.body).to include('trailer-reel:next@document->cinema-navigation#moveFromEvent')
+    end
+
+    # A change of channel keeps the screen of the page it started on, so each kind of page has
+    # to answer the other's move.
+    it "answers a trailer ending on a scheduled channel's screen, and the clock on its own" do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+      expect(response.body).to include('trailer-reel:next@document->cinema-navigation#moveFromEvent')
+
+      travel_to(midnight + 11.minutes) { get cable_trailers_path }
+      expect(response.body).to include('cable-clock:move@document->cinema-navigation#moveFromEvent')
+    end
+
+    it 'records nothing about the viewer' do
+      expect { travel_to(midnight + 11.minutes) { get cable_trailers_path } }.not_to change(UserEntry, :count)
+    end
+
+    describe 'in the guide' do
+      def zero_row
+        response.body[/data-channel-id="0".*?(?=<div class="tvguide__row )/m]
+      end
+
+      it 'has a row above channel one, numbered 0, with one block of trailers' do
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(zero_row).to include('<span class="tvguide__number">0</span>')
+        expect(zero_row).to include('Coming Attractions').and include('Trailers')
+        expect(zero_row.scan('class="tvguide__programme"').size).to eq(1)
+        expect(response.body.index('data-channel-id="0"')).to be < response.body.index('Channel One')
+      end
+
+      it 'marks channel 0 when the guide is opened from it' do
+        travel_to(midnight + 11.minutes) { get cable_guide_path, params: { channel: '0' } }
+
+        expect(response.body[/<div class="tvguide__row[^>]*data-channel-id="0"/m]).to include('tvguide__row--tuned')
+      end
+
+      it 'asks the panel to describe whatever trailer is playing' do
+        travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+        expect(zero_row).to include('data-guide-live="true"')
+      end
     end
   end
 
