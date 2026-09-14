@@ -62,6 +62,10 @@ export default class extends Controller {
     runtime: Number,
     // UserEntry::COMPLETION_FRACTION, passed rather than repeated so there is one of it.
     fraction: Number,
+    // List#skip_credits_seconds for the channel being watched from, 0 when it has none. The
+    // programme ends this far before the file does, so it comes off the runtime before
+    // either mark is taken -- see runtimeFor.
+    credits: Number,
     // AppSetting#up_next_lead_seconds: how long before the end the up-next card appears,
     // and how long it counts down for. Adjustable from the admin dashboard, which is why
     // it arrives from the page rather than living here as a constant.
@@ -209,8 +213,16 @@ export default class extends Controller {
   // The catalogue's runtime where there is one, the player's reported duration otherwise --
   // the same preference the server has, for the same reason: the catalogue is the length of
   // the film and the player is timing whatever file it was handed, adverts and all.
+  //
+  // Less the channel's credits skip, which is how the completion mark and the up-next mark
+  // both move to where the channel says the programme ends. Credits that would leave
+  // nothing are ignored, as UserEntry.completion_mark_for ignores them -- the two sides
+  // have to agree about when the entry counts as watched.
   runtimeFor({ duration }) {
-    return this.runtimeValue > 0 ? this.runtimeValue : duration;
+    const runtime = this.runtimeValue > 0 ? this.runtimeValue : duration;
+    const programme = runtime - this.creditsValue;
+
+    return programme > 0 ? programme : runtime;
   }
 
   // Coming out of fullscreen past the completion mark means the film is over, whoever
