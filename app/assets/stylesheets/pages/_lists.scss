@@ -402,6 +402,23 @@ body.page-lists-show .search-results-overlay {
   color: #1a936f !important;
 }
 
+/* The home page scrolls without showing it: by wheel, trackpad or swipe, like the carousels
+   always have. More than one thing scrolls here -- the document runs past the viewport, and
+   `overflow-x: hidden` on the container quietly makes it a vertical scroller too -- so this
+   covers the page and everything in it rather than chasing each one. `:has` reaches <html>,
+   which the page's body class cannot. */
+html:has(> body.page-lists-index),
+body.page-lists-index,
+body.page-lists-index * {
+  scrollbar-width: none;
+}
+
+html:has(> body.page-lists-index)::-webkit-scrollbar,
+body.page-lists-index::-webkit-scrollbar,
+body.page-lists-index *::-webkit-scrollbar {
+  display: none;
+}
+
 /* Netflix-style Lists Index - Simple Approach */
 body.has-sidebar:not(.sidebar-collapsed) .lists-index-container {
   max-width: calc(100vw - 280px);
@@ -580,6 +597,13 @@ body.light-mode .list-row::after {
 /* Override the global page-container white text for list cards */
 .lists-index-container .list-card-meta {
   color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* The owner and count icons read as part of the line, so they take its dimmed colour.
+   Otherwise `.page-container i` paints them full white, and its light-mode twin black --
+   three classes here so this outranks `body.light-mode .page-container i` too. */
+.page-container .list-card-info .list-card-meta i {
+  color: inherit !important;
 }
 
 .lists-index-container .list-card-name {

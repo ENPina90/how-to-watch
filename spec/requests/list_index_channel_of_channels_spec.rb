@@ -19,14 +19,15 @@ RSpec.describe 'A channel of channels on the home page', :needs_provider, type: 
   end
 
   def card_meta_for(name)
-    response.body[%r{<p class="list-card-name">#{name}</p>\s*<p class="list-card-meta">\s*([^<]*?)\s*</p>}m, 1]
+    response.body[%r{<p class="list-card-name">#{name}</p>\s*<p class="list-card-meta">(.*?)</p>}m, 1]
+      &.gsub(/<[^>]+>/, '')&.squish
   end
 
   describe 'the count' do
     it 'counts everything under the channel, however deep' do
       get lists_path
 
-      expect(card_meta_for('Holiday')).to eq('3 entries')
+      expect(card_meta_for('Holiday')).to eq('3')
     end
 
     it 'agrees with the number on the channel’s own page' do
