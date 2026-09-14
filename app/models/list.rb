@@ -246,6 +246,19 @@ class List < ApplicationRecord
     end
   end
 
+  # The other direction: every channel this one sits inside, to the same depth a channel
+  # gathers its contents from -- so a list is inside exactly the channels whose
+  # watch_sequence reaches it, and no further up than that.
+  def ancestor_lists(depth: MAX_NESTING, seen: nil)
+    seen ||= Set.new([id])
+    return [] if depth.zero?
+
+    parent_lists.reject { |parent| seen.include?(parent.id) }.flat_map do |parent|
+      seen << parent.id
+      [parent] + parent.ancestor_lists(depth: depth - 1, seen: seen)
+    end
+  end
+
   # The entries a channel's page is about: its own, plus everything held by the channels
   # inside it. An entry keeps one home -- `entries.list_id` -- and is borrowed here by the
   # query rather than copied, which is why taking a channel back out is a matter of one

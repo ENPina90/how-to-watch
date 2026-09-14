@@ -102,6 +102,55 @@ RSpec.describe 'The Now Playing card', type: :request do
 
       expect(seen.uniq.size).to eq(2)
     end
+
+    # On a channel's page the card is about that channel. The rest of the dial is somewhere
+    # this list is not broadcast, and showing it there would say otherwise.
+    describe "on a channel's page" do
+      let(:card) { response.body[/<div id="nowPlayingContent".*?<\/div>\s*<\/div>\s*<\/div>/m] }
+
+      it 'shows only that channel, visit after visit' do
+        cards = travel_to(midnight + 11.minutes) do
+          3.times.map do
+            get list_path(second_channel)
+            card
+          end
+        end
+
+        expect(cards).to all(include('Ch 2 &middot; Channel Two'))
+        expect(cards.join).not_to include('The Death of Harvey')
+      end
+
+      it 'shows the channel a nested list sits inside' do
+        westerns = create(:list, user: user, provider: provider, name: 'Westerns')
+        ListRelationship.create!(parent_list: second_channel, child_list: westerns, position: 2)
+
+        cards = travel_to(midnight + 11.minutes) do
+          3.times.map do
+            get list_path(westerns)
+            card
+          end
+        end
+
+        expect(cards).to all(include('Ch 2 &middot; Channel Two'))
+      end
+
+      it 'stands by rather than showing another channel when its own is off air' do
+        CableSlot.where(list: second_channel).delete_all
+
+        travel_to(midnight + 11.minutes) { get list_path(second_channel) }
+
+        expect(card).to include('Nothing playing')
+        expect(card).not_to include('The Death of Harvey')
+      end
+
+      it 'keeps the whole rotation for a list on no channel' do
+        loose = create(:list, user: user, provider: provider, name: 'Westerns')
+
+        travel_to(midnight + 11.minutes) { get list_path(loose) }
+
+        expect(card).to match(/Ch \d &middot; Channel (One|Two)/)
+      end
+    end
   end
 
   # Reading a listing is not watching it: drawing this card must not record that anybody was
