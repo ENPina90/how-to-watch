@@ -17,7 +17,7 @@ namespace :cable do
     days = (args[:days].presence || CableSchedule::GUIDE_BEHIND_DAYS).to_i
     abort "cable:backfill wants a positive number of days" unless days.positive?
 
-    channels = CableSchedule.channels.to_a
+    channels = CableSchedule.dial
     abort "There are no cable channels to lay out." if channels.empty?
 
     dates = (1..days).map { |back| CableSchedule.today - back }.reverse

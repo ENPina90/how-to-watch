@@ -65,6 +65,19 @@ module CableSchedule
   # that does not set one lands at the end of the dial rather than the front of it.
   def channels = List.where(default: true).order(:cable_position, :id)
 
+  # The whole dial: the channels above, then the decades -- always last, and always in
+  # CableEra::ALL's order. Everything that numbers the dial, steps along it, lists it or lays
+  # it out reads this. Everything that edits it -- adding, removing, reordering -- reads
+  # `channels`, because the decades are not the admin's to move.
+  def dial = channels.to_a + CableEra.all
+
+  # A channel by the id its address carries: a decade's key, or a list on the dial. The key is
+  # tried first because a list id is cast from whatever it is handed, and a key that began with
+  # digits would otherwise be read as a list.
+  def find_channel(id)
+    CableEra.find(id) || channels.find_by(id: id)
+  end
+
   # Put the dial in this order, given the channel ids from top to bottom.
   #
   # The whole order arrives at once rather than "this one moved to index N" -- the same
@@ -127,7 +140,7 @@ module CableSchedule
   # The number this channel answers to, counting from one. The guide's rows and the HUD's
   # badge both show it, so it is worked out in one place rather than by whoever is counting.
   def dial_number(channel)
-    at = channels.to_a.index { |list| list.id == channel.id }
+    at = dial.index { |stop| stop.id == channel.id }
 
     at ? at + 1 : nil
   end
@@ -135,17 +148,17 @@ module CableSchedule
   # The channel one step up or down the dial, wrapping at both ends. Nothing user-specific,
   # unlike List#find_sibling, which reads subscriptions and what you have already seen.
   def sibling(channel, direction)
-    dial = channels.to_a
-    at = dial.index { |list| list.id == channel.id }
-    return dial.first if at.nil?
+    stops = dial
+    at = stops.index { |stop| stop.id == channel.id }
+    return stops.first if at.nil?
 
-    dial[(at + (direction == :next ? 1 : -1)) % dial.length]
+    stops[(at + (direction == :next ? 1 : -1)) % stops.length]
   end
 
   # What is on now. Nil when the channel has no schedule for this moment, which the page
   # renders as off air rather than as an error.
   def on_air(channel, at: Time.current)
-    CableSlot.where(list: channel).on_air_at(at).includes(:entry, :subentry).first
+    slots_for(channel).on_air_at(at).includes(:entry, :subentry).first
   end
 
   # The whole dial as it stands this second: every channel that has something on, paired
@@ -158,15 +171,15 @@ module CableSchedule
   #
   # A read, like the rest of cable: nothing here records that anybody looked.
   def on_air_now(at: Time.current)
-    dial = channels.to_a
-    return [] if dial.empty?
+    stops = dial
+    return [] if stops.empty?
 
-    playing = CableSlot.where(list_id: dial.map(&:id))
-                       .on_air_at(at)
-                       .includes(:entry, :subentry)
-                       .index_by(&:list_id)
+    playing = slots_for_all(stops)
+              .on_air_at(at)
+              .includes(:entry, :subentry)
+              .index_by(&:channel_key)
 
-    dial.each_with_index.filter_map do |channel, index|
+    stops.each_with_index.filter_map do |channel, index|
       slot = playing[channel.id]
       slot && { channel: channel, number: index + 1, slot: slot }
     end
@@ -185,7 +198,7 @@ module CableSchedule
     current = on_air(channel, at: at)
     return [] unless current
 
-    slots = CableSlot.where(list: channel)
+    slots = slots_for(channel)
     before = slots.where(CableSlot.arel_table[:starts_at].lt(current.starts_at))
                   .order(starts_at: :desc).limit(NEARBY_BEFORE)
                   .includes(:entry, :subentry).to_a.reverse
@@ -260,15 +273,15 @@ module CableSchedule
   # running when the window opens is included -- that is the row the viewer is on.
   def guide(at: Time.current, in_zone: zone)
     window = guide_window(at: at, in_zone: in_zone)
-    dial = channels.to_a
-    by_channel = CableSlot.where(list_id: dial.map(&:id))
-                          .where(starts_at: ...window.end)
-                          .where(CableSlot.arel_table[:ends_at].gt(window.begin))
-                          .includes(:entry, :subentry)
-                          .in_order
-                          .group_by(&:list_id)
+    stops = dial
+    by_channel = slots_for_all(stops)
+                 .where(starts_at: ...window.end)
+                 .where(CableSlot.arel_table[:ends_at].gt(window.begin))
+                 .includes({ entry: :list }, :subentry)
+                 .in_order
+                 .group_by(&:channel_key)
 
-    dial.each_with_index.map do |channel, index|
+    stops.each_with_index.map do |channel, index|
       # The number on the dial rather than the row's id: a channel is "12" because of where
       # it sits, and ids have gaps. Same numbering as the HUD badge, by construction.
       { channel: channel, number: index + 1, slots: by_channel.fetch(channel.id, []) }
@@ -305,7 +318,7 @@ module CableSchedule
     slots = plan(channel, date)
 
     CableSlot.transaction do
-      CableSlot.where(list: channel, airs_on: date).delete_all
+      slots_for(channel).where(airs_on: date).delete_all
       CableSlot.insert_all!(slots) if slots.any?
     end
 
@@ -323,7 +336,7 @@ module CableSchedule
     dates = dates.to_a.sort
 
     CableSlot.transaction do
-      CableSlot.where(list: channel, airs_on: dates).delete_all
+      slots_for(channel).where(airs_on: dates).delete_all
       dates.sum { |date| build_day!(channel, date) }
     end
   end
@@ -331,7 +344,7 @@ module CableSchedule
   # Build only if that day is empty, so the job can be run twice and a page can ask for a
   # day nobody scheduled without wiping one that is already on air.
   def ensure_day!(channel, date)
-    return 0 if CableSlot.where(list: channel, airs_on: date).exists?
+    return 0 if slots_for(channel).where(airs_on: date).exists?
 
     build_day!(channel, date)
   end
@@ -412,7 +425,7 @@ module CableSchedule
       # day already on air is.
       content_end = [cursor + runtime(entry, subentry), stop].compact.min
       finish = [next_break_mark(content_end), stop].compact.min
-      rows << { list_id: channel.id, entry_id: entry.id, subentry_id: subentry&.id,
+      rows << { **slot_owner(channel), entry_id: entry.id, subentry_id: subentry&.id,
                 airs_on: date, starts_at: cursor, ends_at: finish,
                 position: rows.length, created_at: Time.current, updated_at: Time.current }
         .merge(commercial_break(entry, content_end, finish))
@@ -433,7 +446,7 @@ module CableSchedule
   # By when it started rather than when it ended, because the one that matters is the one
   # that runs over, and it is the only one whose end is not before midnight.
   def slot_before(channel, day_start)
-    CableSlot.where(list: channel)
+    slots_for(channel)
              .where(starts_at: ...day_start)
              .order(starts_at: :desc)
              .includes(:entry)
@@ -443,17 +456,40 @@ module CableSchedule
   # Where the next day this channel already has on the books begins, if there is one. This
   # day's own rows are left out: they are about to be replaced, and are not in the way.
   def following_start(channel, date, day_start)
-    CableSlot.where(list: channel)
-             .where.not(airs_on: date)
-             .where(starts_at: day_start..)
-             .minimum(:starts_at)
-             &.in_time_zone(zone)
+    slots_for(channel)
+      .where.not(airs_on: date)
+      .where(starts_at: day_start..)
+      .minimum(:starts_at)
+      &.in_time_zone(zone)
+  end
+
+  # The rows that make up one channel's schedule: a list's by its id, a decade's by its key.
+  # CableSlot carries exactly one of the two.
+  def slots_for(channel) = CableSlot.where(slot_owner(channel))
+
+  # The same for a run of channels at once, which is how the guide and the Now Playing card
+  # ask -- one query for the whole dial, not one per row.
+  def slots_for_all(stops)
+    eras, lists = stops.partition { |stop| stop.is_a?(CableEra) }
+
+    CableSlot.where(list_id: lists.map(&:id)).or(CableSlot.where(era: eras.map(&:key)))
+  end
+
+  # Both columns, always, the other one nil. insert_all! wants every row to name the same
+  # columns, and an explicit nil is what the database's one-channel check reads.
+  def slot_owner(channel)
+    channel.is_a?(CableEra) ? { list_id: nil, era: channel.key } : { list_id: channel.id, era: nil }
   end
 
   # Everything the channel can play, including what it borrows from the channels inside it
   # -- the same reach the /watch arrows have. Preloaded because laying out a day asks every
   # one of them for a provider and a template, and the big channel holds 1,200.
+  #
+  # A decade has no sequence of its own: it draws from the whole public catalogue, one copy per
+  # film, and CableEra#entries arrives already preloaded.
   def schedulable(channel)
+    return channel.entries.reject { |entry| unschedulable?(entry) } if channel.is_a?(CableEra)
+
     entries = channel.watch_sequence.uniq
     ActiveRecord::Associations::Preloader.new(
       records: entries, associations: [:provider, :subentries, { list: :provider }]

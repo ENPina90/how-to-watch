@@ -375,9 +375,12 @@ RSpec.describe CableSchedule do
       expect(described_class.channels).to contain_exactly(channel, other)
     end
 
-    it 'wraps at both ends' do
-      dial = described_class.channels.to_a
+    # The decades close the dial, so the ends it wraps between are the first channel and the
+    # golden age.
+    it 'wraps at both ends, with the decades last' do
+      dial = described_class.dial
 
+      expect(dial.last(CableEra.all.size)).to eq(CableEra.all)
       expect(described_class.sibling(dial.last, :next)).to eq(dial.first)
       expect(described_class.sibling(dial.first, :previous)).to eq(dial.last)
     end
@@ -594,8 +597,9 @@ RSpec.describe CableSchedule do
     it 'numbers channels by where they sit on the dial, not by id' do
       rows = described_class.guide(at: midnight + 1.hour)
 
-      expect(rows.map { |row| row[:number] }).to eq([1, 2])
-      expect(rows.map { |row| row[:channel] }).to eq(described_class.channels.to_a)
+      expect(rows.map { |row| row[:number] }).to eq((1..described_class.dial.size).to_a)
+      expect(rows.map { |row| row[:channel] }).to eq(described_class.dial)
+      expect(rows.first(2).map { |row| row[:channel] }).to eq(described_class.channels.to_a)
     end
 
     it 'includes the programme already running when the window opens' do
