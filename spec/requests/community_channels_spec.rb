@@ -82,6 +82,19 @@ RSpec.describe 'The Community Channels row', :needs_provider, type: :request do
     expect(community_row).to include('Hidden')
   end
 
+  it 'marks the owner and the size with icons rather than words' do
+    owner.update!(username: 'wyatt')
+    channel('Westerns')
+
+    get lists_path
+
+    meta = Nokogiri::HTML(response.body).css('.list-card-meta')
+                   .find { |node| node.text.include?('wyatt') }
+    expect(meta.at('i.fa-user')).to be_present
+    expect(meta.at('i.fa-film')).to be_present
+    expect(meta.text.squish).to eq('wyatt · 1')
+  end
+
   describe 'the order' do
     let!(:old_channel) { channel('Old Channel') }
     let!(:newer_channel) { channel('Newer Channel') }
