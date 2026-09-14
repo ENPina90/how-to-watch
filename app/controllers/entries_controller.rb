@@ -8,7 +8,7 @@ class EntriesController < ApplicationController
   include ActionView::RecordIdentifier
   include NoPlaybackOnMobile
   skip_before_action :refuse_playback_on_mobile
-  before_action :set_list, only: %i[new create csv_template import_csv]
+  before_action :set_list, only: %i[new create csv_template import_csv import_youtube]
   before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime favorite unfavorite]
   before_action :authenticate_user!, only: %i[favorite unfavorite]
   # Watching is off in the phone view; everything else this controller does is not.
@@ -20,9 +20,9 @@ class EntriesController < ApplicationController
   before_action :check_edit_permissions,
                 only: %i[edit update destroy update_poster
                          update_position reportlink set_source repair_image migrate_poster]
-  # A spreadsheet writes as many rows as it has lines, so unlike the one-at-a-time create it
-  # asks first whose channel it is filling.
-  before_action :check_list_edit_permissions, only: :import_csv
+  # A spreadsheet writes as many rows as it has lines, and a playlist as many as it has videos,
+  # so unlike the one-at-a-time create they ask first whose channel they are filling.
+  before_action :check_list_edit_permissions, only: %i[import_csv import_youtube]
   # An entry is as private as the channel it lives in.
   before_action -> { refuse_guest_on_private!(@entry.list) }, only: %i[show watch]
 
@@ -68,6 +68,22 @@ class EntriesController < ApplicationController
       redirect_to list_path(@list)
     else
       flash[:alert] = [result.summary, *result.skipped, *result.errors].join(' · ')
+      redirect_to new_list_entry_path(@list)
+    end
+  end
+
+  # A YouTube playlist pasted as a link, every video in it an entry in this channel. Reported
+  # the way import_csv reports a sheet: a playlist where ten videos were already here is a
+  # successful import that still needs saying.
+  def import_youtube
+    result = YoutubePlaylistImporter.new(url: params[:playlist_url], list: @list).call
+
+    if result.created.any?
+      flash[:notice] = result.summary
+      flash[:alert] = result.notes.join(' · ') if result.any_notes?
+      redirect_to list_path(@list)
+    else
+      flash[:alert] = [result.summary, *result.notes].join(' · ')
       redirect_to new_list_entry_path(@list)
     end
   end
