@@ -185,6 +185,26 @@ class List < ApplicationRecord
   # appears twice in the tree, whose entries should still only be gathered once.
   MAX_NESTING = 3
 
+  # #total_entry_count as a column, for pages that draw a number on every channel and cannot
+  # ask each one. A correlated subquery rather than COUNT over a join: the recently-watched
+  # scope on the home page already inner-joins entries filtered to one user's completed
+  # rows, and a joined COUNT there reports those instead of the channel's real size.
+  #
+  # The walk mirrors #descendant_lists: the same depth cap, and `IN` rather than a join so a
+  # channel reached twice -- or a cycle, which the depth cap ends -- counts its entries once.
+  ENTRIES_COUNT_SQL = <<~SQL.squish
+    WITH RECURSIVE tree(id, depth) AS (
+      SELECT lists.id, 0
+      UNION
+      SELECT list_relationships.child_list_id, tree.depth + 1
+      FROM list_relationships JOIN tree ON list_relationships.parent_list_id = tree.id
+      WHERE tree.depth < #{MAX_NESTING}
+    )
+    SELECT COUNT(*) FROM entries WHERE entries.list_id IN (SELECT id FROM tree)
+  SQL
+
+  scope :with_entries_count, -> { select("lists.*, (#{ENTRIES_COUNT_SQL}) AS entries_count") }
+
   def descendant_lists(depth: MAX_NESTING, seen: nil)
     seen ||= Set.new([id])
     return [] if depth.zero?

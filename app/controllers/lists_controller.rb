@@ -630,12 +630,10 @@ class ListsController < ApplicationController
     by_list_id
   end
 
+  # The count is everything under the channel, as its own page reports it: a channel that
+  # only holds other channels counted its own rows and said "0 entries".
   def with_card_data(scope)
-    # A correlated subquery rather than COUNT over a join: the recently-watched scope
-    # already inner-joins entries filtered to this user's completed rows, and a joined
-    # COUNT there silently reports completed entries instead of the list's real size.
-    scope.includes(:user, :user_list_positions)
-         .select('lists.*, (SELECT COUNT(*) FROM entries WHERE entries.list_id = lists.id) AS entries_count')
+    scope.includes(:user, :user_list_positions).with_entries_count
   end
 
   def set_list
@@ -648,12 +646,7 @@ class ListsController < ApplicationController
   # `entries_count` rather than a count per row: the page draws one number per channel and
   # asking each of them for it is a query apiece.
   def mobile_channels_for(user)
-    followed = user.subscribed_lists
-                   .left_joins(:entries)
-                   .group('lists.id')
-                   .select('lists.*, COUNT(entries.id) as entries_count')
-                   .order('lists.name ASC')
-                   .to_a
+    followed = user.subscribed_lists.with_entries_count.order('lists.name ASC').to_a
 
     favourite = user.favorite_list
     return followed if favourite.nil?
@@ -665,9 +658,7 @@ class ListsController < ApplicationController
   end
 
   def with_entry_count(list)
-    List.left_joins(:entries).group('lists.id')
-        .select('lists.*, COUNT(entries.id) as entries_count')
-        .find_by(id: list.id)
+    List.with_entries_count.find_by(id: list.id)
   end
 
   def load_entries
