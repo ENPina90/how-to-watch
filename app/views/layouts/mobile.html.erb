@@ -5,6 +5,10 @@
     <%# `viewport-fit=cover` so the bar can reach the top edge on a notched phone; the
         safe-area padding on .m-bar is what keeps its contents out from under the notch. %>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <%# Same tab icon as the application layout -- see the note there. %>
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/images/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <meta name="tmdb-key" content="<%= ENV["TMDB_API_KEY"] %>">
