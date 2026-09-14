@@ -138,4 +138,34 @@ RSpec.describe RemoteImage do
       expect(fetch('http://images.test/poster.png').error).to match(/redirects too many times/)
     end
   end
+
+  # Railway's containers carry an IPv6 address for the private network but have no IPv6
+  # route to the internet, and Resolv lists AAAA records first whenever the host has any
+  # IPv6 address at all. Connecting only to the first address failed every TMDB and Amazon
+  # poster in production with ENETUNREACH, while working fine on a laptop.
+  describe 'a host with more than one address' do
+    before do
+      allow(Resolv).to receive(:getaddresses).with('images.test')
+                                             .and_return(['2606:2800:220:1::248', '93.184.216.34'])
+    end
+
+    it 'moves on to the next address when one cannot be reached' do
+      connections = []
+      allow(Net::HTTP).to receive(:new).and_wrap_original do |original, *args|
+        original.call(*args).tap { |http| connections << http }
+      end
+      stub_request(:get, 'http://images.test/poster.png')
+        .to_raise(Errno::ENETUNREACH).then
+        .to_return(status: 200, body: png_bytes)
+
+      expect(fetch('http://images.test/poster.png')).to be_ok
+      expect(connections.map(&:ipaddr)).to eq(['2606:2800:220:1::248', '93.184.216.34'])
+    end
+
+    it 'gives up once none of them can be reached' do
+      stub_request(:get, 'http://images.test/poster.png').to_raise(Errno::ENETUNREACH)
+
+      expect(fetch('http://images.test/poster.png').error).to match(/Could not fetch/)
+    end
+  end
 end
