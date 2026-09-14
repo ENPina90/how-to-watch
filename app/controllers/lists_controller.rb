@@ -616,9 +616,13 @@ class ListsController < ApplicationController
   # preloaded in one query instead of one per card.
   def resolve_card_entries(*collections)
     lists = collections.flatten.uniq(&:id)
-    by_list_id = lists.each_with_object({}) do |list, acc|
-      acc[list.id] = list.current_entry(current_user) || borrowed_card_entry(list)
-    end
+    by_list_id = if current_user.nil?
+                   sampled_card_entries(lists)
+                 else
+                   lists.each_with_object({}) do |list, acc|
+                     acc[list.id] = list.current_entry(current_user) || borrowed_card_entry(list)
+                   end
+                 end
 
     entries = by_list_id.values.compact.uniq(&:id)
     if entries.any?
@@ -633,12 +637,41 @@ class ListsController < ApplicationController
   # A channel with nothing of its own shows what its play button would start -- the next
   # unwatched entry among the channels inside it -- and once all of that is watched, the
   # first of them, as a channel with its own entries keeps showing one. `entries_count`
-  # already covers everything under the channel, so an empty one costs nothing more. A
-  # signed-out visitor gets no poster on any card, so not on these either.
+  # already covers everything under the channel, so an empty one costs nothing more.
   def borrowed_card_entry(list)
-    return nil if current_user.nil? || list.entries_count.zero?
+    return nil if list.entries_count.zero?
 
     list.next_borrowed_entry_for(current_user) || list.watch_sequence.first
+  end
+
+  # A signed-out visitor has no place in any channel, so there is no resume point to show,
+  # and every card used to stand by -- a home page of identical test cards. Each shows
+  # something picked at random from the channel instead, a different one per visit, which
+  # suits a shelf being browsed.
+  #
+  # One query for every channel with entries of its own. A channel that only holds other
+  # channels asks once for itself, as the member's card for one does.
+  #
+  # Only entries with a picture, since a picture is the whole of what this is for: a pick
+  # landing on an entry with neither poster nor pic drew a broken image where the stand-by
+  # card at least said something. And only from public channels, so a private channel
+  # held inside a public one is not shown to a stranger through its posters.
+  def sampled_card_entries(lists)
+    pictured = Entry.joins(:list).left_joins(:poster_attachment)
+                    .where(lists: { private: [false, nil] })
+                    .where("COALESCE(entries.pic, '') <> '' OR active_storage_attachments.id IS NOT NULL")
+
+    own = pictured.where(list_id: lists.map(&:id))
+                  .select('DISTINCT ON (entries.list_id) entries.*')
+                  .order(Arel.sql('entries.list_id, RANDOM()'))
+                  .index_by(&:list_id)
+
+    lists.each_with_object({}) do |list, acc|
+      acc[list.id] = own[list.id] || (
+        list.entries_count.positive? &&
+          pictured.merge(list.entries_with_descendants).order(Arel.sql('RANDOM()')).first
+      ) || nil
+    end
   end
 
   # The count is everything under the channel, as its own page reports it: a channel that

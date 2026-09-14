@@ -44,6 +44,14 @@ module AccessControl
 
   included do
     before_action :authenticate_user_unless_guest_allowed!, except: [:health]
+    helper_method :may_watch?
+  end
+
+  # Whether this viewer can press play. Views ask it to decide where a link goes: a play
+  # button that sends a visitor to the sign-in page is worse than one that opens the
+  # channel's page, which the access mode does let them see.
+  def may_watch?
+    user_signed_in? || GUEST_ACTIONS.fetch(AppSetting.access_mode, {}).fetch('entries', []).include?('watch')
   end
 
   # A private channel is not part of what an access mode opens up. What a *signed-in* user

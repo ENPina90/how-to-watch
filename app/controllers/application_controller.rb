@@ -19,6 +19,9 @@ class ApplicationController < ActionController::Base
   # helper because it keeps its place on the dial in the session, and the session is the
   # controller's to write.
   helper_method :cable_now_playing
+  # Whether the layout draws the left sidebar. Both layouts ask it, for the sidebar itself
+  # and for the space the page leaves beside it.
+  helper_method :sidebar_visible?
 
   # Health check endpoint for Railway
   def health
@@ -100,6 +103,16 @@ class ApplicationController < ActionController::Base
 
   def phone_user_agent?
     request.user_agent =~ /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+  end
+
+  # A signed-out visitor gets the sidebar too -- the dial rather than subscriptions, see
+  # shared/_sidebar_channels -- but only on the pages the access mode opened to them. The
+  # sign-in screens and the vote room are reachable signed out without being part of the
+  # site anybody is browsing, and a column of channels beside a login form is clutter.
+  def sidebar_visible?
+    return false if @hide_sidebar
+
+    user_signed_in? || guest_allowed?
   end
 
   def set_sidebar_defaults

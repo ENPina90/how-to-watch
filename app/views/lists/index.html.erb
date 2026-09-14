@@ -8,7 +8,7 @@
           <% current_entry = @card_entries[list.id] %>
           <div class="list-card">
             <% if current_entry %>
-              <%= link_to watch_path_for(current_entry, viewing: list), class: "text-decoration-none" do %>
+              <%= link_to card_play_path(current_entry, list), class: "text-decoration-none" do %>
                 <div class="list-card-poster">
                   <%= entry_poster_image_tag(current_entry, class: 'list-poster-img', alt: list.name) %>
                   <div class="list-card-overlay">
@@ -57,7 +57,7 @@
           <% current_entry = @card_entries[list.id] %>
           <div class="list-card">
             <% if current_entry %>
-              <%= link_to watch_path_for(current_entry, viewing: list), class: "text-decoration-none" do %>
+              <%= link_to card_play_path(current_entry, list), class: "text-decoration-none" do %>
                 <div class="list-card-poster">
                   <%= entry_poster_image_tag(current_entry, class: 'list-poster-img', alt: list.name) %>
                   <div class="list-card-overlay">
@@ -100,7 +100,7 @@
           <% current_entry = @card_entries[list.id] %>
           <div class="list-card">
             <% if current_entry %>
-              <%= link_to watch_path_for(current_entry, viewing: list), class: "text-decoration-none" do %>
+              <%= link_to card_play_path(current_entry, list), class: "text-decoration-none" do %>
                 <div class="list-card-poster">
                   <%= entry_poster_image_tag(current_entry, class: 'list-poster-img', alt: list.name) %>
                   <div class="list-card-overlay">

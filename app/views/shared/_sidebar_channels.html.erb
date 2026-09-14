@@ -3,7 +3,11 @@
     stream cannot render it two different ways. %>
 <%# Read once and rendered from that: asking the association again for the empty case let
     the message disagree with the rows above it. %>
-<% channels = user.subscribed_lists.order(:name).to_a %>
+<%# A signed-out visitor subscribes to nothing, and an empty column told them nothing about
+    what the site holds. They get the dial instead, in dial order: the channels every
+    account is subscribed to anyway, so it is the sidebar a brand-new member would see.
+    Public ones only -- a private channel on the dial would be a link to the sign-in page. %>
+<% channels = user ? user.subscribed_lists.order(:name).to_a : CableSchedule.channels.where(private: [false, nil]).to_a %>
 <div id="sidebarChannels" class="list-group list-group-flush">
   <% channels.each do |list| %>
     <%
@@ -19,9 +23,11 @@
     <%# Two destinations, so two links. The row plays the channel wherever you are -- it
         used to open the channel page unless you were already on a player, which meant the
         same row did different things depending on where you clicked it from. The icon,
-        which only appears under the pointer, is the way to the channel page. %>
+        which only appears under the pointer, is the way to the channel page. A visitor the
+        access mode will not let play anything gets the channel page from the row as well,
+        rather than a bounce to sign in. %>
     <div class="sidebar-channel">
-      <%= link_to list_watch_current_path(list),
+      <%= link_to may_watch? ? list_watch_current_path(list) : list_path(list),
                   class: "list-group-item list-group-item-action bg-transparent text-white border-0 py-2 px-0 mb-1 #{'active-list' if is_current}",
                   style: "border-radius: 6px;",
                   data: (is_current ? { 'sidebar-autoscroll-target': 'active' } : {}) do %>
@@ -38,6 +44,6 @@
   <% end %>
 
   <% if channels.empty? %>
-    <p class="text-muted small mb-0">Nothing subscribed yet.</p>
+    <p class="text-muted small mb-0"><%= user ? 'Nothing subscribed yet.' : 'Nothing on the dial yet.' %></p>
   <% end %>
 </div>

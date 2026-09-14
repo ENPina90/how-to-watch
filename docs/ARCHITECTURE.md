@@ -509,6 +509,22 @@ reach" reads top to bottom. Two rules hold it down whatever the table says: **on
 ever allowed through**, and **anything unlisted falls through to Devise**, so a new
 controller is closed until somebody decides otherwise.
 
+What a visitor who is let in sees is meant to look like the site, not a stripped-down
+fallback:
+
+- **Dark**, as a new account would (`ApplicationHelper#theme_class`). The vote room keeps
+  the light theme it was built against.
+- **The sidebar**, on the pages the table opens (`ApplicationController#sidebar_visible?`),
+  and not on the sign-in screens or the vote room. It lists the public channels on the cable
+  dial in place of subscriptions, with the Now Playing card below as usual.
+- **A picture on every home-page card**: one entry drawn at random from what the channel
+  holds (`ListsController#sampled_card_entries`). It only picks entries that have a
+  picture, from public channels, using a single `DISTINCT ON` query for all channels with
+  entries of their own. A channel that holds nothing with a picture still shows stand-by.
+- **Links that go somewhere the visitor can reach.** `AccessControl#may_watch?` says whether
+  the mode lets them play. Where it does not, the card, the sidebar rows and Now Playing
+  open the channel's page, not a watch URL that would bounce to sign-in.
+
 `AppSetting` is a single row, enforced by an `only_row` validation — every reader takes
 `first`, so a second row would be settings nobody can see and an edit that appears to do
 nothing. It is created on first read, so a fresh database needs no seed, and memoised per
@@ -588,7 +604,8 @@ results. `POST reset_source` moves every channel onto one provider.
   `assets:precompile` handles the build on deploy.
 - **SCSS** in `app/assets/stylesheets`: `config/` (variables, colors, fonts),
   `components/`, `pages/`, `themes/_light_mode.scss`. Dark mode is the default; the theme
-  is a body class driven by `users.dark_mode`.
+  is a body class driven by `users.dark_mode`, and is dark for a signed-out visitor
+  everywhere but the vote room (§5.13).
 
 ---
 
