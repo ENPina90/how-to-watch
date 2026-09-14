@@ -53,7 +53,8 @@
         A provider warning comes back on its own if it is still unresolved when the date it
         warned about changes.
       <% else %>
-        Warnings about provider domains getting close to lapsing show up here.
+        New episodes of the shows on your channels show up here.
+        <% if current_user.admin? %>So do the warnings the maintenance sweeps raise.<% end %>
       <% end %>
     </p>
   <% end %>

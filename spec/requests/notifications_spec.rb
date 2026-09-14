@@ -99,6 +99,52 @@ RSpec.describe 'Notifications' do
     end
   end
 
+  # The first kind that reaches members rather than admins. NewEpisodeNotifier covers who is
+  # sent one; this is how it reads and where it goes.
+  describe 'a new episode' do
+    let(:channel) { create(:list, user: member, name: 'Funny') }
+    let(:show) { create(:entry, list: channel, media: 'series', name: 'Rick and Morty') }
+    let(:subentry) { show.subentries.create!(season: 9, episode: 2, name: 'Ricks Days') }
+    let!(:notification) do
+      Notification.create!(
+        user: member, kind: Notification::NEW_EPISODE, subject: subentry,
+        dedupe_key: "#{Notification::NEW_EPISODE}:#{subentry.id}",
+        data: { 'show' => 'Rick and Morty', 'entry' => 'Rick and Morty', 'list' => 'Funny', 'season' => 9,
+                'episode' => 2, 'title' => 'Ricks Days', 'air_date' => '2026-08-31' }
+      )
+    end
+
+    it 'shows a member which episode arrived, and where' do
+      sign_in member
+
+      get notifications_path
+
+      expect(response.body).to include('New episode of Rick and Morty')
+      expect(response.body).to include('S9E2')
+      expect(response.body).to include('August 31, 2026')
+      expect(response.body).to include('in Funny')
+    end
+
+    it 'sends View straight to the episode, and clears the card on the way' do
+      sign_in member
+
+      patch dismiss_notification_path(notification, view: true)
+
+      expect(response).to redirect_to(watch_entry_path(show, subentry: subentry.id))
+      expect(notification.reload).to be_dismissed
+    end
+
+    it 'still reads, with nowhere to go, once the show is deleted' do
+      show.destroy!
+      sign_in member
+
+      get notifications_path
+
+      expect(response.body).to include('New episode of Rick and Morty')
+      expect(response.body).not_to include('view=true')
+    end
+  end
+
   describe 'the badge in the navbar' do
     it 'appears for an admin with a warning waiting' do
       sign_in admin

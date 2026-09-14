@@ -402,14 +402,29 @@ browse the site.
 
 Deliberately generic, so a second table is never needed: `kind` says what sort of thing it
 is, polymorphic `subject` points at what it is about, and anything kind-specific lives in
-`data`. Kinds so far are all admin-facing sweep results — `source_expiring`,
-`broken_poster`, `unplayable_embed`, `missing_runtime` — and `ADMIN_ONLY_KINDS` is enforced
-**on write and again on read**, so an account that loses its admin flag stops seeing them
-without needing a sweep.
+`data`. The admin-facing kinds are sweep results — `source_expiring`, `broken_poster`,
+`unplayable_embed`, `missing_runtime` — and `ADMIN_ONLY_KINDS` is enforced **on write and
+again on read**, so an account that loses its admin flag stops seeing them without needing
+a sweep.
 
 `dedupe_key` is what makes dismissal safe for a warning that is really a *state* rather than
 an event: it carries the date being warned about, so renewing a provider retires the
 dismissed row and a later warning about the new date is a new notification.
+
+**`new_episode`** is the first kind that reaches members, and the first that is an event.
+`NewEpisodeScanJob` (Thursdays) runs `NewEpisodeNotifier` over every `media: "series"` entry:
+`NewEpisodeImporter` adds the episodes after the last one the entry holds, and each one
+added is announced to the channel's owner (not its subscribers), keyed by subentry, in the same
+transaction as the subentry itself. A whole show takes new seasons; a `SeasonImporter`
+season ("<Show> - Season N") only takes more of season N. Entries holding no episodes are
+skipped, not filled.
+
+TMDB lists episodes weeks before they air, titled and summarised, so an episode is only
+believed when it is at or before the show's `last_episode_to_air`, its `air_date` is
+strictly before today, and it carries a real title and a runtime — the last two waived
+after 14 days, when what TMDB has is all it is going to have. The TMDB id must also be
+**confirmed** to be the entry's show (by TMDB's imdb id, or failing that the imdb lookup
+leading back to it), because entries with a wrong TMDB id exist.
 
 ### 5.13 Who gets in without an account
 
@@ -433,7 +448,8 @@ request through `Current`.
 
 `Admin::BaseController` turns away everyone else. The dashboard shows `AdminStatistics`
 (counts and grouped counts over one seven-day window, gathered so the view holds no
-queries), the site switches, and buttons that run the poster and embed sweeps on demand —
+queries), the site switches, and buttons that run the poster, embed and new-episode sweeps
+on demand —
 the same jobs the weekly schedule runs, so there is one implementation and one set of
 results. `POST reset_source` moves every channel onto one provider.
 `Visit` backs the traffic figures.
@@ -533,6 +549,7 @@ results. `POST reset_source` moves every channel onto one provider.
 | `EmbedAvailabilityAudit` / `UnplayableEmbedNotifier` | The sweep behind `embed_availability_scan`, and the notifications it raises |
 | `PosterAudit` / `BrokenPosterNotifier` | Same shape, for posters whose image has gone |
 | `MissingRuntimeAudit` / `MissingRuntimeNotifier` | Same shape, for scheduled entries cable has to guess a runtime for |
+| `NewEpisodeImporter` / `NewEpisodeNotifier` | The sweep behind `new_episode_scan`: extends each series with episodes TMDB shows have really aired, and tells the channel's owner (§5.12) |
 | `SourceExpiryNotifier` | Warns admins before a provider domain lapses (§4) |
 | `AdminStatistics` | The dashboard's numbers, one seven-day window throughout |
 | `DeploymentStatus` | Which build is actually running, recorded by the worker at boot |
@@ -558,6 +575,7 @@ Cloudinary). `LetterboxdSyncJob` refreshes one member's Letterboxd channel on de
 | `BrokenPosterScanJob` | Mondays | Poster URLs that no longer answer with an image |
 | `EmbedAvailabilityScanJob` | Tuesdays | Entries VidSrc has no file for |
 | `MissingRuntimeScanJob` | Wednesdays | Scheduled entries cable must guess a runtime for |
+| `NewEpisodeScanJob` | Thursdays | Episodes aired since each series was filled in; tells the channel's owner (§5.12) |
 
 The schedule is loaded **on the Sidekiq server only** (`config/initializers/sidekiq.rb`) —
 a web process registering them too would have several dynos racing to own the same
@@ -722,6 +740,7 @@ tell you how far behind it is likely to be. Trust the code; update the section y
 | A button or input does nothing at all | a `data-action` naming a method that no longer exists — Stimulus reports it only in the console. `bundle exec rspec spec/javascript_modules_spec.rb` catches every instance. |
 | Filtering a list returns everything | `ListsController#load_entries` builds `@position_items`; the default `Position` view renders that rather than the grouped `@entries`, so a filter has to be applied there too. |
 | Adding a series creates no episodes | `OmdbApi.get_series_episodes` → needs `entry.season` and (ideally) `entry.tmdb`. Failures here surface as the misleading flash "This already exists in your list". |
+| A series is not picking up new episodes | `NewEpisodeImporter`: skipped if it holds no episodes, or its TMDB id cannot be confirmed as the show; an aired episode with a stand-in title or no runtime is held back up to 14 days, and nothing after it is added meanwhile. The job logs counts. |
 | Sort/group setting doesn't stick | `ListsController#load_entries` — writes are guarded to explicit params, and `settings` is read back as the default. |
 | Slow list page, but the query count is flat | it is the views, not the DB. See §6: anything rendered *per card* is multiplied by the list size, and the big lists run past a thousand entries. |
 | Slow list page | check the preloads first: `ListsController#with_card_data` + `resolve_card_entries` (index) and the `includes(:user_entries).with_attached_poster` in `load_entries` (show). Losing either turns `completed_by?` / `current_entry` back into a query per row. `find_now_playing_for_sidebar` also runs on every page. **A preload here is easy to defeat without touching it:** anything that reloads the association (`all_items_by_position` did) throws it away silently. `spec/requests/list_show_queries_spec.rb` and `list_index_queries_spec.rb` assert the query counts stay flat. |

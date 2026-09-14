@@ -17,6 +17,9 @@ module NotificationsHelper
     # to put right in a hurry.
     when Notification::MISSING_RUNTIME
       :info
+    # News, not a problem.
+    when Notification::NEW_EPISODE
+      :info
     else
       :info
     end
@@ -33,6 +36,8 @@ module NotificationsHelper
       "#{notification.data['name'].presence || 'An entry'} will not play"
     when Notification::MISSING_RUNTIME
       missing_runtime_title(notification)
+    when Notification::NEW_EPISODE
+      "New episode of #{notification.data['show'].presence || 'a show'}"
     else
       notification.kind.humanize
     end
@@ -44,6 +49,7 @@ module NotificationsHelper
     when Notification::BROKEN_POSTER then broken_poster_detail(notification)
     when Notification::UNPLAYABLE_EMBED then unplayable_embed_detail(notification)
     when Notification::MISSING_RUNTIME then missing_runtime_detail(notification)
+    when Notification::NEW_EPISODE then new_episode_detail(notification)
     else ''
     end
   end
@@ -56,6 +62,12 @@ module NotificationsHelper
     # card still reads correctly from `data`, it just has nowhere to send you.
     when Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED, Notification::MISSING_RUNTIME
       notification.subject && entry_path(notification.subject)
+    # Straight to the episode, the way picking it from the player's episode list does --
+    # which moves your place in the show to it, and that is what following this means. nil
+    # once the episode is gone with its entry.
+    when Notification::NEW_EPISODE
+      subentry = notification.subject
+      subentry && watch_entry_path(subentry.entry_id, subentry: subentry.id)
     end
   end
 
@@ -66,10 +78,24 @@ module NotificationsHelper
   # there. An expiry warning is the other sort -- it should outlive being looked at.
   def notification_view_dismisses?(notification)
     [Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED,
-     Notification::MISSING_RUNTIME].include?(notification.kind)
+     Notification::MISSING_RUNTIME, Notification::NEW_EPISODE].include?(notification.kind)
   end
 
   private
+
+  def new_episode_detail(notification)
+    data = notification.data
+    title = data['title'].present? ? " “#{data['title']}”" : ''
+    aired = begin
+      " aired on #{Date.iso8601(data['air_date'].to_s).to_fs(:long)} and"
+    rescue Date::Error
+      ''
+    end
+    where = data['list'].present? ? " in #{data['list']}" : ''
+
+    "S#{data['season']}E#{data['episode']}#{title}#{aired} is now on " \
+      "#{data['entry'].presence || 'the show'}#{where}."
+  end
 
   def expiry_date(notification)
     Date.parse(notification.data['valid_until'].to_s)

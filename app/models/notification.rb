@@ -2,10 +2,10 @@
 
 # Something the app wants to tell one person about.
 #
-# Deliberately generic. Expiry warnings are the first kind and currently the only one, but
-# the shape is meant to carry "somebody subscribed to your channel" and the rest without
-# a second table: `kind` says what sort of thing it is, `subject` points at what it is
-# about, and anything specific to one kind lives in `data`.
+# Deliberately generic. The admin sweeps' warnings were the first kinds, and a new episode
+# of a show on your channel is the first to reach members, but the shape is meant to carry
+# the rest without a second table: `kind` says what sort of thing it is, `subject` points
+# at what it is about, and anything specific to one kind lives in `data`.
 #
 # Dismissal is per person and permanent for that notification. What makes that safe for a
 # warning that is really a *state* rather than an event -- a provider is expiring, and goes
@@ -20,6 +20,9 @@ class Notification < ApplicationRecord
   BROKEN_POSTER = 'broken_poster'
   UNPLAYABLE_EMBED = 'unplayable_embed'
   MISSING_RUNTIME = 'missing_runtime'
+  # An episode NewEpisodeNotifier added to a series. For the channel's owner, admin or not,
+  # so deliberately not in the list below.
+  NEW_EPISODE = 'new_episode'
 
   # Kinds only an admin should ever see. Enforced at creation -- the notifier only writes
   # them for admins -- and again on read, so an account that loses its admin flag stops
