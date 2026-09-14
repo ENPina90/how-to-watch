@@ -136,6 +136,9 @@ class ListsController < ApplicationController
   def show
     # Sidebar starts expanded by default on show page (you can change to true to start collapsed)
     @sidebar_collapsed = false
+    # The sidebar's Now Playing card shows the cable channels this list is part of, rather
+    # than the whole dial -- see ApplicationController#cable_now_playing.
+    @now_playing_list = @list
 
     # The breadcrumb calls top_level?/parent_lists several times; load it once so those
     # are array operations rather than a fresh EXISTS/COUNT each time.

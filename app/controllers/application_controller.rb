@@ -51,9 +51,18 @@ class ApplicationController < ActionController::Base
   # a random pick per render would re-draw a different channel on every turbo visit and
   # show the same one twice as often as not.
   #
+  # On a channel's own page the rotation narrows to the channels on the dial that list is
+  # part of: itself, and anything it sits inside, which plays what it holds. Showing some
+  # other channel there would read as that one being where this list is broadcast, so when
+  # its channels are all off air the card stands by rather than falling back to the rest of
+  # the dial. A list on no channel at all keeps the whole rotation -- there is nothing more
+  # specific to say about it.
+  #
   # Deliberately not cached across the request: the sidebar draws it once.
   def cable_now_playing
     dial = CableSchedule.on_air_now
+    homes = cable_channel_ids_holding(@now_playing_list)
+    dial = dial.select { |stop| homes.include?(stop[:channel].id) } if homes.any?
     return nil if dial.empty?
 
     # Modulo the size we actually got, so a channel going off air -- or a new one being
@@ -63,6 +72,15 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  # The ids of the dial channels a list is part of, for the Now Playing card. Empty without
+  # a list. Decades are never among them: an era is a question about the catalogue, not a
+  # channel anybody files a list inside.
+  def cable_channel_ids_holding(list)
+    return [] unless list
+
+    CableSchedule.channels.where(id: [list.id] + list.ancestor_lists.map(&:id)).pluck(:id)
+  end
 
   # A speculative fetch: the player page one move away, pulled so it is warm if the viewer
   # goes there. Nothing has happened yet as far as they are concerned, so nothing may be
