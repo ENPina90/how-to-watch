@@ -21,6 +21,12 @@
         hint: 'Seconds. Every entry on this channel opens this far in, in place of the ' \
               'viewer\'s own "Start part-way in". 0 always starts at the beginning; leave ' \
               'it empty to let each viewer decide. Picking up where you left off still wins.' %>
+  <%= f.input :skip_credits_seconds, as: :integer,
+        input_html: { min: 0, step: 1, inputmode: 'numeric' },
+        label: 'Skip credits',
+        hint: 'Seconds. Entries on this channel end this far before the video does: they ' \
+              'count as watched by then, and Auto Next plays the next one at that point. ' \
+              'Leave it empty to play each entry to its end.' %>
   <%= f.button :submit %>
 <% end %>
 

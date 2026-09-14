@@ -605,11 +605,16 @@ class EntriesController < ApplicationController
     user_entry = current_user.user_entry_for!(@entry)
     was_completed = user_entry.completed?
 
+    # The channel's credits skip decides where the entry ends, so the page passes along the
+    # channel it is watched from. Looked up rather than taken as a number from the request:
+    # the setting belongs to the channel, and watching_channel already refuses a channel
+    # that does not hold this entry.
     user_entry.record_progress!(
       params[:progress],
       duration: params[:duration],
       finished: params[:finished].to_s == 'true',
-      unattended: params[:unattended].to_s == 'true'
+      unattended: params[:unattended].to_s == 'true',
+      credits: watching_channel.skip_credits_seconds
     )
 
     # The eye in the ring is drawn from the row this just wrote, and the page it is on is
@@ -858,7 +863,7 @@ class EntriesController < ApplicationController
     # reads_do_not_write_spec), so this goes through the non-writing lookup and answers nil
     # for somebody who has never played this entry.
     def resume_position
-      current_user&.user_entry_for(@entry)&.resume_position
+      current_user&.user_entry_for(@entry)&.resume_position(credits: @channel.skip_credits_seconds)
     end
 
     # What the up-next card will move to, as a plain GET of the player page. Mirrors what

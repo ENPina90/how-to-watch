@@ -314,9 +314,10 @@ class List < ApplicationRecord
     user&.auto_next.nil? ? auto_next? : user.auto_next
   end
 
-  # Seconds, and never before the start. Blank is allowed and means something: see below.
-  validates :skip_intro_seconds, numericality: { only_integer: true, greater_than_or_equal_to: 0 },
-                                 allow_nil: true
+  # Seconds, and never before the start. Blank is allowed and means something: see below,
+  # and UserEntry.completion_mark_for for what the credits skip moves.
+  validates :skip_intro_seconds, :skip_credits_seconds,
+            numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
 
   # Where this channel opens an entry for somebody arriving at it rather than returning to
   # it -- resuming is the caller's business, and wins over this. Nil or zero starts at the
@@ -332,12 +333,13 @@ class List < ApplicationRecord
   # Ignored on anything too short for it, for the reason User#random_start_for caps its
   # window: opening an entry past the mark where it counts as watched marks it seen without
   # a frame having been shown. Starting at the beginning is the honest fallback; the channel
-  # still spoke, so the member's randomiser does not come back in.
+  # still spoke, so the member's randomiser does not come back in. The mark is this
+  # channel's, credits skip included, since that is the one the entry will be judged by.
   def start_position_for(entry, user)
     return user&.random_start_for(entry) if skip_intro_seconds.nil?
 
-    runtime = entry.length.to_i * 60
-    return nil if runtime.positive? && skip_intro_seconds >= runtime * UserEntry::COMPLETION_FRACTION
+    mark = UserEntry.completion_mark_for(entry.length.to_i * 60, credits: skip_credits_seconds)
+    return nil if mark && skip_intro_seconds >= mark
 
     skip_intro_seconds
   end

@@ -117,7 +117,9 @@
          <%# There is no unload on a move between entries, so the position has to be taken
              on the way past instead. %>
          data-action="cinema-navigation:leaving@document->player-progress#saveNow"
-         data-player-progress-url-value="<%= progress_entry_path(@entry) %>"
+         <%# The channel rides along because its credits skip decides where the entry
+             ends, and the server judges completion by it. %>
+         data-player-progress-url-value="<%= progress_entry_path(@entry, channel: @channel.id) %>"
          data-player-progress-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
          data-player-progress-frame-value="cinema"
          data-player-progress-token-value="<%= form_authenticity_token %>"
@@ -127,6 +129,11 @@
              own reported duration stands in. %>
          data-player-progress-runtime-value="<%= @entry.length.to_i * 60 %>"
          data-player-progress-fraction-value="<%= UserEntry::COMPLETION_FRACTION %>"
+         <%# List#skip_credits_seconds: the channel's programmes end this far before the file
+             does. Taken off the runtime on both sides, which moves the completion mark and
+             the up-next card together -- so the countdown runs out where the channel says
+             the programme ends. 0 when the channel has no opinion. %>
+         data-player-progress-credits-value="<%= @channel.skip_credits_seconds.to_i %>"
          <%# How long before the end the up-next card appears, and how long it then counts
              down for. Set on the admin dashboard rather than compiled in, so the timing can
              be tuned without a deploy. %>
