@@ -185,6 +185,26 @@ class List < ApplicationRecord
   # appears twice in the tree, whose entries should still only be gathered once.
   MAX_NESTING = 3
 
+  # #total_entry_count as a column, for pages that draw a number on every channel and cannot
+  # ask each one. A correlated subquery rather than COUNT over a join: the recently-watched
+  # scope on the home page already inner-joins entries filtered to one user's completed
+  # rows, and a joined COUNT there reports those instead of the channel's real size.
+  #
+  # The walk mirrors #descendant_lists: the same depth cap, and `IN` rather than a join so a
+  # channel reached twice -- or a cycle, which the depth cap ends -- counts its entries once.
+  ENTRIES_COUNT_SQL = <<~SQL.squish
+    WITH RECURSIVE tree(id, depth) AS (
+      SELECT lists.id, 0
+      UNION
+      SELECT list_relationships.child_list_id, tree.depth + 1
+      FROM list_relationships JOIN tree ON list_relationships.parent_list_id = tree.id
+      WHERE tree.depth < #{MAX_NESTING}
+    )
+    SELECT COUNT(*) FROM entries WHERE entries.list_id IN (SELECT id FROM tree)
+  SQL
+
+  scope :with_entries_count, -> { select("lists.*, (#{ENTRIES_COUNT_SQL}) AS entries_count") }
+
   def descendant_lists(depth: MAX_NESTING, seen: nil)
     seen ||= Set.new([id])
     return [] if depth.zero?
@@ -221,6 +241,20 @@ class List < ApplicationRecord
     end
 
     items.sort_by(&:first).flat_map(&:last)
+  end
+
+  # What a channel plays from the channels inside it: the next unwatched entry in watch
+  # order, or any unwatched one if the channel is unordered. Nil when it holds no channels,
+  # or when everything under it is watched. Completion is read in one query for the whole
+  # sequence -- asked of each entry it is a lookup apiece, and one of these holds 215.
+  def next_borrowed_entry_for(user)
+    return nil if child_lists.empty?
+
+    sequence = watch_sequence
+    watched = completed_entry_ids_for(user).where(entry_id: sequence.map(&:id)).pluck(:entry_id).to_set
+    unwatched = sequence.reject { |entry| watched.include?(entry.id) }
+
+    ordered? ? unwatched.first : unwatched.sample
   end
 
   # Whether this channel is where the entry can be watched from: its own, or held by one of

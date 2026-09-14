@@ -617,7 +617,7 @@ class ListsController < ApplicationController
   def resolve_card_entries(*collections)
     lists = collections.flatten.uniq(&:id)
     by_list_id = lists.each_with_object({}) do |list, acc|
-      acc[list.id] = list.current_entry(current_user)
+      acc[list.id] = list.current_entry(current_user) || borrowed_card_entry(list)
     end
 
     entries = by_list_id.values.compact.uniq(&:id)
@@ -630,12 +630,21 @@ class ListsController < ApplicationController
     by_list_id
   end
 
+  # A channel with nothing of its own shows what its play button would start -- the next
+  # unwatched entry among the channels inside it -- and once all of that is watched, the
+  # first of them, as a channel with its own entries keeps showing one. `entries_count`
+  # already covers everything under the channel, so an empty one costs nothing more. A
+  # signed-out visitor gets no poster on any card, so not on these either.
+  def borrowed_card_entry(list)
+    return nil if current_user.nil? || list.entries_count.zero?
+
+    list.next_borrowed_entry_for(current_user) || list.watch_sequence.first
+  end
+
+  # The count is everything under the channel, as its own page reports it: a channel that
+  # only holds other channels counted its own rows and said "0 entries".
   def with_card_data(scope)
-    # A correlated subquery rather than COUNT over a join: the recently-watched scope
-    # already inner-joins entries filtered to this user's completed rows, and a joined
-    # COUNT there silently reports completed entries instead of the list's real size.
-    scope.includes(:user, :user_list_positions)
-         .select('lists.*, (SELECT COUNT(*) FROM entries WHERE entries.list_id = lists.id) AS entries_count')
+    scope.includes(:user, :user_list_positions).with_entries_count
   end
 
   def set_list
@@ -648,12 +657,7 @@ class ListsController < ApplicationController
   # `entries_count` rather than a count per row: the page draws one number per channel and
   # asking each of them for it is a query apiece.
   def mobile_channels_for(user)
-    followed = user.subscribed_lists
-                   .left_joins(:entries)
-                   .group('lists.id')
-                   .select('lists.*, COUNT(entries.id) as entries_count')
-                   .order('lists.name ASC')
-                   .to_a
+    followed = user.subscribed_lists.with_entries_count.order('lists.name ASC').to_a
 
     favourite = user.favorite_list
     return followed if favourite.nil?
@@ -665,9 +669,7 @@ class ListsController < ApplicationController
   end
 
   def with_entry_count(list)
-    List.left_joins(:entries).group('lists.id')
-        .select('lists.*, COUNT(entries.id) as entries_count')
-        .find_by(id: list.id)
+    List.with_entries_count.find_by(id: list.id)
   end
 
   def load_entries
@@ -748,11 +750,7 @@ class ListsController < ApplicationController
   def next_unwatched_for(user)
     own = @list.ordered? ? @list.find_next_incomplete_entry_for_user(user, 0)
                          : @list.find_random_incomplete_entry_for_user(user)
-    return own if own || @list.child_lists.empty?
-
-    borrowed = @list.watch_sequence.reject { |entry| entry.completed_by?(user) }
-
-    @list.ordered? ? borrowed.first : borrowed.sample
+    own || @list.next_borrowed_entry_for(user)
   end
 
   def next_for_guest
