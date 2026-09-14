@@ -1,0 +1,15 @@
+<script nonce="<%= content_security_policy_nonce %>">
+  // Same two guards the watch page keeps, and for the same reasons: the embed is a third
+  // party's page and will open windows and navigate its parent given the chance.
+  window.open = function () { return null; };
+
+  window.addEventListener('beforeunload', function (e) {
+    if (window.leavingOnPurpose) return;
+
+    if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  });
+</script>
