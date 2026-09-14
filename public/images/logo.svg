@@ -1,1 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" color='#f5f2e8' height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-film"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">HowToWatch minimal television play symbol</title>
+  <desc id="desc">A minimal television with a green play button and small tuning control.</desc>
+  <!-- Cream replaces the original gold frame; the silhouette stays deliberately simple. -->
+  <rect x="12" y="23" width="98" height="76" rx="25" fill="#F5F2E8"/>
+  <rect x="22" y="33" width="78" height="56" rx="17" fill="#2B121D"/>
+  <!-- One simple play cue, contained inside a physical tuner dial. -->
+  <circle cx="61" cy="61" r="15" fill="none" stroke="#F5F2E8" stroke-width="5"/>
+  <path d="M57 53.5 70 61 57 68.5Z" fill="#1A936F"/>
+  <!-- A single side knob and short feet make the body read as a television. -->
+  <circle cx="109" cy="76" r="5" fill="#F5F2E8"/>
+  <path d="M35 100 30 106m54-6 5 6" fill="none" stroke="#F5F2E8" stroke-width="5" stroke-linecap="round"/>
+</svg>
