@@ -209,7 +209,11 @@ does — but reactivating that provider would need this fixed first.
 ### 5.1 Home — `GET /` → `lists#index`
 Three buckets: your lists, recently watched (via `user_entries.completed_at`), community
 lists (public + subscribed, or everything if admin). Each card calls
-`list.current_entry(current_user)` for its poster.
+`list.current_entry(current_user)` for its poster; a channel with nothing of its own falls
+back to `List#next_borrowed_entry_for` (what its play button starts, across the channels
+inside it) and links with `?channel=` so it is watched from there. The count on each card
+is `List.with_entries_count`, a recursive CTE over `list_relationships` that matches
+`total_entry_count` — used by the phone channel list too.
 
 ### 5.2 Channel page — `GET /lists/:id` → `lists#show`
 `load_entries` builds `@entries` as a hash of **section name → entries**, grouped by
