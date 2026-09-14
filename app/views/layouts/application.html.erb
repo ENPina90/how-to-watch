@@ -73,7 +73,11 @@
                 <%# Takes the result to the custom-entry form filled in from the API instead
                     of creating it here. Offered whether or not it is already on the channel:
                     a fanedit or a personal cut of something the channel already holds is a
-                    different entry, and this is the only way to make one. %>
+                    different entry, and this is the only way to make one.
+
+                    Only on the custom-entry page itself, which asks for it. Everywhere else
+                    it was a second + on every result, beside the one that actually adds. %>
+                <% if content_for?(:search_offers_details) %>
                 <button type="button"
                         class="btn btn-outline-secondary btn-sm"
                         data-action="click->list-search#details"
@@ -84,6 +88,7 @@
                         title="Fill in a custom entry from this">
                   <i class="fa-solid fa-plus me-1"></i>Details
                 </button>
+                <% end %>
                 {{#favoritable}}
                 <%# The member's own favourites channel, on the same switch the cable
                     guide's panel uses: hollow for out, solid for in. Absent for anybody
@@ -153,10 +158,9 @@
                         data-type="{{#anime}}anime{{/anime}}">
                   <i class="fas fa-plus me-1"></i>{{addLabel}}
                 </button>
-                <%# Takes the result to the custom-entry form filled in from the API instead
-                    of creating it here. Offered whether or not it is already on the channel:
-                    a fanedit or a personal cut of something the channel already holds is a
-                    different entry, and this is the only way to make one. %>
+                <%# The custom-entry page only, and offered whether or not the channel holds
+                    it already: see the movie template. %>
+                <% if content_for?(:search_offers_details) %>
                 <button type="button"
                         class="btn btn-outline-secondary btn-sm"
                         data-action="click->list-search#details"
@@ -168,6 +172,7 @@
                         title="Fill in a custom entry from this">
                   <i class="fa-solid fa-plus me-1"></i>Details
                 </button>
+                <% end %>
                 {{#favoritable}}
                 <%# The member's own favourites channel, on the same switch the cable
                     guide's panel uses: hollow for out, solid for in. Absent for anybody
@@ -319,10 +324,9 @@
                         data-episode="{{Episode}}">
                   <i class="fas fa-plus me-1"></i>Episode
                 </button>
-                <%# Takes the result to the custom-entry form filled in from the API instead
-                    of creating it here. Offered whether or not it is already on the channel:
-                    a fanedit or a personal cut of something the channel already holds is a
-                    different entry, and this is the only way to make one. %>
+                <%# The custom-entry page only, and offered whether or not the channel holds
+                    it already: see the movie template. %>
+                <% if content_for?(:search_offers_details) %>
                 <button type="button"
                         class="btn btn-outline-secondary btn-sm"
                         data-action="click->list-search#details"
@@ -336,6 +340,7 @@
                         title="Fill in a custom entry from this">
                   <i class="fa-solid fa-plus me-1"></i>Details
                 </button>
+                <% end %>
                 <% end %>
               </div>
             </div>

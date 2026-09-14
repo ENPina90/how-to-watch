@@ -91,6 +91,22 @@ RSpec.describe 'Adding from the search overlay', :needs_provider, type: :request
     end
   end
 
+  # "+ Details" fills in the custom-entry form, so it is offered on that form's page and
+  # nowhere else.
+  describe 'the Details button' do
+    it 'is left off a channel page' do
+      get list_path(list)
+
+      expect(response.body).not_to include('list-search#details')
+    end
+
+    it 'is offered on every result template on the custom-entry page' do
+      get new_list_entry_path(list)
+
+      expect(response.body.scan('click->list-search#details"').count).to eq(3)
+    end
+  end
+
   # Both endpoints already existed for the /entries/new forms; the overlay posts to them
   # rather than growing its own.
   describe 'the endpoints behind the buttons' do

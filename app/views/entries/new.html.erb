@@ -3,6 +3,9 @@
     more. The navbar search is on every page and its "+ Details" button lands here with the
     form already filled in from the API, so the one search does both jobs instead of this
     page carrying a second one that only worked here. %>
+<%# And this is the only page that offers it: the button fills in the form below, and the
+    result templates in the layout draw it only where a page has asked. %>
+<% content_for :search_offers_details, 'yes' %>
 <div class="container">
   <div class="row justify-content-center layout-title">
     <h1 class="text-center">
