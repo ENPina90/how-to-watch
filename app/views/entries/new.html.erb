@@ -9,7 +9,10 @@
 <div class="container">
   <div class="row justify-content-center layout-title">
     <h1 class="text-center">
-      <%= render 'lists/header_count', count: @list.entries.count, list: @list %>
+      <%# The channel page's number, nested channels included. The search above adds to this
+          channel in place, and what comes back replaces this count with that one -- so a
+          different number here jumped the moment anything was added. %>
+      <%= render 'lists/header_count', count: @list.total_entry_count, list: @list %>
       - <%= link_to @list.name, list_path(@list) %>
     </h1>
 

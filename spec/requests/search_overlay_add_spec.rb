@@ -20,6 +20,14 @@ RSpec.describe 'Adding from the search overlay', :needs_provider, type: :request
       expect(response.body).to include(%(data-list-search-current-list-id-value="#{list.id}"))
     end
 
+    # The custom-entry page belongs to one channel, so + adds to it in place and + Details
+    # goes straight to its form instead of asking which channel the page is for.
+    it 'names the channel on its custom-entry page too' do
+      get new_list_entry_path(list)
+
+      expect(response.body).to include(%(data-list-search-current-list-id-value="#{list.id}"))
+    end
+
     it 'leaves it blank off a channel page, where the picker has to ask' do
       get lists_path
 
