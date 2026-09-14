@@ -37,6 +37,45 @@ RSpec.describe Source do
 
       expect(provider.url_for(entry, autoplay: true)).to eq('https://p.test/movie/tt1?autoplay=1')
     end
+
+    # Behind the `#` it would be part of the fragment: never sent to the provider, and on a
+    # MEGA link read as part of the decryption key.
+    it 'puts a query parameter before a fragment rather than inside it' do
+      provider = source({ 'default' => 'https://p.test/v/%{source_key}' }, kind: 'direct', autoplay_param: 'autoplay')
+      entry = build(:entry, list: list, media: 'fanedit', source_key: 'abc#frag')
+
+      expect(provider.url_for(entry, autoplay: true)).to eq('https://p.test/v/abc?autoplay=1#frag')
+    end
+  end
+
+  # MEGA takes autoplay as a flag inside the key fragment, not as a query parameter.
+  describe 'autoplay on MEGA' do
+    # The catalog may already have created the row at boot, and slugs are unique.
+    let(:mega) do
+      described_class.find_or_initialize_by(slug: 'mega').tap do |source|
+        source.update!(name: 'MEGA', kind: 'direct', autoplay_param: nil,
+                       templates: { 'default' => 'https://mega.nz/embed/%{source_key}' })
+      end
+    end
+
+    def entry_keyed(key) = build(:entry, list: list, media: 'fanedit', source_key: key)
+
+    it 'adds the autoplay flag to the key fragment' do
+      expect(mega.url_for(entry_keyed('ID#KEY'), autoplay: true)).to eq('https://mega.nz/embed/ID#KEY!1a')
+    end
+
+    it 'leaves the link alone when autoplay is off' do
+      expect(mega.url_for(entry_keyed('ID#KEY'))).to eq('https://mega.nz/embed/ID#KEY')
+    end
+
+    # MEGA keeps only the first run of options, so a second `!1a` would be ignored.
+    it 'joins options already pasted onto the key' do
+      expect(mega.url_for(entry_keyed('ID#KEY!90s'), autoplay: true)).to eq('https://mega.nz/embed/ID#KEY!90s1a')
+    end
+
+    it 'does not add the flag twice' do
+      expect(mega.url_for(entry_keyed('ID#KEY!1a'), autoplay: true)).to eq('https://mega.nz/embed/ID#KEY!1a')
+    end
   end
 
   # Subtitles can only be decided as the frame is written: the player's own message handler

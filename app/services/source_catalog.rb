@@ -109,15 +109,20 @@ class SourceCatalog
       }
     },
     {
+      # No autoplay_param, and not an oversight: Drive's preview player has no autoplay
+      # switch of any kind, so whatever went on the URL would be ignored.
       slug: 'google-drive', name: 'Google Drive', kind: 'direct', active: true,
       templates: { 'default' => 'https://drive.google.com/file/d/%{source_key}/preview' }
     },
     {
+      # No autoplay_param either, but MEGA does autoplay: it takes the flag inside the key
+      # fragment rather than as a query parameter. See Source::FRAGMENT_AUTOPLAY_FLAGS.
       slug: 'mega', name: 'MEGA', kind: 'direct', active: true,
       templates: { 'default' => 'https://mega.nz/embed/%{source_key}' }
     },
     {
       slug: 'youtube', name: 'YouTube', kind: 'direct', active: true,
+      autoplay_param: 'autoplay',
       templates: { 'default' => 'https://www.youtube.com/embed/%{source_key}' }
     },
     {

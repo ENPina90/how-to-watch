@@ -213,6 +213,17 @@ class Source < ApplicationRecord
 
   def subtitle_param = SUBTITLE_PARAMS[sync_adapter]
 
+  # Providers that take autoplay somewhere other than the query string, which
+  # `autoplay_param` -- the name of a query parameter -- cannot describe.
+  #
+  # MEGA reads its player options out of the key fragment (`#KEY!1a`), the same flags its
+  # own "embed" dialog writes. A query string does nothing there, and one appended after
+  # the `#` becomes part of the decryption key. Keyed by slug because the flag belongs to
+  # MEGA's player and there is only the one domain.
+  FRAGMENT_AUTOPLAY_FLAGS = {
+    'mega' => '1a'
+  }.freeze
+
   # Origins a provider's player reaches for *after* the page has framed it, so they can be
   # warmed while the first frame is still loading.
   #
@@ -304,9 +315,27 @@ class Source < ApplicationRecord
   end
 
   def append_autoplay(url, autoplay)
+    if (flag = FRAGMENT_AUTOPLAY_FLAGS[slug])
+      return autoplay ? append_fragment_flag(url, flag) : url
+    end
+
     return url if autoplay_param.blank?
 
     append_param(url, autoplay_param, autoplay ? 1 : 0)
+  end
+
+  # MEGA's options are one run of number-letter pairs after the key's `!` (`!90s1a1m`). Its
+  # parser splits the fragment on punctuation and keeps only the first run, so a second
+  # `!1a` behind a pasted `!90s` would be silently dropped -- the flag has to join the run
+  # that is already there. A link with no key fragment cannot play at all, so it is left be.
+  def append_fragment_flag(url, flag)
+    base, fragment = url.split('#', 2)
+    return url if fragment.nil?
+
+    key, options = fragment.split('!', 2)
+    return url if options.to_s.scan(/\d+[a-z]/).include?(flag)
+
+    "#{base}##{key}!#{options}#{flag}"
   end
 
   # Whole seconds: the player rounds a fractional position anyway, and a URL is easier to
@@ -336,9 +365,13 @@ class Source < ApplicationRecord
     url
   end
 
+  # Before any fragment, never after it: a parameter written behind the `#` is part of the
+  # fragment, which the provider's server never sees -- and on a MEGA link is read as part
+  # of the decryption key.
   def append_param(url, key, value)
-    separator = url.include?("?") ? "&" : "?"
-    "#{url}#{separator}#{key}=#{value}"
+    base, hash, fragment = url.partition("#")
+    separator = base.include?("?") ? "&" : "?"
+    "#{base}#{separator}#{key}=#{value}#{hash}#{fragment}"
   end
 
   def refresh_expiry_notifications

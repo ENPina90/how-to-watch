@@ -106,7 +106,10 @@ integers (they were strings until 2026-08-25, which is why old code sorted with
 `%{series_imdb}`, `%{season}`, `%{episode}`, `%{absolute_episode}`, `%{source_key}`
 placeholders. `kind` is `imdb` (works for any entry with an IMDb id) or `direct` (needs
 the entry's own `source_key`: a Drive file id, mega key, YouTube id, or a full URL).
-`autoplay_param` is appended when autoplay is on. Substitution is a plain `gsub`, no eval.
+`autoplay_param` is a query parameter appended as `=1`/`=0` (placed before any `#`
+fragment). MEGA is the exception: it takes a `1a` flag inside the key fragment instead,
+declared in `Source::FRAGMENT_AUTOPLAY_FLAGS`. Google Drive's preview player cannot autoplay
+at all. Substitution is a plain `gsub`, no eval.
 
 ### 3.2 Per-user tracking (the important part)
 
