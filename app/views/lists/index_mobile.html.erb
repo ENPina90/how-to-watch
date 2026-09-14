@@ -1,13 +1,15 @@
-<%# The phone home page: the channels this member follows and nothing else.
-    Their own favourites first, because that is the one they came for most of the time.
-    The field in the bar filters these rows -- see mobile_shell_controller. %>
+<%# The phone home page: the channels this member follows, their own favourites first,
+    because that is the one they came for most of the time.
+
+    The field in the bar searches everything rather than filtering these rows. A result
+    found from here has no channel behind it, so it offers a heart for the favourites and a
+    + that opens the picker at the bottom of this page -- see mobile_shell_controller. %>
 <h1 class="m-heading">Your channels</h1>
 
 <% if @mobile_channels.any? %>
-  <div class="m-channels" data-mobile-shell-target="channels">
+  <div class="m-channels">
     <% @mobile_channels.each do |channel| %>
-      <%= link_to list_path(channel), class: "m-channel #{'m-channel--favourite' if channel == @favorites_list}",
-                  data: { mobile_shell_target: "channel", name: channel.name.downcase } do %>
+      <%= link_to list_path(channel), class: "m-channel #{'m-channel--favourite' if channel == @favorites_list}" do %>
         <span class="m-channel__mark">
           <i class="fa-<%= channel == @favorites_list ? 'solid fa-heart' : 'regular fa-bookmark' %>"></i>
         </span>
@@ -16,12 +18,54 @@
       <% end %>
     <% end %>
   </div>
-
-  <%# Shown by the filter when it matches nothing, so an empty screen says why. %>
-  <p class="m-empty" data-mobile-shell-target="noMatches" hidden>No channel by that name.</p>
 <% else %>
   <p class="m-empty">
     You are not following any channels yet.<br>
     Subscribe to one on the full site and it will be here.
   </p>
 <% end %>
+
+<%# Where a result's + asks which channel. Only the member's own are offered, because
+    add_to_list refuses anybody else's -- which is also why this is not simply the rows
+    above, which include channels they merely follow. Rendered once for the page and handed
+    the result it is for when it opens, not once per result. %>
+<div class="m-picker" role="dialog" aria-modal="true" aria-labelledby="m-picker-title"
+     data-mobile-shell-target="picker" hidden>
+  <div class="m-picker__head">
+    <button type="button" class="m-picker__back" aria-label="Back to results"
+            data-action="click->mobile-shell#closePicker">
+      <i class="fa-solid fa-arrow-left"></i>
+    </button>
+    <h2 class="m-picker__title" id="m-picker-title">
+      Add <span class="m-picker__name" data-mobile-shell-target="pickerName"></span> to
+    </h2>
+  </div>
+
+  <input type="search"
+         class="m-bar__input"
+         autocomplete="off"
+         placeholder="Filter your channels"
+         aria-label="Filter your channels"
+         data-mobile-shell-target="pickerInput"
+         data-action="input->mobile-shell#filterPicker">
+
+  <div class="m-channels m-picker__channels">
+    <% @mobile_add_channels.each do |channel| %>
+      <%= tag.button type: "button",
+                     class: "m-channel #{'m-channel--favourite' if channel == @favorites_list}",
+                     data: { mobile_shell_target: "pickerChannel", name: channel.name.downcase,
+                             list_id: channel.id, action: "click->mobile-shell#addToChannel" } do %>
+        <span class="m-channel__mark">
+          <i class="fa-solid fa-<%= channel == @favorites_list ? 'heart' : 'tv' %>"></i>
+        </span>
+        <span class="m-channel__name"><%= channel.name %></span>
+        <span class="m-channel__count"><%= channel.entries_count %></span>
+      <% end %>
+    <% end %>
+
+    <%# Shown by the filter when it leaves nothing, so an empty picker says why. %>
+    <p class="m-empty" data-mobile-shell-target="pickerNoMatches" hidden>
+      <%= @mobile_add_channels.any? ? 'No channel by that name.' : 'You have no channels of your own yet.' %>
+    </p>
+  </div>
+</div>

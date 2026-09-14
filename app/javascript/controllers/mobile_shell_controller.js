@@ -5,23 +5,24 @@ import { TmdbSearchBehavior } from "services/tmdb_search_behavior"
 
 // The bar at the top of every page in the phone view, and everything that hangs off it.
 //
-// One field, doing one of two jobs depending on which page it is on:
+// The field searches everything there is, and what a result offers depends on where the
+// search was made from:
 //
-//   on the home page it filters the channels already on screen, which is a local question
-//   about a short list and has no business being a round trip;
+//   on a channel, one button that puts it on that channel -- there is nothing to choose
+//   between, you are already looking at where it goes;
 //
-//   on a channel it searches everything there is and offers to put a result on that
-//   channel, which is the whole reason this half of the app exists.
+//   on the home page, a heart that files it in the member's favourites straight away, and a
+//   + that opens the picker to choose one of their own channels for it.
 //
-// Told which by `mode`, rather than deciding for itself from what is on the page: the two
-// behaviours read the same keystrokes and guessing between them would make the field's job
-// depend on markup somewhere else.
+// Told whether to search at all by `mode`, and where to add by `listId`, rather than
+// deciding for itself from what is on the page: guessing would make the field's job depend
+// on markup somewhere else.
 const DEBOUNCE = 350
 
 export default class MobileShellController extends Controller {
   static targets = [
-    "input", "menu", "overlay", "results", "movieType", "showType",
-    "channels", "channel", "noMatches", "result"
+    "input", "menu", "overlay", "results", "movieType", "showType", "result",
+    "picker", "pickerName", "pickerInput", "pickerChannel", "pickerNoMatches"
   ]
   static values = { mode: String, listId: Number }
 
@@ -53,29 +54,13 @@ export default class MobileShellController extends Controller {
 
   // ---- the field ------------------------------------------------------------------
 
+  // A search costs two round trips to somebody else's API, so it waits for a pause in the
+  // typing.
   typed() {
     clearTimeout(this.debounce)
+    if (this.modeValue !== "search") return
 
-    if (this.modeValue === "filter") return this.filterChannels()
-
-    // A search costs two round trips to somebody else's API, so it waits for a pause in
-    // the typing. The filter does not -- it is a loop over a dozen rows already on screen.
     this.debounce = setTimeout(() => this.search(), DEBOUNCE)
-  }
-
-  // Local, and deliberately so: the rows are already here and the list is a dozen long.
-  filterChannels() {
-    const needle = this.inputTarget.value.trim().toLowerCase()
-    let shown = 0
-
-    this.channelTargets.forEach((channel) => {
-      const matches = !needle || channel.dataset.name.includes(needle)
-
-      channel.hidden = !matches
-      if (matches) shown += 1
-    })
-
-    if (this.hasNoMatchesTarget) this.noMatchesTarget.hidden = shown > 0
   }
 
   // ---- searching ------------------------------------------------------------------
@@ -111,6 +96,7 @@ export default class MobileShellController extends Controller {
   closeOverlay() {
     this.overlayTarget.hidden = true
     this.resultsTarget.innerHTML = ""
+    this.closePicker()
   }
 
   // ---- what the shared search behaviour calls back ----------------------------------
@@ -126,9 +112,13 @@ export default class MobileShellController extends Controller {
     this.render(shows, "Series", this.currentSearchType === "anime" ? "anime" : "show")
   }
 
+  // `picker` chooses which buttons the card carries: with no channel behind the search,
+  // the heart and the + that opens the picker; on a channel, the one that adds to it.
   render(results, label, type) {
+    const picker = !(this.listIdValue > 0)
+
     this.resultsTarget.innerHTML = Mustache.render(this.template.innerHTML, {
-      results: results.map((result) => ({ ...result, addLabel: label, addType: type }))
+      results: results.map((result) => ({ ...result, addLabel: label, addType: type, picker }))
     })
   }
 
@@ -136,44 +126,139 @@ export default class MobileShellController extends Controller {
     this.resultsTarget.innerHTML = '<p class="m-overlay__state">Nothing found.</p>'
   }
 
-  // ---- adding ---------------------------------------------------------------------
-
   flip(event) {
     event.currentTarget.closest(".m-card")?.classList.toggle("m-card--flipped")
   }
 
-  // Straight onto the channel this search was made from -- there is no picker, because
-  // there is nothing to pick between: on a phone you are on a channel or you are on the
-  // home page, and the home page's field does not search.
+  // ---- adding ---------------------------------------------------------------------
+
+  // Straight onto the channel this search was made from.
   add(event) {
     const button = event.currentTarget
     if (button.disabled || !(this.listIdValue > 0)) return
 
-    const original = button.innerHTML
-    button.disabled = true
-    button.innerHTML = "Adding…"
+    const body = this.importBody(button)
+    if (button.dataset.type) body.append("type", button.dataset.type)
 
+    // The same endpoint the full site posts to, which answers with a turbo stream meant for
+    // a channel page this one is not. The reply is not applied: what the button says is the
+    // whole of the feedback, and the channel behind the overlay is re-read when it is next
+    // opened.
+    this.adding(button, "Adding…", "Added",
+      this.post(`/lists/${this.listIdValue}/entries`, body, "text/vnd.turbo-stream.html"))
+  }
+
+  // Into the member's favourites, without asking which channel that is: it is the one
+  // they already said.
+  favourite(event) {
+    const button = event.currentTarget
+    if (button.disabled) return
+
+    this.adding(button, '<i class="fa-solid fa-spinner fa-spin"></i>', '<i class="fa-solid fa-heart"></i>',
+      this.post("/lists/add_to_favorites", this.importBody(button)))
+  }
+
+  // ---- the picker -----------------------------------------------------------------
+  //
+  // A page of its own over the results rather than a menu off the button: the member's
+  // channels can run to dozens, and a dropdown that long is one you scroll the wrong thing
+  // inside. The + that opened it is remembered, because it is what carries the ids and
+  // what is marked done afterwards.
+
+  pick(event) {
+    this.picking = event.currentTarget
+    if (!this.hasPickerTarget) return
+
+    this.pickerNameTarget.textContent = this.picking.dataset.title
+    this.pickerInputTarget.value = ""
+    this.filterPicker()
+    this.pickerTarget.hidden = false
+  }
+
+  closePicker() {
+    this.picking = null
+    if (this.hasPickerTarget) this.pickerTarget.hidden = true
+  }
+
+  // Local, and deliberately so: the rows are already here.
+  filterPicker() {
+    const needle = this.pickerInputTarget.value.trim().toLowerCase()
+    let shown = 0
+
+    this.pickerChannelTargets.forEach((channel) => {
+      const matches = !needle || channel.dataset.name.includes(needle)
+
+      channel.hidden = !matches
+      if (matches) shown += 1
+    })
+
+    this.pickerNoMatchesTarget.hidden = shown > 0
+  }
+
+  // The picker closes on success and stays open on a refusal, so the row that shook is
+  // still there to try again or to pick another instead.
+  addToChannel(event) {
+    const row = event.currentTarget
+    const plus = this.picking
+    if (!plus || row.disabled) return
+
+    const body = this.importBody(plus)
+    body.append("list_id", row.dataset.listId)
+
+    row.disabled = true
+    row.classList.add("m-channel--busy")
+
+    this.post("/lists/add_to_list", body)
+      .then(() => {
+        const count = row.querySelector(".m-channel__count")
+        if (count) count.textContent = Number(count.textContent) + 1
+
+        plus.classList.add("m-add--done")
+        this.closePicker()
+      })
+      .catch(() => {
+        row.classList.add("m-channel--refused")
+        setTimeout(() => row.classList.remove("m-channel--refused"), 1500)
+      })
+      .finally(() => {
+        row.disabled = false
+        row.classList.remove("m-channel--busy")
+      })
+  }
+
+  // ---- the requests ---------------------------------------------------------------
+
+  importBody(button) {
     const body = new FormData()
     body.append("imdb", button.dataset.imdbId)
     body.append("tmdb", button.dataset.tmdbId)
-    if (button.dataset.type) body.append("type", button.dataset.type)
+    return body
+  }
 
-    fetch(`/lists/${this.listIdValue}/entries`, {
+  post(url, body, accept = "application/json") {
+    return fetch(url, {
       method: "POST",
       body: body,
       headers: {
         "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
-        // The same endpoint the full site posts to, which answers with a turbo stream
-        // meant for a channel page this one is not. The reply is not applied: what the
-        // button says is the whole of the feedback, and the channel behind the overlay is
-        // re-read when it is next opened.
-        Accept: "text/vnd.turbo-stream.html"
+        Accept: accept
       }
+    }).then((response) => {
+      if (!response.ok) throw new Error("Failed to add")
     })
-      .then((response) => {
-        if (!response.ok) throw new Error("Failed to add")
+  }
 
-        button.innerHTML = "Added"
+  // A button that says it is working, then that it worked -- or goes back to what it said
+  // and shakes. Importing a series fetches every episode, so the wait can be long enough to
+  // need saying.
+  adding(button, busy, done, request) {
+    const original = button.innerHTML
+    button.disabled = true
+    button.innerHTML = busy
+
+    request
+      .then(() => {
+        button.innerHTML = done
         button.classList.add("m-add--done")
       })
       .catch(() => {

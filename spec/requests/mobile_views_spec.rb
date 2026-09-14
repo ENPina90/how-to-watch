@@ -38,15 +38,33 @@ RSpec.describe 'The phone view', :needs_provider, type: :request do
 
       get lists_path, headers: phone
 
-      expect(response.body.scan(/data-name="my favourites"/).length).to eq(1)
+      expect(response.body.scan(%(href="#{list_path(favourites)}")).length).to eq(1)
     end
 
-    # The field filters the rows already on screen rather than searching anything: a dozen
-    # names in the page is not a question worth a round trip.
-    it 'puts the bar in filtering mode' do
+    # The field searches everything, as it does on a channel. There is no channel behind it
+    # here, which is what tells a result to offer the heart and the picker instead.
+    it 'puts the bar in searching mode, with no channel to add to' do
       get lists_path, headers: phone
 
-      expect(response.body).to include('data-mobile-shell-mode-value="filter"')
+      expect(response.body).to include('data-mobile-shell-mode-value="search"')
+      expect(response.body).to include('data-mobile-shell-list-id-value=""')
+    end
+
+    # add_to_list refuses a channel that is not theirs, so the picker does not offer one --
+    # not even one they follow, which is in the rows above it.
+    it 'offers only their own channels to add a result to, favourites first' do
+      stranger = create(:list, name: 'Aaa Somebody Else', private: false)
+      user.subscribe_to!(stranger)
+
+      get lists_path, headers: phone
+
+      picker = Nokogiri::HTML(response.body)
+                       .css('[data-mobile-shell-target="pickerChannel"]')
+                       .map { |row| row['data-list-id'].to_i }
+      # Every account also starts with a watchlist of its own, which is offered too.
+      expect(picker.first).to eq(favourites.id)
+      expect(picker).to include(followed.id)
+      expect(picker).not_to include(stranger.id)
     end
   end
 

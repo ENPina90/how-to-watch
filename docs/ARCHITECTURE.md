@@ -265,7 +265,9 @@ jumps to a random unwatched entry.
 | By hand | `GET /lists/:id/entries/new` → `entries#create` with `custom` | The custom-entry form: a fanedit, a personal cut, anything the APIs describe badly. No search box of its own |
 | A spreadsheet of them | `GET .../entries/csv_template`, `POST .../entries/import_csv` | → `EntryCsvTemplate` / `EntryCsvImporter`; inside the request, capped at `MAX_ROWS` |
 | A YouTube playlist | `POST .../entries/import_youtube` with `playlist_url` | → `YoutubePlaylist` (Data API) / `YoutubePlaylistImporter`; inside the request, capped at `YoutubePlaylist::MAX_VIDEOS`. One entry per video on the `youtube` provider, never a series with subentries (they have no `source_key`). Re-running adds only new videos |
-| Mobile | `mobile_search_controller.js` → `POST /lists/add_to_favorites` (JSON) | targets `current_user.favorite_list`; 404s when there is none |
+| Phone, on a channel | `mobile_shell_controller.js#add` → `POST /lists/:list_id/entries` | the same `entries#create` the navbar uses; the turbo stream reply is ignored |
+| Phone, home page heart | `mobile_shell_controller.js#favourite` → `POST /lists/add_to_favorites` (JSON) | → `ImdbEntryImporter` on `current_user.favorite_list`; 404s when there is none |
+| Phone, home page + | `mobile_shell_controller.js#addToChannel` → `POST /lists/add_to_list` (JSON) | the picker in `lists/index_mobile` offers only the member's own channels, which is all `add_to_list` accepts |
 | Top-rated episodes | `lists#top_entries` → `ImdbScraper` | scrapes IMDb search HTML |
 | Watch without saving | `GET /watch_now?imdb=…` → `pages#watch_now` | transient, no DB write |
 
@@ -304,7 +306,16 @@ which is the point: what the admin sees is what that user's own session renders.
 ### 5.7 Mobile
 Detected by user-agent regex duplicated in `ListsController#mobile_request?` and
 `EntriesController#mobile_request?`. Mobile requests render `*_mobile` views with
-`layouts/mobile` (a separate 476-line layout with its own markup and templates).
+`layouts/mobile`: one bar (home, search field, menu) driven by `mobile_shell_controller.js`,
+and a `#mobileResultTemplate` for search results. The phone view plays nothing.
+
+The controller is told `mode` (`search` or `none`; a page that sets neither gets no field)
+and `listId`. On a channel a result carries one "+ Movie/Series" button for that channel.
+On the home page there is no channel behind the search, so a result carries a heart
+(straight into the favourites) and a + that opens a full-screen picker of the member's own
+channels, favourite first, with its own filter field. The home page's rows are the channels
+the member follows, favourite first (`ListsController#mobile_channels_for`); the picker's
+are the ones they own (`#mobile_add_channels_for`) — not the same set.
 
 ---
 
