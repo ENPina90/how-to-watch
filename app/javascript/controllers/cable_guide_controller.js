@@ -310,7 +310,9 @@ export default class extends Controller {
     this.detailPlotTarget.textContent = data.guidePlot ?? ""
     // Nothing to mark on a cell with no film behind it -- channel 0, pointed at from another
     // channel, is a block of trailers rather than anything that can be watched or favourited.
-    if (this.hasWatchedTarget) this.watchedTarget.parentElement.hidden = !data.guideEntryId
+    // The two marks go one at a time rather than their row, which also holds the start button.
+    if (this.hasWatchedTarget) this.watchedTarget.hidden = !data.guideEntryId
+    if (this.hasFavoriteTarget) this.favoriteTarget.hidden = !data.guideEntryId
     this.showMark(this.watchedTarget, this.watchedIconTarget, data.guideWatched === "true",
                   ["Mark as watched", "Watched -- press to unmark"])
     this.showMark(this.favoriteTarget, this.favoriteIconTarget, data.guideFavorited === "true",

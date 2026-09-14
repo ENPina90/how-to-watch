@@ -51,27 +51,29 @@
 
       <p class="tvguide__detail-genre" data-cable-guide-target="detailGenre" hidden></p>
 
-      <%# The same address the title above carries, said as a button. Pointing at a cell
-          halfway through an afternoon and wanting the film from the top is most of what
-          anybody opens the guide to do, and a heading that happens to be a link is not a
-          way to offer it. Out of cable: the ordinary watch player, from the beginning,
-          counting towards what you have seen. No data-cinema-move, so it navigates
-          rather than tuning. %>
-      <p class="tvguide__detail-actions">
-        <a class="tvguide__start" data-cable-guide-target="detailStart" href="#">
+      <p class="tvguide__detail-marks">
+        <%# The same address the title above carries, as a button. Pointing at a cell
+            halfway through an afternoon and wanting the film from the top is most of what
+            anybody opens the guide to do, and a heading that happens to be a link is not a
+            way to offer it. Out of cable: the ordinary watch player, from the beginning,
+            counting towards what you have seen. No data-cinema-move, so it navigates
+            rather than tuning.
+
+            An icon in the row of marks rather than a labelled button of its own: the
+            label was the loudest thing in the panel and pushed the synopsis off the
+            bottom of it. Guests get it too -- it records nothing. %>
+        <a class="tvguide__mark tvguide__mark--start" data-cable-guide-target="detailStart" href="#"
+           title="Start from the beginning" aria-label="Start from the beginning">
           <i class="fa-solid fa-backward-fast"></i>
-          <span>Start from the beginning</span>
         </a>
-      </p>
 
-      <%# Two marks that are also two switches. Both are drawn hollow for off and solid
-          for on, which is the whole of what they say -- there is no room beside a
-          picture for a word as well, and the pair of glyphs is the same pair the rest of
-          the site uses for these two states.
+        <%# Two marks that are also two switches. Both are drawn hollow for off and solid
+            for on, which is the whole of what they say -- there is no room beside a
+            picture for a word as well, and the pair of glyphs is the same pair the rest
+            of the site uses for these two states.
 
-          Absent for a guest: neither has anywhere to record an answer. %>
-      <% if user_signed_in? %>
-        <p class="tvguide__detail-marks">
+            Absent for a guest: neither has anywhere to record an answer. %>
+        <% if user_signed_in? %>
           <%# Marking something watched is the one thing on /cable that writes, and it
               goes through the ordinary entries#complete route -- the same one the banner
               below uses. A thing the viewer chose to do, not a side effect of the page
@@ -89,8 +91,8 @@
                   data-action="click->cable-guide#favorite" title="Add to my favourites">
             <i class="fa-regular fa-heart" data-cable-guide-target="favoriteIcon"></i>
           </button>
-        </p>
-      <% end %>
+        <% end %>
+      </p>
 
       <p class="tvguide__detail-plot" data-cable-guide-target="detailPlot"></p>
     </div>
