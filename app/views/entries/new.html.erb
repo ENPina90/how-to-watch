@@ -54,6 +54,26 @@
       rest looked up for it, and anything you typed wins over what the lookup said.
       <%= EntryCsvImporter::MAX_ROWS %> rows to an upload.
     </p>
+
+    <%# Its own row rather than a fourth button: it needs somewhere to paste. Turbo is left
+        on so the button can say it is working -- the import reads the whole playlist inside
+        the request, which is a few seconds for a long one. %>
+    <%= form_with url: import_youtube_list_entries_path(@list), class: 'new-entry-youtube input-group' do %>
+      <%= url_field_tag :playlist_url, nil, class: 'form-control', required: true,
+            placeholder: 'https://www.youtube.com/playlist?list=…',
+            aria: { label: 'YouTube playlist link' } %>
+      <%= button_tag type: 'submit', class: 'btn btn-outline-primary',
+            data: { turbo_submits_with: 'Importing…' } do %>
+        <i class="fa-brands fa-youtube me-1"></i>Import Playlist
+      <% end %>
+    <% end %>
+
+    <p class="new-entry-hint">
+      Paste a YouTube playlist and every video in it becomes an entry in
+      <strong><%= @list.name %></strong>, with its title, runtime, thumbnail and description.
+      A title numbered like <code>S1 EP1</code> is filed as an episode. Import it again later
+      and only the new videos are added.
+    </p>
   </div>
 
   <div class="row justify-content-center list-layout">

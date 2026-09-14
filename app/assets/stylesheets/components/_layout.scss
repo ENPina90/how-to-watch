@@ -229,6 +229,14 @@
   }
 }
 
+/* The playlist link and its button, held to the width of the note under it so the field does
+   not run the width of a wide screen. */
+.new-entry-youtube {
+  width: 100%;
+  max-width: 720px;
+  margin: 8px auto 0;
+}
+
 /* Adding and searching read as the icons they are, not as buttons with chrome. */
 .list-action {
   display: inline-flex;

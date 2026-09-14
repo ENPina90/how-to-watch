@@ -186,6 +186,13 @@ RSpec.describe 'Forms render', :needs_provider, type: :request do
       expect(response.body).to include(csv_template_list_entries_path(list))
       expect(response.body).to include(import_csv_list_entries_path(list))
     end
+
+    it 'offers a YouTube playlist import into the channel' do
+      get new_list_entry_path(list)
+
+      expect(response.body).to include(import_youtube_list_entries_path(list))
+      expect(response.body).to include('name="playlist_url"')
+    end
   end
 
 end

@@ -149,6 +149,9 @@ Rails.application.routes.draw do
         # generates a file, so it is a GET; the upload creates entries, so it is not.
         get :csv_template
         post :import_csv
+        # A playlist's worth of entries from one pasted link. POST for the reason the upload
+        # is: it writes, and a prefetch of a GET could fill a channel.
+        post :import_youtube
       end
     end
   end
