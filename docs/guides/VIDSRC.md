@@ -411,6 +411,51 @@ the feature is off pending a new dashboard. So a custom domain's 50% reduction i
 the only ad lever that exists. The same notice warns that anyone selling ad-free access or
 "special accounts" is a scammer — they do not sell it.
 
+### Ads that open a new tab
+
+Anyone without an ad blocker gets a new tab of advertising, at most once an hour. Read off
+the wrapper page and measured on 2026-09-14:
+
+- **The trigger is a `mousedown` on the wrapper document**, listened for in the capture
+  phase and rationed through `shown_at` in their localStorage (`36e5`, one hour).
+- **It opens through a throwaway child frame** — `f().contentWindow.open(...)` — whenever
+  its own `window.open` looks tampered with. So overriding `window.open` cannot stop it,
+  and the override at the top of `entries/watch.html.erb` and `cable/show.html.erb` does
+  nothing at all: it replaces *our* window's `open`, and the embed is a cross-origin frame
+  calling its own. The `beforeunload` guard beside it is real, and catches the other trick
+  (the frame navigating our page away).
+
+**`sandbox` is refused.** An iframe `sandbox` without `allow-popups` would block this
+outright, which is why the wrapper loads `/assets/sbx.js` to detect one. It assigns
+`document.domain` to itself and looks for "sandbox" in the error; that assignment throws in
+*any* sandboxed frame, because no token lifts the sandboxed-`document.domain` flag — so
+`allow-same-origin` does not hide it. On detection the frame replaces itself with
+`/sandbox.php?ref=<our host>`. Measured side by side against `framerelay.dev`:
+
+| Frame | Result |
+|---|---|
+| no `sandbox` | playing, a `PLAYER_EVENT` every five seconds |
+| `sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"` | `sandbox.php` → **403**, no player |
+
+**The fix that would work — not built.** A browser only lets a frame open a window (or
+navigate its parent) with *transient user activation in that frame*, and activation from a
+click on our page does not flow down into a cross-origin child. So a transparent layer over
+the player, taking every click before it reaches their document, leaves their script with
+nothing to open a window on — the browser's own popup blocker refuses it, whatever the
+script does, and there is nothing for it to detect. It needs the iframe at `tabindex="-1"`
+too, or a keypress in a frame reached with Tab is activation all the same.
+
+Deferred on 2026-09-14 because of what it costs:
+
+- **Their controls go dead.** Play, pause, seek, mute and unmute survive, since those already
+  go down by `postMessage` (§6). Subtitle choice, subtitle timing, quality and audio track do
+  not — they exist only in their UI (§7, "Subtitle timing is theirs").
+- **Only a custom domain can take it.** A default domain needs a real click on its own play
+  button before anything plays (§4), so a shielded `vidsrc2.ru` would never start. It would
+  have to be a per-`Source` switch, on for `framerelay` alone.
+- A way to use their menus would have to be a deliberate "unlock the player" that lifts the
+  shield for a moment — during which the hourly ad can fire again.
+
 **Fullscreen is ours, not theirs — and it has to be taken away up front.** The player
 offers fullscreen by button, by `f` and by double-click, and any of them puts *their*
 frame full-screen, which hides everything this app draws around it. Dropping

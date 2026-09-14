@@ -466,6 +466,18 @@ detect, `dartsass-rails` ships its own platform binary, and importmap needs no b
 a future change wants an npm package, weigh that against reintroducing the one build step
 that differs between the two services.
 
+### 41. ⬜ The VidSrc embed opens ad tabs for anyone without a blocker (found 2026-09-14)
+The first mouse press inside the player, once an hour, opens a new tab of advertising. The
+`window.open = () => null` guard at the top of `entries/watch.html.erb` and
+`cable/show.html.erb` looks like protection and is not: it replaces our window's `open`,
+and the embed calls its own from a cross-origin frame.
+
+`sandbox` was tried against `framerelay.dev` and is detected and refused. The fix that would
+hold is a click shield over the player on providers with no-click autoplay, which costs
+their subtitle, quality and audio menus. Deferred rather than rejected — the measurements,
+the mechanism and the trade-offs are in
+[VIDSRC.md §7, "Ads that open a new tab"](guides/VIDSRC.md#ads-that-open-a-new-tab).
+
 ## P1 — Performance
 
 ### 12. N+1 queries on the two hottest pages
