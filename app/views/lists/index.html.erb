@@ -34,7 +34,7 @@
                     <% if current_entry %>
                       <%= current_entry.name %>
                     <% else %>
-                      <i class="fa-solid fa-film"></i> <%= list.entries_count %>
+                      <i class="fa-solid fa-square-caret-right"></i> <%= list.entries_count %>
                     <% end %>
                   </p>
                 </div>
@@ -83,7 +83,7 @@
               <div class="list-card-info">
                 <div class="list-card-text">
                   <p class="list-card-name"><%= list.name %></p>
-                  <p class="list-card-meta"><i class="fa-solid fa-film"></i> <%= list.entries_count %></p>
+                  <p class="list-card-meta"><i class="fa-solid fa-square-caret-right"></i> <%= list.entries_count %></p>
                 </div>
                 <i class="fa-solid fa-list list-info-icon"></i>
               </div>
@@ -127,8 +127,8 @@
                 <div class="list-card-text">
                   <p class="list-card-name"><%= list.name %></p>
                   <p class="list-card-meta">
-                    <i class="fa-solid fa-user"></i> <%= list.user.username || list.user.email.split('@').first %> ·
-                    <i class="fa-solid fa-film"></i> <%= list.entries_count %>
+                    <i class="fa-solid fa-square-caret-right"></i> <%= list.entries_count %> ·
+                    <i class="fa-solid fa-user"></i> <%= list.user.username || list.user.email.split('@').first %>
                   </p>
                 </div>
                 <i class="fa-solid fa-list list-info-icon"></i>

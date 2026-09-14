@@ -91,8 +91,8 @@ RSpec.describe 'The Community Channels row', :needs_provider, type: :request do
     meta = Nokogiri::HTML(response.body).css('.list-card-meta')
                    .find { |node| node.text.include?('wyatt') }
     expect(meta.at('i.fa-user')).to be_present
-    expect(meta.at('i.fa-film')).to be_present
-    expect(meta.text.squish).to eq('wyatt · 1')
+    expect(meta.at('i.fa-square-caret-right')).to be_present
+    expect(meta.text.squish).to eq('1 · wyatt')
   end
 
   describe 'the order' do
