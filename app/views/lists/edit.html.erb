@@ -11,6 +11,16 @@
   <%= f.association :provider, collection: Source.active.order(:position), label_method: ->(s) { "#{s.name} (#{s.kind})" }, include_blank: false, label: 'Default source provider', hint: 'Provider used for entries in this channel that don\'t override it' %>
   <%= f.input :auto_play, as: :boolean, label: 'Auto Play', hint: 'Automatically start playing entries when opened' %>
   <%= f.input :auto_next, as: :boolean, label: 'Auto Next', hint: 'Automatically advance to next entry when current one is completed' %>
+
+  <%# Blank and zero are different answers, which is why this is a number field that can be
+      left empty rather than one that defaults to 0: empty leaves each viewer's own "Start
+      part-way in" alone, and 0 overrides it with "from the top". %>
+  <%= f.input :skip_intro_seconds, as: :integer,
+        input_html: { min: 0, step: 1, inputmode: 'numeric' },
+        label: 'Skip intro',
+        hint: 'Seconds. Every entry on this channel opens this far in, in place of the ' \
+              'viewer\'s own "Start part-way in". 0 always starts at the beginning; leave ' \
+              'it empty to let each viewer decide. Picking up where you left off still wins.' %>
   <%= f.button :submit %>
 <% end %>
 

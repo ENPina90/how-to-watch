@@ -314,6 +314,34 @@ class List < ApplicationRecord
     user&.auto_next.nil? ? auto_next? : user.auto_next
   end
 
+  # Seconds, and never before the start. Blank is allowed and means something: see below.
+  validates :skip_intro_seconds, numericality: { only_integer: true, greater_than_or_equal_to: 0 },
+                                 allow_nil: true
+
+  # Where this channel opens an entry for somebody arriving at it rather than returning to
+  # it -- resuming is the caller's business, and wins over this. Nil or zero starts at the
+  # beginning.
+  #
+  # The other way round from the settings above: here the *channel* overrides the member.
+  # "Start part-way in" is a taste for landing somewhere random; an intro skip is the
+  # channel knowing where its programmes actually begin, and a random point inside the
+  # titles is not a better answer to that. Blank on the channel is no opinion, so the
+  # member's own setting stands. Zero is an opinion -- always from the top -- and overrides
+  # it like any other number.
+  #
+  # Ignored on anything too short for it, for the reason User#random_start_for caps its
+  # window: opening an entry past the mark where it counts as watched marks it seen without
+  # a frame having been shown. Starting at the beginning is the honest fallback; the channel
+  # still spoke, so the member's randomiser does not come back in.
+  def start_position_for(entry, user)
+    return user&.random_start_for(entry) if skip_intro_seconds.nil?
+
+    runtime = entry.length.to_i * 60
+    return nil if runtime.positive? && skip_intro_seconds >= runtime * UserEntry::COMPLETION_FRACTION
+
+    skip_intro_seconds
+  end
+
   # READ. nil when this user has never opened the list. Rendering the index page calls
   # this once per card, so it must not write -- use #position_for_user! when the user
   # actually moves.

@@ -847,8 +847,11 @@ class EntriesController < ApplicationController
     # Somewhere they have already been beats somewhere chosen for them: picking up where
     # you left off is a thing you asked for, and the randomiser is for entries you are
     # arriving at rather than returning to.
+    #
+    # The channel being watched *from* decides the rest -- its intro skip where it has one,
+    # the member's randomiser where it does not. See List#start_position_for.
     def start_position
-      resume_position || current_user&.random_start_for(@entry)
+      resume_position || @channel.start_position_for(@entry, current_user)
     end
 
     # A read: rendering the page must not create a tracking row (see
