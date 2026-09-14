@@ -69,8 +69,13 @@ auto-subscribes to default lists and **creates a "<Name>'s Watchlist" list** wit
   created with the account; a record of where it came from, not what it is for — the
   favourite is `users.favorite_list_id`), `reviewable` (prompt for a rating after
   finishing).
-- `auto_play` (flows into the embed URL's autoplay param) and `auto_next`
-  (**declared in forms and the DB but no advance logic is implemented**).
+- `auto_play` (flows into the embed URL's autoplay param) and `auto_next` (renders the
+  up-next card, §5.8). A member's own answer on the profile overrides both.
+- `skip_intro_seconds` / `skip_credits_seconds` — where the channel's programmes really
+  begin and end. **Nullable, and null is not zero:** null is no opinion. Unlike the two
+  above, the channel overrides the member here: a set intro skip (0 included) replaces the
+  member's "Start part-way in" randomiser (`List#start_position_for`), though a resume
+  position still wins. The credits skip moves the completion mark with it (§5.8).
 - `settings` / `sort` — remembered grouping criteria for the show page (`settings` is read
   back as the default grouping; only an explicit `?criteria=`/`?sort=` overwrites them).
 - `provider_id` → `Source`: the list's default streaming provider.
@@ -316,6 +321,16 @@ the point of use rather than a validation: whether 15 seconds is too long a lead
 question about the film's length, and fifteen seconds before the end of a two-minute clip
 is well before it counts as watched. Both routes to the card are gated on the film counting
 as watched, so a mark earlier than that is a card that never appears.
+
+**A channel's credits skip shortens the runtime before any of this is worked out.**
+`List#skip_credits_seconds` comes off the runtime in `UserEntry.completion_mark_for` and in
+`player_progress_controller#runtimeFor`, so the completion mark, the resume cutoff and the
+up-next mark all move to where the channel says the programme ends, and the countdown runs
+out there. They move together because advancing ticks nothing off: a completion mark left at
+the end of the file would never be reached by a viewer the card moved on. The progress URL
+carries `?channel=` so the server applies the skip of the channel being watched from
+(`watching_channel`, which refuses a channel that does not hold the entry). A skip as long as
+the entry is ignored on both sides.
 
 **Fullscreen is not interrupted to show the card.** `entries/_auto_advance_modal` is
 rendered inside `.cinema__screen`, which is the element that goes fullscreen, so the card
