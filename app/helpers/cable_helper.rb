@@ -1,6 +1,31 @@
 # frozen_string_literal: true
 
 module CableHelper
+  # Channel 0. Not a list and not a schedule -- trailers back to back, see TrailerReel -- but a
+  # place on the dial like any other: the guide gives it a row and the arrows reach it.
+  COMING_ATTRACTIONS = "Coming Attractions"
+  # What stands in for a list id wherever the page names the channel it is on: the guide's
+  # rows, and the chrome the guide reads back after a change of channel.
+  COMING_ATTRACTIONS_ID = "0"
+
+  # Where one step up or down the dial goes, from a channel or from channel 0 (nil).
+  #
+  # The dial is a ring with channel 0 at the top: up from channel one is channel 0, up again
+  # wraps round to the last channel, and down from the last comes back to 0. CableSchedule's
+  # own `sibling` is left knowing nothing of it -- the schedule deals lists, and channel 0 is
+  # not one -- so the ring lives here, where the addresses are built.
+  #
+  # A channel that is not on the dial goes to /cable, which is channel one, the same as
+  # turning a dial past its end did before.
+  def cable_sibling_path(channel, direction)
+    dial = [nil, *CableSchedule.channels.to_a]
+    at = channel ? dial.index { |stop| stop&.id == channel.id } : 0
+    return cable_path if at.nil?
+
+    to = dial[(at + (direction == :next ? 1 : -1)) % dial.length]
+    to ? cable_channel_path(to) : cable_trailers_path
+  end
+
   # Times on a cable channel are read off a clock, so they are shown in the zone the
   # schedule was laid out in rather than the server's. Every viewer sees the listing the
   # channel was actually built against.
@@ -93,7 +118,13 @@ module CableHelper
   # out -- a slot runs on to the next five-minute mark and the difference is the break, so
   # its width is not the running time and should not be reported as one.
   def cable_runtime(slot)
-    minutes = (slot.subentry&.length.presence || slot.entry.length).to_i
+    cable_runtime_label(slot.subentry&.length.presence || slot.entry.length)
+  end
+
+  # Minutes, the way a listing says them: "45 min", "2 hr", "1 hr 57 min". Nil for nothing,
+  # since zero is what an import writes when it found no runtime.
+  def cable_runtime_label(minutes)
+    minutes = minutes.to_i
     return nil unless minutes.positive?
     return "#{minutes} min" if minutes < 60
 

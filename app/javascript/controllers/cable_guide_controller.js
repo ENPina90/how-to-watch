@@ -245,10 +245,27 @@ export default class extends Controller {
     this.describe(this.currentCell())
   }
 
+  // Channel 0 has no schedule for its cell to describe -- it plays whichever trailer came up.
+  // While it is the channel on screen, the panel describes that trailer's film instead, read
+  // off the chrome, which is swapped in with every trailer. The banner is hidden while the
+  // guide is up, so without this the panel would be the one place with no way to the film.
+  //
+  // Pointed at from another channel, the cell describes itself: nothing is playing there for
+  // this viewer yet.
+  withLive(data) {
+    if (data.guideLive !== "true") return data
+
+    const chrome = document.getElementById("cinema-chrome")?.dataset
+    if (!chrome || chrome.cableChannelId !== data.cableGuideTune) return data
+
+    const live = Object.fromEntries(Object.entries(chrome).filter(([key]) => key.startsWith("guide")))
+    return { ...data, ...live }
+  }
+
   describe(programme) {
     if (!programme) return
 
-    const data = programme.dataset
+    const data = this.withLive(programme.dataset)
     // What the heart acts on, since the panel describes whatever is being pointed at
     // rather than whatever is playing.
     this.described = data
@@ -291,6 +308,9 @@ export default class extends Controller {
     this.line(this.detailGenreTarget, data.guideGenre)
 
     this.detailPlotTarget.textContent = data.guidePlot ?? ""
+    // Nothing to mark on a cell with no film behind it -- channel 0, pointed at from another
+    // channel, is a block of trailers rather than anything that can be watched or favourited.
+    if (this.hasWatchedTarget) this.watchedTarget.parentElement.hidden = !data.guideEntryId
     this.showMark(this.watchedTarget, this.watchedIconTarget, data.guideWatched === "true",
                   ["Mark as watched", "Watched -- press to unmark"])
     this.showMark(this.favoriteTarget, this.favoriteIconTarget, data.guideFavorited === "true",
@@ -385,6 +405,11 @@ export default class extends Controller {
         ?.querySelectorAll(`.tvguide__programme[data-guide-entry-id="${CSS.escape(id)}"]`)
         .forEach((cell) => { cell.dataset[attribute] = String(on) })
       if (this.described?.guideEntryId === id) this.described[attribute] = String(on)
+      // Channel 0's panel is described from the chrome rather than from a cell, and described
+      // again on every tick -- so the chrome has to hear the answer too, or the mark reverts a
+      // second after it was pressed.
+      const chrome = document.getElementById("cinema-chrome")
+      if (chrome?.dataset.guideEntryId === id) chrome.dataset[attribute] = String(on)
 
       this.showMark(target, icon, on, titles)
     } catch {
