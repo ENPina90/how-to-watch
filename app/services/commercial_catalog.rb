@@ -11,8 +11,9 @@
 # this app knows about and the database does not.
 #
 # Coverage is by year where a year has its own compilation and by era where it does not.
-# The ranges must not overlap; nothing enforces that, and two reels covering 1987 would
-# simply mean 1987 films get one or the other.
+# Ranges may overlap. Several reels for the same year are picked between at random, one per
+# break; an era reel that overlaps a year reel is only used where the year reel is not --
+# see CommercialReel.for_year.
 #
 # The runtimes are carried here rather than fetched, so a database seeded from scratch has
 # them from the first boot. Without one a break can only begin somewhere in the first few

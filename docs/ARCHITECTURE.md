@@ -349,6 +349,9 @@ that is something the viewer chose rather than a side effect of rendering a page
 - Slots start and end on a five-minute grid (`BREAK_GRID`), so a listing reads 8:00 and 9:05
   rather than 8:07 and 9:53. Whatever is left between the film ending and the next mark is a
   commercial break, filled by a `CommercialReel`. A break is 0–4 minutes, never more.
+  `CommercialReel.for_year` picks the reel when the day is dealt: nearest to the film's
+  year, then narrowest span (a 1987 reel beats a 1980s one), then at random, so a year
+  with several reels rotates through them from break to break.
 - Runtime gaps are guessed (`FALLBACK_MINUTES`, 100 for a film, 30 otherwise) rather than
   dropping the entry, and `MIN_MINUTES` (5) keeps bad catalogue data from filling a day with
   thousands of rows. `MAX_SLOTS_PER_DAY` (200) is the backstop.
