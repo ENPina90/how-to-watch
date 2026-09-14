@@ -402,6 +402,23 @@ body.page-lists-show .search-results-overlay {
   color: #1a936f !important;
 }
 
+/* The home page scrolls without showing it: by wheel, trackpad or swipe, like the carousels
+   always have. More than one thing scrolls here -- the document runs past the viewport, and
+   `overflow-x: hidden` on the container quietly makes it a vertical scroller too -- so this
+   covers the page and everything in it rather than chasing each one. `:has` reaches <html>,
+   which the page's body class cannot. */
+html:has(> body.page-lists-index),
+body.page-lists-index,
+body.page-lists-index * {
+  scrollbar-width: none;
+}
+
+html:has(> body.page-lists-index)::-webkit-scrollbar,
+body.page-lists-index::-webkit-scrollbar,
+body.page-lists-index *::-webkit-scrollbar {
+  display: none;
+}
+
 /* Netflix-style Lists Index - Simple Approach */
 body.has-sidebar:not(.sidebar-collapsed) .lists-index-container {
   max-width: calc(100vw - 280px);
