@@ -122,6 +122,7 @@ class SourceCatalog
     },
     {
       slug: 'youtube', name: 'YouTube', kind: 'direct', active: true,
+      autoplay_param: 'autoplay',
       templates: { 'default' => 'https://www.youtube.com/embed/%{source_key}' }
     },
     {
