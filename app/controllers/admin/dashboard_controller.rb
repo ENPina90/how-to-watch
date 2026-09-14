@@ -71,6 +71,16 @@ module Admin
                   notice: 'Stream check started. Unplayable entries will appear in your notifications.'
     end
 
+    # Unlike the other two, what this finds is not the admin's: each new episode goes to the
+    # owner of its channel, who may or may not be whoever pressed the button.
+    def run_episode_scan
+      NewEpisodeScanJob.perform_later
+
+      redirect_to admin_dashboard_path,
+                  notice: 'Episode check started. New episodes will appear in the notifications ' \
+                          'of whoever owns their channel.'
+    end
+
     private
 
     # The bounds are not the interesting limit -- the one that matters is the completion

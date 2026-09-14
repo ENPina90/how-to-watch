@@ -327,10 +327,10 @@
     <h2 class="admin-section__title">Maintenance sweeps</h2>
 
     <p class="admin-note">
-      Both run on their own each week — posters on Mondays, streams on Tuesdays. These are
-      the same jobs, for when you would rather not wait. Each takes a few minutes and works
-      in the background, so nothing here waits for them; what they find arrives in
-      <%= link_to 'your notifications', notifications_path %>.
+      All three run on their own each week — posters on Mondays, streams on Tuesdays, new
+      episodes on Thursdays. These are the same jobs, for when you would rather not wait.
+      Each takes a few minutes and works in the background, so nothing here waits for them;
+      what they find arrives in <%= link_to 'notifications', notifications_path %>.
     </p>
 
     <div class="admin-sweeps">
@@ -340,6 +340,10 @@
 
       <%= form_with url: run_embed_scan_admin_dashboard_path, method: :post do |f| %>
         <%= f.submit "Check streams", class: "admin-save" %>
+      <% end %>
+
+      <%= form_with url: run_episode_scan_admin_dashboard_path, method: :post do |f| %>
+        <%= f.submit "Check for new episodes", class: "admin-save" %>
       <% end %>
     </div>
 
@@ -353,6 +357,11 @@
       unavailable, so nothing else catches these. Anything it finds is marked with the same
       red link as the "report broken link" button — and that mark is left alone once set,
       so a link you reported by hand stays reported.
+      <br>
+      <strong>New episodes</strong> asks TMDB how far each series has got and adds the
+      episodes aired since it was filled in — only once they have actually gone out and
+      carry a real title and runtime, since TMDB lists episodes weeks before they exist.
+      Each one is announced to the owner of its channel, not to you.
     </p>
   </section>
 </div>
