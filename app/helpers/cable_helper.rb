@@ -93,7 +93,13 @@ module CableHelper
   # out -- a slot runs on to the next five-minute mark and the difference is the break, so
   # its width is not the running time and should not be reported as one.
   def cable_runtime(slot)
-    minutes = (slot.subentry&.length.presence || slot.entry.length).to_i
+    cable_runtime_label(slot.subentry&.length.presence || slot.entry.length)
+  end
+
+  # Minutes, the way a listing says them: "45 min", "2 hr", "1 hr 57 min". Nil for nothing,
+  # since zero is what an import writes when it found no runtime.
+  def cable_runtime_label(minutes)
+    minutes = minutes.to_i
     return nil unless minutes.positive?
     return "#{minutes} min" if minutes < 60
 

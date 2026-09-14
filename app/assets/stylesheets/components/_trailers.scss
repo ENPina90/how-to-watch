@@ -1,0 +1,92 @@
+/* ---- /trailers ------------------------------------------------------------------------
+ *
+ * The card over a trailer: the film it is advertising, and the way to it. Bottom left, clear
+ * of the player's own title across the top and its controls along the bottom edge.
+ *
+ * Channel 0 on /cable does not use this -- it has the channel banner, which says the same
+ * things in the shape the rest of the dial says them.
+ */
+.trailer-card {
+  position: fixed;
+  left: 24px;
+  bottom: 72px;
+  z-index: 12;
+  display: flex;
+  gap: 16px;
+  max-width: min(560px, calc(100vw - 48px));
+  padding: 14px;
+  background: rgba(8, 8, 20, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  transition: opacity 0.4s ease;
+}
+
+.trailer-card__poster {
+  flex: 0 0 auto;
+  width: 96px;
+}
+
+.trailer-card__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.trailer-card__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* Lets a long title ellipse rather than push the card wider than the screen. */
+  min-width: 0;
+}
+
+.trailer-card__eyebrow {
+  margin: 0 0 4px;
+  color: #ffd42a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.trailer-card__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Spelled out against the site-wide link colours, which turn a hovered link green. */
+.trailer-card__title a,
+.trailer-card__title a:hover,
+.trailer-card__title a:focus-visible {
+  color: #fff;
+}
+
+.trailer-card__title a:hover,
+.trailer-card__title a:focus-visible {
+  text-decoration: underline;
+}
+
+.trailer-card__meta {
+  margin: 4px 0 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+}
+
+.trailer-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Fades with the rest of the chrome when the picture is left alone, on the same terms as the
+   cable banner -- see _cable.scss. */
+body.cable__mode .cinema__screen--idle .trailer-card {
+  opacity: 0;
+  pointer-events: none;
+}

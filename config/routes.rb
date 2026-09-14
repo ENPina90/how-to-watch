@@ -84,6 +84,9 @@ Rails.application.routes.draw do
 
   root to: "lists#index"
   get 'watch_now', to: 'pages#watch_now'
+  # Trailers for films across the catalogue, one after another. A GET, and it writes nothing
+  # but the session's note of which trailers were just shown -- see TrailerPicking.
+  get 'trailers', to: 'trailers#show', as: :trailers
 
   # Cable: channels that are already running when you turn them on. The channel is in the
   # path rather than a query parameter because it is the whole address here -- there is no
