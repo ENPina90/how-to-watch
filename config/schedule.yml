@@ -45,3 +45,11 @@ missing_runtime_scan:
   class: "MissingRuntimeScanJob"
   queue: default
   description: "Find the scheduled entries cable has to guess a runtime for, and tell admins about them."
+
+# Thursday because most shows go out Sunday to Wednesday, and an episode is not taken on
+# its own air date -- so this catches the week's broadcasts with a day in hand.
+new_episode_scan:
+  cron: "0 6 * * 4"   # Thursdays at 06:00 UTC
+  class: "NewEpisodeScanJob"
+  queue: default
+  description: "Add the episodes each series has aired since it was filled in, and tell the owner of its channel."
