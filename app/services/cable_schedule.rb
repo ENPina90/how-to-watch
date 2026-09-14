@@ -2,8 +2,9 @@
 
 # The cable schedule: what every channel plays, all day, the same for everybody.
 #
-# A day is laid out once, in advance, by CableScheduleJob at noon. Entries are shuffled and
-# laid end to end from midnight to midnight, each one pinned to a clock time. Turning a
+# A day is laid out once, in advance, by CableScheduleJob each morning. Entries are shuffled
+# and laid end to end, each one pinned to a clock time, from wherever the day before finished
+# until a programme runs past midnight -- which it is allowed to finish. Turning a
 # channel on does not start anything -- it joins whatever is already running, at the point
 # it has already reached. That is the whole feature, and it is why nothing in here consults
 # a user: two people opening the same channel at the same second must see the same frame.
@@ -311,6 +312,22 @@ module CableSchedule
     slots.length
   end
 
+  # Lay out a run of days again, from scratch. All of them are cleared before any is dealt,
+  # and they are dealt in order, because each day opens where the one before finishes and
+  # stops short of a later day it finds already there. Rebuilt one at a time, the first would
+  # find the second's old schedule in its way and cut its last programme off to fit it.
+  #
+  # One transaction, for the same reason build_day! has one: a run of days half dealt is
+  # worse than the run it was replacing.
+  def redeal!(channel, dates)
+    dates = dates.to_a.sort
+
+    CableSlot.transaction do
+      CableSlot.where(list: channel, airs_on: dates).delete_all
+      dates.sum { |date| build_day!(channel, date) }
+    end
+  end
+
   # Build only if that day is empty, so the job can be run twice and a page can ask for a
   # day nobody scheduled without wiping one that is already on air.
   def ensure_day!(channel, date)
@@ -343,17 +360,33 @@ module CableSchedule
 
     day_start = zone.local(date.year, date.month, date.day)
     day_end = day_start + 1.day
-    cursor = day_start
-    # What the day before ended with, so this one does not open with it. The bag's rule
-    # against playing the same thing twice running reaches only as far as the day it is
-    # dealing, and the seam between two days is a place the viewer is actually sitting --
-    # a film that runs to midnight and starts again is the most visible repeat there is.
-    last = entry_before(channel, day_start)
+
+    # A day's last programme is not cut off at midnight. It used to be, and every channel
+    # changed over at the same instant -- a column of hard edges straight down the guide, and
+    # the end of a film nobody got to see. So the day before may still be running when this
+    # one begins, and this one begins when it stops.
+    #
+    # It is also what the day before ended with, so this one does not open with it. The bag's
+    # rule against playing the same thing twice running reaches only as far as the day it is
+    # dealing, and the seam between two days is a place the viewer is actually sitting -- a
+    # film that ends and starts again is the most visible repeat there is.
+    before = slot_before(channel, day_start)
+    last = before&.entry
+    cursor = [day_start, before&.ends_at&.in_time_zone(zone)].compact.max
+
+    # A later day that is already laid out is not moved to make room: it may be on air. This
+    # one stops where that one starts instead, which is the old hard cut, and only happens
+    # when days are dealt out of order -- the backfill filling in the past, or today filled
+    # on a first visit when tomorrow is already there. `redeal!` exists so that dealing two
+    # days again is not one of those cases.
+    stop = following_start(channel, date, day_start)
+    until_time = [day_end, stop].compact.min
+
     bag = refill(programmes, last)
     placed = false
     rows = []
 
-    while cursor < day_end && rows.length < MAX_SLOTS_PER_DAY
+    while cursor < until_time && rows.length < MAX_SLOTS_PER_DAY
       if bag.empty?
         # A whole pass over everything the channel has, and not one of them could be
         # played. Refilling would shuffle the same dead entries past the same check for
@@ -375,9 +408,10 @@ module CableSchedule
       next unless playable
 
       # Where the film stops, and where the slot stops -- the same instant only when the
-      # runtime happens to land on the grid.
-      content_end = [cursor + runtime(entry, subentry), day_end].min
-      finish = [next_break_mark(content_end), day_end].min
+      # runtime happens to land on the grid. Midnight is not a limit on either; a following
+      # day already on air is.
+      content_end = [cursor + runtime(entry, subentry), stop].compact.min
+      finish = [next_break_mark(content_end), stop].compact.min
       rows << { list_id: channel.id, entry_id: entry.id, subentry_id: subentry&.id,
                 airs_on: date, starts_at: cursor, ends_at: finish,
                 position: rows.length, created_at: Time.current, updated_at: Time.current }
@@ -391,15 +425,29 @@ module CableSchedule
     rows
   end
 
-  # The programme this channel was showing as the day before ran out, where that day was
-  # ever laid out. Read before the transaction that replaces this day, so it is the real
-  # previous day rather than a half-written one -- and nil at the start of a channel's
-  # history, which puts no constraint on the first programme of its first day.
-  def entry_before(channel, day_start)
+  # The last programme to start before this day did, where anything was ever laid out --
+  # which may still be running at midnight. Read before the transaction that replaces this
+  # day, so it is the real previous day rather than a half-written one -- and nil at the
+  # start of a channel's history, which puts no constraint on the first day at all.
+  #
+  # By when it started rather than when it ended, because the one that matters is the one
+  # that runs over, and it is the only one whose end is not before midnight.
+  def slot_before(channel, day_start)
     CableSlot.where(list: channel)
-             .where(ends_at: ..day_start)
-             .order(ends_at: :desc)
-             .first&.entry
+             .where(starts_at: ...day_start)
+             .order(starts_at: :desc)
+             .includes(:entry)
+             .first
+  end
+
+  # Where the next day this channel already has on the books begins, if there is one. This
+  # day's own rows are left out: they are about to be replaced, and are not in the way.
+  def following_start(channel, date, day_start)
+    CableSlot.where(list: channel)
+             .where.not(airs_on: date)
+             .where(starts_at: day_start..)
+             .minimum(:starts_at)
+             &.in_time_zone(zone)
   end
 
   # Everything the channel can play, including what it borrows from the channels inside it

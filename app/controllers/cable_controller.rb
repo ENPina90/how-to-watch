@@ -66,6 +66,9 @@ class CableController < ApplicationController
   # a tomorrow that was written against a different afternoon. Both days are ahead of the
   # viewer, so both get dealt.
   #
+  # Dealt as one run rather than a day at a time, since tomorrow opens wherever today's last
+  # programme finishes -- see CableSchedule.redeal!.
+  #
   # Yesterday is not touched. It is a record of what the channels actually played.
   #
   # It does pull the current programme out from under everybody watching: the slot they are
@@ -76,8 +79,7 @@ class CableController < ApplicationController
     today = CableSchedule.today
 
     CableSchedule.channels.each do |channel|
-      CableSchedule.build_day!(channel, today)
-      CableSchedule.build_day!(channel, today + 1)
+      CableSchedule.redeal!(channel, [today, today + 1])
     end
 
     # Back to the page it was pressed on, loaded whole: from the settings page that is the
