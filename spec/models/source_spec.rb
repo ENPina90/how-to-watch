@@ -37,6 +37,15 @@ RSpec.describe Source do
 
       expect(provider.url_for(entry, autoplay: true)).to eq('https://p.test/movie/tt1?autoplay=1')
     end
+
+    # Behind the `#` it would be part of the fragment: never sent to the provider, and on a
+    # MEGA link read as part of the decryption key.
+    it 'puts a query parameter before a fragment rather than inside it' do
+      provider = source({ 'default' => 'https://p.test/v/%{source_key}' }, kind: 'direct', autoplay_param: 'autoplay')
+      entry = build(:entry, list: list, media: 'fanedit', source_key: 'abc#frag')
+
+      expect(provider.url_for(entry, autoplay: true)).to eq('https://p.test/v/abc?autoplay=1#frag')
+    end
   end
 
   # Subtitles can only be decided as the frame is written: the player's own message handler

@@ -336,9 +336,13 @@ class Source < ApplicationRecord
     url
   end
 
+  # Before any fragment, never after it: a parameter written behind the `#` is part of the
+  # fragment, which the provider's server never sees -- and on a MEGA link is read as part
+  # of the decryption key.
   def append_param(url, key, value)
-    separator = url.include?("?") ? "&" : "?"
-    "#{url}#{separator}#{key}=#{value}"
+    base, hash, fragment = url.partition("#")
+    separator = base.include?("?") ? "&" : "?"
+    "#{base}#{separator}#{key}=#{value}#{hash}#{fragment}"
   end
 
   def refresh_expiry_notifications
