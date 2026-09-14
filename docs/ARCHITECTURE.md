@@ -254,6 +254,7 @@ jumps to a random unwatched entry.
 | "+ Details" on a search result | `list_search_controller.js#details` → `GET /lists/:id/entries/new?imdb=…` | → `EntryPrefill`. **Creates nothing**: the form opens filled in and the row exists only once Create Entry is pressed |
 | By hand | `GET /lists/:id/entries/new` → `entries#create` with `custom` | The custom-entry form: a fanedit, a personal cut, anything the APIs describe badly. No search box of its own |
 | A spreadsheet of them | `GET .../entries/csv_template`, `POST .../entries/import_csv` | → `EntryCsvTemplate` / `EntryCsvImporter`; inside the request, capped at `MAX_ROWS` |
+| A YouTube playlist | `POST .../entries/import_youtube` with `playlist_url` | → `YoutubePlaylist` (Data API) / `YoutubePlaylistImporter`; inside the request, capped at `YoutubePlaylist::MAX_VIDEOS`. One entry per video on the `youtube` provider, never a series with subentries (they have no `source_key`). Re-running adds only new videos |
 | Mobile | `mobile_search_controller.js` → `POST /lists/add_to_favorites` (JSON) | targets `current_user.favorite_list`; 404s when there is none |
 | Top-rated episodes | `lists#top_entries` → `ImdbScraper` | scrapes IMDb search HTML |
 | Watch without saving | `GET /watch_now?imdb=…` → `pages#watch_now` | transient, no DB write |
@@ -261,7 +262,8 @@ jumps to a random unwatched entry.
 The `/entries/new` page used to carry a second search of its own (`search_controller.js`,
 its own mustache card templates, a Movie/Series/Anime tab row). It does not any more: the
 navbar search is on every page, and its "+ Details" button reaches this form with the
-metadata already in it. The page is now only the manual form plus the CSV round trip.
+metadata already in it. The page is now the manual form plus the two bulk ways in: the CSV
+round trip and a pasted YouTube playlist.
 
 `Entry.create_from_source` normalizes OMDB payloads (`OmdbApi.normalize_omdb_data`) and, on
 failure, records a `FailedEntry` and returns an error **string** — callers must check
@@ -542,6 +544,8 @@ results. `POST reset_source` moves every channel onto one provider.
 | `EntryPrefill` | Builds an **unsaved** Entry from OMDB (or TMDB, for a standalone episode) for the custom-entry form to open filled in |
 | `EntryCsvTemplate` / `EntryCsvImporter` | The blank sheet `/entries/new` hands out and reads back. `COLUMNS` is the contract between them; a row with an `imdb` id is looked up and what was typed wins over what the lookup said |
 | `CsvImporterService` / `CsvExporterService` | seed/export via `db/seed_data/*.csv` — the *seed* pair, unrelated to the two above |
+| `YoutubePlaylist` | Reads a public playlist through the YouTube Data API: title, and per video the id, title, description, runtime, thumbnail, `embeddable` and age restriction. Refuses a playlist over `MAX_VIDEOS` before reading it; raises `YoutubePlaylist::RequestError` with a sentence fit for a flash |
+| `YoutubePlaylistImporter` | Files that playlist into a channel. A title numbered `S1 EP1` / `S01E02` / `Season 2 Episode 10` becomes an `episode` of the playlist, anything else a `fanedit`. Skips videos already in the channel (by id, `?si=` suffix and all) and ones with embedding off; adds age-restricted ones and names them |
 | `DatabaseBackupService` / `DatabaseMigrationHelper` | `rake db:backup:*`, pg_dump + Active Storage manifest |
 | `LetterboxdFeed` | Reads a member's public Letterboxd diary (RSS) |
 | `LetterboxdList` | Reconciles that diary into a channel |
@@ -621,6 +625,7 @@ neither needs a local Redis.
 | OMDB | server only | `OMDB_API_KEY_1..3` |
 | Cloudinary | Active Storage | `CLOUDINARY_URL` |
 | Letterboxd | Public RSS diary (no auth) | — |
+| YouTube Data API v3 | server only (`YoutubePlaylist`) | `YOUTUBE_API_KEY`, falling back to `GOOGLE_SEARCH_API_KEY` — both are keys onto the same Google Cloud project. Free 10,000 units a day; a 109-video playlist is seven calls |
 | IMDb | HTML scraping | none |
 
 `docs/guides/ENVIRONMENT_VARIABLES.md` lists the full set.
@@ -635,8 +640,9 @@ neither needs a local Redis.
   `toggle_default`, `toggle_favorite`; collection `search` (JSON).
 - Two non-RESTful posts outside the resource: `/lists/add_to_favorites`, `/lists/add_to_list`.
 - `entries` nested under a list: `new` / `create`, plus collection `csv_template` (GET — it
-  only generates a file) and `import_csv` (POST — it writes a spreadsheet's worth of rows,
-  and `check_list_edit_permissions` asks whose channel it is first).
+  only generates a file), `import_csv` (POST — it writes a spreadsheet's worth of rows,
+  and `check_list_edit_permissions` asks whose channel it is first) and `import_youtube`
+  (POST, behind the same check — it writes a playlist's worth).
 - `entries` member routes are split by side effect: **writes are PATCH/POST**
   (`complete`, `review`, `complete_without_review`, `reportlink`, `repair_image`,
   `migrate_poster`, `duplicate`, `shuffle_current`, `increment_current`,

@@ -75,6 +75,19 @@ free tier is 100 queries a day, which is why results are cached for 12 hours per
 
 There is no Bing equivalent: Microsoft retired the Bing Search APIs in August 2025.
 
+### **Optional: YouTube playlist import**
+What the Import Playlist field on `/lists/:id/entries/new` reads playlists through. Without
+a key the import says so and nothing else is affected.
+
+```bash
+YOUTUBE_API_KEY=your_google_api_key
+```
+
+If it is not set, `GOOGLE_SEARCH_API_KEY` is used instead, so one Google Cloud key can serve
+both -- enable **YouTube Data API v3** for it under APIs & Services → Library. Set
+`YOUTUBE_API_KEY` separately only if the two keys are restricted to different APIs. The free
+quota is 10,000 units a day; importing a playlist costs about one unit per 50 videos, twice.
+
 ## 🚀 **How to Set Environment Variables in Railway**
 
 1. **Go to your Railway project dashboard**
@@ -138,6 +151,7 @@ Before deploying, ensure you have:
 - [ ] `CLOUDINARY_API_KEY=...`
 - [ ] `CLOUDINARY_API_SECRET=...`
 - [ ] `GOOGLE_SEARCH_API_KEY=...` and `GOOGLE_SEARCH_ENGINE_ID=...` (optional; poster picker web results)
+- [ ] YouTube Data API v3 enabled for that key, or a separate `YOUTUBE_API_KEY=...` (optional; playlist import)
 - [ ] PostgreSQL service added to Railway project
 - [ ] Redis service added to Railway project (if using Action Cable)
 
