@@ -5,13 +5,22 @@
 # Everything here is the same for every viewer. A slot knows what is playing and when it
 # started; how far into it you are is a question about the clock, not about you.
 class CableSlot < ApplicationRecord
-  belongs_to :list
+  # The channel is a list, or a decade named in `era` -- see CableEra. Exactly one of the two,
+  # which the database checks.
+  belongs_to :list, optional: true
   belongs_to :entry
   belongs_to :subentry, optional: true
   # The adverts that fill the gap between this programme and the next. Optional twice over:
   # a slot whose film ends exactly on the five-minute mark has no gap, and a period we hold
   # no reel for has a gap with nothing to put in it.
   belongs_to :break_reel, class_name: "CommercialReel", optional: true
+
+  # The channel this programme is on: its list, or the decade it was dealt for.
+  def channel = list || CableEra.find(era)
+
+  # What the schedule groups rows by when it reads the whole dial at once: a list's id or a
+  # decade's key -- the same values List#id and CableEra#id give, so either looks a row up.
+  def channel_key = list_id || era
 
   # The row covering an instant. Half-open at the end so the moment one programme ends is
   # the moment the next begins, and never both.

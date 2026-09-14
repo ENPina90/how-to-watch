@@ -159,8 +159,10 @@
                    that is what the browser compares against. %>
                data-guide-start="<%= (slot.starts_at.to_f * 1000).round %>"
                data-guide-end="<%= (slot.ends_at.to_f * 1000).round %>"
-               data-guide-channel="<%= channel.name %>"
-               data-guide-channel-url="<%= list_path(channel) %>"
+               <%# A decade is not a channel you can open outside cable, so its programmes lead
+                   back to the channel each film was filed in, and say which. %>
+               data-guide-channel="<%= cable_channel_label(channel, slot.entry) %>"
+               data-guide-channel-url="<%= list_path(cable_home_list(channel, slot.entry)) %>"
                data-guide-number="<%= row[:number] %>"
                data-guide-title="<%= programme.show %>"
                <%# What the grid deliberately leaves out, for the panel to say once about
@@ -185,8 +187,7 @@
                data-guide-favorited="<%= @favorited.include?(slot.entry.catalogue_key) %>"
                <%# Where this programme lives outside the schedule: its own page on the
                    watch side, played from the beginning the ordinary way. %>
-               data-guide-watch-url="<%= watch_entry_path(slot.entry, channel: channel.id,
-                                                          subentry: slot.subentry&.id) %>"
+               data-guide-watch-url="<%= cable_watch_path(slot, channel) %>"
                data-guide-year="<%= slot.entry.year %>"
                data-guide-plot="<%= slot.entry.plot %>"
                data-guide-watched="<%= @watched.include?(slot.entry_id) %>"

@@ -348,7 +348,7 @@ re-render the card twelve times a minute to say what it already says.
 `PATCH /entries/:id/runtime` is the player correcting the catalogue when a file turns out
 to run to something other than what TMDB said.
 
-### 5.9 Cable — `GET /cable`, `GET /cable/:id`, `GET /cable/guide`, `GET /cable/0`
+### 5.9 Cable — `GET /cable`, `GET /cable/:id`, `GET /cable/guide`, `GET /cable/0`, `GET /cable/1980s`
 
 Channels that are **already running** when you turn them on. This is the one part of the
 app where nothing is per-viewer, and the module comment in `app/services/cable_schedule.rb`
@@ -414,6 +414,27 @@ that is something the viewer chose rather than a side effect of rendering a page
     chrome (`cable_guide_controller#withLive`), because the banner -- the other way to the
     film -- is hidden while the guide is up. The phone's listings leave the row out:
     `@coming_attractions` is set only by `cable#guide`.
+- **The decades** (`CableEra`) close the dial, always last and always in this order: 20s, 10s,
+  00s, 90s, 80s, 70s, 60s, Golden Age (1900-1959). They are channels with no list behind them
+  -- a list on the dial has to be `default`, which subscribes every account and fills every
+  sidebar -- so they are eight frozen instances defined in code, addressed by key
+  (`/cable/1980s`, `/cable/golden-age`).
+  - `cable_slots` names its channel by `list_id` **or** `era`, never both and never neither
+    (check constraint `cable_slots_one_channel`). `CableSchedule.slots_for`, `slots_for_all`
+    and `slot_owner` are the only places that know the difference; `CableSlot#channel_key`
+    is what the whole-dial reads group by.
+  - **`CableSchedule.dial`** (lists, then decades) is what numbers, steps along, lists and
+    lays out the channels -- the guide, Now Playing, the job, the backfill task and Rebuild.
+    **`channels`** (lists only) is what `/admin/cable` adds, removes and reorders. Anything
+    that deals or reads the whole dial must use `dial`, or the decades quietly go dark.
+  - A decade plays `CableEra#entries`: public entries whose `year` falls in range, one per
+    film by `catalogue_key`, the copy filed first. Standalone episodes count one by one, so a
+    show imported an episode at a time is a large share of its decade.
+  - Its programmes lead back to the channel each entry was filed in -- the banner's channel
+    name, the guide panel's link (`CableHelper#cable_home_list`, `#cable_channel_label`) and
+    the watch link (`#cable_watch_path`). **Never put a decade key in `?channel=`**: the watch
+    page reads it as a list id. `CableSchedule.find_channel` asks for the key before the list
+    for the same reason, and the keys are spelled as years so none of them reads as a number.
 
 ### 5.10 Watch parties — `resources :watch_parties, param: :token`
 
@@ -594,6 +615,7 @@ results. `POST reset_source` moves every channel onto one provider.
 | `LetterboxdList` | Reconciles that diary into a channel |
 | `LetterboxdFilm` | Builds links to a film on Letterboxd |
 | `CableSchedule` | Lays out and reads the cable day (§5.9). `module_function`, no per-user state |
+| `CableEra` (`app/models`) | The decade channels at the end of the dial -- not a table, eight frozen instances, each dealt from the public catalogue by year (§5.9) |
 | `CommercialCatalog` | The reels available to fill a break |
 | `TrailerReel` | A random trailer off `entries.trailer`, for `/trailers` and channel 0 (§5.9). Picked by YouTube video rather than by entry, so a film filed twice is not twice as likely; public channels plus the viewer's own private ones; recent picks passed over. Builds the embed on the `youtube` Source template |
 | `SourceCatalog` / `ChannelSourceReset` | The provider list; moving every channel onto one provider |
@@ -700,7 +722,7 @@ neither needs a local Redis.
     `data-turbo-method` links would silently fall back to GET there.
 - `sources` (admin only) — plus member `renew` / `deactivate` (both PATCH: they change how
   the app plays things) and `test` (GET: it only plays something), and collection `reorder`.
-- `/cable`, `/cable/:id`, `/cable/guide`, `/cable/0` — all GET, none of them write to the
+- `/cable`, `/cable/:id` (a list on the dial, or a decade's key), `/cable/guide`, `/cable/0` — all GET, none of them write to the
   database. **`cable/guide` and `cable/0` must stay declared above `cable/:id`** (§5.9).
 - `/trailers` (GET) — the trailer reel on its own page. Writes only `session[:trailers_seen]`.
 - `watch_parties`, keyed by `param: :token` rather than id (§5.10).
@@ -808,6 +830,8 @@ tell you how far behind it is likely to be. Trust the code; update the section y
 | A programme runs far too long or too short | no runtime in the catalogue, so `CableSchedule::FALLBACK_MINUTES` guessed. `MissingRuntimeScanJob` reports these; `PATCH /entries/:id/runtime` corrects one. |
 | `/cable/guide` serves channel one | the `cable/guide` route slipped below `cable/:id` (§5.9). |
 | `/cable/0` serves channel one | the `cable/0` route slipped below `cable/:id` (§5.9). |
+| A decade channel is off air, or plays films from the wrong years | `CableEra#entries`: only public entries with a `year` in range count. Check `entries.year` and the list's `private` flag, and that whatever deals the dial reads `CableSchedule.dial` rather than `channels` (§5.9). |
+| A watch link from a decade opens with the wrong channel around it | something passed the decade's key as `?channel=`, which the watch page reads as a list id -- use `CableHelper#cable_watch_path` (§5.9). |
 | Channel 0 or `/trailers` sits on a finished trailer, or reloads the page between trailers | the embed is not reporting back (`enablejsapi=1` in `TrailerReel::PLAYER_OPTIONS`), or a screen element lost its `trailer-reel:next` action -- check both `cable/show` and `cable/trailers` (§5.9). |
 | Channel 0 says there are no trailers | no active `youtube` Source, or no entry with a YouTube `trailer` in a channel the viewer can see. `lib/tasks/tmdb_trailer_update.rake` fills trailers in from TMDB. |
 | Watch party connects but nothing ever arrives | the `redis` gem resolved to 6.x — Action Cable's adapter declares `< 6` and every broadcast raises `Gem::LoadError` while the socket still looks healthy (§5.10). |

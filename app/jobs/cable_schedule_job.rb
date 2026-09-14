@@ -17,7 +17,9 @@ class CableScheduleJob < ApplicationJob
     today = CableSchedule.today
     tomorrow = today + 1
 
-    CableSchedule.channels.find_each do |channel|
+    # The whole dial, decades included: they are dealt like any other channel, from the
+    # catalogue rather than from a list.
+    CableSchedule.dial.each do |channel|
       # Today first, and the order matters: tomorrow opens wherever today's last programme
       # finishes, which is past midnight more often than not, so it has to be there to read.
       CableSchedule.ensure_day!(channel, today)
