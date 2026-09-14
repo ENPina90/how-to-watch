@@ -40,8 +40,8 @@ RSpec.describe CableSchedule do
     it 'runs each programme for its catalogue runtime' do
       described_class.build_day!(channel, date)
 
-      # All but the last, which is cut off at midnight the way a real channel is.
-      CableSlot.where(list: channel).in_order.to_a[0..-2].each do |slot|
+      # Every one, the last included: nothing is cut off at midnight.
+      CableSlot.where(list: channel).in_order.each do |slot|
         expect(slot.duration).to eq(90 * 60)
       end
     end
@@ -118,8 +118,68 @@ RSpec.describe CableSchedule do
     end
   end
 
+  # Days used to be cut off at midnight, so every channel changed programme at the same
+  # instant -- a column of hard edges down the guide. A programme runs until it is done, and
+  # the next day is laid out from wherever that is.
+  #
+  # Hundred-minute films, because a hundred does not divide a day: the fifteenth starts at
+  # 23:20 and finishes at one in the morning.
+  describe 'a programme running past midnight' do
+    before { 3.times { |i| film("Film #{i}", 100, i + 1) } }
+
+    def day(on) = CableSlot.where(list: channel, airs_on: on).in_order.to_a
+
+    it 'finishes the last programme of the day rather than cutting it off' do
+      described_class.build_day!(channel, date)
+      last = day(date).last
+
+      expect(last.starts_at).to eq(midnight + 23.hours + 20.minutes)
+      expect(last.ends_at).to eq(midnight + 1.day + 1.hour)
+      expect(last.duration).to eq(100 * 60)
+    end
+
+    it 'opens the next day where that programme finishes' do
+      described_class.build_day!(channel, date)
+      described_class.build_day!(channel, date + 1)
+
+      expect(day(date + 1).first.starts_at).to eq(day(date).last.ends_at)
+      CableSlot.where(list: channel).in_order.each_cons(2) { |a, b| expect(b.starts_at).to eq(a.ends_at) }
+    end
+
+    it 'has one programme on air across midnight, not two' do
+      described_class.build_day!(channel, date)
+      described_class.build_day!(channel, date + 1)
+
+      expect(CableSlot.where(list: channel).on_air_at(midnight + 1.day + 30.minutes).count).to eq(1)
+    end
+
+    # Out of order: the backfill filling in the past, or today filled on a first visit with
+    # tomorrow already there. A day that may be on air is not moved to make room.
+    it 'stops short of a following day that is already laid out' do
+      described_class.build_day!(channel, date + 1)
+      described_class.ensure_day!(channel, date)
+
+      expect(day(date).last.ends_at).to eq(day(date + 1).first.starts_at)
+      expect(day(date + 1).first.starts_at).to eq(midnight + 1.day)
+    end
+
+    # Rebuilt one at a time, today would find tomorrow's old schedule in the way and be cut
+    # off at it -- the hard edge back again, from the button meant to deal a fresh day.
+    it 'deals a run of days again without cutting the first off at the second' do
+      described_class.build_day!(channel, date + 1)
+      described_class.redeal!(channel, [date, date + 1])
+
+      expect(day(date).last.ends_at).to eq(midnight + 1.day + 1.hour)
+      expect(day(date + 1).first.starts_at).to eq(midnight + 1.day + 1.hour)
+      CableSlot.where(list: channel).in_order.each_cons(2) { |a, b| expect(b.starts_at).to eq(a.ends_at) }
+    end
+  end
+
+  # A programme running over midnight is the whole of the next describe. An hour divides both
+  # of these days exactly, so here the last one finishes on the stroke and the day's length
+  # can be read straight off its first and last slot.
   describe 'a day that is not 24 hours long' do
-    before { 3.times { |i| film("Film #{i}", 90, i + 1) } }
+    before { 3.times { |i| film("Film #{i}", 60, i + 1) } }
 
     # Clocks go back on 2026-11-01 in America/Toronto and forward on 2026-03-08. A day laid
     # out by adding 24 hours to midnight would leave an hour of dead air on one and an hour

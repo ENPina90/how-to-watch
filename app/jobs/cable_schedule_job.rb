@@ -18,6 +18,8 @@ class CableScheduleJob < ApplicationJob
     tomorrow = today + 1
 
     CableSchedule.channels.find_each do |channel|
+      # Today first, and the order matters: tomorrow opens wherever today's last programme
+      # finishes, which is past midnight more often than not, so it has to be there to read.
       CableSchedule.ensure_day!(channel, today)
       CableSchedule.build_day!(channel, tomorrow)
     rescue StandardError => e
