@@ -249,13 +249,57 @@ class ListSearchController extends Controller {
         // The channel holds something it did not a moment ago.
         this.index = null;
 
-        button.innerHTML = '<i class="fas fa-check me-1"></i>Added';
-        button.classList.replace('btn-primary', 'btn-success');
+        // A result drawn with a Remove beside it becomes that Remove, so a slip of the
+        // finger is one more click rather than a reload. A season or a channel has no
+        // Remove to become, and keeps saying what happened.
+        const undo = this.twinOf(button, 'remove');
+        if (!undo) return this.showAdded(button);
+
+        // The stream the add answered with carries no id to read back, and the index the
+        // results were marked from already knows how to find an entry for a result --
+        // episodes included, which are all filed under the one series id.
+        return this.heldEntryFor(button).then(entry => {
+          if (!entry) return this.showAdded(button);
+
+          button.innerHTML = original;
+          button.disabled = false;
+          undo.dataset.entryId = entry.id;
+          this.swap(button, undo);
+        });
       })
       .catch(error => {
         console.error('Error adding to channel:', error);
         this.reportFailure(button, original);
       });
+  }
+
+  showAdded(button) {
+    button.innerHTML = '<i class="fas fa-check me-1"></i>Added';
+    button.classList.replace('btn-primary', 'btn-success');
+  }
+
+  // The other face of the same switch on the same result: the templates draw a Remove and
+  // a + side by side and hide whichever does not apply.
+  twinOf(button, action) {
+    return button.parentElement?.querySelector(`[data-action="click->list-search#${action}"]`);
+  }
+
+  swap(from, to) {
+    from.classList.add('d-none');
+    to.classList.remove('d-none');
+  }
+
+  // The entry an add button's result now is, matched the way marked() matched it.
+  heldEntryFor(button) {
+    const data = button.dataset;
+    const result = {
+      imdbID: data.imdbId,
+      seriesImdbID: data.seriesImdbId,
+      Season: data.season,
+      Episode: data.episode
+    };
+
+    return this.entryIndex().then(entries => entries.find(entry => this.sameEntry(entry, result)));
   }
 
   // On the button, never in the results: showErrorMessage replaces the overlay's contents
@@ -364,8 +408,12 @@ class ListSearchController extends Controller {
         Turbo.renderStreamMessage(stream);
         this.index = null;
 
-        button.innerHTML = '<i class="fas fa-check me-1"></i>Removed';
-        button.classList.replace('btn-danger', 'btn-secondary');
+        // Back to the + it was drawn beside, so taking something out by mistake is as easy
+        // to undo as putting it in.
+        button.innerHTML = original;
+        button.disabled = false;
+        delete button.dataset.entryId;
+        this.swap(button, this.twinOf(button, 'add'));
       })
       .catch(error => {
         console.error('Error removing from channel:', error);

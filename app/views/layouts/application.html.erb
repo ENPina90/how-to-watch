@@ -49,19 +49,20 @@
                   <i class="fa-solid fa-play me-1"></i>Watch Now
                 </a>
                 <% if user_signed_in? %>
-                {{#entryId}}
-                <%# Already on this channel: the same button takes it back out, the way the
-                    /entries/new results do. %>
+                <%# Both faces of the one switch are always drawn, and the one that does not
+                    apply is hidden by class. Adding flips straight to Remove, so an accidental
+                    add can be taken back out without reloading, and removing flips back --
+                    neither waits on the template being rendered again. The state sits in the
+                    class *value* rather than in a section around each button, since an
+                    add-only button could never become a remove one. %>
                 <button type="button"
-                        class="btn btn-danger btn-sm"
+                        class="btn btn-danger btn-sm {{^entryId}}d-none{{/entryId}}"
                         data-action="click->list-search#remove"
                         data-entry-id="{{entryId}}">
                   <i class="fa-solid fa-trash me-1"></i>Remove
                 </button>
-                {{/entryId}}
-                {{^entryId}}
                 <button type="button"
-                        class="btn btn-primary btn-sm"
+                        class="btn btn-primary btn-sm {{#entryId}}d-none{{/entryId}}"
                         data-action="click->list-search#add"
                         data-imdb-id="{{imdbID}}"
                         data-tmdb-id="{{tmdbID}}"
@@ -69,11 +70,14 @@
                         data-poster="{{Poster}}">
                   <i class="fas fa-plus me-1"></i>{{addLabel}}
                 </button>
-                {{/entryId}}
                 <%# Takes the result to the custom-entry form filled in from the API instead
                     of creating it here. Offered whether or not it is already on the channel:
                     a fanedit or a personal cut of something the channel already holds is a
-                    different entry, and this is the only way to make one. %>
+                    different entry, and this is the only way to make one.
+
+                    Only on the custom-entry page itself, which asks for it. Everywhere else
+                    it was a second + on every result, beside the one that actually adds. %>
+                <% if content_for?(:search_offers_details) %>
                 <button type="button"
                         class="btn btn-outline-secondary btn-sm"
                         data-action="click->list-search#details"
@@ -84,6 +88,7 @@
                         title="Fill in a custom entry from this">
                   <i class="fa-solid fa-plus me-1"></i>Details
                 </button>
+                <% end %>
                 {{#favoritable}}
                 <%# The member's own favourites channel, on the same switch the cable
                     guide's panel uses: hollow for out, solid for in. Absent for anybody
@@ -136,19 +141,15 @@
                   <i class="fa-solid fa-play me-1"></i>Watch Now
                 </a>
                 <% if user_signed_in? %>
-                {{#entryId}}
-                <%# Already on this channel: the same button takes it back out, the way the
-                    /entries/new results do. %>
+                <%# Remove and + side by side, one hidden: see the movie template. %>
                 <button type="button"
-                        class="btn btn-danger btn-sm"
+                        class="btn btn-danger btn-sm {{^entryId}}d-none{{/entryId}}"
                         data-action="click->list-search#remove"
                         data-entry-id="{{entryId}}">
                   <i class="fa-solid fa-trash me-1"></i>Remove
                 </button>
-                {{/entryId}}
-                {{^entryId}}
                 <button type="button"
-                        class="btn btn-primary btn-sm"
+                        class="btn btn-primary btn-sm {{#entryId}}d-none{{/entryId}}"
                         data-action="click->list-search#add"
                         data-imdb-id="{{imdbID}}"
                         data-tmdb-id="{{tmdbID}}"
@@ -157,11 +158,9 @@
                         data-type="{{#anime}}anime{{/anime}}">
                   <i class="fas fa-plus me-1"></i>{{addLabel}}
                 </button>
-                {{/entryId}}
-                <%# Takes the result to the custom-entry form filled in from the API instead
-                    of creating it here. Offered whether or not it is already on the channel:
-                    a fanedit or a personal cut of something the channel already holds is a
-                    different entry, and this is the only way to make one. %>
+                <%# The custom-entry page only, and offered whether or not the channel holds
+                    it already: see the movie template. %>
+                <% if content_for?(:search_offers_details) %>
                 <button type="button"
                         class="btn btn-outline-secondary btn-sm"
                         data-action="click->list-search#details"
@@ -173,6 +172,7 @@
                         title="Fill in a custom entry from this">
                   <i class="fa-solid fa-plus me-1"></i>Details
                 </button>
+                <% end %>
                 {{#favoritable}}
                 <%# The member's own favourites channel, on the same switch the cable
                     guide's panel uses: hollow for out, solid for in. Absent for anybody
@@ -305,19 +305,15 @@
                   <i class="fa-solid fa-play me-1"></i>Watch Now
                 </a>
                 <% if user_signed_in? %>
-                {{#entryId}}
-                <%# Already on this channel: the same button takes it back out, the way the
-                    /entries/new results do. %>
+                <%# Remove and + side by side, one hidden: see the movie template. %>
                 <button type="button"
-                        class="btn btn-danger btn-sm"
+                        class="btn btn-danger btn-sm {{^entryId}}d-none{{/entryId}}"
                         data-action="click->list-search#remove"
                         data-entry-id="{{entryId}}">
                   <i class="fa-solid fa-trash me-1"></i>Remove
                 </button>
-                {{/entryId}}
-                {{^entryId}}
                 <button type="button"
-                        class="btn btn-primary btn-sm"
+                        class="btn btn-primary btn-sm {{#entryId}}d-none{{/entryId}}"
                         data-action="click->list-search#add"
                         data-imdb-id="{{seriesImdbID}}"
                         data-series-imdb-id="{{seriesImdbID}}"
@@ -328,11 +324,9 @@
                         data-episode="{{Episode}}">
                   <i class="fas fa-plus me-1"></i>Episode
                 </button>
-                {{/entryId}}
-                <%# Takes the result to the custom-entry form filled in from the API instead
-                    of creating it here. Offered whether or not it is already on the channel:
-                    a fanedit or a personal cut of something the channel already holds is a
-                    different entry, and this is the only way to make one. %>
+                <%# The custom-entry page only, and offered whether or not the channel holds
+                    it already: see the movie template. %>
+                <% if content_for?(:search_offers_details) %>
                 <button type="button"
                         class="btn btn-outline-secondary btn-sm"
                         data-action="click->list-search#details"
@@ -346,6 +340,7 @@
                         title="Fill in a custom entry from this">
                   <i class="fa-solid fa-plus me-1"></i>Details
                 </button>
+                <% end %>
                 <% end %>
               </div>
             </div>

@@ -11,8 +11,13 @@
       <div class="position-absolute start-50 translate-middle-x"
            data-controller="list-search"
            <%# The channel being viewed, so a + button can add to it outright. Blank
-               anywhere else, which the controller reads as no channel. %>
-           data-list-search-current-list-id-value="<%= @list.id if controller_name == 'lists' && action_name == 'show' %>"
+               anywhere else, which the controller reads as no channel.
+
+               The custom-entry page counts. It belongs to one channel, and a picker there
+               asks about the page you are standing on -- which is where + Details would
+               send you after asking. `create` because a hand-made entry that will not save
+               renders the same page again. %>
+           data-list-search-current-list-id-value="<%= @list.id if (controller_name == 'lists' && action_name == 'show') || (controller_name == 'entries' && %w[new create].include?(action_name)) %>"
            <%# The member's own favourites channel, so a result can say whether it is
                already in there and the heart on it can put it in or take it out. Blank for
                a guest and for anybody who has not picked one, which is what switches the
