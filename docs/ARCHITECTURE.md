@@ -333,7 +333,7 @@ re-render the card twelve times a minute to say what it already says.
 `PATCH /entries/:id/runtime` is the player correcting the catalogue when a file turns out
 to run to something other than what TMDB said.
 
-### 5.9 Cable — `GET /cable`, `GET /cable/:id`, `GET /cable/guide`
+### 5.9 Cable — `GET /cable`, `GET /cable/:id`, `GET /cable/guide`, `GET /cable/0`
 
 Channels that are **already running** when you turn them on. This is the one part of the
 app where nothing is per-viewer, and the module comment in `app/services/cable_schedule.rb`
@@ -360,8 +360,9 @@ that is something the viewer chose rather than a side effect of rendering a page
   out from under anybody). `CableSchedule.prune!` keeps `RETAIN_DAYS` (2).
 - `cable#show` and `cable#guide` also call `ensure_day!` on the way through, so the dial
   never has a dead channel on it after a deploy or a newly-defaulted channel.
-- **Route order is load-bearing**: `get 'cable/guide'` must stay above `get 'cable/:id'`, or
-  "guide" is read as a channel id, cast to nothing, and quietly serves channel one.
+- **Route order is load-bearing**: `get 'cable/guide'`, `cable/listings` and `cable/0` must
+  stay above `get 'cable/:id'`, or "guide" is read as a channel id, cast to nothing, and
+  quietly serves channel one -- and `0` serves channel one instead of the trailers.
 - The guide renders in the *viewer's* zone (`params[:tz]`) even though the schedule itself
   is a set of fixed instants.
 - **The way off a channel** is `watch_entry_path(entry, channel:, subentry:)` — the ordinary
@@ -374,6 +375,30 @@ that is something the viewer chose rather than a side effect of rendering a page
 - **`CableSchedule.on_air_now`** is the whole dial in one query — every channel with
   something on, paired with its slot and its number, shaped like `guide`'s rows. It exists
   for the sidebar's Now Playing card (§6), which asks it on every page that draws a sidebar.
+- **Channel 0, Coming Attractions** (`cable#trailers`, `GET /cable/0`) is the one channel
+  that is not a schedule: trailers back to back from `TrailerReel`, the same reel `/trailers`
+  plays with a film card in place of the banner. It is not a list and has no slots, and it is
+  never in `CableSchedule.channels`, so the schedule, the Now Playing card and `/admin/cable`
+  know nothing of it. Where a page has to name it, `CableHelper::COMING_ATTRACTIONS_ID`
+  (`"0"`) stands in for a list id.
+  - The dial is a ring through 0, built by `CableHelper#cable_sibling_path` rather than
+    `CableSchedule.sibling`, which still deals only in lists. Up from channel one is 0, up
+    again wraps to the last channel, down from the last comes back to 0. `/cable` still
+    opens on channel one.
+  - What is on is per-viewer -- a random pick, with the last `TrailerReel::REMEMBERED` videos
+    kept in `session[:trailers_seen]` -- and it moves on when the YouTube embed reports the
+    trailer ended or refused (`trailer_reel_controller.js`, which needs `enablejsapi=1`), not
+    when the clock says. Nothing is written to the per-user tables.
+  - **Both kinds of page answer both kinds of move.** A change of channel keeps the screen
+    element it started on and swaps only `#cinema-chrome`, so `cable/show`'s screen listens
+    for `trailer-reel:next` and `cable/trailers`' listens for `cable-clock:move` / `warm`.
+    Drop either and a move after tuning across is a full page load that closes the guide
+    and leaves fullscreen.
+  - In the guide it is one block across the whole window. While it is the channel on screen
+    the panel describes the current trailer's film from the `data-guide-*` attributes on the
+    chrome (`cable_guide_controller#withLive`), because the banner -- the other way to the
+    film -- is hidden while the guide is up. The phone's listings leave the row out:
+    `@coming_attractions` is set only by `cable#guide`.
 
 ### 5.10 Watch parties — `resources :watch_parties, param: :token`
 
@@ -555,6 +580,7 @@ results. `POST reset_source` moves every channel onto one provider.
 | `LetterboxdFilm` | Builds links to a film on Letterboxd |
 | `CableSchedule` | Lays out and reads the cable day (§5.9). `module_function`, no per-user state |
 | `CommercialCatalog` | The reels available to fill a break |
+| `TrailerReel` | A random trailer off `entries.trailer`, for `/trailers` and channel 0 (§5.9). Picked by YouTube video rather than by entry, so a film filed twice is not twice as likely; public channels plus the viewer's own private ones; recent picks passed over. Builds the embed on the `youtube` Source template |
 | `SourceCatalog` / `ChannelSourceReset` | The provider list; moving every channel onto one provider |
 | `VidsrcAvailability` / `VidsrcCatalog` | Asks VidSrc whether it actually holds a file for an entry |
 | `EmbedAvailabilityAudit` / `UnplayableEmbedNotifier` | The sweep behind `embed_availability_scan`, and the notifications it raises |
@@ -659,8 +685,9 @@ neither needs a local Redis.
     `data-turbo-method` links would silently fall back to GET there.
 - `sources` (admin only) — plus member `renew` / `deactivate` (both PATCH: they change how
   the app plays things) and `test` (GET: it only plays something), and collection `reorder`.
-- `/cable`, `/cable/:id`, `/cable/guide` — all GET, none of them write. **`cable/guide` must
-  stay declared above `cable/:id`** (§5.9).
+- `/cable`, `/cable/:id`, `/cable/guide`, `/cable/0` — all GET, none of them write to the
+  database. **`cable/guide` and `cable/0` must stay declared above `cable/:id`** (§5.9).
+- `/trailers` (GET) — the trailer reel on its own page. Writes only `session[:trailers_seen]`.
 - `watch_parties`, keyed by `param: :token` rather than id (§5.10).
 - `resource :vote` nested under a list, with `cast` / `close` / `remove_option` (§5.11).
 - `notifications` with member `dismiss` and collection `dismiss_all` (§5.12).
@@ -765,6 +792,9 @@ tell you how far behind it is likely to be. Trust the code; update the section y
 | Cable shows a different programme to two people | something read a per-user table. Nothing under §5.9 may touch `UserListPosition`, `UserEntryPosition` or `player_progress`. |
 | A programme runs far too long or too short | no runtime in the catalogue, so `CableSchedule::FALLBACK_MINUTES` guessed. `MissingRuntimeScanJob` reports these; `PATCH /entries/:id/runtime` corrects one. |
 | `/cable/guide` serves channel one | the `cable/guide` route slipped below `cable/:id` (§5.9). |
+| `/cable/0` serves channel one | the `cable/0` route slipped below `cable/:id` (§5.9). |
+| Channel 0 or `/trailers` sits on a finished trailer, or reloads the page between trailers | the embed is not reporting back (`enablejsapi=1` in `TrailerReel::PLAYER_OPTIONS`), or a screen element lost its `trailer-reel:next` action -- check both `cable/show` and `cable/trailers` (§5.9). |
+| Channel 0 says there are no trailers | no active `youtube` Source, or no entry with a YouTube `trailer` in a channel the viewer can see. `lib/tasks/tmdb_trailer_update.rake` fills trailers in from TMDB. |
 | Watch party connects but nothing ever arrives | the `redis` gem resolved to 6.x — Action Cable's adapter declares `< 6` and every broadcast raises `Gem::LoadError` while the socket still looks healthy (§5.10). |
 | A watch party will not keep guests in step | `Source#syncable?` is false for that provider; the room can only hold everyone on the same entry. |
 | A room vanishes while people are in it | `CloseAbandonedWatchPartiesJob` + `WatchParty::ABANDONED_AFTER`; check `last_seen_at` on the memberships. |
