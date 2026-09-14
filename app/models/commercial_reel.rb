@@ -2,17 +2,19 @@
 
 # A compilation of period adverts, for filling the gap between programmes.
 #
-# One per year for the years that have one, and one per era for the stretches that do not.
-# Matched against the year of the film that has just finished, so a 1987 film goes out to
-# 1987 adverts -- which is most of what makes a break feel like it belongs to the channel
-# rather than to the internet.
+# By year for the years that have one, and by era for the stretches that do not. Matched
+# against the year of the film that has just finished, so a 1987 film goes out to 1987
+# adverts -- which is most of what makes a break feel like it belongs to the channel rather
+# than to the internet.
+#
+# A year may hold several reels -- a compilation of adverts and a newsreel, say -- and
+# nothing about the table treats that as a mistake: the only unique column is the video.
 class CommercialReel < ApplicationRecord
   validates :label, :youtube_id, presence: true
   validates :youtube_id, uniqueness: true
   validates :starts_year, :ends_year, presence: true, numericality: { only_integer: true }
   validate :years_run_forwards
 
-  scope :covering, ->(year) { where(starts_year: ..year).where(ends_year: year..) }
   scope :in_order, -> { order(:starts_year) }
 
   # How far into a reel a break may begin when its runtime is unknown. Deliberately small:
@@ -30,20 +32,26 @@ class CommercialReel < ApplicationRecord
   # is no second thing to cut to.
   TAIL_MARGIN = 30
 
-  # The reel for a film of this year. Falls to the nearest era at either end rather than to
-  # nothing: a 1928 film gets the oldest adverts we have, which is a better answer than a
-  # blank screen and is what a channel with a tape library would do.
+  # The reel for a film of this year, in three steps, each of which only breaks the ties the
+  # one before it left:
+  #
+  #   1. Closest to the year. Distance is zero for every reel that covers it, so a covering
+  #      reel always wins; a year nothing covers falls to the nearest reel rather than to
+  #      nothing. A 1928 film gets the oldest adverts we have, which is a better answer than
+  #      a blank screen and is what a channel with a tape library would do.
+  #   2. Narrowest span. A reel made for 1987 belongs to a 1987 film more than a reel made
+  #      for the whole decade does, so an era reel only fills in where no year reel exists.
+  #   3. At random. Several reels for the same year are equally good answers, and taking a
+  #      different one from break to break is the point of having several.
+  #
+  # One query, because the schedule asks this once for every slot in a day on every channel.
+  # Called when the day is dealt, not when it is watched, so the random choice is made once
+  # and every viewer of that slot sees the same reel.
   def self.for_year(year)
-    return nil if none? || count.zero?
-
     year = year.to_i
-    covering(year).order("RANDOM()").first || nearest(year)
-  end
+    distance = sanitize_sql_array(["GREATEST(starts_year - ?, ? - ends_year, 0)", year, year])
 
-  def self.nearest(year)
-    return in_order.first if year < (minimum(:starts_year) || 0)
-
-    in_order.last
+    order(Arel.sql(distance), Arel.sql("ends_year - starts_year"), Arel.sql("RANDOM()")).first
   end
 
   # Where in the reel a break of this length may start.

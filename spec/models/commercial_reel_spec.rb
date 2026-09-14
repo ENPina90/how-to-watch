@@ -32,6 +32,40 @@ RSpec.describe CommercialReel do
 
       expect(described_class.for_year(1987)).to be_nil
     end
+
+    # Several reels for one year -- adverts and a newsreel, say -- are equally good answers,
+    # and taking a different one from break to break is the point of having several.
+    it 'picks at random between the reels for the same year' do
+      newsreel = described_class.create!(label: '1987 news', starts_year: 1987, ends_year: 1987, youtube_id: 'ddd')
+
+      picks = 60.times.map { described_class.for_year(1987) }
+
+      expect(picks.uniq).to contain_exactly(eighty_seven, newsreel)
+    end
+
+    # A reel made for 1987 belongs to a 1987 film more than one made for the whole decade.
+    it 'prefers a reel for the year itself over an era that also covers it' do
+      described_class.create!(label: '1980s', starts_year: 1980, ends_year: 1989, youtube_id: 'eee')
+
+      picks = 30.times.map { described_class.for_year(1987) }
+
+      expect(picks.uniq).to eq([eighty_seven])
+    end
+
+    it 'still picks at random between reels when it has to fall back' do
+      older = described_class.create!(label: '1940s again', starts_year: 1940, ends_year: 1949, youtube_id: 'fff')
+
+      picks = 60.times.map { described_class.for_year(1928) }
+
+      expect(picks.uniq).to contain_exactly(forties, older)
+    end
+
+    # The fallback is the nearest reel, not the newest one. Nothing in the shipped catalogue
+    # leaves a gap in the middle, but a reel deleted from the admin would.
+    it 'takes the nearest reel for a year in a gap in the middle' do
+      expect(described_class.for_year(1955)).to eq(forties)
+      expect(described_class.for_year(1980)).to eq(eighty_seven)
+    end
   end
 
   describe 'where in a reel a break starts' do
