@@ -48,6 +48,36 @@ RSpec.describe Source do
     end
   end
 
+  # MEGA takes autoplay as a flag inside the key fragment, not as a query parameter.
+  describe 'autoplay on MEGA' do
+    # The catalog may already have created the row at boot, and slugs are unique.
+    let(:mega) do
+      described_class.find_or_initialize_by(slug: 'mega').tap do |source|
+        source.update!(name: 'MEGA', kind: 'direct', autoplay_param: nil,
+                       templates: { 'default' => 'https://mega.nz/embed/%{source_key}' })
+      end
+    end
+
+    def entry_keyed(key) = build(:entry, list: list, media: 'fanedit', source_key: key)
+
+    it 'adds the autoplay flag to the key fragment' do
+      expect(mega.url_for(entry_keyed('ID#KEY'), autoplay: true)).to eq('https://mega.nz/embed/ID#KEY!1a')
+    end
+
+    it 'leaves the link alone when autoplay is off' do
+      expect(mega.url_for(entry_keyed('ID#KEY'))).to eq('https://mega.nz/embed/ID#KEY')
+    end
+
+    # MEGA keeps only the first run of options, so a second `!1a` would be ignored.
+    it 'joins options already pasted onto the key' do
+      expect(mega.url_for(entry_keyed('ID#KEY!90s'), autoplay: true)).to eq('https://mega.nz/embed/ID#KEY!90s1a')
+    end
+
+    it 'does not add the flag twice' do
+      expect(mega.url_for(entry_keyed('ID#KEY!1a'), autoplay: true)).to eq('https://mega.nz/embed/ID#KEY!1a')
+    end
+  end
+
   # Subtitles can only be decided as the frame is written: the player's own message handler
   # ignores everything that is not play/pause/mute/unmute/seek, so there is no asking it
   # afterwards. /cable is the page that wants none -- see docs/guides/VIDSRC.md §3.
