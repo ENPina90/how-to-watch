@@ -3,6 +3,11 @@
   <head>
     <title>HowToWatch</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <%# The tab icon, said outright rather than left to the browser guessing /favicon.ico.
+        The SVG is the same file as the navbar mark and stays sharp at any size; the ICO
+        carries 16 and 32px for browsers that will not take an SVG. %>
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/images/logo.svg" type="image/svg+xml">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%# TMDB key for the client-side search controllers. Browser-side keys are public by nature; keep it in one place. %>
