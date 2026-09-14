@@ -5,15 +5,15 @@ require 'rails_helper'
 # "please stand by" however much was inside it.
 RSpec.describe 'A channel of channels on the home page', :needs_provider, type: :request do
   let(:user) { create(:user) }
-  let(:hub) { create(:list, user: user, name: 'Holiday') }
+  let(:hub) { create(:list, user: user, name: 'Holiday', ordered: true) }
   let(:child) { create(:list, user: user, name: 'Christmas') }
   let(:grandchild) { create(:list, user: user, name: 'Hanukkah') }
+  let!(:elf) { create(:entry, list: child, name: 'Elf', imdb: 'tt1', position: 1) }
+  let!(:klaus) { create(:entry, list: child, name: 'Klaus', imdb: 'tt2', position: 2) }
+  let!(:nights) { create(:entry, list: grandchild, name: 'Eight Crazy Nights', imdb: 'tt3', position: 1) }
 
   before do
     sign_in user
-    create(:entry, list: child, name: 'Elf', imdb: 'tt1', position: 1)
-    create(:entry, list: child, name: 'Klaus', imdb: 'tt2', position: 2)
-    create(:entry, list: grandchild, name: 'Eight Crazy Nights', imdb: 'tt3', position: 1)
     child.add_to_parent(hub)
     grandchild.add_to_parent(child)
   end
@@ -43,6 +43,41 @@ RSpec.describe 'A channel of channels on the home page', :needs_provider, type: 
       get lists_path, headers: { 'HTTP_USER_AGENT' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' }
 
       expect(response.body).to match(%r{Holiday.*?<span class="m-channel__count">3</span>}m)
+    end
+  end
+
+  # The card plays what the channel's own play button would: the next unwatched entry
+  # across the channels inside it, watched from this channel rather than the one it lives in.
+  describe 'the card' do
+    it 'plays the next thing under the channel, from the channel' do
+      get lists_path
+
+      expect(response.body).to include(watch_entry_path(elf, channel: hub.id))
+    end
+
+    it 'skips what this member has already watched' do
+      elf.mark_completed_by!(user)
+
+      get lists_path
+
+      expect(response.body).to include(watch_entry_path(klaus, channel: hub.id))
+      expect(response.body).not_to include(watch_entry_path(elf, channel: hub.id))
+    end
+
+    it 'keeps a poster once everything under it is watched' do
+      [elf, klaus, nights].each { |entry| entry.mark_completed_by!(user) }
+
+      get lists_path
+
+      expect(response.body).to include(watch_entry_path(elf, channel: hub.id))
+    end
+
+    it 'still stands by for a channel with nothing anywhere under it' do
+      create(:list, user: user, name: 'Nothing Yet')
+
+      get lists_path
+
+      expect(response.body).to match(%r{please_stand_by\.png" alt="Nothing Yet"})
     end
   end
 end

@@ -617,7 +617,7 @@ class ListsController < ApplicationController
   def resolve_card_entries(*collections)
     lists = collections.flatten.uniq(&:id)
     by_list_id = lists.each_with_object({}) do |list, acc|
-      acc[list.id] = list.current_entry(current_user)
+      acc[list.id] = list.current_entry(current_user) || borrowed_card_entry(list)
     end
 
     entries = by_list_id.values.compact.uniq(&:id)
@@ -628,6 +628,17 @@ class ListsController < ApplicationController
     end
 
     by_list_id
+  end
+
+  # A channel with nothing of its own shows what its play button would start -- the next
+  # unwatched entry among the channels inside it -- and once all of that is watched, the
+  # first of them, as a channel with its own entries keeps showing one. `entries_count`
+  # already covers everything under the channel, so an empty one costs nothing more. A
+  # signed-out visitor gets no poster on any card, so not on these either.
+  def borrowed_card_entry(list)
+    return nil if current_user.nil? || list.entries_count.zero?
+
+    list.next_borrowed_entry_for(current_user) || list.watch_sequence.first
   end
 
   # The count is everything under the channel, as its own page reports it: a channel that
@@ -739,11 +750,7 @@ class ListsController < ApplicationController
   def next_unwatched_for(user)
     own = @list.ordered? ? @list.find_next_incomplete_entry_for_user(user, 0)
                          : @list.find_random_incomplete_entry_for_user(user)
-    return own if own || @list.child_lists.empty?
-
-    borrowed = @list.watch_sequence.reject { |entry| entry.completed_by?(user) }
-
-    @list.ordered? ? borrowed.first : borrowed.sample
+    own || @list.next_borrowed_entry_for(user)
   end
 
   def next_for_guest

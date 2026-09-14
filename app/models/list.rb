@@ -243,6 +243,20 @@ class List < ApplicationRecord
     items.sort_by(&:first).flat_map(&:last)
   end
 
+  # What a channel plays from the channels inside it: the next unwatched entry in watch
+  # order, or any unwatched one if the channel is unordered. Nil when it holds no channels,
+  # or when everything under it is watched. Completion is read in one query for the whole
+  # sequence -- asked of each entry it is a lookup apiece, and one of these holds 215.
+  def next_borrowed_entry_for(user)
+    return nil if child_lists.empty?
+
+    sequence = watch_sequence
+    watched = completed_entry_ids_for(user).where(entry_id: sequence.map(&:id)).pluck(:entry_id).to_set
+    unwatched = sequence.reject { |entry| watched.include?(entry.id) }
+
+    ordered? ? unwatched.first : unwatched.sample
+  end
+
   # Whether this channel is where the entry can be watched from: its own, or held by one of
   # the channels inside it.
   def contains_entry?(entry)
