@@ -9,12 +9,15 @@
     change the channel, and are ordinary cinema-move links. Left and right change nothing at
     all -- they walk the banner along this channel's running order so you can see what you
     missed and what is coming, and it falls back to what is actually on after a moment. %>
+<%# Where the channel's name and number lead: its own page, or for a decade the channel the
+    film on now was filed in. %>
+<% home = cable_home_list(channel, entry) %>
 <div class="cable-hud"
      data-controller="cable-hud"
      data-cable-hud-showing-class="cable-hud--peeking">
 
   <%# The channel, in the corner the number always sat in. %>
-  <a class="cable-hud__badge" href="<%= list_path(channel) %>" title="Open <%= channel.name %>">
+  <a class="cable-hud__badge" href="<%= list_path(home) %>" title="Open <%= home.name %>">
     <span class="cable-hud__set">
       <span class="cable-hud__aerial"></span>
       <span class="cable-hud__number"><%= number %></span>
@@ -24,7 +27,7 @@
   <div class="cable-hud__body">
     <%# The channel's own page. The badge leads to the same place -- one is the number you
         look at, the other the name you read, and both are the channel. %>
-    <a class="cable-hud__channel" href="<%= list_path(channel) %>"><%= channel.name %></a>
+    <a class="cable-hud__channel" href="<%= list_path(home) %>" title="<%= home.name %>"><%= channel.name %></a>
 
     <%# The programme, and it is a link out of cable -- the same pair the guide's panel
         offers: the channel to its own page, the title to the ordinary watch player, where
@@ -99,8 +102,7 @@
             data-slot-end="<%= (slot.ends_at.to_f * 1000).round %>"
             data-slot-title="<%= cable_programme_headline(slot) %>"
             data-slot-context="<%= cable_programme_context(slot) %>"
-            data-slot-url="<%= watch_entry_path(slot.entry, channel: channel.id,
-                                                subentry: slot.subentry&.id) %>"
+            data-slot-url="<%= cable_watch_path(slot, channel) %>"
             data-slot-current="<%= slot.id == current_slot.id %>"></span>
     <% end %>
   </div>

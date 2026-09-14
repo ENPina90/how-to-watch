@@ -18,12 +18,34 @@ module CableHelper
   # A channel that is not on the dial goes to /cable, which is channel one, the same as
   # turning a dial past its end did before.
   def cable_sibling_path(channel, direction)
-    dial = [nil, *CableSchedule.channels.to_a]
+    dial = [nil, *CableSchedule.dial]
     at = channel ? dial.index { |stop| stop&.id == channel.id } : 0
     return cable_path if at.nil?
 
     to = dial[(at + (direction == :next ? 1 : -1)) % dial.length]
     to ? cable_channel_path(to) : cable_trailers_path
+  end
+
+  # The channel a programme belongs to outside cable: the list itself, or -- for a decade,
+  # which is not one -- the channel the entry was filed in. Where the banner's channel name
+  # and the guide's channel link send you, so a decade's films lead back somewhere real.
+  def cable_home_list(channel, entry)
+    channel.is_a?(CableEra) ? entry.list : channel
+  end
+
+  # The channel line in the guide's panel. A decade says which channel the film came from as
+  # well, since the link beside it goes there rather than to anything called "80s".
+  def cable_channel_label(channel, entry)
+    channel.is_a?(CableEra) ? "#{channel.name} · #{entry.list.name}" : channel.name
+  end
+
+  # The ordinary watch page for a programme, watched from its own channel. A decade passes the
+  # entry's channel, never its own key: the watch page reads ?channel= as a list id, and a key
+  # cast to one would be somebody else's list.
+  def cable_watch_path(slot, channel)
+    from = channel.is_a?(CableEra) ? slot.entry.list_id : channel.id
+
+    watch_entry_path(slot.entry, channel: from, subentry: slot.subentry&.id)
   end
 
   # Times on a cable channel are read off a clock, so they are shown in the zone the

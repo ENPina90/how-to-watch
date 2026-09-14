@@ -482,6 +482,70 @@ RSpec.describe 'Cable', type: :request do
     end
   end
 
+  # The decades at the end of the dial: channels with no list behind them, dealt from the public
+  # catalogue by year, whose programmes lead back to the channels the films were filed in.
+  describe 'the decades' do
+    let(:eighties) { CableEra.find('1980s') }
+    let!(:shelf) { create(:list, user: user, provider: provider, name: 'Shelf') }
+    let!(:old_film) do
+      create(:entry, list: shelf, name: 'Blade Runner', media: 'movie', year: 1982, length: 117,
+                     position: 1, imdb: 'tt0083658')
+    end
+
+    before { sign_in user }
+
+    it 'plays a film from the decade, numbered after the channels' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(eighties) }
+
+      expect(cable_channel_path(eighties)).to eq('/cable/1980s')
+      expect(response).to be_successful
+      expect(response.body).to include('p.test/movie?imdb=tt0083658')
+      expect(response.body).to include(%(<span class="cable-hud__number">#{CableSchedule.dial_number(eighties)}</span>))
+      expect(response.body).to include('80s')
+    end
+
+    it 'leads the banner and the watch link back to the channel the film was filed in' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(eighties) }
+
+      expect(response.body).to include(%(class="cable-hud__channel" href="#{list_path(shelf)}"))
+      expect(response.body).to include(watch_entry_path(old_film, channel: shelf.id))
+      expect(response.body).not_to include('channel=1980s')
+    end
+
+    it 'lists the decades at the end of the guide, in order' do
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      callsigns = response.body.scan(%r{<span class="tvguide__callsign">([^<]+)</span>}).flatten
+      expect(callsigns.last(8)).to eq(['20s', '10s', '00s', '90s', '80s', '70s', '60s', 'Golden Age'])
+    end
+
+    it "names and links a decade's programme to the channel it came from, in the guide" do
+      travel_to(midnight + 11.minutes) { get cable_guide_path }
+
+      expect(response.body).to include(%(data-guide-channel="80s · Shelf"))
+      expect(response.body).to include(%(data-guide-channel-url="#{list_path(shelf)}"))
+    end
+
+    it 'marks a decade when the guide is opened from it' do
+      travel_to(midnight + 11.minutes) { get cable_guide_path, params: { channel: '1980s' } }
+
+      expect(response.body[/<div class="tvguide__row[^>]*data-channel-id="1980s"/m]).to include('tvguide__row--tuned')
+    end
+
+    it 'steps from the last channel into the decades, and from the golden age round to 0' do
+      expect(cable_sibling_path(channel, :next)).to eq(cable_channel_path(CableEra.all.first))
+      expect(cable_sibling_path(CableEra.all.last, :next)).to eq(cable_trailers_path)
+      expect(cable_sibling_path(nil, :previous)).to eq(cable_channel_path(CableEra.all.last))
+    end
+
+    it 'is off air, rather than an error, when nothing is from those years' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(CableEra.find('1960s')) }
+
+      expect(response).to be_successful
+      expect(response.body).to include('60s').and include('Off air')
+    end
+  end
+
   # Channel 0: trailers back to back, on the dial but not on the schedule. It is allowed to
   # behave a little differently from the rest; what it must share with them is being reachable
   # by the arrows and the guide, and naming the film that is on.
@@ -533,19 +597,17 @@ RSpec.describe 'Cable', type: :request do
       expect(arrow('up')).to include(%(href="#{cable_trailers_path}"))
     end
 
-    it 'goes down to channel one, and up round to the last channel' do
-      last = create(:list, user: user, provider: provider, default: true, name: 'Channel Two')
+    it 'goes down to channel one, and up round to the last of the decades' do
+      create(:list, user: user, provider: provider, default: true, name: 'Channel Two')
 
       travel_to(midnight + 11.minutes) { get cable_trailers_path }
 
       expect(arrow('down')).to include(%(href="#{cable_channel_path(channel)}"))
-      expect(arrow('up')).to include(%(href="#{cable_channel_path(last)}"))
+      expect(arrow('up')).to include(%(href="#{cable_channel_path(CableEra.all.last)}"))
     end
 
-    it 'comes back round to 0 going down from the last channel' do
-      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
-
-      expect(arrow('down')).to include(%(href="#{cable_trailers_path}"))
+    it 'comes back round to 0 going down from the last of the decades' do
+      expect(cable_sibling_path(CableEra.all.last, :next)).to eq(cable_trailers_path)
     end
 
     it 'leaves /cable starting on channel one' do

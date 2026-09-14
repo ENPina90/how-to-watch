@@ -108,7 +108,7 @@ class CableController < ApplicationController
   def regenerate
     today = CableSchedule.today
 
-    CableSchedule.channels.each do |channel|
+    CableSchedule.dial.each do |channel|
       CableSchedule.redeal!(channel, [today, today + 1])
     end
 
@@ -217,12 +217,12 @@ class CableController < ApplicationController
     # Today forward only. A day that has already been is not filled in on demand -- see
     # days_to_fill. What was on yesterday is whatever was really on, or nothing.
     CableSchedule.days_to_fill(@window).each do |date|
-      CableSchedule.channels.each { |channel| CableSchedule.ensure_day!(channel, date) }
+      CableSchedule.dial.each { |channel| CableSchedule.ensure_day!(channel, date) }
     end
 
     @now = Time.current
     @rows = CableSchedule.guide(at: @now, in_zone: @zone)
-    @playing = List.find_by(id: params[:channel])
+    @playing = CableSchedule.find_channel(params[:channel])
     @watched = watched_entry_ids(@rows)
     @favorited = favorited_keys(@rows)
     @letterboxd = letterboxd_scores(@rows)
@@ -305,7 +305,9 @@ class CableController < ApplicationController
   # that stopped being default, a hand-edited URL -- lands on channel one rather than 404s,
   # which is what turning a dial past the end does.
   def set_channel
-    @channel = CableSchedule.channels.find_by(id: params[:id]) || CableSchedule.channels.first
+    # A decade's key, or a list on the dial -- see CableSchedule.find_channel for why the key
+    # is asked first.
+    @channel = CableSchedule.find_channel(params[:id]) || CableSchedule.dial.first
 
     return if @channel
 
