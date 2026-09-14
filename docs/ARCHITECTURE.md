@@ -212,8 +212,13 @@ does — but reactivating that provider would need this fixed first.
 ## 5. Request flows
 
 ### 5.1 Home — `GET /` → `lists#index`
-Three buckets: your lists, recently watched (via `user_entries.completed_at`), community
-lists (public + subscribed, or everything if admin). Each card calls
+Three buckets: your lists, recently watched (via `user_entries.completed_at`), and
+community channels. The community row is for discovery: `List.discoverable_by` leaves out
+the viewer's own channels, their subscriptions and the cable dial (`default`), and shows
+private ones only to admins. `List.by_recent_activity` orders it by the latest of the
+channel's `updated_at`, its newest entry, and anybody's `user_entries` or
+`user_list_positions` row in it. `lists.last_watched_at` is never written; don't sort by
+it. Each card calls
 `list.current_entry(current_user)` for its poster; a channel with nothing of its own falls
 back to `List#next_borrowed_entry_for` (what its play button starts, across the channels
 inside it) and links with `?channel=` so it is watched from there. The count on each card
