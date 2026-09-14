@@ -29,6 +29,16 @@ module EntryCardHelper
     watch_entry_path(entry, channel: viewing.id)
   end
 
+  # Where the picture on a channel's card on the home page goes. A member's card shows the
+  # entry they would resume, and plays it. A signed-out visitor's shows something picked at
+  # random, which is not where the channel starts -- so it plays the channel the way its own
+  # button does, or opens the channel's page where the access mode will not let them play.
+  def card_play_path(entry, list)
+    return watch_path_for(entry, viewing: list) if user_signed_in?
+
+    may_watch? ? list_watch_current_path(list) : list_path(list)
+  end
+
   # A card for an entry the page borrowed from a channel inside this one wears the name of
   # the channel it actually lives in. In the Order view the hierarchy is on screen and this
   # is unnecessary; in a grouped view an entry sits next to entries from anywhere, and
