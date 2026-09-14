@@ -71,6 +71,17 @@ RSpec.describe 'Adding from the search overlay', :needs_provider, type: :request
       expect(response.body).to include('data-kind="season"')
     end
 
+    # Adding flips a result to Remove without a reload, so a movie, a series and an episode
+    # each ship both faces, with whichever does not apply hidden by class. A section around
+    # either button would leave nothing to flip to.
+    it 'draws a hidden Remove beside every per-result add' do
+      removes = response.body.scan(/<button(?:(?!<\/button>).)*list-search#remove"(?:(?!<\/button>).)*<\/button>/m)
+
+      expect(removes.size).to eq(3)
+      expect(removes).to all(include('{{^entryId}}d-none{{/entryId}}'))
+      expect(response.body.scan('{{#entryId}}d-none{{/entryId}}').count).to eq(3)
+    end
+
     it 'gives an episode the season and number the entries endpoint needs' do
       episode = response.body[/data-action="click->list-search#add"(?:(?!<\/button>).)*data-episode="\{\{Episode\}\}"/m]
 
