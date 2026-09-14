@@ -205,6 +205,37 @@ class List < ApplicationRecord
 
   scope :with_entries_count, -> { select("lists.*, (#{ENTRIES_COUNT_SQL}) AS entries_count") }
 
+  # When anything last happened on a channel: it was created or edited, something was added
+  # to it, or somebody watched in it. `lists.last_watched_at` sounds like the answer but
+  # nothing has written it since progress moved into the per-user tables, so it is read from
+  # those. GREATEST skips the NULLs a channel nobody has touched yet leaves behind.
+  LAST_ACTIVE_SQL = <<~SQL.squish
+    GREATEST(
+      lists.updated_at,
+      (SELECT MAX(entries.created_at) FROM entries WHERE entries.list_id = lists.id),
+      (SELECT MAX(user_entries.updated_at) FROM user_entries
+         JOIN entries ON entries.id = user_entries.entry_id
+         WHERE entries.list_id = lists.id),
+      (SELECT MAX(user_list_positions.updated_at) FROM user_list_positions
+         WHERE user_list_positions.list_id = lists.id)
+    )
+  SQL
+
+  scope :by_recent_activity, -> { order(Arel.sql("#{LAST_ACTIVE_SQL} DESC"), id: :desc) }
+
+  # The Community Channels row is for finding channels, so it leaves out everything the viewer
+  # can already reach from the sidebar: their own, the ones they subscribe to, and the cable
+  # dial, which every account is subscribed to on creation but may since have dropped. Admins
+  # still see private channels here, as they always have; a signed-out visitor sees public ones.
+  def self.discoverable_by(user)
+    scope = where(default: false)
+    return scope.where(private: [false, nil]) if user.nil?
+
+    scope = scope.where.not(user_id: user.id)
+                 .where.not(id: user.subscriptions.select(:list_id))
+    user.admin? ? scope : scope.where(private: [false, nil])
+  end
+
   def descendant_lists(depth: MAX_NESTING, seen: nil)
     seen ||= Set.new([id])
     return [] if depth.zero?

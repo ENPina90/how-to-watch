@@ -46,8 +46,8 @@ class ListsController < ApplicationController
     if current_user.nil?
       @your_lists = List.none
       @recently_watched_lists = List.none
-      @community_lists = with_card_data(List.where(private: [false, nil]))
-                         .order(created_at: :desc).limit(20)
+      @community_lists = with_card_data(List.discoverable_by(nil))
+                         .by_recent_activity.limit(20)
       @card_entries = resolve_card_entries(@community_lists)
       return
     end
@@ -62,25 +62,9 @@ class ListsController < ApplicationController
       List.joins(entries: :user_entries).where(user_entries: { user: current_user, completed: true })
     ).group('lists.id').order('MAX(user_entries.completed_at) DESC').limit(20)
 
-    # Category 3: Community Lists (created by other users)
-    # Show: public lists OR subscribed lists OR (if admin) all lists
-    if current_user.admin?
-      # Admins see all lists created by other users (including private)
-      @community_lists = with_card_data(List.where.not(user_id: current_user.id))
-                         .order(created_at: :desc).limit(20)
-    else
-      # Regular users see public lists OR subscribed lists
-      community_list_ids = List.where.not(user_id: current_user.id)
-                               .where(private: [false, nil])
-                               .pluck(:id) +
-                           List.where.not(user_id: current_user.id)
-                               .joins(:subscriptions)
-                               .where(subscriptions: { user_id: current_user.id })
-                               .pluck(:id)
-
-      @community_lists = with_card_data(List.where(id: community_list_ids.uniq))
-                         .order(created_at: :desc).limit(20)
-    end
+    # Category 3: Community Channels -- ones this user has not found yet, liveliest first.
+    @community_lists = with_card_data(List.discoverable_by(current_user))
+                       .by_recent_activity.limit(20)
 
     @card_entries = resolve_card_entries(@recently_watched_lists, @your_lists, @community_lists)
   end
