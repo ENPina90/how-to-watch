@@ -13,7 +13,7 @@
 <div id="mainSidebar" class="sidebar-left bg-dark text-white <%= 'd-none' if @sidebar_collapsed %>" style="width: 280px; position: fixed; left: 0; top: 80px; height: calc(100vh - 80px); display: flex; flex-direction: column; z-index: 1020;">
   <!-- Sidebar Header -->
   <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center" style="flex: 0 0 auto;">
-    <h5 class="mb-0">Your Subscriptions</h5>
+    <h5 class="mb-0"><%= user_signed_in? ? 'Your Subscriptions' : 'Channels' %></h5>
     <% if defined?(@entries_sidebar_collapsed) %>
       <button class="unified-collapse-btn btn btn-sm btn-outline-light">
         <i class="fa-solid fa-bars"></i>
@@ -32,7 +32,10 @@
   <div id="sidebarChannelsPanel"
        class="p-3" style="flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;"
        data-controller="sidebar-autoscroll">
-    <h6 class="text-muted mb-3" style="font-size: 0.75rem; text-transform: uppercase;">Channels</h6>
+    <%# Signed out, the header above already says it. %>
+    <% if user_signed_in? %>
+      <h6 class="text-muted mb-3" style="font-size: 0.75rem; text-transform: uppercase;">Channels</h6>
+    <% end %>
     <%= render 'shared/sidebar_channels', user: current_user %>
   </div>
 
@@ -80,8 +83,11 @@
         <% end %>
       <% elsif (on_air = cable_now_playing) %>
         <% slot = on_air[:slot] %>
-        <%= link_to cable_channel_path(on_air[:channel]), class: "text-decoration-none now-playing-card",
-                    title: "Tune to #{on_air[:channel].name}" do %>
+        <%# Where the access mode will not let a signed-out visitor tune in, the card opens
+            the channel's page instead: still the thing named on it, and not a sign-in bounce. %>
+        <%= link_to may_watch? ? cable_channel_path(on_air[:channel]) : list_path(on_air[:channel]),
+                    class: "text-decoration-none now-playing-card",
+                    title: may_watch? ? "Tune to #{on_air[:channel].name}" : "Open #{on_air[:channel].name}" do %>
           <div class="d-flex flex-column align-items-center text-center">
             <div class="now-playing-poster-container" style="width: 200px; height: 300px; margin-bottom: 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); position: relative;">
               <%= entry_poster_image_tag(slot.entry, class: 'img-fluid', style: 'width: 100%; height: 100%; object-fit: cover;') %>

@@ -10,6 +10,10 @@ RSpec.describe 'The home page signed out', :needs_provider, type: :request do
 
   before { AppSetting.update_access_mode!('moderate') }
 
+  def sidebar
+    response.body[%r{<div id="sidebarChannels".*?</div>\s*</div>}m]
+  end
+
   it 'renders dark' do
     get lists_path
 
@@ -92,6 +96,38 @@ RSpec.describe 'The home page signed out', :needs_provider, type: :request do
       many = queries.call
 
       expect(many - few).to be <= 2
+    end
+  end
+
+  describe 'the sidebar' do
+    let!(:on_the_dial) { create(:list, user: owner, name: 'Channel One', default: true, cable_position: 1) }
+
+    it 'lists the dial rather than subscriptions' do
+      get lists_path
+
+      expect(sidebar).to include('Channel One')
+      expect(sidebar).not_to include('Westerns')
+      expect(response.body).not_to include('Your Subscriptions')
+    end
+
+    it 'leaves a private channel off it' do
+      on_the_dial.update!(private: true)
+
+      get lists_path
+
+      expect(sidebar).not_to include('Channel One')
+    end
+
+    it 'shows what is playing' do
+      get lists_path
+
+      expect(response.body).to include('Now Playing')
+    end
+
+    it 'stays off the sign-in page' do
+      get new_user_session_path
+
+      expect(response.body).not_to include('id="mainSidebar"')
     end
   end
 end
