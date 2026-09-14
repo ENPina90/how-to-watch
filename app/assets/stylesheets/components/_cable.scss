@@ -238,6 +238,13 @@ body.cable__mode .cinema__screen {
   color: rgba(255, 255, 255, 0.92);
 }
 
+/* Start from the beginning, first in the row. A link, not a switch, so it has no off to be
+   dimmed for -- it sits at the brightness of a mark that is on. */
+.tvguide__mark--start {
+  color: rgba(255, 255, 255, 0.92);
+  text-decoration: none;
+}
+
 .tvguide__mark:hover,
 .tvguide__mark:focus-visible {
   color: #fff;
@@ -263,40 +270,6 @@ body.cable__mode .cinema__screen {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.55);
-}
-
-/* Start from the beginning: the panel's one plain button, and the only thing in it that
-   leaves cable on purpose. Drawn as a button rather than as another link because the two
-   links above it are a channel name and a heading -- neither of them looks like something
-   you press, and this is most of what anybody opens the guide to do. */
-.tvguide__detail-actions {
-  margin: 0 0 12px;
-}
-
-.tvguide__start,
-.tvguide__start:hover,
-.tvguide__start:focus-visible {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: 4px;
-  background: rgba(255, 212, 42, 0.14);
-  border: 1px solid rgba(255, 212, 42, 0.5);
-  color: #ffd42a;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.tvguide__start:hover,
-.tvguide__start:focus-visible {
-  background: #ffd42a;
-  color: #17306b;
-  outline: none;
 }
 
 .tvguide__detail-plot {
