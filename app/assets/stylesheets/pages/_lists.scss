@@ -582,6 +582,13 @@ body.light-mode .list-row::after {
   color: rgba(255, 255, 255, 0.5) !important;
 }
 
+/* The owner and count icons read as part of the line, so they take its dimmed colour.
+   Otherwise `.page-container i` paints them full white, and its light-mode twin black --
+   three classes here so this outranks `body.light-mode .page-container i` too. */
+.page-container .list-card-info .list-card-meta i {
+  color: inherit !important;
+}
+
 .lists-index-container .list-card-name {
   color: #ffffff !important;
 }
