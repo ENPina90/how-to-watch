@@ -7,12 +7,13 @@ import { Turbo } from "@hotwired/turbo-rails";
 
 // Keeps a record of where this viewer got to, so the next visit picks up there.
 //
-// The position comes from the player's own reports (docs/guides/VIDSRC.md §6), which only
-// providers with an adapter send -- on Drive, YouTube and the rest this controller finds
-// nothing to listen to and does nothing at all, which is the intended behaviour rather
-// than a gap. The resume itself happens server-side: the position is baked into the embed
-// URL before the frame is written, because the player accepts a start position as a query
-// parameter and ignores a seek sent before it has spoken.
+// The position comes from the player's own reports, which only providers with an adapter
+// send: vidsrc (docs/guides/VIDSRC.md §6) and YouTube (services/youtube_player.js). On
+// Drive, MEGA and the rest this controller finds nothing to listen to and does nothing at
+// all -- MEGA's embed posts nothing to its parent and takes no commands from it, so there
+// is nothing there to hear. The resume itself happens server-side: the position is baked
+// into the embed URL before the frame is written, because both players accept a start
+// position as a query parameter and neither obeys a seek sent before it has spoken.
 //
 // What gets saved, and when:
 //
@@ -62,6 +63,9 @@ export default class extends Controller {
     runtime: Number,
     // UserEntry::COMPLETION_FRACTION, passed rather than repeated so there is one of it.
     fraction: Number,
+    // UserEntry::FILE_SHARE_FLOOR: how short the file may be, against the catalogue's
+    // runtime, and still be taken for the film -- see lengthOf.
+    fileFloor: Number,
     // List#skip_credits_seconds for the channel being watched from, 0 when it has none. The
     // programme ends this far before the file does, so it comes off the runtime before
     // either mark is taken -- see runtimeFor.
@@ -158,7 +162,7 @@ export default class extends Controller {
     // The screen is still handed back when nothing takes the card: auto-next off for this
     // channel, or a viewer who already pressed Stop. Then the film really is just ending,
     // and the ring of controls behind the player is the only thing to hand them.
-    if (crossedUpNext && !this.upNext() && this.fullscreen) this.leaveFullscreen();
+    if (crossedUpNext && !this.upNext(this.secondsLeft(state)) && this.fullscreen) this.leaveFullscreen();
 
     if (crossedWatched) return this.save({ finished: finished, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
@@ -210,19 +214,35 @@ export default class extends Controller {
     return state.progress >= Math.max(runtime - this.upNextLead, runtime * this.fractionValue);
   }
 
-  // The catalogue's runtime where there is one, the player's reported duration otherwise --
-  // the same preference the server has, for the same reason: the catalogue is the length of
-  // the film and the player is timing whatever file it was handed, adverts and all.
+  // How long the programme runs: the length of the entry, less the channel's credits skip.
   //
-  // Less the channel's credits skip, which is how the completion mark and the up-next mark
-  // both move to where the channel says the programme ends. Credits that would leave
-  // nothing are ignored, as UserEntry.completion_mark_for ignores them -- the two sides
-  // have to agree about when the entry counts as watched.
+  // The skip is how the completion mark and the up-next mark both move to where the channel
+  // says the programme ends. Credits that would leave nothing are ignored, as
+  // UserEntry.completion_mark_for ignores them -- the two sides have to agree about when
+  // the entry counts as watched.
   runtimeFor({ duration }) {
-    const runtime = this.runtimeValue > 0 ? this.runtimeValue : duration;
+    const runtime = this.lengthOf(duration);
     const programme = runtime - this.creditsValue;
 
     return programme > 0 ? programme : runtime;
+  }
+
+  // The file's own length where the player reports one, the catalogue's runtime otherwise --
+  // UserEntry.runtime_for, rule for rule, and there is the reasoning.
+  //
+  // What it fixes is visible here. A catalogue runtime longer than the file put the up-next
+  // mark past the end of it, so the card only ever came up on the player's own `completed`,
+  // after the film had finished; one shorter than the file put it minutes early, and the
+  // countdown moved the viewer on with the end still playing.
+  //
+  // A page that did not pass the floor keeps the catalogue, which is what this always did.
+  lengthOf(duration) {
+    const catalogue = this.runtimeValue;
+    if (!(catalogue > 0)) return duration;
+
+    const floor = this.fileFloorValue > 0 ? this.fileFloorValue : Infinity;
+
+    return duration > catalogue * floor ? duration : catalogue;
   }
 
   // Coming out of fullscreen past the completion mark means the film is over, whoever
@@ -251,8 +271,19 @@ export default class extends Controller {
   // Answers whether anything took it. The card cancels the event when it is showing or
   // already counting, which is how this knows whether there is something on screen to
   // offer the viewer -- and so whether the screen needs handing back instead.
-  upNext() {
-    return this.dispatch("up-next", { target: document, cancelable: true }).defaultPrevented;
+  //
+  // `seconds` is how much of the programme is left, where that is known, so the card counts
+  // down to the end itself rather than for a fixed lead from whenever the report arrived.
+  upNext(seconds = null) {
+    return this.dispatch("up-next", { target: document, cancelable: true, detail: { seconds } }).defaultPrevented;
+  }
+
+  // Until the programme ends, credits skip and all -- or null once it has, or when nothing
+  // knows how long it is.
+  secondsLeft(state) {
+    const left = this.runtimeFor(state) - state.progress;
+
+    return left > 0 ? left : null;
   }
 
   // Hand the page back when the film has ended with nothing to offer in its place, so the

@@ -60,6 +60,29 @@ RSpec.describe 'Where the player got to', type: :model do
       expect(user_entry.reload).not_to be_completed
     end
 
+    # The catalogue rounds up, and a provider may hold a shorter cut. A mark past the end of
+    # the file is one nobody can reach -- least of all a viewer the up-next card moved on.
+    it 'judges by the file when it is shorter than the catalogue says' do
+      user_entry.record_progress!(4_950, duration: 5_200)
+
+      expect(user_entry.reload).to be_completed
+    end
+
+    # A longer cut, an upload with an intro: the end is where the file ends, and a mark
+    # taken from the catalogue would tick it off with minutes still to run.
+    it 'judges by the file when it runs longer than the catalogue says' do
+      user_entry.record_progress!(5_700, duration: 7_000)
+
+      expect(user_entry.reload).not_to be_completed
+    end
+
+    # Under half the length it is something else in the frame: a trailer, an advert.
+    it 'does not take a file far shorter than the film for the film' do
+      user_entry.record_progress!(115, duration: 120)
+
+      expect(user_entry.reload).not_to be_completed
+    end
+
     # Somebody who un-ticks a film they have seen and then scrubs through it should not
     # have that undone by the player.
     it 'never un-ticks a film' do

@@ -1,4 +1,5 @@
 import VidsrcPlayer from "services/vidsrc_player";
+import YoutubePlayer from "services/youtube_player";
 import ManualPlayer from "services/manual_player";
 
 // Which adapter drives a given provider. The name comes from the server
@@ -6,6 +7,7 @@ import ManualPlayer from "services/manual_player";
 // driven means naming its adapter there and adding a case here.
 const ADAPTERS = {
   vidsrc: VidsrcPlayer,
+  youtube: YoutubePlayer,
 };
 
 export function playerAdapterFor(name, iframe, handlers) {

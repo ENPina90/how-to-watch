@@ -38,6 +38,23 @@ RSpec.describe Source do
       expect(provider.url_for(entry, autoplay: true)).to eq('https://p.test/movie/tt1?autoplay=1')
     end
 
+    # Without enablejsapi the embed answers no handshake, and the adapter hears nothing.
+    it 'asks a YouTube embed to report, and resumes it with its own parameter' do
+      provider = source({ 'default' => 'https://www.youtube.com/embed/%{source_key}' },
+                        kind: 'direct', autoplay_param: 'autoplay', slug: 'youtube')
+      entry = build(:entry, list: list, media: 'fanedit', source_key: 'rz950l805x4')
+
+      expect(provider.url_for(entry, autoplay: true, start_at: 742.5))
+        .to eq('https://www.youtube.com/embed/rz950l805x4?enablejsapi=1&autoplay=1&start=743')
+    end
+
+    it 'adds no player parameters for a provider whose adapter needs none' do
+      provider = source({ 'movie' => 'https://p.test/movie/%{imdb}' }, slug: 'vidsrc2')
+      entry = build(:entry, list: list, media: 'movie', imdb: 'tt1')
+
+      expect(provider.url_for(entry)).to eq('https://p.test/movie/tt1')
+    end
+
     # Behind the `#` it would be part of the fragment: never sent to the provider, and on a
     # MEGA link read as part of the decryption key.
     it 'puts a query parameter before a fragment rather than inside it' do

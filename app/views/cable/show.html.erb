@@ -114,7 +114,7 @@
        <%# cable-hold puts the film back on when somebody stops it. There is no pausing a
            channel that plays to a clock -- the schedule does not wait, so a pause only puts
            this viewer out of step with the listing and with everyone else watching. Absent
-           through a break, where the frame is YouTube's and nothing here can drive it. %>
+           through a break: the adverts are not the programme, and holding them is not its job. %>
        data-controller="player-keys cable-clock<%= @in_break ? ' cable-filler' : ' cable-hold' %>"
        <% unless @in_break %>
          data-cable-hold-frame-value="cinema"
@@ -129,9 +129,10 @@
            cinema-navigation reads it off the fetched page to know how to quieten the
            channel it is warming. Its own attribute rather than one controller's value,
            because it describes the player and not any one reader of it. %>
-       <%# Nil through a commercial break: the frame is YouTube's then, not the film's
-           provider, and nothing here can drive it. Saying so keeps every listener honest --
-           and stops the channel below being warmed into a player nobody can quieten. %>
+       <%# Nil through a commercial break: the frame is an advert then, not the programme, and
+           nothing here should hear it as though it were -- the clock would take an advert
+           ending for the film ending. Saying so keeps every listener honest, and stops the
+           channel below being warmed behind a break. %>
        data-player-adapter="<%= @in_break ? nil : @entry.resolved_source&.sync_adapter %>"
        data-player-keys-adapter-value="<%= @in_break ? nil : @entry.resolved_source&.sync_adapter %>"
        data-player-keys-frame-value="cinema"

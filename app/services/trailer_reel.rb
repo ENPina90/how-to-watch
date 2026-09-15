@@ -22,11 +22,12 @@ class TrailerReel
   REMEMBERED = 30
 
   # YouTube's own player options, belonging to this use rather than to the provider row:
-  # play at once, stay on this channel's videos at the end rather than suggesting others,
-  # and -- the one that matters -- report back, so the page can hear a trailer end or
-  # refuse to play. See trailer_reel_controller.js.
+  # play at once, and stay on this channel's videos at the end rather than suggesting others.
+  # The one that matters most -- enablejsapi, so the page can hear a trailer end or refuse to
+  # play -- is not here: the provider's URL carries it already (Source::PLAYER_PARAMS), and a
+  # second copy would only be noise in the address. See trailer_reel_controller.js.
   PLAYER_OPTIONS = {
-    autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, enablejsapi: 1
+    autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3
   }.freeze
 
   Trailer = Struct.new(:entry, :youtube_id, :embed_url, keyword_init: true)

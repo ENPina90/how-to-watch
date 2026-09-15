@@ -8,9 +8,12 @@ import { Modal } from "bootstrap"
 // offered the next entry over its opening titles.
 //
 // The card comes up over the picture, fullscreen included: it is rendered inside the
-// element that goes fullscreen for exactly that reason. It counts for as long as the lead
-// that raised it, so it reaches zero as the film does rather than at some other moment of
-// its own -- one number, AppSetting#up_next_lead_seconds, passed in from the page.
+// element that goes fullscreen for exactly that reason. It counts down to where the
+// programme ends. player-progress says how far off that is when it raises the card, because
+// the report that crosses the mark arrives up to five seconds after the mark itself, and a
+// fixed count of the lead would run on past the end by however late it was. Raised any
+// other way -- coming out of fullscreen -- it counts the lead, AppSetting#up_next_lead_seconds,
+// passed in from the page.
 //
 // Cancelling the event is how player-progress knows the card took it. Where nothing does
 // -- auto-next off for the channel, or a viewer who pressed Stop -- it hands the screen
@@ -52,7 +55,7 @@ export default class extends Controller {
     event?.preventDefault()
     if (this.timer) return
 
-    this.timeLeft = this.countdownSeconds
+    this.timeLeft = this.countdownFor(event)
     this.render()
     this.modal.show()
     this.timer = setInterval(() => this.tick(), 1000)
@@ -62,6 +65,21 @@ export default class extends Controller {
   // channel the instant the card appeared.
   get countdownSeconds() {
     return this.secondsValue > 0 ? this.secondsValue : DEFAULT_COUNTDOWN_SECONDS
+  }
+
+  // What is left of the programme, where the event says; the lead where it does not, or
+  // where nothing is left -- a card raised by the player's own `completed` has no end to
+  // count towards, and advancing the instant it appeared would give nobody a chance to stop
+  // it. Capped at the lead, which is the most a card raised at the mark can have ahead of it.
+  //
+  // Rounded to the nearest second rather than up: 14.3 seconds left counted as 15 reached
+  // zero a second after the film did, measured on YouTube 2026-09-15. Never below one, so a
+  // sliver of programme still gets a card somebody can see.
+  countdownFor(event) {
+    const left = Number(event?.detail?.seconds)
+    if (!(left > 0)) return this.countdownSeconds
+
+    return Math.min(Math.max(1, Math.round(left)), this.countdownSeconds)
   }
 
   tick() {

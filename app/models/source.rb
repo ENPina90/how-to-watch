@@ -167,6 +167,10 @@ class Source < ApplicationRecord
     "vidsrc-ir"       => "vidsrc",
     "vidsrc-embed.ru" => "vidsrc",
     "vidsrcme"        => "vidsrc",
+    # YouTube's embed speaks its IFrame API over postMessage to any page that asks, once the
+    # URL carries enablejsapi (PLAYER_PARAMS). MEGA and Drive say nothing at all: checked
+    # 2026-09-15, MEGA's embed registers no message listener and posts nothing up.
+    "youtube"         => "youtube",
   }.freeze
 
   def sync_adapter = SYNC_ADAPTERS[slug]
@@ -186,10 +190,12 @@ class Source < ApplicationRecord
 
   # Where a player takes a resume position, in seconds. Keyed by adapter rather than by
   # slug because the parameter belongs to the player, not to the front door: every vidsrc
-  # domain reads `startAt` (VIDSRC.md §3), and a provider with no adapter has no player we
-  # can hand a position to -- Drive and YouTube would just carry an ignored query string.
+  # domain reads `startAt` (VIDSRC.md §3), YouTube reads `start`, and a provider with no
+  # adapter has no player we can hand a position to -- Drive would just carry an ignored
+  # query string.
   RESUME_PARAMS = {
-    'vidsrc' => 'startAt'
+    'vidsrc' => 'startAt',
+    'youtube' => 'start'
   }.freeze
 
   def resume_param = RESUME_PARAMS[sync_adapter]
@@ -212,6 +218,19 @@ class Source < ApplicationRecord
   }.freeze
 
   def subtitle_param = SUBTITLE_PARAMS[sync_adapter]
+
+  # Query parameters a player needs before it will talk to the page around it at all.
+  #
+  # YouTube's embed ignores every message from its parent unless the URL asks for the IFrame
+  # API: without `enablejsapi=1` the handshake goes unanswered and nothing is ever reported,
+  # which looks exactly like a provider with no adapter -- no position, no up-next card, no
+  # watched mark, and not a word in the console. Keyed by adapter, like RESUME_PARAMS,
+  # because it is the adapter that depends on it.
+  PLAYER_PARAMS = {
+    'youtube' => { 'enablejsapi' => 1 }.freeze
+  }.freeze
+
+  def player_params = PLAYER_PARAMS.fetch(sync_adapter, {})
 
   # Providers that take autoplay somewhere other than the query string, which
   # `autoplay_param` -- the name of a query parameter -- cannot describe.
@@ -266,6 +285,7 @@ class Source < ApplicationRecord
     return nil if url.nil?
 
     url = strip_subtitles(url) unless subtitles
+    url = player_params.reduce(url) { |built, (key, value)| append_param(built, key, value) }
 
     append_resume(append_autoplay(url, autoplay), start_at)
   end

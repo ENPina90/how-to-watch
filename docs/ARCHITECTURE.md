@@ -197,11 +197,18 @@ truncated URL. `rails sources:audit` reports anything that stops resolving.
   `SourceExpiryScanJob` warns admins through a `Notification` before a domain lapses.
 - **Order.** `Source.reorder!` sets the `position` admins drag them into, which is also the
   order `resolved_source` falls back through.
-- **Sync adapters.** `SYNC_ADAPTERS[slug]` → `sync_adapter`, and `syncable?` is what decides
-  whether a watch party can actually drive a provider's player (§5.10). Alongside it:
-  `resume_param` / `resumable?` (start a film part-way in, which is how `/cable` joins a
-  programme already running and how up-next resumes), `subtitle_param` (cable turns
-  subtitles off by default) and `preconnect_origins` (emitted on the player page).
+- **Sync adapters.** `SYNC_ADAPTERS[slug]` → `sync_adapter`: `vidsrc` for every vidsrc front
+  door, `youtube` for YouTube. `syncable?` is what decides whether a watch party can actually
+  drive a provider's player (§5.10), and an adapter is also the only way position tracking,
+  the up-next card and the automatic watched mark hear anything (§5.8). MEGA, Drive,
+  archive.org and custom have none — MEGA's embed registers no message listener and posts
+  nothing to its parent (checked 2026-09-15), so there is nothing there to drive. Alongside
+  it: `resume_param` / `resumable?` (`startAt` on vidsrc, `start` on YouTube — start a film
+  part-way in, which is how `/cable` joins a programme already running and how up-next
+  resumes), `subtitle_param` (cable turns subtitles off by default), `player_params` (what a
+  player needs on its URL before it will talk at all — YouTube's `enablejsapi=1`, without
+  which its embed answers no handshake and the adapter hears silence) and
+  `preconnect_origins` (emitted on the player page).
 - **`probe_url` / `probe_label`** back `GET /sources/:id/test`: play a known title through
   this provider alone, to answer "is this domain still up" without hunting for an entry.
 
@@ -328,11 +335,31 @@ are the ones they own (`#mobile_add_channels_for`) — not the same set.
 `POST /entries/:id/progress` — **POST rather than PATCH because `navigator.sendBeacon`,
 which is how the position is saved as the page goes away, can only send POST.**
 
+All of this rides on a player adapter (§4): `services/vidsrc_player.js` and
+`services/youtube_player.js` hand `player_progress_controller` reports of one shape —
+`event`, `status`, `progress`, `duration` — so nothing downstream knows which it is hearing.
+YouTube reports about four times a second and has no seek event, so its adapter passes steady
+playback on once a second and calls a jump in position a seek. On MEGA, Drive and the rest
+there is no position, no card and no automatic watched mark.
+
 Completion is a fraction of runtime, not a position: `UserEntry::COMPLETION_FRACTION`
 (0.95). The **up-next card** is timed separately, by `AppSetting#up_next_lead_seconds`
-(15): the card appears that long before the end and counts down for that long, so it
-reaches zero as the film does. One number doing both jobs, because two of them can
-disagree and no reading of "the countdown" wants them to.
+(15): the card appears that long before the end and counts down to the end itself. The
+event carries `detail.seconds`, what was left of the programme when the crossing report
+arrived — up to five seconds after the mark on vidsrc — and
+`auto_advance_controller#countdownFor` counts that, capped at the lead. Raised any other way
+(coming out of fullscreen, or by the player's own `completed`) it counts the lead. One
+number deciding both when and how long, because two of them can disagree and no reading of
+"the countdown" wants them to.
+
+**The runtime is the file's, where the player reports one.** `UserEntry.runtime_for` and
+`player_progress_controller#lengthOf` take the player's reported duration over
+`entries.length`, unless it is under `UserEntry::FILE_SHARE_FLOOR` (half) of it, which is
+something other than the film. The catalogue is a claim — TMDB rounds up, providers hold
+other cuts, YouTube uploads carry intros — and a mark taken from it is not the end of what is
+playing. Too long, and the card only ever came up on the player's own `completed`, after the
+film had finished; too short, and it moved the viewer on with minutes still to run. The
+resume cutoff has no report to go on and still uses the catalogue.
 
 `AppSetting#up_next_mark_for` applies the floor — never earlier than the completion mark —
 and `player_progress_controller` applies the same rule client-side. It has to be a floor at
@@ -469,7 +496,7 @@ takes — nothing is ever delivered).
 - `WatchPartyContext` keeps the token in the **session**, so a room follows the person
   around the site instead of belonging to one page, and drops a token whose party has closed
   so a dead room does not put a bar on every page.
-- Only providers where `Source#syncable?` can actually be driven. On the rest the party
+- Only providers where `Source#syncable?` — vidsrc and YouTube — can actually be driven. On the rest the party
   still holds everyone on the same entry and shows how far apart they are; it just cannot
   close the gap.
 - `CloseAbandonedWatchPartiesJob` runs every 15 minutes. `ABANDONED_AFTER` is 2 minutes,

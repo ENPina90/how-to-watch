@@ -18,8 +18,9 @@ import { playerAdapterFor, isControllable } from "services/player_adapter"
 // 2026-09-09 -- a pause reported at 1354s, a single play command, and playback continuing
 // from 1354s.
 //
-// Nothing happens through a commercial break. Those come from YouTube, which this app has
-// no way to drive at all -- see cable_filler_controller.
+// Nothing happens through a commercial break. The page names no adapter while the adverts
+// are on, because they are not the programme and nothing here is meant to hold them --
+// see cable_filler_controller.
 //
 // Two things it deliberately does not do. It never touches a warmed spare, because it
 // watches one named frame and the adapter ignores every other. And it stops once the
