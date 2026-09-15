@@ -209,7 +209,6 @@ class EntriesController < ApplicationController
 
   def update
     old_position = @entry.position
-    new_position = entry_params[:position].to_i
 
     # The edit form always offers one blank row for adding an episode. Left untouched it
     # arrives here as an empty set of attributes, and without this it would be saved as a
@@ -238,6 +237,13 @@ class EntriesController < ApplicationController
     # other channel: the position on the form is a place in this one, and keeping it would
     # land the entry on top of whatever holds that number there.
     origin = @entry.list
+
+    # The Position field is a place in the channel's order, not a number to write onto the
+    # row. Saved as a plain attribute it landed on top of whichever entry already held that
+    # number, and the shift meant to make room ran after the save, found the entry already
+    # there, and moved nothing. Taken out here and applied after the save instead.
+    requested_position = cleaned_params.delete(:position)
+
     requested_list_id = cleaned_params.delete(:list_id)
     if requested_list_id.present? && requested_list_id.to_i != origin.id
       destination = List.find_by(id: requested_list_id)
@@ -250,18 +256,30 @@ class EntriesController < ApplicationController
     end
 
     if @entry.update(cleaned_params)
-      if destination.nil? && old_position != new_position
-        shift_positions(@entry, new_position)
-      end
+      # Only a number that was sent and differs from the one the form was filled with. A
+      # request without a position used to read as 0 and push every entry above this one
+      # down a place -- an edit of the runtime reordered the channel.
+      reordered = destination.nil? &&
+                  requested_position.to_s.strip.match?(/\A-?\d+\z/) &&
+                  requested_position.to_i != old_position &&
+                  move_within_channel!(@entry, requested_position.to_i)
       poster_error = poster_url.present? ? attach_poster_from_url(poster_url)[:error] : nil
       return moved_away(origin, destination, memberships, poster_error) if destination
 
       respond_to do |format|
         format.turbo_stream do
-          flash.now[:alert] = poster_error if poster_error
-          streams = [turbo_stream.replace(dom_id(@entry), partial: "entries/entry_#{@entry.media.downcase}", locals: { entry: @entry })]
-          streams << turbo_stream.replace('flash', partial: 'shared/flashes') if poster_error
-          render turbo_stream: streams
+          if reordered
+            # Every card between the old place and the new one has changed its number, so
+            # the page is drawn again rather than one card replaced where it used to stand.
+            # Back to the page it came from, so the grouping and the view are kept.
+            flash[:alert] = poster_error if poster_error
+            redirect_back fallback_location: list_path(@entry.list), status: :see_other
+          else
+            flash.now[:alert] = poster_error if poster_error
+            streams = [turbo_stream.replace(dom_id(@entry), partial: "entries/entry_#{@entry.media.downcase}", locals: { entry: @entry })]
+            streams << turbo_stream.replace('flash', partial: 'shared/flashes') if poster_error
+            render turbo_stream: streams
+          end
         end
         format.html do
           flash[:alert] = poster_error if poster_error
@@ -541,36 +559,9 @@ class EntriesController < ApplicationController
     redirect_to watch_entry_path(random_entry, channel: channel.id)
   end
 
+  # Dropping a dragged row. The same move the edit form's Position field makes.
   def update_position
-    visual_position = params[:position].to_i
-    list = @entry.list
-
-    # Get all entries in their current display order
-    ordered_entries = list.all_items_by_position.select { |item| item.is_a?(Entry) }
-
-    # Find the current visual position of this entry
-    current_visual_position = ordered_entries.index(@entry) + 1
-
-    # Clamp the visual position
-    visual_position = [visual_position, 1].max
-    visual_position = [visual_position, ordered_entries.count].min
-
-    if current_visual_position == visual_position
-      head :ok
-      return
-    end
-
-    ActiveRecord::Base.transaction do
-      # Normalize all positions first to ensure they're sequential
-      list.normalize_entry_positions!
-
-      # Now the database positions match visual positions
-      # Reload entry to get normalized position
-      @entry.reload
-
-      shift_positions(@entry, visual_position)
-      @entry.update!(position: visual_position)
-    end
+    move_within_channel!(@entry, params[:position].to_i)
 
     head :ok
   end
@@ -1115,6 +1106,33 @@ class EntriesController < ApplicationController
     rescue ActiveRecord::RecordNotFound
       flash[:error] = 'Entry not found.'
       redirect_back(fallback_location: root_path)
+    end
+
+    # Puts an entry at a place in its channel's order, 1 being the top, and moves the ones in
+    # between along by one. Returns whether anything moved.
+    #
+    # The place is counted in the order the page shows, not read as a raw position: a bulk
+    # import leaves ties and a delete leaves gaps, so the channel is renumbered 1..N first
+    # and the number then means the same thing to the database as it did on the screen.
+    # Ordered by id within a position for the same reason normalize_entry_positions! is.
+    #
+    # `update_column` for the entry's own number: this runs straight after a full save on
+    # the edit form, and saving again would repeat callbacks such as the source URL lookup
+    # for no change.
+    def move_within_channel!(entry, place)
+      list = entry.list
+      ordered_ids = list.entries.order(:position, :id).pluck(:id)
+      target = place.clamp(1, ordered_ids.size)
+      return false if ordered_ids.index(entry.id) + 1 == target
+
+      ActiveRecord::Base.transaction do
+        list.normalize_entry_positions!
+        entry.reload
+        shift_positions(entry, target)
+        entry.update_column(:position, target)
+      end
+
+      true
     end
 
     def shift_positions(entry, new_position)
