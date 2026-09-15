@@ -187,7 +187,6 @@ Rails.application.routes.draw do
       patch :reportlink
       patch :repair_image
       patch :migrate_poster
-      post :duplicate
       # File a copy in the member's own favourites channel, or take it out again. A write,
       # and per-user rather than shared -- it touches nobody's copy but their own.
       post :favorite

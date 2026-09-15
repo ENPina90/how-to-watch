@@ -176,8 +176,8 @@ RSpec.describe 'Forms render', :needs_provider, type: :request do
       expect(response.body).to include('name="entry[poster]"')
     end
 
-    # The submit lives up in the button row with the two CSV buttons, so it is attached to
-    # the form by id rather than by being inside it.
+    # The submit lives up in the button row above the fields, so it is attached to the form
+    # by id rather than by being inside it.
     it 'submits from the button row above the fields' do
       get new_list_entry_path(list)
 
@@ -192,6 +192,18 @@ RSpec.describe 'Forms render', :needs_provider, type: :request do
 
       expect(response.body).to include(import_youtube_list_entries_path(list))
       expect(response.body).to include('name="playlist_url"')
+    end
+
+    # One entry at a time is what the page is mostly for, so the spreadsheet and the playlist
+    # are folded behind Bulk Create -- and unfolded when a failed import comes back here.
+    it 'folds the bulk tools away until asked for' do
+      get new_list_entry_path(list)
+      expect(response.body).to include('id="new-entry-bulk" class="collapse new-entry-bulk"')
+      expect(response.body).to include('aria-expanded="false"')
+
+      get new_list_entry_path(list, bulk: 1)
+      expect(response.body).to include('class="collapse new-entry-bulk show"')
+      expect(response.body).to include('aria-expanded="true"')
     end
   end
 

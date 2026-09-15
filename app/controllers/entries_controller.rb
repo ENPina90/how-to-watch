@@ -9,7 +9,7 @@ class EntriesController < ApplicationController
   include NoPlaybackOnMobile
   skip_before_action :refuse_playback_on_mobile
   before_action :set_list, only: %i[new create csv_template import_csv import_youtube]
-  before_action :set_entry, only: %i[show edit update duplicate destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime favorite unfavorite]
+  before_action :set_entry, only: %i[show edit update destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime favorite unfavorite]
   before_action :authenticate_user!, only: %i[favorite unfavorite]
   # Watching is off in the phone view; everything else this controller does is not.
   before_action :refuse_playback_on_mobile, only: :watch
@@ -29,21 +29,38 @@ class EntriesController < ApplicationController
   # The custom-entry form. There is no search box on it any more: the navbar search is on
   # every page, and its "+ Details" button arrives here with these params so the form opens
   # already filled in from the API without anything having been created yet.
+  #
+  # `duplicate` is the other way in: the + on an entry card opens the form filled in from
+  # that entry, and again nothing exists until Create Entry is pressed. It used to POST a
+  # copy straight into whichever channel the member happened to own first, from inside the
+  # card's turbo frame, so the redirect to the copy's edit page never drew. No visibility
+  # check beyond signing in: this action is not open to guests, and a signed-in member can
+  # already see every channel's cards. An id that has gone draws the blank form.
   def new
-    prefill = EntryPrefill.new(
-      list:    @list,
-      imdb:    params[:imdb],
-      tmdb:    params[:tmdb],
-      season:  params[:season],
-      episode: params[:episode],
-      type:    params[:type]
-    ).call
+    @duplicate_of = Entry.find_by(id: params[:duplicate]) if params[:duplicate].present?
 
-    @entry = prefill.entry
+    if @duplicate_of
+      @entry = @duplicate_of.draft_copy(@list)
+    else
+      prefill = EntryPrefill.new(
+        list:    @list,
+        imdb:    params[:imdb],
+        tmdb:    params[:tmdb],
+        season:  params[:season],
+        episode: params[:episode],
+        type:    params[:type]
+      ).call
+
+      @entry = prefill.entry
+      flash.now[:alert] = prefill.error if prefill.error
+    end
+
     # The channel being filled comes first whether or not it is the member's own, so the
     # dropdown cannot open showing a channel other than the one they are standing on.
     @user_lists = template_lists
-    flash.now[:alert] = prefill.error if prefill.error
+    # The CSV and playlist tools start folded away. A failed import comes back here with
+    # its reason in the flash, and opens them again so the reason is beside what it is about.
+    @bulk_open = params[:bulk].present?
   end
 
   # A blank spreadsheet shaped like what import_csv reads back. Generated per request rather
@@ -68,7 +85,7 @@ class EntriesController < ApplicationController
       redirect_to list_path(@list)
     else
       flash[:alert] = [result.summary, *result.skipped, *result.errors].join(' · ')
-      redirect_to new_list_entry_path(@list)
+      redirect_to new_list_entry_path(@list, bulk: 1)
     end
   end
 
@@ -84,7 +101,7 @@ class EntriesController < ApplicationController
       redirect_to list_path(@list)
     else
       flash[:alert] = [result.summary, *result.notes].join(' · ')
-      redirect_to new_list_entry_path(@list)
+      redirect_to new_list_entry_path(@list, bulk: 1)
     end
   end
 
@@ -288,17 +305,6 @@ class EntriesController < ApplicationController
       end
     else
       render :edit
-    end
-  end
-
-  def duplicate
-    new_entry = @entry.dup
-    new_entry.list = current_user.lists.first
-    if new_entry.save
-      redirect_to edit_entry_path(new_entry)
-    else
-      flash[:error] = 'Failed to duplicate entry.'
-      redirect_back(fallback_location: root_path)
     end
   end
 

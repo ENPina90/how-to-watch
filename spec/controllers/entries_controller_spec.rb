@@ -94,16 +94,6 @@ RSpec.describe EntriesController, :needs_provider, type: :controller do
     end
   end
 
-  describe 'POST #duplicate' do
-    it 'duplicates the entry and redirects to the edit page' do
-      entry_to_duplicate = entry
-      expect {
-        post :duplicate, params: { id: entry_to_duplicate.id }
-      }.to change(Entry, :count).by(1)
-      expect(response).to redirect_to(edit_entry_path(Entry.last))
-    end
-  end
-
   describe 'DELETE #destroy' do
     it 'destroys the requested entry' do
       entry_to_delete = create(:entry, list: list)

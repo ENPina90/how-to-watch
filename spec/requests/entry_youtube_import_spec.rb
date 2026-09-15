@@ -49,7 +49,7 @@ RSpec.describe 'Entry YouTube import', type: :request do
 
     post import_youtube_list_entries_path(list), params: { playlist_url: url }
 
-    expect(response).to redirect_to(new_list_entry_path(list))
+    expect(response).to redirect_to(new_list_entry_path(list, bulk: 1))
     expect(flash[:alert]).to include('no public playlist')
     expect(list.entries).to be_empty
   end

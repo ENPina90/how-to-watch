@@ -52,6 +52,18 @@ module EntryCardHelper
     end
   end
 
+  # The + on a card: the custom-entry form, filled in from this entry. `_top` because every
+  # card is a turbo frame of its own, and a link left inside one tries to draw the whole form
+  # in the card's place. A helper rather than a partial because a big channel draws ~1,200 of
+  # these, and `list_id` rather than `list` so it loads nothing.
+  def duplicate_entry_link(entry, icon_class: nil)
+    link_to new_list_entry_path(entry.list_id, duplicate: entry.id),
+            title: 'Duplicate', aria: { label: "Duplicate #{entry.name}" },
+            data: { turbo_frame: '_top' } do
+      tag.i(class: ['fa-sharp fa-regular fa-plus', icon_class], title: 'Duplicate')
+    end
+  end
+
   # Why the runtime field is worth filling in, which differs by what is being edited. The
   # cable schedule lays a slot out by this figure and guesses where it is missing -- and a
   # guess that is short cuts the programme off partway through, which is the fault somebody
