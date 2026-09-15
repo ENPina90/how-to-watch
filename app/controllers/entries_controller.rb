@@ -44,6 +44,9 @@ class EntriesController < ApplicationController
     # dropdown cannot open showing a channel other than the one they are standing on.
     @user_lists = template_lists
     flash.now[:alert] = prefill.error if prefill.error
+    # The CSV and playlist tools start folded away. A failed import comes back here with
+    # its reason in the flash, and opens them again so the reason is beside what it is about.
+    @bulk_open = params[:bulk].present?
   end
 
   # A blank spreadsheet shaped like what import_csv reads back. Generated per request rather
@@ -68,7 +71,7 @@ class EntriesController < ApplicationController
       redirect_to list_path(@list)
     else
       flash[:alert] = [result.summary, *result.skipped, *result.errors].join(' · ')
-      redirect_to new_list_entry_path(@list)
+      redirect_to new_list_entry_path(@list, bulk: 1)
     end
   end
 
@@ -84,7 +87,7 @@ class EntriesController < ApplicationController
       redirect_to list_path(@list)
     else
       flash[:alert] = [result.summary, *result.notes].join(' · ')
-      redirect_to new_list_entry_path(@list)
+      redirect_to new_list_entry_path(@list, bulk: 1)
     end
   end
 

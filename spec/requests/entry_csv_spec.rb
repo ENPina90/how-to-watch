@@ -56,7 +56,7 @@ RSpec.describe 'Entry CSV', type: :request do
     it 'comes back to the form when nothing could be added' do
       post import_csv_list_entries_path(list), params: { file: csv_upload("name,media\n,movie\n") }
 
-      expect(response).to redirect_to(new_list_entry_path(list))
+      expect(response).to redirect_to(new_list_entry_path(list, bulk: 1))
       expect(flash[:alert]).to be_present
       expect(list.entries).to be_empty
     end

@@ -16,64 +16,77 @@
       - <%= link_to @list.name, list_path(@list) %>
     </h1>
 
-    <%# Where the Movie/Series/Anime tabs used to be. They chose which search box to draw,
-        and there is no search box left to choose between. %>
-    <div class="new-entry-actions" data-controller="csv-upload">
-      <%# Outside the form it submits, by id: the button belongs up here with the other two
-          and the fields belong below, and an HTML form attribute is the whole of what that
-          takes. %>
-      <%= button_tag type: 'submit', form: 'custom-entry-form', class: 'btn btn-primary' do %>
-        <i class="fa-solid fa-plus me-1"></i>Create Entry
+    <%# Two buttons in the channel page's ruled action row, wearing its subscribe pill. Create
+        is the large one because one entry at a time is what most visits here are for; the
+        spreadsheet and the playlist are folded behind Bulk Create until asked for. %>
+    <div class="new-entry-actions">
+      <%# Outside the form it submits, by id: the button belongs up here and the fields belong
+          below, and an HTML form attribute is the whole of what that takes. %>
+      <%= button_tag type: 'submit', form: 'custom-entry-form', class: 'new-entry-pill new-entry-pill--primary' do %>
+        <i class="fa-solid fa-plus"></i>Create Entry
       <% end %>
 
-      <%# A file download rather than a page, so Turbo is told to stay out of it: a visit it
-          cannot render leaves the page looking as though the click did nothing. %>
-      <%= link_to csv_template_list_entries_path(@list), class: 'btn btn-outline-primary', data: { turbo: false } do %>
-        <i class="fa-solid fa-file-arrow-down me-1"></i>Download CSV
-      <% end %>
-
-      <%# The picker is the button. A bare file input sitting in a row of buttons reads as a
-          different kind of control from the two beside it, and it needs a second click to
-          do anything. %>
-      <%= form_with url: import_csv_list_entries_path(@list), multipart: true,
-                    data: { turbo: false, csv_upload_target: 'form' }, class: 'd-inline' do %>
-        <%= file_field_tag :file, accept: '.csv,text/csv',
-              class: 'd-none',
-              data: { csv_upload_target: 'input', action: 'change->csv-upload#submit' } %>
-        <button type="button" class="btn btn-outline-primary" data-action="click->csv-upload#choose">
-          <i class="fa-solid fa-file-arrow-up me-1"></i>Upload CSV
-        </button>
-      <% end %>
+      <%# Bootstrap's collapse, which application.js already imports for the modals and
+          dropdowns, so opening a panel needs no controller of its own. %>
+      <button type="button" class="new-entry-pill"
+              data-bs-toggle="collapse" data-bs-target="#new-entry-bulk"
+              aria-controls="new-entry-bulk" aria-expanded="<%= @bulk_open %>">
+        <i class="fa-solid fa-layer-group"></i>Bulk Create
+      </button>
     </div>
 
-    <p class="new-entry-hint">
-      Download the CSV for a blank sheet with a column for every field below, the channels
-      you can file a row into, and the media types that are allowed. Fill it in, upload it,
-      and every row becomes an entry in <strong><%= @list.name %></strong> — or in whichever
-      channel its <code>channel</code> cell names. A row with an <code>imdb</code> id has the
-      rest looked up for it, and anything you typed wins over what the lookup said.
-      <%= EntryCsvImporter::MAX_ROWS %> rows to an upload.
-    </p>
+    <div id="new-entry-bulk" class="collapse new-entry-bulk<%= ' show' if @bulk_open %>">
+      <div class="new-entry-bulk__inner">
+        <div class="new-entry-bulk__buttons" data-controller="csv-upload">
+          <%# A file download rather than a page, so Turbo is told to stay out of it: a visit it
+              cannot render leaves the page looking as though the click did nothing. %>
+          <%= link_to csv_template_list_entries_path(@list), class: 'new-entry-pill new-entry-pill--small', data: { turbo: false } do %>
+            <i class="fa-solid fa-file-arrow-down"></i>Download CSV
+          <% end %>
 
-    <%# Its own row rather than a fourth button: it needs somewhere to paste. Turbo is left
-        on so the button can say it is working -- the import reads the whole playlist inside
-        the request, which is a few seconds for a long one. %>
-    <%= form_with url: import_youtube_list_entries_path(@list), class: 'new-entry-youtube input-group' do %>
-      <%= url_field_tag :playlist_url, nil, class: 'form-control', required: true,
-            placeholder: 'https://www.youtube.com/playlist?list=…',
-            aria: { label: 'YouTube playlist link' } %>
-      <%= button_tag type: 'submit', class: 'btn btn-outline-primary',
-            data: { turbo_submits_with: 'Importing…' } do %>
-        <i class="fa-brands fa-youtube me-1"></i>Import Playlist
-      <% end %>
-    <% end %>
+          <%# The picker is the button. A bare file input beside a button reads as a different
+              kind of control, and it needs a second click to do anything. %>
+          <%= form_with url: import_csv_list_entries_path(@list), multipart: true,
+                        data: { turbo: false, csv_upload_target: 'form' }, class: 'd-inline' do %>
+            <%= file_field_tag :file, accept: '.csv,text/csv',
+                  class: 'd-none',
+                  data: { csv_upload_target: 'input', action: 'change->csv-upload#submit' } %>
+            <button type="button" class="new-entry-pill new-entry-pill--small" data-action="click->csv-upload#choose">
+              <i class="fa-solid fa-file-arrow-up"></i>Upload CSV
+            </button>
+          <% end %>
+        </div>
 
-    <p class="new-entry-hint">
-      Paste a YouTube playlist and every video in it becomes an entry in
-      <strong><%= @list.name %></strong>, with its title, runtime, thumbnail and description.
-      A title numbered like <code>S1 EP1</code> is filed as an episode. Import it again later
-      and only the new videos are added.
-    </p>
+        <p class="new-entry-hint">
+          Download the CSV for a blank sheet with a column for every field below, the channels
+          you can file a row into, and the media types that are allowed. Fill it in, upload it,
+          and every row becomes an entry in <strong><%= @list.name %></strong> — or in whichever
+          channel its <code>channel</code> cell names. A row with an <code>imdb</code> id has the
+          rest looked up for it, and anything you typed wins over what the lookup said.
+          <%= EntryCsvImporter::MAX_ROWS %> rows to an upload.
+        </p>
+
+        <%# Its own row rather than another button: it needs somewhere to paste. Turbo is left
+            on so the button can say it is working -- the import reads the whole playlist
+            inside the request, which is a few seconds for a long one. %>
+        <%= form_with url: import_youtube_list_entries_path(@list), class: 'new-entry-youtube' do %>
+          <%= url_field_tag :playlist_url, nil, class: 'form-control', required: true,
+                placeholder: 'https://www.youtube.com/playlist?list=…',
+                aria: { label: 'YouTube playlist link' } %>
+          <%= button_tag type: 'submit', class: 'new-entry-pill new-entry-pill--small',
+                data: { turbo_submits_with: 'Importing…' } do %>
+            <i class="fa-brands fa-youtube"></i>Import Playlist
+          <% end %>
+        <% end %>
+
+        <p class="new-entry-hint">
+          Paste a YouTube playlist and every video in it becomes an entry in
+          <strong><%= @list.name %></strong>, with its title, runtime, thumbnail and description.
+          A title numbered like <code>S1 EP1</code> is filed as an episode. Import it again later
+          and only the new videos are added.
+        </p>
+      </div>
+    </div>
   </div>
 
   <div class="row justify-content-center list-layout">
