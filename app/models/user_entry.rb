@@ -84,9 +84,9 @@ class UserEntry < ApplicationRecord
 
   # --- Player position ------------------------------------------------------------------
   #
-  # Only providers whose player talks to the page around it report any of this (vidsrc, in
-  # practice -- see docs/guides/VIDSRC.md §6). On everything else these stay nil and the
-  # entry behaves as it always did.
+  # Only providers whose player talks to the page around it report any of this -- vidsrc
+  # and YouTube, see Source::SYNC_ADAPTERS. On everything else these stay nil and the entry
+  # behaves as it always did.
 
   # Records where the player has reached, and ticks the entry off once it is far enough
   # through. `finished` is the player saying the video ended; the fraction is the fallback

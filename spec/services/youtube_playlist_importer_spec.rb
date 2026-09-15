@@ -46,7 +46,7 @@ RSpec.describe YoutubePlaylistImporter do
       pic: 'https://i.ytimg.com/vi/0_paCykOQNI/maxresdefault.jpg',
       position: 1
     )
-    expect(entry.embed_url).to eq('https://www.youtube.com/embed/0_paCykOQNI')
+    expect(entry.embed_url).to eq('https://www.youtube.com/embed/0_paCykOQNI?enablejsapi=1')
   end
 
   # What follows the first paragraph is links and "subscribe".

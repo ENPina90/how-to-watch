@@ -7,12 +7,13 @@ import { Turbo } from "@hotwired/turbo-rails";
 
 // Keeps a record of where this viewer got to, so the next visit picks up there.
 //
-// The position comes from the player's own reports (docs/guides/VIDSRC.md §6), which only
-// providers with an adapter send -- on Drive, YouTube and the rest this controller finds
-// nothing to listen to and does nothing at all, which is the intended behaviour rather
-// than a gap. The resume itself happens server-side: the position is baked into the embed
-// URL before the frame is written, because the player accepts a start position as a query
-// parameter and ignores a seek sent before it has spoken.
+// The position comes from the player's own reports, which only providers with an adapter
+// send: vidsrc (docs/guides/VIDSRC.md §6) and YouTube (services/youtube_player.js). On
+// Drive, MEGA and the rest this controller finds nothing to listen to and does nothing at
+// all -- MEGA's embed posts nothing to its parent and takes no commands from it, so there
+// is nothing there to hear. The resume itself happens server-side: the position is baked
+// into the embed URL before the frame is written, because both players accept a start
+// position as a query parameter and neither obeys a seek sent before it has spoken.
 //
 // What gets saved, and when:
 //

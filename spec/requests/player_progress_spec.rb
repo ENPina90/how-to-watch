@@ -21,6 +21,13 @@ RSpec.describe 'Player progress', type: :request do
                    templates: { 'default' => 'https://drive.test/%{source_key}' })
   end
 
+  # YouTube's embed reports to a page that asks, so it is tracked the way vidsrc is.
+  def youtube_provider
+    Source.create!(name: 'YouTube', slug: 'youtube', kind: 'direct', active: true, position: 3,
+                   autoplay_param: 'autoplay',
+                   templates: { 'default' => 'https://www.youtube.com/embed/%{source_key}' })
+  end
+
   describe 'recording where the player reached' do
     before { sign_in user }
 
@@ -119,6 +126,18 @@ RSpec.describe 'Player progress', type: :request do
       get watch_entry_path(entry)
 
       expect(response.body).not_to include('startAt')
+    end
+
+    # YouTube reads `start`, and says nothing at all to a page whose embed did not ask for
+    # the IFrame API -- which would leave it tracked on paper and silent in the browser.
+    it 'tracks and resumes a YouTube embed the same way' do
+      entry.update!(provider: youtube_provider, source_key: 'rz950l805x4')
+      user.user_entry_for!(entry).record_progress!(742.5)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).to include('data-player-progress-adapter-value="youtube"')
+      expect(response.body).to include('enablejsapi=1').and include('start=743')
     end
 
     it 'wires the tracking controller to the frame' do
