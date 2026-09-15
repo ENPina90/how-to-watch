@@ -14,6 +14,35 @@ class UserEntry < ApplicationRecord
   # would leave it unticked for everybody who does not sit through them.
   COMPLETION_FRACTION = 0.95
 
+  # How short a file may be, as a share of the catalogue's runtime, and still be taken for
+  # the film. A reported length under this is something else playing in the frame -- a
+  # trailer, an advert, a clip -- and judging completion by it would call a film watched in
+  # its opening minutes.
+  FILE_SHARE_FLOOR = 0.5
+
+  # How long the entry actually runs, in seconds: the length the player reports for the file
+  # it is playing, or the catalogue's runtime where there is no report to go on.
+  #
+  # The file wins because it is what the viewer is watching. The catalogue is a claim about
+  # the film -- TMDB rounds up, a provider may hold a different cut, a YouTube upload may
+  # carry an intro -- and a mark taken from it is somewhere other than the end of what is
+  # playing. Past that end, the up-next card only ever came up after the film had finished
+  # and the watched mark was missed by everybody the card moved on; short of it, the card
+  # moves the viewer on with minutes still to run. The cable clock and
+  # PATCH /entries/:id/runtime take the player's word about length for the same reason.
+  #
+  # Except a report under FILE_SHARE_FLOOR of the catalogue, which is not the film.
+  #
+  # player_progress_controller#lengthOf applies the same rule, so the page and the server
+  # agree about where the end is.
+  def self.runtime_for(catalogue_seconds, duration)
+    catalogue = catalogue_seconds.to_f
+    reported = duration.to_f
+    return reported unless catalogue.positive?
+
+    reported > catalogue * FILE_SHARE_FLOOR ? reported : catalogue
+  end
+
   # The position past which something of this length counts as watched, or nil when there
   # is no length to judge by.
   #
@@ -147,12 +176,9 @@ class UserEntry < ApplicationRecord
   end
 
   # The position past which the film counts as watched, or nil when nothing here knows how
-  # long it is. The catalogue's runtime is preferred over the player's reported duration:
-  # it is the length of the film, while the player is timing whatever file it was handed,
-  # ads and all.
+  # long it is. See .runtime_for for how the catalogue and the player's duration are weighed.
   def completion_mark(duration = nil, credits: nil)
-    minutes = entry.length.to_i
-    runtime = minutes.positive? ? minutes * 60 : duration
+    runtime = self.class.runtime_for(entry.length.to_i * 60, duration)
 
     self.class.completion_mark_for(runtime, credits: credits)
   end

@@ -144,6 +144,9 @@ RSpec.describe 'Player progress', type: :request do
       expect(response.body).to include(
         %(data-player-progress-fraction-value="#{UserEntry::COMPLETION_FRACTION}")
       )
+      expect(response.body).to include(
+        %(data-player-progress-file-floor-value="#{UserEntry::FILE_SHARE_FLOOR}")
+      )
     end
 
     # Then the player's own reported duration stands in, on both sides.

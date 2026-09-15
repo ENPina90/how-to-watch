@@ -129,6 +129,10 @@
              own reported duration stands in. %>
          data-player-progress-runtime-value="<%= @entry.length.to_i * 60 %>"
          data-player-progress-fraction-value="<%= UserEntry::COMPLETION_FRACTION %>"
+         <%# UserEntry::FILE_SHARE_FLOOR. The runtime above is only a claim: where the player
+             reports the file's own length, both sides judge by that instead -- unless it is
+             under this share of the claim, and so is not the film. %>
+         data-player-progress-file-floor-value="<%= UserEntry::FILE_SHARE_FLOOR %>"
          <%# List#skip_credits_seconds: the channel's programmes end this far before the file
              does. Taken off the runtime on both sides, which moves the completion mark and
              the up-next card together -- so the countdown runs out where the channel says
