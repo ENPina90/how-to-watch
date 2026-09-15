@@ -191,7 +191,11 @@ class EntriesController < ApplicationController
 
   def edit
     @entry.streamable
-    @user_lists = List.where(user: current_user)
+    # The Channel select moves the entry, so its own channel has to be among the options even
+    # when the editor does not own it -- a default channel, or an admin's edit. Left out, the
+    # browser selects the first channel offered, and a save moves the entry without anyone
+    # having chosen to.
+    @user_lists = ([@entry.list] + List.where(user: current_user).to_a).uniq
     @entry.subentries.build if @entry.media == 'series' || @entry.media == 'anime'
     respond_to do |format|
       format.html
@@ -229,12 +233,29 @@ class EntriesController < ApplicationController
     # rather than swallowed, because nothing else on the page would show it had failed.
     poster_url = cleaned_params.delete(:poster_url)
 
-    cleaned_params.merge!(list: @entry.list)
+    # The Channel select. The entry's own list used to be merged back over it here, so
+    # picking another channel saved nothing and said nothing. A move goes to the end of the
+    # other channel: the position on the form is a place in this one, and keeping it would
+    # land the entry on top of whatever holds that number there.
+    origin = @entry.list
+    requested_list_id = cleaned_params.delete(:list_id)
+    if requested_list_id.present? && requested_list_id.to_i != origin.id
+      destination = List.find_by(id: requested_list_id)
+      return refuse_update('You cannot move entries into that channel.') unless destination && current_user&.can_edit_list?(destination)
+
+      cleaned_params.merge!(list: destination, position: Entry.next_position(destination))
+      # Read before the move, as a delete reads them: afterwards the entry answers for its
+      # new channel, not for the page it is leaving.
+      memberships = section_memberships(@entry)
+    end
+
     if @entry.update(cleaned_params)
-      if old_position != new_position
+      if destination.nil? && old_position != new_position
         shift_positions(@entry, new_position)
       end
       poster_error = poster_url.present? ? attach_poster_from_url(poster_url)[:error] : nil
+      return moved_away(origin, destination, memberships, poster_error) if destination
+
       respond_to do |format|
         format.turbo_stream do
           flash.now[:alert] = poster_error if poster_error
@@ -928,6 +949,44 @@ class EntriesController < ApplicationController
     # Onto the neighbour, or nowhere: an end of the channel leaves you where you are.
     def step_to(entry)
       redirect_to watch_entry_path(entry || @entry, channel: watching_channel.id)
+    end
+
+    # An entry moved to another channel is gone from the page it was edited on, so it comes
+    # off that page the way a deleted one does -- the count, the card, and any section it
+    # leaves empty. Replacing the card in place, as an ordinary edit does, would leave it
+    # sitting on a channel it no longer belongs to until the next reload.
+    def moved_away(origin, destination, memberships, poster_error)
+      message = "#{@entry.name} moved to #{destination.name}"
+      # What section_stream counts the remaining entries of.
+      @list = origin
+
+      respond_to do |format|
+        format.turbo_stream do
+          flash.now[:notice] = message
+          flash.now[:alert] = poster_error if poster_error
+          render turbo_stream: [
+            turbo_stream.replace('flash', partial: 'shared/flashes'),
+            turbo_stream.replace("header-count-#{origin.id}", partial: 'lists/header_count', locals: { count: origin.total_entry_count, list: origin }),
+            turbo_stream.remove(dom_id(@entry)),
+            turbo_stream.remove("row-#{dom_id(@entry)}")
+          ] + emptied_section_streams(memberships)
+        end
+        format.html do
+          flash[:alert] = poster_error if poster_error
+          redirect_to list_path(origin), notice: message
+        end
+      end
+    end
+
+    # Refused before anything is saved, so the rest of the form is not half applied either.
+    def refuse_update(message)
+      respond_to do |format|
+        format.turbo_stream do
+          flash.now[:alert] = message
+          render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes'), status: :forbidden
+        end
+        format.html { redirect_to list_path(@entry.list), alert: message }
+      end
     end
 
     def section_memberships(entry)
