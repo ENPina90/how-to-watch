@@ -161,7 +161,7 @@ export default class extends Controller {
     // The screen is still handed back when nothing takes the card: auto-next off for this
     // channel, or a viewer who already pressed Stop. Then the film really is just ending,
     // and the ring of controls behind the player is the only thing to hand them.
-    if (crossedUpNext && !this.upNext() && this.fullscreen) this.leaveFullscreen();
+    if (crossedUpNext && !this.upNext(this.secondsLeft(state)) && this.fullscreen) this.leaveFullscreen();
 
     if (crossedWatched) return this.save({ finished: finished, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
@@ -270,8 +270,19 @@ export default class extends Controller {
   // Answers whether anything took it. The card cancels the event when it is showing or
   // already counting, which is how this knows whether there is something on screen to
   // offer the viewer -- and so whether the screen needs handing back instead.
-  upNext() {
-    return this.dispatch("up-next", { target: document, cancelable: true }).defaultPrevented;
+  //
+  // `seconds` is how much of the programme is left, where that is known, so the card counts
+  // down to the end itself rather than for a fixed lead from whenever the report arrived.
+  upNext(seconds = null) {
+    return this.dispatch("up-next", { target: document, cancelable: true, detail: { seconds } }).defaultPrevented;
+  }
+
+  // Until the programme ends, credits skip and all -- or null once it has, or when nothing
+  // knows how long it is.
+  secondsLeft(state) {
+    const left = this.runtimeFor(state) - state.progress;
+
+    return left > 0 ? left : null;
   }
 
   // Hand the page back when the film has ended with nothing to offer in its place, so the
