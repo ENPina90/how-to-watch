@@ -18,6 +18,17 @@
   cursor: pointer;
 }
 
+// A ticked row, so what a drag is about to carry can be seen before it is picked up.
+.entry-minimal:has(.form-check-input:checked) {
+  background-color: rgba(26, 147, 111, 0.12);
+}
+
+// While a selection is being dragged, the rows travelling with the one in hand fade, to say
+// they are coming along rather than staying put. They close up beside it on the drop.
+.sort--carrying .entry-minimal:has(.form-check-input:checked):not(.sortable-chosen) {
+  opacity: 0.35;
+}
+
 // Pushes the buttons to the right edge.
 .bulk-toolbar__count {
   margin-right: auto;

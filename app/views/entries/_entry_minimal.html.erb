@@ -10,7 +10,8 @@
     <i class="fa-solid fa-grip-vertical entry-minimal-icons"></i>
   </div>
   <div class="col-8 mt-2">
-    <%= index %>. <%= link_to entry.name, (defined?(@is_mobile) && @is_mobile) ? entry_path(entry) : watch_entry_path(entry), data: { turbo: false } %>
+    <%# In a span of its own so the sort controller can renumber the rows after a drop. %>
+    <span class="entry-minimal__index"><%= index %></span>. <%= link_to entry.name, (defined?(@is_mobile) && @is_mobile) ? entry_path(entry) : watch_entry_path(entry), data: { turbo: false } %>
     <% if entry.media == "episode" %>
       <div class="d-flex justify-content-between">
         <p><small><%= entry.series %> - S<%= entry.season %>E<%= entry.episode %></small></p>

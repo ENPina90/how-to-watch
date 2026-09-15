@@ -37,7 +37,12 @@
                 <% end %>
               </div>
             <% end %>
-            <div data-controller="sort">
+            <%# The move URL is what lets a ticked row carry the others with it when dragged,
+                so it is only there for somebody who may reorder the channel. The direction
+                is how the server reads "dropped below this row" on a reversed page. %>
+            <div data-controller="sort"
+                 <% if current_user&.can_edit_list?(@list) %>data-sort-move-url-value="<%= move_list_bulk_entries_path(@list) %>"<% end %>
+                 data-sort-direction-value="<%= @direction %>">
               <% @position_items.each_with_index do |item, i| %>
                 <% if item.is_a?(Entry) %>
                   <%= render "entries/entry_minimal", entry: item, index: i + 1 %>
