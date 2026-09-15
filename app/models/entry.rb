@@ -370,6 +370,21 @@ class Entry < ApplicationRecord
     scope.find_by(name: name)
   end
 
+  # An unsaved copy for the custom-entry form to open with, which is what Duplicate on a card
+  # does. Nothing is written: the copy only exists if the form is submitted, and only what
+  # the form carries survives that -- episodes do not, which the page says.
+  #
+  # The same resets as `file_into!`: the position is the new channel's to hand out, and the
+  # two pre-multi-user progress columns describe the original's viewers, not the copy's.
+  def draft_copy(list)
+    dup.tap do |copy|
+      copy.list = list
+      copy.position = nil
+      copy.completed = false
+      copy.current_id = nil
+    end
+  end
+
   # File a copy of this entry in another channel, or hand back the copy already there.
   #
   # A copy and not a move: an entry belongs to one channel, so adding a film to your

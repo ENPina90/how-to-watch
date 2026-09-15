@@ -2,7 +2,8 @@
     metadata APIs describe badly or not at all. There is no search box on this page any
     more. The navbar search is on every page and its "+ Details" button lands here with the
     form already filled in from the API, so the one search does both jobs instead of this
-    page carrying a second one that only worked here. %>
+    page carrying a second one that only worked here. Duplicate on an entry card lands here
+    too, with the form filled in from that entry. %>
 <%# And this is the only page that offers it: the button fills in the form below, and the
     result templates in the layout draw it only where a page has asked. %>
 <% content_for :search_offers_details, 'yes' %>
@@ -34,6 +35,16 @@
         <i class="fa-solid fa-layer-group"></i>Bulk Create
       </button>
     </div>
+
+    <% if @duplicate_of %>
+      <p class="new-entry-hint">
+        A copy of <strong><%= @duplicate_of.name %></strong>. Nothing is saved until you press
+        Create Entry, and the channel below is where the copy will go.
+        <% if @duplicate_of.subentries.exists? %>
+          Its episodes are not copied.
+        <% end %>
+      </p>
+    <% end %>
 
     <div id="new-entry-bulk" class="collapse new-entry-bulk<%= ' show' if @bulk_open %>">
       <div class="new-entry-bulk__inner">
@@ -105,10 +116,13 @@
         <%# Three ways to the same picture, and they are not the same thing. `pic` points at
             somebody else's host for as long as it stays up -- which is what the
             broken-poster audit spends its time finding out about -- while the two below keep
-            a copy. The prefill fills `pic` with whatever the API had. %>
+            a copy. The prefill fills `pic` with whatever the API had. A duplicate's uploaded
+            poster goes in the fetch field, so the copy keeps a picture of its own rather than
+            pointing at a file that goes when the original is deleted. %>
         <%= f.input :pic, label: 'Poster URL (linked, not stored)' %>
         <%= f.input :poster_url, as: :url, label: 'Fetch a poster from a link',
-              input_html: { value: nil, placeholder: 'https://…' },
+              input_html: { value: (entry_poster_url(@duplicate_of) if @duplicate_of&.poster&.attached?),
+                            placeholder: 'https://…' },
               hint: 'Downloads the image and keeps a copy, so it does not go dead later.' %>
         <%= f.input :poster, as: :file, label: 'Upload a poster image' %>
 
@@ -131,6 +145,12 @@
         <%= f.input :plot %>
         <%= f.input :note %>
         <%= f.input :review %>
+        <%# What a filled-in entry knows that the form has no field for. Without these a
+            duplicate lost its per-entry provider -- and with it the way it played -- and an
+            episode from the search overlay lost the series it belongs to. %>
+        <% %i[provider_id source_key series_imdb language].each do |attribute| %>
+          <%= f.hidden_field attribute if @entry.public_send(attribute).present? %>
+        <% end %>
         <%= hidden_field_tag :custom, true %>
         <%# No submit down here: Create Entry at the top of the page is this form's, by id. %>
       <% end %>

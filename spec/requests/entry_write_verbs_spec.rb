@@ -58,26 +58,6 @@ RSpec.describe 'Entry write verbs', :needs_provider, type: :request do
     end
   end
 
-  describe 'duplicating an entry' do
-    it 'creates a copy over POST' do
-      entry_to_copy = entry
-
-      expect {
-        post duplicate_entry_path(entry_to_copy)
-      }.to change(Entry, :count).by(1)
-    end
-
-    it 'is not reachable over GET' do
-      entry_to_copy = entry
-
-      expect {
-        get "/entries/#{entry_to_copy.id}/duplicate"
-      }.not_to change(Entry, :count)
-
-      expect(response).to have_http_status(:not_found)
-    end
-  end
-
   describe 'poster maintenance actions' do
     it 'exposes repair_image and migrate_poster over PATCH only' do
       get "/entries/#{entry.id}/repair_image"
