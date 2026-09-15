@@ -1,5 +1,12 @@
 <div class="row entry-minimal border border-dark border-top-0 border-start-0 border-end-0" data-id="<%= entry.id %>">
-  <div class="col-1 align-self-center">
+  <div class="col-1 align-self-center d-flex align-items-center gap-2">
+    <%# Outside .entry-minimal-icons, which stay hidden until hover: a ticked box has to
+        stay visible, or there is no seeing what a bulk delete is about to take. %>
+    <% if current_user&.can_edit_entry?(entry) %>
+      <input type="checkbox" class="form-check-input mt-0" value="<%= entry.id %>"
+             aria-label="Select <%= entry.name %>"
+             data-bulk-select-target="checkbox" data-action="change->bulk-select#refresh">
+    <% end %>
     <i class="fa-solid fa-grip-vertical entry-minimal-icons"></i>
   </div>
   <div class="col-8 mt-2">

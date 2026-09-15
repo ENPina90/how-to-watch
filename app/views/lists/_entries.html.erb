@@ -12,14 +12,40 @@
     <% end %>
     <div class="<%= minimal ? 'col-12 px-4' : 'col-8' %>  d-flex justify-content-center">
         <% if minimal %>
-          <div data-controller="sort" class="col-10">
-            <% @position_items.each_with_index do |item, i| %>
-              <% if item.is_a?(Entry) %>
-                <%= render "entries/entry_minimal", entry: item, index: i + 1 %>
-              <% else # List %>
-                <%= render "lists/child_list_minimal", list: item, index: i + 1 %>
-              <% end %>
+          <div class="col-10">
+            <%# Acts on the ticked rows below. Outside the sort container, which would
+                otherwise treat the toolbar as a row that can be dragged. %>
+            <% if current_user&.can_edit_list?(@list) %>
+              <div class="bulk-toolbar">
+                <label class="bulk-toolbar__all">
+                  <input type="checkbox" class="form-check-input mt-0"
+                         data-bulk-select-target="all" data-action="change->bulk-select#toggleAll">
+                  Select all
+                </label>
+                <span class="bulk-toolbar__count"><span data-bulk-select-target="count">0</span> selected</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" disabled
+                        data-bs-toggle="modal" data-bs-target="#bulkEditModal"
+                        data-bulk-select-target="action">
+                  <i class="fa-solid fa-pen"></i> Edit
+                </button>
+                <%= form_with url: list_bulk_entries_path(@list), method: :delete, class: "d-inline",
+                              data: { action: "submit->bulk-select#confirmDelete" } do %>
+                  <button type="submit" class="btn btn-sm btn-outline-danger" disabled
+                          data-bulk-select-target="action">
+                    <i class="fa-solid fa-trash"></i> Delete
+                  </button>
+                <% end %>
+              </div>
             <% end %>
+            <div data-controller="sort">
+              <% @position_items.each_with_index do |item, i| %>
+                <% if item.is_a?(Entry) %>
+                  <%= render "entries/entry_minimal", entry: item, index: i + 1 %>
+                <% else # List %>
+                  <%= render "lists/child_list_minimal", list: item, index: i + 1 %>
+                <% end %>
+              <% end %>
+            </div>
           </div>
         <% else %>
           <div>

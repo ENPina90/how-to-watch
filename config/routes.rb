@@ -149,6 +149,9 @@ Rails.application.routes.draw do
       post :close
       delete 'options/:option_id', action: :remove_option, as: :option
     end
+    # Deleting or editing the entries ticked in the minimal view, all in one request. The
+    # ids travel in the body, so it is one route per verb rather than one per entry.
+    resource :bulk_entries, only: %i[update destroy], controller: 'bulk_entries'
 
     resources :entries, only: [:new, :create] do
       collection do
