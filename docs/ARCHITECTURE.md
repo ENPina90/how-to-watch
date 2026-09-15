@@ -771,10 +771,12 @@ neither needs a local Redis.
 - `entries` nested under a list: `new` / `create`, plus collection `csv_template` (GET — it
   only generates a file), `import_csv` (POST — it writes a spreadsheet's worth of rows,
   and `check_list_edit_permissions` asks whose channel it is first) and `import_youtube`
-  (POST, behind the same check — it writes a playlist's worth).
+  (POST, behind the same check — it writes a playlist's worth). `new` also takes
+  `?duplicate=<entry id>`, which is what Duplicate on an entry card opens: the form filled
+  in from that entry, with nothing written until it is submitted.
 - `entries` member routes are split by side effect: **writes are PATCH/POST**
   (`complete`, `review`, `complete_without_review`, `reportlink`, `repair_image`,
-  `migrate_poster`, `duplicate`, `shuffle_current`, `increment_current`,
+  `migrate_poster`, `shuffle_current`, `increment_current`,
   `decrement_current`, `update_position`, `set_source`, `update_poster`) and only reads
   stay GET (`watch`, `fetch_posters`). CSRF tokens do not protect GET, so nothing that
   writes may be reachable that way. There is **no `index`** action.
