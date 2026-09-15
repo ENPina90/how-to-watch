@@ -1,0 +1,53 @@
+<%# The bulk edit dialog: the entry edit form with every field empty. Whatever is filled in
+    is set on every ticked entry and whatever is left blank is left alone, so nothing here
+    may arrive pre-filled -- a default value would be written over every selected row.
+
+    One per page, like the other modals. The ids are not in the markup: the `bulk-select`
+    controller adds whichever boxes are ticked when the form is sent, after asking. %>
+<div class="modal fade" id="bulkEditModal" tabindex="-1" aria-labelledby="bulkEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content modal-placement">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bulkEditModalLabel">
+          Edit selected entries (<span data-bulk-select-target="count">0</span>)
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="form-text">Only the fields you fill in are changed. Anything left blank stays as each entry has it.</p>
+        <%# `required: false` throughout: with no record behind the form, simple_form would
+            otherwise mark every field required and the browser would refuse a form that is
+            meant to be mostly empty. %>
+        <%= simple_form_for :entry, url: list_bulk_entries_path(list), method: :patch,
+              defaults: { required: false },
+              html: { data: { action: "submit->bulk-select#confirmEdit" } } do |f| %>
+          <%= f.input :list_id, label: "Channel",
+                collection: current_user.lists.order(:name),
+                include_blank: "— Leave unchanged —",
+                hint: "Moves them to the end of that channel." %>
+          <%# A select rather than the edit form's free text: a typo here is written into
+              every selected entry at once, and picks the wrong card for all of them. %>
+          <%= f.input :media, collection: %w[movie series anime episode fanedit],
+                include_blank: "— Leave unchanged —" %>
+          <%= f.input :length, as: :integer, label: "Runtime (minutes)" %>
+          <%= f.input :source_url, label: "Source URL",
+                hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL." %>
+          <%= f.input :provider_id, label: "Source provider",
+                collection: [["— Inherit channel default —", BulkEntriesController::INHERIT_PROVIDER]] +
+                            Source.active.order(:position).map { |s| ["#{s.name} (#{s.kind})", s.id] },
+                include_blank: "— Leave unchanged —" %>
+          <%= f.input :source_key, label: "Source key / URL" %>
+          <%= f.input :pic, label: "Poster URL (linked, not stored)" %>
+          <%= f.input :series %>
+          <%= f.input :plot, as: :text %>
+          <%= f.input :imdb %>
+          <%= f.input :category %>
+          <%= f.input :note %>
+          <%= f.input :season, as: :integer %>
+          <%= f.input :episode, as: :integer %>
+          <%= f.button :submit, "Apply to selected", class: 'btn-action' %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

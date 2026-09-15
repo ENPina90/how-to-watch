@@ -191,7 +191,11 @@ class EntriesController < ApplicationController
 
   def edit
     @entry.streamable
-    @user_lists = List.where(user: current_user)
+    # The Channel select moves the entry, so its own channel has to be among the options even
+    # when the editor does not own it -- a default channel, or an admin's edit. Left out, the
+    # browser selects the first channel offered, and a save moves the entry without anyone
+    # having chosen to.
+    @user_lists = ([@entry.list] + List.where(user: current_user).to_a).uniq
     @entry.subentries.build if @entry.media == 'series' || @entry.media == 'anime'
     respond_to do |format|
       format.html
@@ -205,7 +209,6 @@ class EntriesController < ApplicationController
 
   def update
     old_position = @entry.position
-    new_position = entry_params[:position].to_i
 
     # The edit form always offers one blank row for adding an episode. Left untouched it
     # arrives here as an empty set of attributes, and without this it would be saved as a
@@ -229,18 +232,54 @@ class EntriesController < ApplicationController
     # rather than swallowed, because nothing else on the page would show it had failed.
     poster_url = cleaned_params.delete(:poster_url)
 
-    cleaned_params.merge!(list: @entry.list)
+    # The Channel select. The entry's own list used to be merged back over it here, so
+    # picking another channel saved nothing and said nothing. A move goes to the end of the
+    # other channel: the position on the form is a place in this one, and keeping it would
+    # land the entry on top of whatever holds that number there.
+    origin = @entry.list
+
+    # The Position field is a place in the channel's order, not a number to write onto the
+    # row. Saved as a plain attribute it landed on top of whichever entry already held that
+    # number, and the shift meant to make room ran after the save, found the entry already
+    # there, and moved nothing. Taken out here and applied after the save instead.
+    requested_position = cleaned_params.delete(:position)
+
+    requested_list_id = cleaned_params.delete(:list_id)
+    if requested_list_id.present? && requested_list_id.to_i != origin.id
+      destination = List.find_by(id: requested_list_id)
+      return refuse_update('You cannot move entries into that channel.') unless destination && current_user&.can_edit_list?(destination)
+
+      cleaned_params.merge!(list: destination, position: Entry.next_position(destination))
+      # Read before the move, as a delete reads them: afterwards the entry answers for its
+      # new channel, not for the page it is leaving.
+      memberships = section_memberships(@entry)
+    end
+
     if @entry.update(cleaned_params)
-      if old_position != new_position
-        shift_positions(@entry, new_position)
-      end
+      # Only a number that was sent and differs from the one the form was filled with. A
+      # request without a position used to read as 0 and push every entry above this one
+      # down a place -- an edit of the runtime reordered the channel.
+      reordered = destination.nil? &&
+                  requested_position.to_s.strip.match?(/\A-?\d+\z/) &&
+                  requested_position.to_i != old_position &&
+                  move_within_channel!(@entry, requested_position.to_i)
       poster_error = poster_url.present? ? attach_poster_from_url(poster_url)[:error] : nil
+      return moved_away(origin, destination, memberships, poster_error) if destination
+
       respond_to do |format|
         format.turbo_stream do
-          flash.now[:alert] = poster_error if poster_error
-          streams = [turbo_stream.replace(dom_id(@entry), partial: "entries/entry_#{@entry.media.downcase}", locals: { entry: @entry })]
-          streams << turbo_stream.replace('flash', partial: 'shared/flashes') if poster_error
-          render turbo_stream: streams
+          if reordered
+            # Every card between the old place and the new one has changed its number, so
+            # the page is drawn again rather than one card replaced where it used to stand.
+            # Back to the page it came from, so the grouping and the view are kept.
+            flash[:alert] = poster_error if poster_error
+            redirect_back fallback_location: list_path(@entry.list), status: :see_other
+          else
+            flash.now[:alert] = poster_error if poster_error
+            streams = [turbo_stream.replace(dom_id(@entry), partial: "entries/entry_#{@entry.media.downcase}", locals: { entry: @entry })]
+            streams << turbo_stream.replace('flash', partial: 'shared/flashes') if poster_error
+            render turbo_stream: streams
+          end
         end
         format.html do
           flash[:alert] = poster_error if poster_error
@@ -520,36 +559,9 @@ class EntriesController < ApplicationController
     redirect_to watch_entry_path(random_entry, channel: channel.id)
   end
 
+  # Dropping a dragged row. The same move the edit form's Position field makes.
   def update_position
-    visual_position = params[:position].to_i
-    list = @entry.list
-
-    # Get all entries in their current display order
-    ordered_entries = list.all_items_by_position.select { |item| item.is_a?(Entry) }
-
-    # Find the current visual position of this entry
-    current_visual_position = ordered_entries.index(@entry) + 1
-
-    # Clamp the visual position
-    visual_position = [visual_position, 1].max
-    visual_position = [visual_position, ordered_entries.count].min
-
-    if current_visual_position == visual_position
-      head :ok
-      return
-    end
-
-    ActiveRecord::Base.transaction do
-      # Normalize all positions first to ensure they're sequential
-      list.normalize_entry_positions!
-
-      # Now the database positions match visual positions
-      # Reload entry to get normalized position
-      @entry.reload
-
-      shift_positions(@entry, visual_position)
-      @entry.update!(position: visual_position)
-    end
+    move_within_channel!(@entry, params[:position].to_i)
 
     head :ok
   end
@@ -930,6 +942,44 @@ class EntriesController < ApplicationController
       redirect_to watch_entry_path(entry || @entry, channel: watching_channel.id)
     end
 
+    # An entry moved to another channel is gone from the page it was edited on, so it comes
+    # off that page the way a deleted one does -- the count, the card, and any section it
+    # leaves empty. Replacing the card in place, as an ordinary edit does, would leave it
+    # sitting on a channel it no longer belongs to until the next reload.
+    def moved_away(origin, destination, memberships, poster_error)
+      message = "#{@entry.name} moved to #{destination.name}"
+      # What section_stream counts the remaining entries of.
+      @list = origin
+
+      respond_to do |format|
+        format.turbo_stream do
+          flash.now[:notice] = message
+          flash.now[:alert] = poster_error if poster_error
+          render turbo_stream: [
+            turbo_stream.replace('flash', partial: 'shared/flashes'),
+            turbo_stream.replace("header-count-#{origin.id}", partial: 'lists/header_count', locals: { count: origin.total_entry_count, list: origin }),
+            turbo_stream.remove(dom_id(@entry)),
+            turbo_stream.remove("row-#{dom_id(@entry)}")
+          ] + emptied_section_streams(memberships)
+        end
+        format.html do
+          flash[:alert] = poster_error if poster_error
+          redirect_to list_path(origin), notice: message
+        end
+      end
+    end
+
+    # Refused before anything is saved, so the rest of the form is not half applied either.
+    def refuse_update(message)
+      respond_to do |format|
+        format.turbo_stream do
+          flash.now[:alert] = message
+          render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes'), status: :forbidden
+        end
+        format.html { redirect_to list_path(@entry.list), alert: message }
+      end
+    end
+
     def section_memberships(entry)
       ListsController::GROUPING_CRITERIA.to_h do |criteria|
         [criteria, entry.section_keys(criteria, user: current_user)]
@@ -1056,6 +1106,33 @@ class EntriesController < ApplicationController
     rescue ActiveRecord::RecordNotFound
       flash[:error] = 'Entry not found.'
       redirect_back(fallback_location: root_path)
+    end
+
+    # Puts an entry at a place in its channel's order, 1 being the top, and moves the ones in
+    # between along by one. Returns whether anything moved.
+    #
+    # The place is counted in the order the page shows, not read as a raw position: a bulk
+    # import leaves ties and a delete leaves gaps, so the channel is renumbered 1..N first
+    # and the number then means the same thing to the database as it did on the screen.
+    # Ordered by id within a position for the same reason normalize_entry_positions! is.
+    #
+    # `update_column` for the entry's own number: this runs straight after a full save on
+    # the edit form, and saving again would repeat callbacks such as the source URL lookup
+    # for no change.
+    def move_within_channel!(entry, place)
+      list = entry.list
+      ordered_ids = list.entries.order(:position, :id).pluck(:id)
+      target = place.clamp(1, ordered_ids.size)
+      return false if ordered_ids.index(entry.id) + 1 == target
+
+      ActiveRecord::Base.transaction do
+        list.normalize_entry_positions!
+        entry.reload
+        shift_positions(entry, target)
+        entry.update_column(:position, target)
+      end
+
+      true
     end
 
     def shift_positions(entry, new_position)
