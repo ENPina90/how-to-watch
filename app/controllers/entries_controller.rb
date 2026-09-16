@@ -121,6 +121,14 @@ class EntriesController < ApplicationController
       # throw away the name and the runtime that were typed in the same breath.
       attributes = entry_params.to_h
       poster_url = attributes.delete('poster_url')
+      # An uploaded file beats the fetch link, because on the duplicate form that link
+      # opens already holding the original's poster -- which is how a copy keeps a picture
+      # when nothing else is offered, and is a default rather than a choice.
+      #
+      # It was winning over the choices. The fetch runs after the save, so a poster
+      # uploaded for the copy was attached and then immediately replaced by the original's,
+      # and a duplicate could not be given a picture of its own at all.
+      poster_url = nil if attributes['poster'].present?
       # The form's channel dropdown is honoured, and only as far as the member's own
       # channels: it was being read and then overwritten with the channel the form was
       # opened from, so picking another one in it did nothing.
