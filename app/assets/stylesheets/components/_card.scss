@@ -202,28 +202,88 @@
   // has been scrolled cannot go on swallowing the wheel once you have moved off it. The
   // fade goes with it: it says "there is more", and once you can reach the more it is just
   // text that has gone dim.
-  .card-plot--unlocked {
+  .card-plot--unlocked,
+  .card-pane--unlocked {
     overflow-y: auto;
     mask-image: none;
   }
 }
 
-// Built by card_panes_controller.js on first hover rather than shipped in the card markup
-// -- see the note at the top of that file for why a channel page cannot afford to send it
-// ~1,200 times.
+// Everything below is built by card_panes_controller.js on first hover rather than shipped
+// in the card markup -- see the note in `entries/_card_panes.html.erb` for why a channel
+// page cannot afford to send it ~1,200 times.
 
-// Wraps the plot so the caret has something to sit on top of. Takes over the flex sizing
-// the plot had, since the plot now fills it.
+// Wraps the plot so the tab strip and the caret have something to sit on top of. Takes
+// over the flex sizing the plot had, since the plot now fills it.
 .card-panes {
   position: relative;
   flex: 1 0 12vh;
   min-height: 0;
   width: 100%;
 
-  .card-plot {
+  .card-plot,
+  .card-pane {
     flex: none;
     height: 100%;
   }
+}
+
+.card-pane {
+  overflow: hidden;
+  width: 100%;
+  padding-bottom: 64px;
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1),
+    90%,
+    rgba(0, 0, 0, 0.2)
+  );
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// Sits over the top of the synopsis rather than above it: the card's height is fixed and
+// the plot is the only part that can give, so a strip in the flow would cost three lines
+// of synopsis on every card whether or not anybody wanted the tabs.
+.card-tabs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  padding-bottom: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  // Opaque, not a wash: text scrolled up behind the strip has to disappear cleanly rather
+  // than show through it at half strength. The card's own colour, so the strip reads as
+  // part of the card and not as something floating over it.
+  background-color: #0a0a0a;
+}
+
+.card-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 2px 6px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+.card-tab--current {
+  color: #fff;
+  border-bottom-color: currentColor;
 }
 
 // Bottom right, over the fade, where the text it is talking about runs out.
@@ -251,11 +311,23 @@
   }
 }
 
-// Appears only while the pointer is on the card, which is the whole point: a channel page
-// should read as posters and titles until you go looking.
-.grid-card:hover .card-scroll-toggle:not([hidden]) {
-  opacity: 1;
-  pointer-events: auto;
+// Both appear only while the pointer is on the card, which is the whole point: a channel
+// page should read as posters and titles until you go looking.
+.grid-card:hover {
+  .card-tabs,
+  .card-scroll-toggle:not([hidden]) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  // The text moves down out from under the strip rather than being covered by it. The
+  // card's height is fixed and the synopsis is clipped either way, so this costs a line
+  // of text while hovering and hides nothing -- against a strip laid over the first line,
+  // which hid the sentence somebody was in the middle of reading.
+  .card-panes .card-plot,
+  .card-panes .card-pane {
+    padding-top: 26px;
+  }
 }
 
 // Pointing up once scrolling is unlocked, since pressing it again locks it back.
@@ -263,6 +335,140 @@
   transform: rotate(180deg);
 }
 
+.card-pane__list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 0;
+  font-size: 0.8rem;
+
+  dt {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  dd {
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    + a {
+      margin-left: 8px;
+    }
+  }
+}
+
+.card-pane__empty {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+// A plain box that looks like the card until you click into it. A note is a scrap of text
+// somebody adds in passing, so anything that looks like a form to fill in is too much
+// furniture for it.
+.card-pane__note {
+  width: 100%;
+  min-height: 80px;
+  height: calc(100% - 78px);
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  resize: none;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.07);
+  }
+}
+
+.card-pane__note--read {
+  white-space: pre-wrap;
+}
+
+.card-pane__status {
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+
+  &.is-shown {
+    opacity: 0.7;
+  }
+}
+
+.card-review {
+  grid-area: footer;
+  text-align: center;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #0a0a0a;
+}
+
+.card-spacer {
+  // grid-area: header;
+  width: 20vw;
+  // max-width: 800px;
+}
+
+// Poster selector styles
+.poster-option {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  img {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+  }
+}
+
+// Per-card utilities. These were inline `style=` attributes until they were multiplied
+// by ~1,200 cards on the big lists -- and every inline style is also one more reason
+// config/initializers/content_security_policy.rb still needs `style_src :unsafe_inline`.
+.clickable {
+  cursor: pointer;
+}
+
+// Two classes rather than one, so link_controller.js can flip between them without
+// having to read a colour back out of an inline style. Specificity (0,2,0) beats the
+// `.card-menu i { color: #fff }` rule above.
+.fa-link-slash {
+  &.link-ok {
+    color: grey;
+  }
+
+  &.link-broken {
+    color: red;
+  }
+}
+
+.episode-name {
+  font-size: 0.9rem;
+}
+
+/* The two lines a fanedit card carries where a film's carries a year and a rating: what it
+   was cut from, and who cut it. Both may hold an outbound link -- the source film on IMDb
+   or Letterboxd, and the editor's page for the cut -- so the link is underlined rather
+   than recoloured, since the card menu below already owns colour as a signal. */
 .fanedit-origin,
 .fanedit-credit {
   margin-bottom: 4px;

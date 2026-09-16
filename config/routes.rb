@@ -207,9 +207,15 @@ Rails.application.routes.draw do
       # What the player says the file actually runs to. A correction to the catalogue, so a
       # write, so not a GET.
       patch :runtime
+      # The note behind a card's Notes tab. It is a column on the entry -- the channel's
+      # note about the film, not this viewer's -- so it writes shared state, so PATCH.
+      patch :note
       # Reads stay GET: `watch` renders the player page and `fetch_posters` is a lookup.
       get :watch
       get :fetch_posters
+      # The Details and Notes tabs of one card, fetched when one of them is first opened
+      # rather than rendered into all ~1,200 cards on a channel page. A read.
+      get :panes
     end
   end
 

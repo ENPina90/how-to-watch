@@ -9,7 +9,7 @@ class EntriesController < ApplicationController
   include NoPlaybackOnMobile
   skip_before_action :refuse_playback_on_mobile
   before_action :set_list, only: %i[new create csv_template import_csv import_youtube]
-  before_action :set_entry, only: %i[show edit update destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime favorite unfavorite]
+  before_action :set_entry, only: %i[show edit update destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime favorite unfavorite panes note]
   before_action :authenticate_user!, only: %i[favorite unfavorite]
   # Watching is off in the phone view; everything else this controller does is not.
   before_action :refuse_playback_on_mobile, only: :watch
@@ -19,12 +19,12 @@ class EntriesController < ApplicationController
   # this user's own UserEntry/UserEntryPosition row, which a subscriber may do.
   before_action :check_edit_permissions,
                 only: %i[edit update destroy update_poster
-                         update_position reportlink set_source repair_image migrate_poster]
+                         update_position reportlink set_source repair_image migrate_poster note]
   # A spreadsheet writes as many rows as it has lines, and a playlist as many as it has videos,
   # so unlike the one-at-a-time create they ask first whose channel they are filling.
   before_action :check_list_edit_permissions, only: %i[import_csv import_youtube]
   # An entry is as private as the channel it lives in.
-  before_action -> { refuse_guest_on_private!(@entry.list) }, only: %i[show watch]
+  before_action -> { refuse_guest_on_private!(@entry.list) }, only: %i[show watch panes]
 
   # The custom-entry form. There is no search box on it any more: the navbar search is on
   # every page, and its "+ Details" button arrives here with these params so the form opens
@@ -216,6 +216,29 @@ class EntriesController < ApplicationController
         flash.now[:alert] = 'There was a problem'
         render turbo_stream: turbo_stream.replace('flash', partial: 'shared/flashes')
       end
+    end
+  end
+
+  # The Details and Notes tabs of one card. Fetched when a tab is first opened rather than
+  # rendered into every card on the page: a channel draws ~1,200 of them, the payload spec
+  # holds each to a budget, and almost none of these panes are ever looked at.
+  #
+  # A fragment, so no layout. It is injected into the card by the controller that asked
+  # for it, which is also why it is not a turbo frame -- the card already is one, and a
+  # frame inside it would navigate the card rather than fill a tab.
+  def panes
+    render partial: 'entries/card_panes', locals: { entry: @entry }, layout: false
+  end
+
+  # The note behind the Notes tab, saved when the box loses focus. The note is the
+  # channel's note about the film rather than this viewer's -- a column on the entry, which
+  # is why `check_edit_permissions` covers it and a subscriber cannot write one. A member's
+  # own thoughts are the review, and that lives on UserEntry.
+  def note
+    if @entry.update(note: params.require(:entry).permit(:note)[:note])
+      head :no_content
+    else
+      render json: { error: @entry.errors.full_messages.to_sentence }, status: :unprocessable_entity
     end
   end
 

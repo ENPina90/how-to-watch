@@ -19,7 +19,7 @@ module AccessControl
   # scanning a QR code is a different question from who may browse the site.
   BROWSE = {
     'lists' => %w[index show search entry_index nested_entries],
-    'entries' => %w[fetch_posters]
+    'entries' => %w[fetch_posters panes]
   }.freeze
 
   # Watching, on top of browsing: the player itself, and the two ways in -- an entry, and a
