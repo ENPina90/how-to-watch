@@ -72,7 +72,9 @@ export default class extends Controller {
     this.caret.setAttribute("aria-label", "Scroll this card");
     this.caret.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
     this.caret.addEventListener("click", () => this.toggleScroll());
-    this.wrapper.appendChild(this.caret);
+    // The details column rather than the synopsis box: it sits in the gap under the box,
+    // clear of the text it is offering to unroll. See `.card-scroll-toggle`.
+    this.element.appendChild(this.caret);
 
     this.current = "synopsis";
     this.refreshCaret();

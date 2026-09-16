@@ -154,6 +154,11 @@
 
 .card-details {
   position: relative;
+  // A stacking context of its own, so the z-index the tab strip needs to sit over the
+  // synopsis is settled *inside* the card. Without it the strip's `z-index: 2` competed in
+  // the root context with `.layout-title` (2) and the sticky section heading (1), so a card
+  // scrolled up behind the heading painted its tabs on top of it.
+  isolation: isolate;
   grid-area: details;
   flex-grow: 1;
   padding: 16px 16px 16px 16px;
@@ -196,10 +201,11 @@
     width: 100%;
     margin: 0;
     // font-size: 12px;
-    // Room for the tab strip at the top and the caret's strip at the bottom, held open
-    // whether or not either is drawn yet: both arrive on hover, and a synopsis that shifts
-    // as the pointer lands is a page of cards twitching one after another as you cross it.
-    padding: 26px 0 64px;
+    // Room for the tab strip, held open whether or not the strip is drawn yet: it arrives
+    // on hover, and a synopsis that shifts as the pointer lands is a page of cards
+    // twitching one after another as you cross it. Enough of it that the first line is not
+    // sitting against the tabs.
+    padding: 36px 0 64px;
     // Fade out towards bottom of scroll
     mask-image: linear-gradient(
       to bottom,
@@ -270,7 +276,7 @@
   inset: 0;
   overflow: hidden;
   width: 100%;
-  padding-top: 26px;
+  padding-top: 36px;
   // Not the plot's 64px. That much room exists so a paragraph running off the bottom has
   // somewhere to fade out; a list of five fields and a note box just leave a hole.
   padding-bottom: 8px;
@@ -343,13 +349,14 @@
   border-bottom-color: currentColor;
 }
 
-// A strip along the bottom edge with the chevron centred in it, which is the tab strip at
-// the top of the pane answered at the other end.
+// The foot of the details column, below the synopsis box rather than inside it, which is
+// the tab strip at the top answered at the other end.
 //
-// Not a small round button sitting on the text. The synopsis is clipped at the pane's edge
-// rather than ending there, so whatever the last line happens to be runs straight under
-// the control -- a button floating mid-sentence, with words either side of it. A strip
-// takes the line cleanly instead, and the fade was already dimming that much of it.
+// It was a strip across the bottom of the synopsis itself, and before that a round button
+// in the corner. Both sat on the text: the synopsis is clipped at its box edge rather than
+// ending there, so the control landed on whatever line happened to be last and cut the
+// fade in half. There is already a gap under the box -- the box's own bottom margin and
+// the column's padding -- and that is where a control about the text belongs, clear of it.
 .card-scroll-toggle {
   position: absolute;
   left: 0;
@@ -359,13 +366,10 @@
   display: grid;
   place-items: center;
   width: 100%;
-  height: 26px;
+  height: 24px;
   border: 0;
-  background: linear-gradient(
-    to top,
-    #0a0a0a 55%,
-    rgba(10, 10, 10, 0)
-  );
+  // Nothing to mask any more, sitting in clear space.
+  background: none;
   color: rgba(255, 255, 255, 0.75);
   font-size: 0.75rem;
   opacity: 0;
