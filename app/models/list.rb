@@ -205,6 +205,11 @@ class List < ApplicationRecord
 
   scope :with_entries_count, -> { select("lists.*, (#{ENTRIES_COUNT_SQL}) AS entries_count") }
 
+  # Channels with something under them, counted the same way: a channel of channels is not
+  # empty because its own rows are. A condition rather than a filter on the loaded records,
+  # so the rows that are dropped never travel and a `limit` still fills up.
+  scope :non_empty, -> { where("(#{ENTRIES_COUNT_SQL}) > 0") }
+
   # When anything last happened on a channel: it was created or edited, something was added
   # to it, or somebody watched in it. `lists.last_watched_at` sounds like the answer but
   # nothing has written it since progress moved into the per-user tables, so it is read from
@@ -227,8 +232,13 @@ class List < ApplicationRecord
   # can already reach from the sidebar: their own, the ones they subscribe to, and the cable
   # dial, which every account is subscribed to on creation but may since have dropped. Admins
   # still see private channels here, as they always have; a signed-out visitor sees public ones.
+  #
+  # An empty one is left out as well: there is nothing to watch in it, and a card offering a
+  # test card and a count of 0 is not something to find. Its creator still sees it -- their
+  # own channels are the Your Lists row, which this scope has already excluded -- so a channel
+  # part-way through being built is never hidden from the person building it.
   def self.discoverable_by(user)
-    scope = where(default: false)
+    scope = where(default: false).non_empty
     return scope.where(private: [false, nil]) if user.nil?
 
     scope = scope.where.not(user_id: user.id)

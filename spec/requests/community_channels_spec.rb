@@ -82,6 +82,57 @@ RSpec.describe 'The Community Channels row', :needs_provider, type: :request do
     expect(community_row).to include('Hidden')
   end
 
+  # A channel nobody has put anything in yet is not something to find: its card offers a test
+  # card and a count of 0, and there is nothing to play in it. Its creator is the exception --
+  # their own channels are the Your Channels row, which this row already excludes -- so a
+  # channel part-way through being built stays on the page for the person building it.
+  describe 'an empty channel' do
+    # The Your Channels row, read the way community_row reads its own.
+    def your_row
+      row = Nokogiri::HTML(response.body).css('.list-row')
+                    .find { |node| node.at('.row-title')&.text&.strip == 'Your Channels' }
+      row ? row.css('.list-card-name').map { |name| name.text.strip } : []
+    end
+
+    it 'is left out of the row' do
+      create(:list, user: owner, name: 'Nothing Yet')
+
+      get lists_path
+
+      expect(community_row).not_to include('Nothing Yet')
+    end
+
+    it 'is still shown to the member who created it' do
+      create(:list, user: user, name: 'Mine, Empty')
+
+      get lists_path
+
+      expect(your_row).to include('Mine, Empty')
+    end
+
+    it 'is left out for a signed-out visitor too' do
+      channel('Westerns')
+      create(:list, user: owner, name: 'Nothing Yet')
+      sign_out user
+      AppSetting.update_access_mode!('moderate')
+
+      get lists_path
+
+      expect(community_row).to include('Westerns')
+      expect(community_row).not_to include('Nothing Yet')
+    end
+
+    # A channel of channels has nothing of its own, which is not the same as being empty.
+    it 'does not count a channel holding other channels as empty' do
+      hub = create(:list, user: owner, name: 'Frontier')
+      channel('Westerns').add_to_parent(hub)
+
+      get lists_path
+
+      expect(community_row).to include('Frontier')
+    end
+  end
+
   it 'marks the owner and the size with icons rather than words' do
     owner.update!(username: 'wyatt')
     channel('Westerns')
