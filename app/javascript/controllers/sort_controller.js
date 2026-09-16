@@ -18,6 +18,23 @@ export default class extends Controller {
     this.sortable = Sortable.create(this.element, {
       animation: 150,
       handle: ".fa-grip-vertical",
+      // The page follows the row being dragged once it reaches the top or bottom of the
+      // window, so a row can be carried the length of a long channel in one gesture rather
+      // than dropped, regrabbed and dragged again for every screenful.
+      //
+      // `scroll` is on by default and was doing nothing: on a desktop Sortable drags with
+      // the browser's native drag-and-drop, where the browser owns scrolling and the
+      // AutoScroll plugin never runs. forceAutoScrollFallback puts the plugin's own timer
+      // back in charge while leaving the rest of the drag native.
+      //
+      // The sensitivity is generous because the sticky header row covers the top ~135px of
+      // the window: a smaller margin would only be reached after the row in hand had gone
+      // behind it.
+      scroll: true,
+      forceAutoScrollFallback: true,
+      scrollSensitivity: 120,
+      scrollSpeed: 18,
+      bubbleScroll: true,
       onStart: this.pickUp.bind(this),
       onEnd: this.updatePosition.bind(this)
     });
