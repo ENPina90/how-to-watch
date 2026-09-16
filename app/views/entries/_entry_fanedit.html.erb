@@ -17,7 +17,7 @@
           <%= entry_source_badge(entry, viewing: @viewing) %>
           <h5 class="card-header"><bold><%= entry.name %></bold></h5>
         </div>
-        <div class="card-details">
+        <div class="card-details" data-controller="card-panes">
           <%# Not the year and the rating a film's card carries. The year belongs to the
               source film and the rating to a cut nobody catalogues -- on a fanedit it is
               blank, or the original's, carried over by the duplicate it was made from.

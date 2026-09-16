@@ -17,7 +17,7 @@
           <%= entry_source_badge(entry, viewing: @viewing) %>
           <h5 class="card-header"><bold><%= entry.name %></bold></h5>
         </div>
-        <div class="card-details">
+        <div class="card-details" data-controller="card-panes">
           <div class="d-flex justify-content-between">
             <p><%= entry.year %></p>
             <p><%= entry.length %> min</p>

@@ -353,3 +353,14 @@ body.light-mode .page-container .admin-save:hover {
   background-color: #157a5c;
   color: #ffffff !important;
 }
+
+/* The scroll-unlock caret sits over the fade at the bottom of a card's synopsis, so in
+   this theme it needs the cream card's contrast rather than the dark one's. */
+body.light-mode .card-scroll-toggle {
+  background: rgba(255, 255, 255, 0.85);
+  color: rgba(0, 0, 0, 0.6);
+}
+
+body.light-mode .card-scroll-toggle:hover {
+  color: #000000;
+}
