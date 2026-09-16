@@ -215,6 +215,12 @@ body.light-mode .entry-section h3 {
   background-color: #f5f2e8;
 }
 
+/* The bulk toolbar parks under the header row in the minimal view, with the entries passing
+   behind it, so it takes the page's colour the way the section headings do. */
+body.light-mode .bulk-toolbar {
+  background-color: #f5f2e8;
+}
+
 /* Light mode menu */
 body.light-mode .menu li.active {
   background-color: #000000;

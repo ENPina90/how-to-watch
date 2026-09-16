@@ -36,6 +36,9 @@ RSpec.describe 'Viewing the site as another user', :needs_provider, type: :reque
       # The home page shows admins every list, private ones included; everyone else sees
       # only public or subscribed ones.
       secret = create(:list, user: create(:user), name: 'Someone private channel', private: true)
+      # With something in it: the home page leaves an empty channel out of Community Channels
+      # whoever is looking, so an empty one would be missing for a reason this is not about.
+      create(:entry, list: secret, name: 'Stalker', position: 1)
 
       get root_path
       expect(response.body).to include(secret.name)

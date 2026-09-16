@@ -922,6 +922,10 @@ class ListsController < ApplicationController
   def list_params
     permitted = [:name, :description, :ordered, :private, :sort, :parent_list_id, :reviewable, :provider_id, :auto_play, :auto_next, :skip_intro_seconds, :skip_credits_seconds]
     permitted << :default if current_user&.can_set_default?
+    # Handing a channel to somebody else is an admin's doing. Gated here as well as in the
+    # form, because `can_edit_list?` is true for *any* member on a default channel: the edit
+    # page is reachable by people who must not be able to reassign what they are editing.
+    permitted << :user_id if current_user&.admin?
     params.require(:list).permit(permitted)
   end
 

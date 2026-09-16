@@ -71,7 +71,16 @@ module Admin
                   notice: 'Stream check started. Unplayable entries will appear in your notifications.'
     end
 
-    # Unlike the other two, what this finds is not the admin's: each new episode goes to the
+    # The one sweep that asks nothing outside the app -- it reads the catalogue. Enqueued
+    # like the others all the same: it walks every entry and its episodes.
+    def run_runtime_scan
+      MissingRuntimeScanJob.perform_later
+
+      redirect_to admin_dashboard_path,
+                  notice: 'Runtime check started. Entries with no runtime will appear in your notifications.'
+    end
+
+    # Unlike the others, what this finds is not the admin's: each new episode goes to the
     # owner of its channel, who may or may not be whoever pressed the button.
     def run_episode_scan
       NewEpisodeScanJob.perform_later

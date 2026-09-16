@@ -26,6 +26,7 @@ Rails.application.routes.draw do
       # the weekly schedule runs, so there is one implementation and one set of results.
       post :run_poster_scan
       post :run_embed_scan
+      post :run_runtime_scan
       post :run_episode_scan
     end
 
@@ -154,6 +155,9 @@ Rails.application.routes.draw do
     # entry.
     resource :bulk_entries, only: %i[update destroy], controller: 'bulk_entries' do
       patch :move
+      # Watched is per person: unlike the edit and the delete beside it, this writes the
+      # ticked rows into this member's own progress and touches nobody else's view of them.
+      patch :complete
     end
 
     resources :entries, only: [:new, :create] do

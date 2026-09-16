@@ -35,14 +35,24 @@ RSpec.describe MissingRuntimeNotifier do
       expect(data['guess']).to eq(CableSchedule.fallback_minutes(entry))
     end
 
-    # A missing runtime off the dial is untidy; on a channel that plays to a clock it is a
-    # programme that will misbehave. Four hundred warnings nobody reads would bury the
-    # twenty that matter.
-    it 'ignores entries on channels that are not on the dial' do
+    # The sweep covers the catalogue, not only the dial: an entry goes onto a channel long
+    # after it is added, and the time worth hearing about a blank runtime is before that.
+    it 'warns about an entry that is not on the dial' do
       elsewhere = create(:list, name: 'Private', default: false)
       create(:entry, list: elsewhere, name: 'Off Dial', media: 'episode', length: nil)
 
-      expect { described_class.call }.not_to change(Notification, :count)
+      expect { described_class.call }.to change(Notification, :count).by(1)
+    end
+
+    it 'names no channel for an entry nothing schedules' do
+      elsewhere = create(:list, name: 'Private', default: false)
+      entry = create(:entry, list: elsewhere, name: 'Off Dial', media: 'episode', length: nil)
+
+      described_class.call
+      data = Notification.find_by(subject: entry).data
+
+      expect(data['channel']).to be_nil
+      expect(data['list']).to eq('Private')
     end
 
     it 'warns every admin, and nobody else' do
@@ -133,13 +143,15 @@ RSpec.describe MissingRuntimeNotifier do
       expect { described_class.call }.to change(Notification, :count).by(-1)
     end
 
-    it 'retires the warning when the channel comes off the dial' do
+    # Off the dial nothing is guessing at it any more, but the runtime is still missing --
+    # and it will be missing again the moment the channel goes back on.
+    it 'keeps the warning when the channel comes off the dial' do
       scheduled('No Runtime', nil)
       described_class.call
 
       channel.update!(default: false)
 
-      expect { described_class.call }.to change(Notification, :count).by(-1)
+      expect { described_class.call }.not_to change(Notification, :count)
     end
 
     # Dismissal is permanent for a given row, so losing the runtime again has to read as a

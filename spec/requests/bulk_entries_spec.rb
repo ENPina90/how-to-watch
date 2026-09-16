@@ -141,4 +141,60 @@ RSpec.describe 'Bulk entry actions', :needs_provider, type: :request do
       expect(flash[:alert]).to include('Nothing was changed')
     end
   end
+
+  # The odd one out of the three: watched is per person, so this writes UserEntry rows and
+  # leaves the entries -- and everybody else's view of them -- alone.
+  describe 'marking watched' do
+    it 'marks every selected entry watched for the member who asked' do
+      patch complete_list_bulk_entries_path(list), params: { entry_ids: [first.id, second.id] }
+
+      expect(first.reload.completed_by?(user)).to be true
+      expect(second.reload.completed_by?(user)).to be true
+      expect(third.reload.completed_by?(user)).to be false
+      expect(flash[:notice]).to include('Marked 2 entries as watched')
+    end
+
+    it 'marks them for nobody else' do
+      stranger = create(:user)
+
+      patch complete_list_bulk_entries_path(list), params: { entry_ids: [first.id] }
+
+      expect(first.reload.completed_by?(stranger)).to be false
+    end
+
+    # Restamping would drag a film watched last year to the top of "recently completed" for
+    # having been inside a selection.
+    it 'leaves a row that was already watched where it was' do
+      first.mark_completed_by!(user)
+      row = user.user_entry_for(first)
+      row.update_column(:completed_at, 1.year.ago)
+      stamped = row.reload.completed_at
+
+      patch complete_list_bulk_entries_path(list), params: { entry_ids: [first.id, second.id] }
+
+      expect(row.reload.completed_at).to be_within(1.second).of(stamped)
+      expect(flash[:notice]).to include('Marked 1 entry as watched', '1 already was')
+    end
+
+    it 'offers the button in the toolbar' do
+      get list_path(list, view: 'minimal')
+
+      expect(response.body).to include(complete_list_bulk_entries_path(list))
+    end
+
+    it 'is not reachable over GET' do
+      get "/lists/#{list.id}/bulk_entries/complete", params: { entry_ids: [first.id] }
+
+      expect(response).to have_http_status(:not_found)
+      expect(first.reload.completed_by?(user)).to be false
+    end
+
+    it 'marks nothing when the selection is not the member’s to touch' do
+      sign_in create(:user)
+
+      patch complete_list_bulk_entries_path(list), params: { entry_ids: [first.id] }
+
+      expect(first.reload.completed_by?(user)).to be false
+    end
+  end
 end

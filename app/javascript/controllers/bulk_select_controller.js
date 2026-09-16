@@ -13,12 +13,82 @@ import { Controller } from "@hotwired/stimulus";
 export default class extends Controller {
   static targets = ["checkbox", "all", "count", "action"];
 
+  // How far the pointer has to travel before a press counts as a run rather than a click.
+  static PAINT_THRESHOLD = 4;
+
+  connect() {
+    this.onPaintMove = this.paintMove.bind(this);
+    this.onPaintEnd = this.stopPaint.bind(this);
+  }
+
+  disconnect() {
+    this.stopPaint();
+  }
+
   checkboxTargetConnected() {
     this.refresh();
   }
 
   checkboxTargetDisconnected() {
     this.refresh();
+  }
+
+  // Ticking a run of rows in one gesture: press a checkbox, keep holding, and drag down or
+  // up the page. Every row the pointer crosses is set to whatever the first box is becoming
+  // -- press an unticked one and the run ticks, press a ticked one and it unticks.
+  //
+  // Nothing happens until the pointer has actually moved, so a press that does not travel
+  // is still an ordinary click and the browser toggles the box itself. Once it has, this
+  // sets the first box too: a drag released somewhere else fires no click on it, and a run
+  // that left its own origin behind would be the one row the gesture visibly missed.
+  startPaint(event) {
+    if (event.button > 0) return;
+
+    this.paintOrigin = event.currentTarget;
+    this.paintTo = !this.paintOrigin.checked;
+    this.paintFrom = { x: event.clientX, y: event.clientY };
+    this.painting = false;
+
+    document.addEventListener("pointermove", this.onPaintMove);
+    document.addEventListener("pointerup", this.onPaintEnd);
+    document.addEventListener("pointercancel", this.onPaintEnd);
+  }
+
+  paintMove(event) {
+    if (!this.paintOrigin) return;
+
+    if (!this.painting) {
+      const travelled = Math.hypot(event.clientX - this.paintFrom.x, event.clientY - this.paintFrom.y);
+      if (travelled < this.constructor.PAINT_THRESHOLD) return;
+
+      this.painting = true;
+      document.body.classList.add("bulk-painting");
+      this.apply(this.paintOrigin);
+    }
+
+    // The row under the pointer rather than the box: the boxes are a few pixels wide, and a
+    // run drawn down a page should not have to stay inside a column of them.
+    const element = document.elementFromPoint(event.clientX, event.clientY);
+    const row = element && element.closest(".entry-minimal");
+    if (row) this.apply(row.querySelector('[data-bulk-select-target="checkbox"]'));
+  }
+
+  apply(box) {
+    if (!box || box.checked === this.paintTo) return;
+
+    box.checked = this.paintTo;
+    this.refresh();
+  }
+
+  stopPaint() {
+    if (!this.paintOrigin) return;
+
+    this.paintOrigin = null;
+    this.painting = false;
+    document.body.classList.remove("bulk-painting");
+    document.removeEventListener("pointermove", this.onPaintMove);
+    document.removeEventListener("pointerup", this.onPaintEnd);
+    document.removeEventListener("pointercancel", this.onPaintEnd);
   }
 
   get selectedIds() {
@@ -52,6 +122,20 @@ export default class extends Controller {
     const ids = this.selectedIds;
 
     if (ids.length === 0 || !window.confirm(`Delete ${this.entries(ids.length)}? This cannot be undone.`)) {
+      event.preventDefault();
+      return;
+    }
+
+    this.attachIds(event.target, ids);
+  }
+
+  // Marking a run of rows watched. Worth confirming like the others, though it is the one
+  // of the three that can be put back: it writes this member's own progress, and "watched"
+  // on a channel several people share means watched by you.
+  confirmComplete(event) {
+    const ids = this.selectedIds;
+
+    if (ids.length === 0 || !window.confirm(`Mark ${this.entries(ids.length)} as watched?`)) {
       event.preventDefault();
       return;
     }

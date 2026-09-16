@@ -133,21 +133,33 @@ module NotificationsHelper
     channel = notification.data['channel'].presence
     guess = notification.data['guess']
     assumed = guess ? pluralize(guess, 'minute') : 'a flat guess'
-    where = channel ? " on #{channel}" : ''
 
     if (bare = notification.data['episodes_missing'].to_i).positive?
       "#{bare} of its #{notification.data['episodes']} episodes have no runtime recorded, so " \
-        "cable assumes #{assumed} whenever one of them comes up#{where}. #{missing_runtime_harm}"
+        "#{missing_runtime_assumption(channel, assumed)} whenever one of them comes up. " \
+        "#{missing_runtime_harm(channel)}"
     elsif notification.data['episodes'].to_i.zero? && notification.data['media'] == 'series'
-      "It is scheduled#{where} but has no episodes imported and no runtime of its own, so cable " \
-        "assumes #{assumed}. Add its episodes, or set a runtime on the entry."
+      "It has no episodes imported and no runtime of its own, so " \
+        "#{missing_runtime_assumption(channel, assumed)}. Add its episodes, or set a runtime " \
+        'on the entry.'
     else
-      "It is scheduled#{where} with no runtime recorded, so cable assumes #{assumed}. " \
-        "#{missing_runtime_harm}"
+      "It has no runtime recorded, so #{missing_runtime_assumption(channel, assumed)}. " \
+        "#{missing_runtime_harm(channel)}"
     end
   end
 
-  def missing_runtime_harm
+  # On the dial the guess is being made now; off it, it is what would be made the moment
+  # anything schedules the entry -- which is the difference between a fault and a job to do.
+  def missing_runtime_assumption(channel, assumed)
+    channel ? "cable assumes #{assumed} on #{channel}" : "cable would assume #{assumed}"
+  end
+
+  def missing_runtime_harm(channel)
+    unless channel
+      return 'Nothing schedules it yet, so nothing is guessing at it -- filling the runtime ' \
+             'in now keeps it right whenever it does go on a channel.'
+    end
+
     'Where the guess is short the programme is cut off partway through; where it is long ' \
       'the slot outlasts the film and the player starts it again from the beginning.'
   end

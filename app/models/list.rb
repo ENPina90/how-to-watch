@@ -36,6 +36,13 @@ class List < ApplicationRecord
   after_create :auto_subscribe_owner
   after_update :handle_default_subscription_changes
   after_update :handle_privacy_subscription_changes
+  # A favourite has to be a channel you created (User#favorite_list_is_own), so handing one
+  # over leaves the previous owner's favourite pointing at somebody else's channel. Their row
+  # is already written, so nothing complains until that member next saves anything at all --
+  # at which point an unrelated form fails with "must be a channel you created". Released
+  # here rather than in the controller because the column is what "add to favourites" writes
+  # into, whatever moved the channel.
+  after_update :release_stale_favourites, if: :saved_change_to_user_id?
 
   OFFSET = {
       previous: -1,
@@ -205,6 +212,11 @@ class List < ApplicationRecord
 
   scope :with_entries_count, -> { select("lists.*, (#{ENTRIES_COUNT_SQL}) AS entries_count") }
 
+  # Channels with something under them, counted the same way: a channel of channels is not
+  # empty because its own rows are. A condition rather than a filter on the loaded records,
+  # so the rows that are dropped never travel and a `limit` still fills up.
+  scope :non_empty, -> { where("(#{ENTRIES_COUNT_SQL}) > 0") }
+
   # When anything last happened on a channel: it was created or edited, something was added
   # to it, or somebody watched in it. `lists.last_watched_at` sounds like the answer but
   # nothing has written it since progress moved into the per-user tables, so it is read from
@@ -227,8 +239,13 @@ class List < ApplicationRecord
   # can already reach from the sidebar: their own, the ones they subscribe to, and the cable
   # dial, which every account is subscribed to on creation but may since have dropped. Admins
   # still see private channels here, as they always have; a signed-out visitor sees public ones.
+  #
+  # An empty one is left out as well: there is nothing to watch in it, and a card offering a
+  # test card and a count of 0 is not something to find. Its creator still sees it -- their
+  # own channels are the Your Lists row, which this scope has already excluded -- so a channel
+  # part-way through being built is never hidden from the person building it.
   def self.discoverable_by(user)
-    scope = where(default: false)
+    scope = where(default: false).non_empty
     return scope.where(private: [false, nil]) if user.nil?
 
     scope = scope.where.not(user_id: user.id)
@@ -603,6 +620,15 @@ class List < ApplicationRecord
     return if @detached_blob_ids.blank?
 
     ActiveStorage::Blob.where(id: @detached_blob_ids).find_each(&:purge_later)
+  end
+
+  # A channel that has just changed hands takes the previous owner's favourite with it:
+  # nobody may favourite a channel somebody else created, and the rows this clears are
+  # exactly the ones User#favorite_list_is_own would now refuse to save. update_all rather
+  # than a save apiece, since one column is being cleared and every callback on the way
+  # would be reading the channel this one just left.
+  def release_stale_favourites
+    User.where(favorite_list_id: id).where.not(id: user_id).update_all(favorite_list_id: nil)
   end
 
   # Auto-subscribe the owner when creating a list

@@ -224,8 +224,8 @@ RSpec.describe 'The admin dashboard', type: :request do
       expect(response).to redirect_to(new_user_session_path)
     end
   end
-  # The two weekly sweeps, on demand. They are enqueued rather than run in the request:
-  # between them they make a few hundred outbound requests.
+  # The weekly sweeps, on demand. They are enqueued rather than run in the request: between
+  # them they make a few hundred outbound requests, and the runtime one walks every entry.
   describe 'the maintenance sweeps' do
     it 'offers every button to an admin' do
       sign_in admin
@@ -234,7 +234,22 @@ RSpec.describe 'The admin dashboard', type: :request do
 
       expect(response.body).to include(run_poster_scan_admin_dashboard_path)
       expect(response.body).to include(run_embed_scan_admin_dashboard_path)
+      expect(response.body).to include(run_runtime_scan_admin_dashboard_path)
       expect(response.body).to include(run_episode_scan_admin_dashboard_path)
+    end
+
+    it 'enqueues the runtime check' do
+      sign_in admin
+
+      expect { post run_runtime_scan_admin_dashboard_path }
+        .to have_enqueued_job(MissingRuntimeScanJob)
+      expect(response).to redirect_to(admin_dashboard_path)
+    end
+
+    it 'does not let a member start the runtime check' do
+      sign_in create(:user)
+
+      expect { post run_runtime_scan_admin_dashboard_path }.not_to have_enqueued_job(MissingRuntimeScanJob)
     end
 
     it 'enqueues the new episode check' do

@@ -3,9 +3,13 @@
     <%# Outside .entry-minimal-icons, which stay hidden until hover: a ticked box has to
         stay visible, or there is no seeing what a bulk delete is about to take. %>
     <% if current_user&.can_edit_entry?(entry) %>
+      <%# pointerdown starts a run: hold and drag down the page to tick everything the
+          pointer crosses. A press that does not move is left alone, so a plain click still
+          toggles the one box natively. %>
       <input type="checkbox" class="form-check-input mt-0" value="<%= entry.id %>"
              aria-label="Select <%= entry.name %>"
-             data-bulk-select-target="checkbox" data-action="change->bulk-select#refresh">
+             data-bulk-select-target="checkbox"
+             data-action="change->bulk-select#refresh pointerdown->bulk-select#startPaint">
     <% end %>
     <i class="fa-solid fa-grip-vertical entry-minimal-icons"></i>
   </div>
