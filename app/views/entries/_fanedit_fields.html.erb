@@ -6,18 +6,22 @@
     fanedit_fields_controller.js for why, and for what opens it again. `hidden` is enough
     on its own: Bootstrap's reboot carries `[hidden] { display: none !important }`. %>
 <div class="fanedit-fields" data-fanedit-fields-target="panel" <%= 'hidden' unless entry.media == 'fanedit' %>>
-  <%= f.input :fanedit_type, collection: Entry::FANEDIT_TYPES,
-        label: 'Kind of edit', include_blank: '— Not said —' %>
-  <%# The name of the source material, not a link to it. The entry's own IMDb id or
-      Letterboxd slug is what the card links this through, so a fanedit with either one
-      gets the link without anybody pasting it twice. %>
-  <%= f.input :original, label: 'Original',
-        hint: 'What it was cut from. Linked to IMDb or Letterboxd on the card when the entry has an id for it.' %>
-  <%= f.input :faneditor, label: 'Faneditor' %>
-  <%# The editor's page for the cut -- fanedits.org, a forum thread, wherever it was
-      published. Not where it plays from: that is the Source URL above, and the
-      broken-source sweep only knows about that one. %>
-  <%= f.input :fanedit_link, as: :url, label: 'Fanedit link',
-        input_html: { placeholder: 'https://…' },
-        hint: 'Where the edit was published. Not where it plays from.' %>
+  <div class="entry-form__row">
+    <%= f.input :fanedit_type, collection: Entry::FANEDIT_TYPES,
+          label: 'Kind of edit', include_blank: '— Not said —' %>
+    <%# The name of the source material, not a link to it. The entry's own IMDb id or
+        Letterboxd slug is what the card links this through, so a fanedit with either one
+        gets the link without anybody pasting it twice. %>
+    <%= f.input :original, label: 'Original',
+          hint: 'What it was cut from. Linked on the card when the entry has an id for it.' %>
+  </div>
+  <div class="entry-form__row">
+    <%= f.input :faneditor, label: 'Faneditor' %>
+    <%# The editor's page for the cut -- fanedits.org, a forum thread, wherever it was
+        published. Not where it plays from: that is the Source URL, and the broken-source
+        sweep only knows about that one. %>
+    <%= f.input :fanedit_link, as: :url, label: 'Fanedit link',
+          input_html: { placeholder: 'https://…' },
+          hint: 'Where the edit was published. Not where it plays from.' %>
+  </div>
 </div>

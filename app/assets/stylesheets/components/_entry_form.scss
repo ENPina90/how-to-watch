@@ -1,0 +1,137 @@
+/* Layout for the entry forms -- the custom-entry page, the edit modal on a card, and the
+   standalone edit page. All three ask about the same record and were a single column of
+   thirty full-width boxes, which buries the four fields anybody opens the form to change
+   under the twenty-six they do not.
+
+   Three things do the work here: rows that put short fields side by side, <details> for
+   the fields that are only occasionally wanted, and the poster tabs. Nothing is removed --
+   everything the forms asked before, they still ask. */
+
+/* A row of fields. `auto-fit` rather than a fixed count so the same markup works in a
+   narrow modal and on the full-width page: fields drop to the next line when there is no
+   room rather than being squeezed to nothing. simple_form gives every input a `.mb-3`
+   wrapper, which is what these are laying out. */
+.entry-form__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--entry-field-min, 150px), 1fr));
+  gap: 0 16px;
+}
+
+/* For rows of small numbers -- season, episode, runtime -- which do not need 150px to
+   read and look absurd stretched across a third of the form. */
+.entry-form__row--narrow {
+  --entry-field-min: 96px;
+}
+
+/* The heading on a group that is not a <details>: the poster block, the episode list. */
+.entry-form__legend {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* "More fields", and the source settings. A native <details>, so the disclosure costs no
+   JavaScript, no id to wire a toggle to, and works in a modal that is injected into the
+   page after load. */
+.entry-form__more {
+  margin: 4px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.entry-form__more > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Both are needed to be rid of the default triangle: Safari uses the pseudo-element. */
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.75;
+  user-select: none;
+}
+
+.entry-form__more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.entry-form__more > summary:hover {
+  opacity: 1;
+}
+
+.entry-form__more > summary i {
+  font-size: 0.7rem;
+  transition: transform 0.15s ease;
+}
+
+.entry-form__more[open] > summary {
+  margin-bottom: 12px;
+}
+
+.entry-form__more[open] > summary i {
+  transform: rotate(180deg);
+}
+
+/* The poster block: a thumbnail of what is there now, then the three ways to replace it. */
+.entry-form__poster {
+  margin-bottom: 16px;
+}
+
+.entry-form__poster-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.entry-form__poster-thumb {
+  width: 48px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+
+.poster-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.poster-tab {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.65;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.poster-tab:hover {
+  opacity: 1;
+}
+
+.poster-tab--current {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.35);
+  opacity: 1;
+}
+
+/* One episode of a series, in the edit modal. Sixty-six of these stacked six boxes deep is
+   why the modal scrolled for a minute; ruled into blocks, each is four lines. */
+.entry-form__episode {
+  margin-bottom: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
