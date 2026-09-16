@@ -23,6 +23,12 @@
   border-bottom: 1px solid rgba(128, 128, 128, 0.3);
 }
 
+// Dragging across the checkboxes selects the rows the pointer crosses, and a drag across
+// text otherwise selects the text instead.
+body.bulk-painting {
+  user-select: none;
+}
+
 .bulk-toolbar__all {
   display: flex;
   align-items: center;
