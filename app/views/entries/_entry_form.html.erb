@@ -4,11 +4,16 @@
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
   </div>
   <div class="modal-body">
-    <%= simple_form_for(entry) do |f|%>
+    <%= simple_form_for(entry, html: { data: { controller: "fanedit-fields" } }) do |f|%>
       <%= f.input :list_id, collection: @user_lists, selected: entry.list.id %>
       <%= f.input :position %>
       <%= f.input :name %>
-      <%= f.input :media %>
+      <%# A select rather than free text. Typed by hand this took anything, and a value
+          outside Entry::MEDIA_TYPES is an entry whose card cannot be drawn -- `media` is
+          half a partial name. %>
+      <%= f.input :media, collection: Entry.media_options,
+            input_html: { data: { fanedit_fields_target: "media", action: "change->fanedit-fields#toggle" } } %>
+      <%= render "entries/fanedit_fields", f: f, entry: entry %>
       <%# What the cable schedule lays a slot out by. Left blank it falls back to a flat
           guess, and a guess that is short cuts the programme off partway through. %>
       <%= f.input :length, label: "Runtime (minutes)", hint: runtime_hint_for(entry) %>

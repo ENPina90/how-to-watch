@@ -22,8 +22,34 @@ class Entry < ApplicationRecord
   # subentries, so the has_many above already removes it. Destroying it a second
   # time (after the bulk delete) would just re-run callbacks against a dead row.
   belongs_to :current, class_name: 'Subentry', optional: true
+  # Every media value the app can actually draw. `entries/_entry_#{media}` is a partial
+  # name, so a row saved as anything outside this set is an entry with no card -- which is
+  # how "show" and "other" used to get in, both offered by a form and neither renderable.
+  #
+  # The single source for it: the entry forms, the bulk editor and the CSV template all
+  # read this rather than each carrying a list of their own, because a value added to one
+  # copy and not the others is a choice that saves a row nothing else will draw.
+  MEDIA_TYPES = %w[fanedit movie series anime episode].freeze
+
+  # The same set as a select's options, in the order the forms offer them -- fanedit first,
+  # because the hand-made entry form exists mostly for fanedits and defaults to one.
+  def self.media_options = MEDIA_TYPES.map { |type| [type.capitalize, type] }
+
+  # What kind of cut a fanedit is. Not a database constraint: this is vocabulary, and
+  # vocabulary grows -- a new kind should be a line here, not a migration. Stored as the
+  # label itself rather than a code, so the card can print it without a lookup table.
+  FANEDIT_TYPES = ['TV-to-Movie', 'Movie-to-TV', 'FanFix', 'FanMix', 'Extended Edition'].freeze
+
   validates :name, presence: true, uniqueness: { scope: [:list, :series] }
   validates :media, presence: true
+  # `media` itself is deliberately not validated against MEDIA_TYPES: the importers and the
+  # OMDB path write it from data this app does not control, and rejecting a row outright
+  # over a card it cannot draw would lose the entry entirely. The forms offer the set as a
+  # dropdown instead, which is where the typos were coming from.
+  #
+  # `fanedit_type` is validated, because nothing writes it but the form. Blank is allowed:
+  # every fanedit already in the database has none, and describing a cut is optional.
+  validates :fanedit_type, inclusion: { in: FANEDIT_TYPES }, allow_blank: true
 
   accepts_nested_attributes_for :subentries, allow_destroy: true
 

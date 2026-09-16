@@ -1,6 +1,11 @@
-<%= simple_form_for(@entry) do |f|%>
+<%= simple_form_for(@entry, html: { data: { controller: "fanedit-fields" } }) do |f|%>
   <%= f.input :list, collection: List.where(user: current_user), selected: @entry.list.id %>
   <%= f.input :name %>
+  <%# The same select the modal and the new-entry form offer, for the same reason: a media
+      value outside Entry::MEDIA_TYPES is half a partial name that does not exist. %>
+  <%= f.input :media, collection: Entry.media_options,
+        input_html: { data: { fanedit_fields_target: "media", action: "change->fanedit-fields#toggle" } } %>
+  <%= render "entries/fanedit_fields", f: f, entry: @entry %>
   <%= f.input :source_url, label: "Source URL", hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
   <%= f.input :pic, label: "Poster URL (linked, not stored)" %>
   <%= f.input :poster_url, as: :url, label: "Fetch a poster from a link",

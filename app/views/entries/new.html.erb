@@ -102,13 +102,16 @@
 
   <div class="row justify-content-center list-layout">
     <div class="col-8">
-      <%= simple_form_for([@list, @entry], custom: true, html: { id: 'custom-entry-form' }) do |f| %>
+      <%= simple_form_for([@list, @entry], custom: true,
+                         html: { id: 'custom-entry-form', data: { controller: 'fanedit-fields' } }) do |f| %>
         <%= f.input :list_id, label: 'Channel', collection: @user_lists, selected: @entry.list_id || @list.id %>
         <%= f.input :name %>
-        <%# The values the app can actually draw: `entries/entry_#{media}` is a partial name,
-            so an entry saved as anything outside this set has no card. The two that were
-            offered here before -- `show` and `other` -- were both outside it. %>
-        <%= f.input :media, collection: [['Fanedit', 'fanedit'], ['Movie', 'movie'], ['Series', 'series'], ['Anime', 'anime'], ['Episode', 'episode']] %>
+        <%# The values the app can actually draw -- Entry::MEDIA_TYPES, which is also what
+            the edit form, the bulk editor and the CSV template offer. `entries/_entry_#{media}`
+            is a partial name, so an entry saved as anything outside that set has no card. %>
+        <%= f.input :media, collection: Entry.media_options,
+              input_html: { data: { fanedit_fields_target: 'media', action: 'change->fanedit-fields#toggle' } } %>
+        <%= render 'entries/fanedit_fields', f: f, entry: @entry %>
         <%= f.input :source_url, label: 'Source URL',
               input_html: { value: @entry.current_source_url },
               hint: 'Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id.' %>

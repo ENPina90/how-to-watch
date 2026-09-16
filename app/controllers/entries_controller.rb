@@ -1174,6 +1174,13 @@ class EntriesController < ApplicationController
         :rating,
         :length,
         :media,
+        # Fanedit-only, and always permitted: the form leaves them in place when the media
+        # select is moved off fanedit (see fanedit_fields_controller.js), so they arrive on
+        # every entry type and are simply not drawn on the ones they mean nothing for.
+        :original,
+        :faneditor,
+        :fanedit_link,
+        :fanedit_type,
         :source_url,
         :provider_id,
         :source_key,
