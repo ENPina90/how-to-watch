@@ -24,6 +24,23 @@ RSpec.describe 'Missing runtime notices' do
     expect(response.body).to include('The Worm', 'Annals', '30 minutes')
   end
 
+  # Most of what the sweep finds is on no channel yet, so the card has to say what would be
+  # assumed rather than describe a schedule that does not exist.
+  it 'says what would be assumed for an entry nothing schedules' do
+    shelved = create(:entry, list: create(:list, name: 'Shelf'), name: 'Unscheduled', length: nil)
+    Notification.create!(user: admin, kind: Notification::MISSING_RUNTIME, subject: shelved,
+                         dedupe_key: "missing_runtime:#{shelved.id}",
+                         data: { 'name' => 'Unscheduled', 'list' => 'Shelf', 'channel' => nil,
+                                 'media' => 'movie', 'guess' => 100 })
+
+    sign_in admin
+
+    get notifications_path
+
+    expect(response.body).to include('Unscheduled')
+    expect(response.body).to include('would assume 100 minutes')
+  end
+
   it 'sends you to the entry, and gets out of the way when you go' do
     sign_in admin
 
