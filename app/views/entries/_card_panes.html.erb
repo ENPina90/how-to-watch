@@ -37,7 +37,7 @@
     film, which is why it is a column on entries and why only somebody who may edit the
     entry may write it. Everybody else reads it. Per-person thoughts are what the review is
     for, and that lives on UserEntry. %>
-<div class="card-pane__section" data-card-panes-pane="notes" hidden>
+<div class="card-pane__section card-pane__section--notes" data-card-panes-pane="notes" hidden>
   <% if current_user&.can_edit_entry?(entry) %>
     <textarea class="card-pane__note" data-card-panes-target="note"
               aria-label="Note on <%= entry.name %>"

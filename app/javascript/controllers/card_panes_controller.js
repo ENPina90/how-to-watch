@@ -93,6 +93,9 @@ export default class extends Controller {
 
     this.plot.hidden = name !== "synopsis";
     this.pane.hidden = name === "synopsis";
+    // The fade says "there is more below" and belongs to flowing text. Over a box somebody
+    // is about to type in it just looks like the bottom of the card has failed to paint.
+    this.pane.classList.toggle("card-pane--notes", name === "notes");
 
     if (name === "synopsis") {
       this.refreshCaret();

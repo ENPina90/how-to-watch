@@ -185,7 +185,16 @@
     // height: 30%;
     flex: 1 0 12vh;
     // font-size: 12px;
+    // Room for the tab strip, held open whether or not the strip is drawn yet. The tabs
+    // arrive on hover, so reserving the line only then made the synopsis jump down as the
+    // pointer landed -- a page of cards twitching one after another as you move across it.
+    // It costs a line of synopsis on every card, which is the cheaper of the two.
+    padding-top: 26px;
     padding-bottom: 64px;
+    // Pinned rather than left to the `<p>` default, because the wrapper below has to be
+    // able to stand in for this box exactly: the strip is built by wrapping the plot, and
+    // a wrapper with a different margin would move the card's contents on first hover.
+    margin-bottom: 1rem;
     // Fade out towards bottom of scroll
     mask-image: linear-gradient(
       to bottom,
@@ -214,24 +223,36 @@
 // page cannot afford to send it ~1,200 times.
 
 // Wraps the plot so the tab strip and the caret have something to sit on top of. Takes
-// over the flex sizing the plot had, since the plot now fills it.
+// over the box the plot had -- the same flex sizing and the same margin -- so that
+// wrapping it on first hover moves nothing.
 .card-panes {
   position: relative;
   flex: 1 0 12vh;
   min-height: 0;
   width: 100%;
+  margin-bottom: 1rem;
 
+  // Both panes are taken out of the flow and pinned to the wrapper, so neither can be the
+  // thing that decides how tall the card is. Left in the flow, the note box's minimum
+  // height pushed the whole details column down when the Notes tab was opened, and a card
+  // that changes shape depending on which tab you left it on is not a card.
   .card-plot,
   .card-pane {
+    position: absolute;
+    inset: 0;
     flex: none;
-    height: 100%;
+    height: auto;
+    margin-bottom: 0;
   }
 }
 
 .card-pane {
   overflow: hidden;
   width: 100%;
-  padding-bottom: 64px;
+  padding-top: 26px;
+  // Not the plot's 64px. That much room exists so a paragraph running off the bottom has
+  // somewhere to fade out; a list of five fields and a note box just leave a hole.
+  padding-bottom: 8px;
   mask-image: linear-gradient(
     to bottom,
     rgba(0, 0, 0, 1),
@@ -244,6 +265,18 @@
   }
 }
 
+// The note box fills what it is given rather than being sized by hand, and nothing fades:
+// a box you type into with a dimmed bottom edge looks like a rendering fault.
+.card-pane--notes {
+  mask-image: none;
+}
+
+.card-pane__section--notes {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 // Sits over the top of the synopsis rather than above it: the card's height is fixed and
 // the plot is the only part that can give, so a strip in the flow would cost three lines
 // of synopsis on every card whether or not anybody wanted the tabs.
@@ -254,7 +287,6 @@
   right: 0;
   z-index: 2;
   display: flex;
-  gap: 4px;
   padding-bottom: 6px;
   opacity: 0;
   pointer-events: none;
@@ -266,10 +298,14 @@
 }
 
 .card-tab {
+  // An equal share of the width each, rather than three words bunched at the left: the
+  // strip reads as the three things the card can show, so it should span what it governs.
+  flex: 1;
+  text-align: center;
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
-  padding: 2px 6px;
+  padding: 2px 4px;
   color: rgba(255, 255, 255, 0.55);
   font-size: 0.7rem;
   font-weight: 600;
@@ -286,11 +322,12 @@
   border-bottom-color: currentColor;
 }
 
-// Bottom right, over the fade, where the text it is talking about runs out.
+// Centred on the bottom edge, over the fade, where the text it is talking about runs out.
 .card-scroll-toggle {
   position: absolute;
-  right: 4px;
+  left: 50%;
   bottom: 4px;
+  transform: translateX(-50%);
   z-index: 2;
   display: grid;
   place-items: center;
@@ -320,19 +357,12 @@
     pointer-events: auto;
   }
 
-  // The text moves down out from under the strip rather than being covered by it. The
-  // card's height is fixed and the synopsis is clipped either way, so this costs a line
-  // of text while hovering and hides nothing -- against a strip laid over the first line,
-  // which hid the sentence somebody was in the middle of reading.
-  .card-panes .card-plot,
-  .card-panes .card-pane {
-    padding-top: 26px;
-  }
 }
 
-// Pointing up once scrolling is unlocked, since pressing it again locks it back.
+// Pointing up once scrolling is unlocked, since pressing it again locks it back. The
+// centring translate has to be restated: one transform property, not two.
 .card-scroll-toggle--unlocked {
-  transform: rotate(180deg);
+  transform: translateX(-50%) rotate(180deg);
 }
 
 .card-pane__list {
@@ -373,8 +403,11 @@
 // furniture for it.
 .card-pane__note {
   width: 100%;
-  min-height: 80px;
-  height: calc(100% - 78px);
+  // Fills the pane under the tabs, less whatever the status line takes. It was sized with
+  // a height calculation and a minimum, which between them could ask for more room than
+  // the card had.
+  flex: 1;
+  min-height: 0;
   padding: 6px 8px;
   border: 1px solid transparent;
   border-radius: 4px;
