@@ -3,7 +3,7 @@
   <%= f.input :name %>
   <%# The same select the modal and the new-entry form offer, for the same reason: a media
       value outside Entry::MEDIA_TYPES is half a partial name that does not exist. %>
-  <%= f.input :media, collection: Entry.media_options,
+  <%= f.input :media, collection: Entry.media_options, include_blank: false,
         input_html: { data: { fanedit_fields_target: "media", action: "change->fanedit-fields#toggle" } } %>
   <%= render "entries/fanedit_fields", f: f, entry: @entry %>
   <%= f.input :source_url, label: "Source URL", hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>

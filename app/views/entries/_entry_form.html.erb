@@ -11,7 +11,7 @@
       <%# A select rather than free text. Typed by hand this took anything, and a value
           outside Entry::MEDIA_TYPES is an entry whose card cannot be drawn -- `media` is
           half a partial name. %>
-      <%= f.input :media, collection: Entry.media_options,
+      <%= f.input :media, collection: Entry.media_options, include_blank: false,
             input_html: { data: { fanedit_fields_target: "media", action: "change->fanedit-fields#toggle" } } %>
       <%= render "entries/fanedit_fields", f: f, entry: entry %>
       <%# What the cable schedule lays a slot out by. Left blank it falls back to a flat

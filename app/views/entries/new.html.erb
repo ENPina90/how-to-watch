@@ -109,7 +109,7 @@
         <%# The values the app can actually draw -- Entry::MEDIA_TYPES, which is also what
             the edit form, the bulk editor and the CSV template offer. `entries/_entry_#{media}`
             is a partial name, so an entry saved as anything outside that set has no card. %>
-        <%= f.input :media, collection: Entry.media_options,
+        <%= f.input :media, collection: Entry.media_options, include_blank: false,
               input_html: { data: { fanedit_fields_target: 'media', action: 'change->fanedit-fields#toggle' } } %>
         <%= render 'entries/fanedit_fields', f: f, entry: @entry %>
         <%= f.input :source_url, label: 'Source URL',

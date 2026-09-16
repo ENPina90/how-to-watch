@@ -55,6 +55,11 @@ class EntriesController < ApplicationController
       flash.now[:alert] = prefill.error if prefill.error
     end
 
+    # What `create` falls back to anyway, said here so the form agrees with it. Left blank
+    # the select opened on nothing, the fanedit fields stayed folded away, and pressing
+    # Create Entry saved a fanedit whose four fanedit fields had never been on screen.
+    @entry.media = 'fanedit' if @entry.media.blank?
+
     # The channel being filled comes first whether or not it is the member's own, so the
     # dropdown cannot open showing a channel other than the one they are standing on.
     @user_lists = template_lists
