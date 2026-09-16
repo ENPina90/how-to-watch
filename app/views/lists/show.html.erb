@@ -62,6 +62,13 @@
                              placeholder: "Search this channel" %>
         <% end %>
       </div>
+      <%# Whose channel this is, in the space the two groups of buttons leave between them.
+          Its own flex child rather than anything absolutely positioned, so it is centred on
+          what is actually left over and cannot end up under a button. %>
+      <p class="list-byline">
+        By <%= link_to @list.user.display_name, member_path(@list.user) %>
+      </p>
+
       <div class="list-options">
         <div data-controller="view-toggle" data-view-toggle-url-value="<%= request.path %>">
           <% if params[:view] == "minimal" %>
