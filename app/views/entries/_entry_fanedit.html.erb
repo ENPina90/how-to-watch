@@ -30,7 +30,16 @@
           <% if credit %>
             <p class="fanedit-credit"><%= credit %></p>
           <% end %>
-          <p class="mb-4"><small><%= entry.genre %></small></p>
+          <%# Genre and runtime share a row the way the year and the rating used to. The
+              runtime is the one number on a fanedit that is about the cut rather than the
+              film it came from -- and it is what the cable schedule lays the slot out by,
+              so a blank one here is the thing to go and fill in. %>
+          <div class="d-flex justify-content-between">
+            <p class="mb-4"><small><%= entry.genre %></small></p>
+            <% if entry.length.present? %>
+              <p class="mb-4"><small><%= entry.length %> min</small></p>
+            <% end %>
+          </div>
           <p class="card-plot"><%= entry.plot %></p>
         </div>
         <div class="card-menu">
