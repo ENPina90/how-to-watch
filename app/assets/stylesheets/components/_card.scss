@@ -248,3 +248,29 @@
 .episode-name {
   font-size: 0.9rem;
 }
+
+/* The two lines a fanedit card carries where a film's carries a year and a rating: what it
+   was cut from, and who cut it. Both may hold an outbound link -- the source film on IMDb
+   or Letterboxd, and the editor's page for the cut -- so the link is underlined rather
+   than recoloured, since the card menu below already owns colour as a signal. */
+.fanedit-origin,
+.fanedit-credit {
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+.fanedit-credit {
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.fanedit-origin a,
+.fanedit-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    text-decoration-thickness: 2px;
+  }
+}
