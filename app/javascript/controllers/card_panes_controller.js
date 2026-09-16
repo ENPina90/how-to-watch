@@ -37,19 +37,16 @@ export default class extends Controller {
     this.card.removeEventListener("mouseleave", this.onLeave);
   }
 
-  // First hover only. Wraps the plot so the strip and the caret have something to be
-  // absolutely positioned against, and leaves the plot itself otherwise untouched.
+  // First hover only. The box everything here sits in is already in the card markup -- a
+  // card has to be exactly the same shape before the pointer arrives as after it, and the
+  // only way to be sure of that is for the layout not to change at all. This fills it.
   build() {
     if (this.built) return;
     this.built = true;
 
-    this.plot = this.element.querySelector(".card-plot");
+    this.wrapper = this.element.querySelector(".card-panes");
+    this.plot = this.wrapper?.querySelector(".card-plot");
     if (!this.plot) return;
-
-    this.wrapper = document.createElement("div");
-    this.wrapper.className = "card-panes";
-    this.plot.parentNode.insertBefore(this.wrapper, this.plot);
-    this.wrapper.appendChild(this.plot);
 
     this.pane = document.createElement("div");
     this.pane.className = "card-pane";

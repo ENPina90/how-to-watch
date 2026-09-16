@@ -181,25 +181,16 @@
     // A long plot is clipped and faded, and the caret below unlocks scrolling for the one
     // card you ask.
     overflow: hidden;
-    width: 100%;
-    // height: 30%;
-    // Allowed to shrink (it was `1 0 12vh`). With shrink off, a card whose rows above the
-    // synopsis ran tall -- a genre that wraps, a narrow column -- could not give the space
-    // back, so the synopsis held its 12vh, the details column overflowed and the card grew
-    // to fit. The synopsis is clipped text: it is the one part of a card that should give.
-    flex: 1 1 12vh;
-    min-height: 0;
+    // Pinned to `.card-panes`, which is the flex item and owns the sizing. The plot is
+    // never the thing deciding how tall a card is.
+    position: absolute;
+    inset: 0;
+    margin: 0;
     // font-size: 12px;
-    // Room for the tab strip, held open whether or not the strip is drawn yet. The tabs
-    // arrive on hover, so reserving the line only then made the synopsis jump down as the
-    // pointer landed -- a page of cards twitching one after another as you move across it.
-    // It costs a line of synopsis on every card, which is the cheaper of the two.
-    padding-top: 26px;
-    padding-bottom: 64px;
-    // Pinned rather than left to the `<p>` default, because the wrapper below has to be
-    // able to stand in for this box exactly: the strip is built by wrapping the plot, and
-    // a wrapper with a different margin would move the card's contents on first hover.
-    margin-bottom: 1rem;
+    // Room for the tab strip at the top and the caret's strip at the bottom, held open
+    // whether or not either is drawn yet: both arrive on hover, and a synopsis that shifts
+    // as the pointer lands is a page of cards twitching one after another as you cross it.
+    padding: 26px 0 64px;
     // Fade out towards bottom of scroll
     mask-image: linear-gradient(
       to bottom,
@@ -223,36 +214,36 @@
   }
 }
 
-// Everything below is built by card_panes_controller.js on first hover rather than shipped
-// in the card markup -- see the note in `entries/_card_panes.html.erb` for why a channel
-// page cannot afford to send it ~1,200 times.
+// The box below is in the card markup. Everything that goes *inside* it -- the tab strip,
+// the caret, the fetched pane -- is built by card_panes_controller.js on first hover, and
+// none of it affects the card's layout, which is the point of the split. See the note in
+// `entries/_card_panes.html.erb` for why a channel page cannot afford to send it ~1,200
+// times.
 
-// Wraps the plot so the tab strip and the caret have something to sit on top of. Takes
-// over the box the plot had -- the same flex sizing and the same margin -- so that
-// wrapping it on first hover moves nothing.
+// The synopsis's box, and what the tab strip, the caret and the fetched pane are all
+// positioned against. It is in the card markup rather than wrapped around the plot on
+// first hover: a card has to be exactly the same shape before the pointer arrives as
+// after it, and the only way to be sure of that is for nothing about the layout to change.
+//
+// It is the flex item of the details column and everything inside it is out of the flow,
+// so no pane can be the thing that decides how tall a card is -- which is what the note
+// box, with its minimum height, had been doing.
+//
+// Shrink is on (it was `1 0 12vh` when the plot carried this). With it off, a card whose
+// rows above the synopsis ran tall could not give the space back: the synopsis kept its
+// 12vh, the details column overflowed, and the card grew to fit. Clipped text is the one
+// part of a card that should give.
 .card-panes {
   position: relative;
-  // The same as the plot it stands in for, shrink included -- see the note there.
   flex: 1 1 12vh;
   min-height: 0;
   width: 100%;
   margin-bottom: 1rem;
-
-  // Both panes are taken out of the flow and pinned to the wrapper, so neither can be the
-  // thing that decides how tall the card is. Left in the flow, the note box's minimum
-  // height pushed the whole details column down when the Notes tab was opened, and a card
-  // that changes shape depending on which tab you left it on is not a card.
-  .card-plot,
-  .card-pane {
-    position: absolute;
-    inset: 0;
-    flex: none;
-    height: auto;
-    margin-bottom: 0;
-  }
 }
 
 .card-pane {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   width: 100%;
   padding-top: 26px;

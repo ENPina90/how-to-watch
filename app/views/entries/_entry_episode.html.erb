@@ -31,7 +31,15 @@
             <p><%= entry.length %> min</p>
             <p class="mb-2"><%= entry.rating %></p>
           </div>
-          <p class="card-plot"><%= entry.plot %></p>
+          <%# The box the synopsis lives in, and the one the tab strip and the scroll
+              caret are positioned against. Here rather than wrapped around the plot by
+              card_panes_controller.js on first hover: built there, the card was one shape
+              before the pointer arrived and another after it, and every way of making the
+              wrapper stand in for the plot exactly was a rule that had to be kept in step
+              with the plot's own. Two tags per card is the cheaper answer. %>
+          <div class="card-panes">
+            <p class="card-plot"><%= entry.plot %></p>
+          </div>
         </div>
         <div class="card-menu">
           <% if entry.trailer.present? %>
