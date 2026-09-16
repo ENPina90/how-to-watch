@@ -122,18 +122,25 @@
                 </div>
               <% end %>
             <% end %>
-            <%= link_to list_path(list), class: "text-decoration-none list-info-link" do %>
-              <div class="list-card-info">
-                <div class="list-card-text">
-                  <p class="list-card-name"><%= list.name %></p>
-                  <p class="list-card-meta">
-                    <i class="fa-solid fa-square-caret-right"></i> <%= list.entries_count %> ·
-                    <i class="fa-solid fa-user"></i> <%= list.user.username || list.user.email.split('@').first %>
-                  </p>
-                </div>
-                <i class="fa-solid fa-list list-info-icon"></i>
+            <%# The card's info block used to be one link to the channel, owner's name and
+                all. The name is a link of its own now -- to whoever made the channel -- and
+                an anchor cannot hold another anchor, so the block is a div and the two
+                links inside it say where each goes. `display_name` rather than the
+                username-or-email-prefix this repeated by hand: the same answer, from the
+                one place that gives it. %>
+            <div class="list-card-info list-info-link">
+              <div class="list-card-text">
+                <%= link_to list.name, list_path(list), class: "list-card-name" %>
+                <p class="list-card-meta">
+                  <i class="fa-solid fa-square-caret-right"></i> <%= list.entries_count %> ·
+                  <i class="fa-solid fa-user"></i>
+                  <%= link_to list.user.display_name, member_path(list.user), class: "list-card-owner" %>
+                </p>
               </div>
-            <% end %>
+              <%= link_to list_path(list), class: "text-decoration-none", aria: { label: "Open #{list.name}" } do %>
+                <i class="fa-solid fa-list list-info-icon"></i>
+              <% end %>
+            </div>
           </div>
         <% end %>
       </div>

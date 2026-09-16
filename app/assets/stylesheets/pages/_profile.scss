@@ -67,3 +67,57 @@
   font-size: 0.85rem;
   opacity: 0.75;
 }
+
+/* A member's public page (`/members/:id`), which shares the header and the stat row with
+   the settings page above and adds a watch history. */
+.profile-letterboxd {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.watch-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.watch-history__row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.watch-history__mark {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+}
+
+.watch-history__mark--done {
+  color: #1a936f;
+}
+
+.watch-history__mark--started {
+  opacity: 0.45;
+}
+
+/* Takes the slack, so the date stays against the right-hand edge however long the title. */
+.watch-history__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.watch-history__channel {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  opacity: 0.5;
+}
+
+.watch-history__when {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  white-space: nowrap;
+}

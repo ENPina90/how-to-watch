@@ -1,0 +1,64 @@
+<%# Somebody else's page: what they have made, what they have watched, and how to find them
+    elsewhere. Deliberately read-only -- your own settings are at /profile, and nothing here
+    is editable by whoever is looking at it. %>
+<div class="profile-page">
+  <header class="profile-header">
+    <h1><%= @member.display_name %></h1>
+    <p class="profile-header__email">
+      Here since <%= @member.created_at.strftime('%B %Y') %>
+      <% if (letterboxd = @member.letterboxd_profile_url) %>
+        ·
+        <%# Somebody else's site, so a new tab, and `noopener` because a new tab wants it. %>
+        <%= link_to letterboxd, target: '_blank', rel: 'noopener noreferrer', class: 'profile-letterboxd' do %>
+          <i class="fa-brands fa-square-letterboxd"></i> Letterboxd
+        <% end %>
+      <% end %>
+    </p>
+  </header>
+
+  <section class="profile-stats">
+    <div class="profile-stat">
+      <span class="profile-stat__value"><%= @lists_count %></span>
+      <span class="profile-stat__label"><%= 'channel'.pluralize(@lists_count) %></span>
+    </div>
+    <div class="profile-stat">
+      <span class="profile-stat__value"><%= @entries_count %></span>
+      <span class="profile-stat__label"><%= 'entry'.pluralize(@entries_count) %> added</span>
+    </div>
+    <div class="profile-stat">
+      <span class="profile-stat__value"><%= @watched_count %></span>
+      <span class="profile-stat__label">watched</span>
+    </div>
+  </section>
+
+  <section class="profile-section">
+    <h2>Recently</h2>
+
+    <% if @recent.empty? %>
+      <p class="profile-note"><%= @member.display_name %> has not watched anything yet.</p>
+    <% else %>
+      <ol class="watch-history">
+        <% @recent.each do |user_entry| %>
+          <% entry = user_entry.entry %>
+          <li class="watch-history__row">
+            <%# Ticked or merely started, said plainly: half this list is things somebody
+                opened and did not finish, and a page that showed them identically would be
+                claiming they had watched them. %>
+            <span class="watch-history__mark watch-history__mark--<%= user_entry.completed? ? 'done' : 'started' %>"
+                  title="<%= user_entry.completed? ? 'Watched' : 'Started' %>">
+              <i class="fa-solid <%= user_entry.completed? ? 'fa-circle-check' : 'fa-circle-half-stroke' %>"></i>
+            </span>
+            <span class="watch-history__name">
+              <%= link_to entry.name, entry_path(entry) %>
+              <span class="watch-history__channel"><%= entry.list.name %></span>
+            </span>
+            <% when_watched = user_entry.completed_at || user_entry.last_watched_at || user_entry.updated_at %>
+            <time class="watch-history__when" datetime="<%= when_watched.iso8601 %>">
+              <%= time_ago_in_words(when_watched) %> ago
+            </time>
+          </li>
+        <% end %>
+      </ol>
+    <% end %>
+  </section>
+</div>

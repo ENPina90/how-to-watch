@@ -572,7 +572,10 @@ body.light-mode .list-row::after {
 }
 
 .list-card-info .list-card-name,
+.list-card-info a.list-card-name,
 .list-card-info p.list-card-name {
+  display: block;
+  text-decoration: none;
   color: #ffffff !important;
   font-size: 0.85rem;
   font-weight: 600;
@@ -597,6 +600,18 @@ body.light-mode .list-row::after {
 /* Override the global page-container white text for list cards */
 .lists-index-container .list-card-meta {
   color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* The owner's name links to their profile. It keeps the dimmed colour of the line it sits
+   in -- it is a credit, not a call to action -- and says it is a link by underlining. */
+.list-card-info .list-card-owner {
+  color: inherit !important;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.list-card-info .list-card-owner:hover {
+  color: #ffffff !important;
 }
 
 /* The owner and count icons read as part of the line, so they take its dimmed colour.
