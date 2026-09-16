@@ -17,13 +17,38 @@
           <%= entry_source_badge(entry, viewing: @viewing) %>
           <h5 class="card-header"><bold><%= entry.name %></bold></h5>
         </div>
-        <div class="card-details">
+        <div class="card-details" data-controller="card-panes">
+          <%# Not the year and the rating a film's card carries. The year belongs to the
+              source film and the rating to a cut nobody catalogues -- on a fanedit it is
+              blank, or the original's, carried over by the duplicate it was made from.
+              What it was cut from and who cut it is what this card is for. %>
+          <% origin = fanedit_origin(entry) %>
+          <% if origin %>
+            <p class="fanedit-origin"><%= origin %></p>
+          <% end %>
+          <% credit = fanedit_credit(entry) %>
+          <% if credit %>
+            <p class="fanedit-credit"><%= credit %></p>
+          <% end %>
+          <%# Genre and runtime share a row the way the year and the rating used to. The
+              runtime is the one number on a fanedit that is about the cut rather than the
+              film it came from -- and it is what the cable schedule lays the slot out by,
+              so a blank one here is the thing to go and fill in. %>
           <div class="d-flex justify-content-between">
-            <p><%= entry.year %></p>
-            <p><%= entry.rating %></p>
+            <p class="mb-4"><small><%= entry.genre %></small></p>
+            <% if entry.length.present? %>
+              <p class="mb-4"><small><%= entry.length %> min</small></p>
+            <% end %>
           </div>
-          <p class="mb-4"><small><%= entry.genre %></small></p>
-          <p class="card-plot"><%= entry.plot %></p>
+          <%# The box the synopsis lives in, and the one the tab strip and the scroll
+              caret are positioned against. Here rather than wrapped around the plot by
+              card_panes_controller.js on first hover: built there, the card was one shape
+              before the pointer arrived and another after it, and every way of making the
+              wrapper stand in for the plot exactly was a rule that had to be kept in step
+              with the plot's own. Two tags per card is the cheaper answer. %>
+          <div class="card-panes">
+            <p class="card-plot"><%= entry.plot %></p>
+          </div>
         </div>
         <div class="card-menu">
           <% if entry.trailer.present? %>

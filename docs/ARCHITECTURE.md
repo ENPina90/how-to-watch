@@ -91,13 +91,24 @@ not be enough, because `can_edit_list?` is true for *any* member on a default ch
 `List#can_be_added_to?` / `#is_descendant_of?`. `lists.parent_list_id` is the superseded
 single-parent version, still declared as a `belongs_to`.
 
-**`Entry`** — one watchable item in a list. `media` is free text, normalized to lowercase,
-and drives nearly every branch in the app: `movie`, `series`, `anime`, `episode`, `fanedit`.
+**`Entry`** — one watchable item in a list. `media` is a column of free text, normalized to
+lowercase, and drives nearly every branch in the app. `Entry::MEDIA_TYPES` is the set the
+app can actually draw — `fanedit`, `movie`, `series`, `anime`, `episode` — since
+`entries/_entry_#{media}` is a partial name; every form offers it as a select
+(`Entry.media_options`), and the CSV template reads the same constant. It is deliberately
+*not* validated: the importers and the OMDB path write `media` from data this app does not
+control, and refusing a row over a card it cannot draw would lose the entry entirely.
 - Identity: `imdb`, `tmdb`, `series_imdb` (for episodes/series).
 - Art: `pic` (remote URL) plus an Active Storage `poster` attachment (Cloudinary).
 - Ordering: `position` (integer, within the list).
 - Playback: `provider_id` → `Source`, `source_key` (opaque id for "direct" providers).
 - `current_id` → `Subentry`: legacy list-level "current episode" pointer.
+- Fanedits: `original`, `faneditor`, `fanedit_link` and `fanedit_type` describe a cut —
+  what it was made from, who made it, where it was published, and which of
+  `Entry::FANEDIT_TYPES` it is (the only one of the four that is validated, since nothing
+  but the form writes it). The forms show them only while the media select says `fanedit`,
+  and `entries/_entry_fanedit` prints them in place of the year and rating a film's card
+  carries, linking the original through `imdb` or `letterboxd_slug` where there is one.
 
 **`Subentry`** — an episode belonging to a series/anime `Entry`. `season` and `episode` are
 integers (they were strings until 2026-08-25, which is why old code sorted with
@@ -630,6 +641,21 @@ results. `POST reset_source` moves every channel onto one provider.
   times. `spec/requests/list_show_payload_spec.rb` fails if a per-entry modal comes back.
   The watch page is the exception: it shows one entry, so it keeps its own
   `entries/_review_modal` with turbo disabled, answering the same `#reviewModal` id.
+- **The card's tabs are built on hover and fetched on open**, for the same budget.
+  `card_panes_controller.js` is attached to `.card-details` by a bare `data-controller` --
+  the only thing the tabs cost the markup, about thirty bytes -- and builds the Synopsis /
+  Details / Notes strip, the scroll-unlock caret and the pane the first time the pointer
+  lands on a card. Opening Details or Notes fetches `GET /entries/:id/panes`
+  (`entries/_card_panes`), which is why that fragment may hold the `<textarea>` a card may
+  not: `entry_card` collapses whitespace between tags, and a textarea is the one element
+  where that would change its contents. `EntryPanesHelper::ALREADY_ON_CARD` is what keeps
+  the pane from repeating what the card above it already prints, per media type. The note
+  saves to `PATCH /entries/:id/note` on blur; it is a column on the entry -- the channel's
+  note, not the reader's -- so `check_edit_permissions` covers it, and a member's own
+  thoughts remain the review on `UserEntry`.
+- **The synopsis does not scroll.** `.card-plot` is clipped and faded; the caret above
+  unlocks one card at a time and leaving the card re-locks it. It was `overflow-y: scroll`,
+  which made every card with a long plot a scroll trap on a page of 1,200 of them.
 - **`services/tmdb_search_behavior.js`** holds the six methods `list_search` and
   `mobile_search` share (`tmdbSearch`, `tmdbShow`, `showOverlay`, `handleClickOutside`,
   `hideResults`, `showToast`), applied to both prototypes with `Object.assign`. If you are

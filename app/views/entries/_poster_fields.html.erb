@@ -1,0 +1,43 @@
+<%# How a picture gets onto an entry. Three ways, one at a time -- see
+    poster_input_controller.js for what they are and why nothing is cleared when you switch.
+
+    `fetch_value` is the duplicate form's prefill: a copy opens with the original's poster
+    already in the link field, so pressing Create keeps a picture rather than pointing at a
+    file that goes when the original is deleted. %>
+<% fetch_value = local_assigns.fetch(:fetch_value, nil) %>
+<div class="entry-form__poster" data-controller="poster-input">
+  <span class="entry-form__legend">Poster</span>
+
+  <% if entry.poster.attached? %>
+    <div class="entry-form__poster-current">
+      <img src="<%= entry.poster.url %>" alt="Current poster" class="entry-form__poster-thumb">
+      <span>Current poster. Anything below replaces it.</span>
+    </div>
+  <% end %>
+
+  <div class="poster-tabs" role="tablist">
+    <% [['fetch', 'From a link'], ['upload', 'Upload a file'], ['link', 'Link only']].each do |key, label| %>
+      <button type="button" class="poster-tab" role="tab"
+              data-poster-input-target="tab"
+              data-poster-input-key-param="<%= key %>"
+              data-action="click->poster-input#select"><%= label %></button>
+    <% end %>
+  </div>
+
+  <div data-poster-input-target="panel" data-poster-input-panel="fetch">
+    <%= f.input :poster_url, as: :url, label: false,
+          input_html: { value: fetch_value, placeholder: 'https://…' },
+          hint: 'Downloads the image and keeps a copy, so it does not go dead later.' %>
+  </div>
+
+  <div data-poster-input-target="panel" data-poster-input-panel="upload" hidden>
+    <%= f.input :poster, as: :file, label: false %>
+  </div>
+
+  <%# The one that keeps no copy. Last, and named for what it actually does, because an
+      address on somebody else's host is the one of the three that can quietly go dead. %>
+  <div data-poster-input-target="panel" data-poster-input-panel="link" hidden>
+    <%= f.input :pic, label: false,
+          hint: 'Points at the image where it already lives. Nothing is stored, so it goes when that page does.' %>
+  </div>
+</div>

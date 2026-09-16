@@ -38,9 +38,10 @@ class EntryCsvTemplate
     review
   ].freeze
 
-  # The media values the app actually renders. `entries/entry_#{media}` is a partial name,
-  # so anything outside this set is an entry whose card cannot be drawn.
-  MEDIA = %w[movie series anime episode fanedit].freeze
+  # The media values the app actually renders, from the model rather than restated here:
+  # this sheet is what somebody fills a channel in from, and a set that has drifted from
+  # the one the forms offer sends them away with rows nothing can draw.
+  MEDIA = Entry::MEDIA_TYPES
 
   # CSV has one sheet and no data validation, so the choices cannot be attached to the
   # `channel` cells themselves. They ride along in columns off to the right instead, which

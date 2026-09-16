@@ -4,66 +4,87 @@
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
   </div>
   <div class="modal-body">
-    <%= simple_form_for(entry) do |f|%>
-      <%= f.input :list_id, collection: @user_lists, selected: entry.list.id %>
-      <%= f.input :position %>
+    <%# Laid out as what somebody opens this form to change, then what they occasionally
+        change, then what they almost never do. The order used to be the order the columns
+        happen to sit in on the table, one full-width box each, so the name and the runtime
+        were four screens apart with the source key in between. %>
+    <%= simple_form_for(entry, html: { data: { controller: "fanedit-fields" } }) do |f|%>
       <%= f.input :name %>
-      <%= f.input :media %>
-      <%# What the cable schedule lays a slot out by. Left blank it falls back to a flat
-          guess, and a guess that is short cuts the programme off partway through. %>
-      <%= f.input :length, label: "Runtime (minutes)", hint: runtime_hint_for(entry) %>
+
+      <div class="entry-form__row">
+        <%= f.input :list_id, label: "Channel", collection: @user_lists, selected: entry.list.id %>
+        <%# A select rather than free text. Typed by hand this took anything, and a value
+            outside Entry::MEDIA_TYPES is an entry whose card cannot be drawn -- `media` is
+            half a partial name. %>
+        <%= f.input :media, collection: Entry.media_options, include_blank: false,
+              input_html: { data: { fanedit_fields_target: "media", action: "change->fanedit-fields#toggle" } } %>
+      </div>
+
+      <%= render "entries/fanedit_fields", f: f, entry: entry %>
+
+      <div class="entry-form__row entry-form__row--narrow">
+        <%# What the cable schedule lays a slot out by. Left blank it falls back to a flat
+            guess, and a guess that is short cuts the programme off partway through. %>
+        <%= f.input :length, label: "Runtime (min)", hint: runtime_hint_for(entry) %>
+        <%= f.input :position %>
+        <% if entry.media == "episode" %>
+          <%= f.input :season %>
+          <%= f.input :episode %>
+        <% end %>
+      </div>
+
       <%= f.input :source_url, label: "Source URL",
             input_html: { value: entry.current_source_url },
             hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
-      <%= f.association :provider,
-            collection: Source.active.order(:position),
-            label_method: ->(s) { "#{s.name} (#{s.kind})" },
-            include_blank: "— Inherit channel default —",
-            label: "Source provider" %>
-      <%= f.input :source_key,
-            label: "Source key / URL",
-            hint: "Direct providers only: Drive file id, mega key#fragment, YouTube id, or full URL for Custom. Leave blank for imdb providers." %>
-      <%# Three ways to the same picture, and they are not the same thing. `pic` points at
-          somebody else's host for as long as it stays up -- which is what the broken-poster
-          audit spends its time finding out about -- while the two below keep a copy. %>
-      <%= f.input :pic, label: "Poster URL (linked, not stored)" %>
-      <%= f.input :poster_url, as: :url, label: "Fetch a poster from a link",
-            input_html: { value: nil, placeholder: "https://…" },
-            hint: "Downloads the image and keeps a copy, so it does not go dead later. Replaces the current poster." %>
 
-      <% if entry.poster.attached? %>
-        <div class="mb-3">
-          <label class="form-label">Current Poster</label>
-          <div>
-            <img src="<%= entry.poster.url %>" class="img-thumbnail" style="max-width: 200px; max-height: 300px;" alt="Current Poster">
-          </div>
-        </div>
-      <% end %>
-
-      <%= f.input :poster, as: :file, label: "Upload New Poster Image", hint: "Replaces current poster if uploaded" %>
-      <%= f.input :series %>
       <%= f.input :plot %>
-      <%= f.input :imdb %>
-      <%= f.input :category %>
       <%= f.input :note %>
-      <% if entry.media == 'episode' %>
-        <%= f.input :season %>
-        <%= f.input :episode %>
-      <% end %>
-      <% if entry.media == 'series' || entry.media == 'anime' %>
-        <h3>Episodes</h3>
+
+      <%= render "entries/poster_fields", f: f, entry: entry %>
+
+      <%# Real, occasionally necessary, and none of it why anybody opened this form. The
+          provider pair in particular is a two-field answer to "this one plays from
+          somewhere unusual", which the Source URL above settles in every ordinary case. %>
+      <details class="entry-form__more">
+        <summary><i class="fa-solid fa-chevron-down"></i>Source, ids and cataloguing</summary>
+
+        <div class="entry-form__row">
+          <%= f.association :provider,
+                collection: Source.active.order(:position),
+                label_method: ->(s) { "#{s.name} (#{s.kind})" },
+                include_blank: "— Inherit channel default —",
+                label: "Source provider" %>
+          <%= f.input :source_key,
+                label: "Source key / URL",
+                hint: "Direct providers only: Drive file id, mega key#fragment, YouTube id, or full URL for Custom. Leave blank for imdb providers." %>
+        </div>
+
+        <div class="entry-form__row">
+          <%= f.input :imdb, label: "IMDb id" %>
+          <%= f.input :series %>
+          <%= f.input :category %>
+        </div>
+      </details>
+
+      <% if entry.media == "series" || entry.media == "anime" %>
+        <span class="entry-form__legend">Episodes</span>
         <%# In order, so the one episode missing a runtime out of sixty-six can be found. %>
         <%= f.simple_fields_for :subentries, entry.subentries_for_form do |subentry_form| %>
-          <%= subentry_form.input :name %>
-          <%= subentry_form.input :plot %>
-          <%= subentry_form.input :season %>
-          <%= subentry_form.input :episode %>
-          <%# An episode's runtime belongs to the episode, and it is what the cable schedule
-              measures its slot by. %>
-          <%= subentry_form.input :length, label: "Runtime (minutes)" %>
-          <%= subentry_form.input :_destroy, as: :boolean, label: 'Remove Subentry' %>
+          <div class="entry-form__episode">
+            <%= subentry_form.input :name %>
+            <div class="entry-form__row entry-form__row--narrow">
+              <%= subentry_form.input :season %>
+              <%= subentry_form.input :episode %>
+              <%# An episode's runtime belongs to the episode, and it is what the cable
+                  schedule measures its slot by. %>
+              <%= subentry_form.input :length, label: "Runtime (min)" %>
+            </div>
+            <%= subentry_form.input :plot %>
+            <%= subentry_form.input :_destroy, as: :boolean, label: "Remove this episode" %>
+          </div>
         <% end %>
       <% end %>
+
       <%= f.button :submit, class: 'btn-action', data: { bs_dismiss: "modal" }, aria_label: "Close" %>
     <% end %>
   </div>

@@ -3,6 +3,8 @@
     being edited. Any page with an edit pen needs this *and* data-controller="edit" on an
     ancestor, or the pen opens an empty modal. %>
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-  <div class="modal-dialog" data-edit-target="modal">
+  <%# Wide enough for the form inside it to put two fields on a line. At the default width
+      a pair of selects is two half-width boxes that each truncate their own contents. %>
+  <div class="modal-dialog modal-lg" data-edit-target="modal">
   </div>
 </div>

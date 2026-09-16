@@ -168,6 +168,25 @@ RSpec.describe 'The prefilled custom-entry form', type: :request do
       expect(list.entries.sole.poster).to be_attached
     end
 
+    # The duplicate form opens with the original's poster already in the fetch field, so a
+    # copy keeps a picture when nothing else is offered. It was beating an actual upload:
+    # the fetch runs after the save, so the uploaded file was attached and then replaced by
+    # the original's poster, and a duplicate could not be given a picture of its own.
+    it 'keeps an uploaded poster rather than fetching the link the duplicate form prefilled' do
+      expect(RemoteImage).not_to receive(:fetch)
+
+      post list_entries_path(list), params: {
+        custom: true,
+        entry: {
+          name: 'A copy', media: 'fanedit',
+          poster: Rack::Test::UploadedFile.new(Rails.root.join('app/assets/images/please_stand_by.png'), 'image/png'),
+          poster_url: 'https://example.test/the-original.jpg'
+        }
+      }
+
+      expect(list.entries.sole.poster).to be_attached
+    end
+
     it 'keeps the entry when the poster link turns out to be bad' do
       image = instance_double(RemoteImage::Result, ok?: false, error: 'not an image')
       allow(RemoteImage).to receive(:fetch).and_return(image)

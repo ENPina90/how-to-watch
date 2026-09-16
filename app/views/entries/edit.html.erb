@@ -1,15 +1,31 @@
-<%= simple_form_for(@entry) do |f|%>
-  <%= f.input :list, collection: List.where(user: current_user), selected: @entry.list.id %>
+<%# The standalone edit page. Same record and much the same fields as the modal on a card,
+    which is where editing usually happens -- kept in step with it so the two do not drift
+    into asking different questions about the same entry. %>
+<%= simple_form_for(@entry, html: { data: { controller: "fanedit-fields" } }) do |f|%>
   <%= f.input :name %>
+
+  <div class="entry-form__row">
+    <%= f.input :list, label: "Channel", collection: List.where(user: current_user), selected: @entry.list.id %>
+    <%# The same select the modal and the new-entry form offer, for the same reason: a media
+        value outside Entry::MEDIA_TYPES is half a partial name that does not exist. %>
+    <%= f.input :media, collection: Entry.media_options, include_blank: false,
+          input_html: { data: { fanedit_fields_target: "media", action: "change->fanedit-fields#toggle" } } %>
+  </div>
+
+  <%= render "entries/fanedit_fields", f: f, entry: @entry %>
+
+  <div class="entry-form__row entry-form__row--narrow">
+    <%= f.input :length, label: "Runtime (min)",
+          hint: "Used by the cable schedule. Left blank it guesses, and a short guess cuts the programme off." %>
+    <%= f.input :category %>
+  </div>
+
   <%= f.input :source_url, label: "Source URL", hint: "Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id." %>
-  <%= f.input :pic, label: "Poster URL (linked, not stored)" %>
-  <%= f.input :poster_url, as: :url, label: "Fetch a poster from a link",
-        input_html: { value: nil, placeholder: "https://…" },
-        hint: "Downloads the image and keeps a copy, so it does not go dead later." %>
-  <%= f.input :length, label: "Runtime (minutes)",
-        hint: "Used by the cable schedule. Left blank it guesses, and a short guess cuts the programme off." %>
-  <%= f.input :category %>
+
   <%= f.input :note %>
   <%= f.input :review %>
+
+  <%= render "entries/poster_fields", f: f, entry: @entry %>
+
   <%= f.submit %>
 <% end %>

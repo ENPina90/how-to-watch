@@ -1,0 +1,51 @@
+<%# The Details and Notes tabs of one entry card, fetched by card_panes_controller.js the
+    first time either is opened.
+
+    Deliberately not part of the card partials. A channel draws ~1,200 cards in one
+    response and `spec/requests/list_show_payload_spec.rb` holds each one to a budget, so
+    the cast list and the note of every entry on the page -- almost all of which nobody
+    will open -- have no business travelling with it. Fetching also means this fragment
+    may hold a <textarea>, which a card may not: `entry_card` collapses whitespace between
+    tags, and a textarea is the one element where that would change what it contains.
+
+    Both sections are rendered together and the controller shows one at a time, so opening
+    Details and then Notes is one request rather than two. %>
+<div class="card-pane__section" data-card-panes-pane="details">
+  <% rows = entry_detail_rows(entry) %>
+  <% links = entry_detail_links(entry) %>
+  <% if rows.empty? && links.empty? %>
+    <p class="card-pane__empty">Nothing recorded for this one beyond what is on the card.</p>
+  <% else %>
+    <dl class="card-pane__list">
+      <% rows.each do |label, value| %>
+        <dt><%= label %></dt>
+        <dd><%= value %></dd>
+      <% end %>
+      <% if links.any? %>
+        <dt>Links</dt>
+        <dd>
+          <% links.each do |label, url| %>
+            <%= link_to label, url, target: '_blank', rel: 'noopener noreferrer' %>
+          <% end %>
+        </dd>
+      <% end %>
+    </dl>
+  <% end %>
+</div>
+
+<%# The note belongs to the entry, not to the viewer -- it is the channel's note about the
+    film, which is why it is a column on entries and why only somebody who may edit the
+    entry may write it. Everybody else reads it. Per-person thoughts are what the review is
+    for, and that lives on UserEntry. %>
+<div class="card-pane__section card-pane__section--notes" data-card-panes-pane="notes" hidden>
+  <% if current_user&.can_edit_entry?(entry) %>
+    <textarea class="card-pane__note" data-card-panes-target="note"
+              aria-label="Note on <%= entry.name %>"
+              placeholder="Nothing noted yet."><%= entry.note %></textarea>
+    <p class="card-pane__status" data-card-panes-target="status" aria-live="polite"></p>
+  <% elsif entry.note.present? %>
+    <p class="card-pane__note card-pane__note--read"><%= entry.note %></p>
+  <% else %>
+    <p class="card-pane__empty">Nothing noted for this one.</p>
+  <% end %>
+</div>

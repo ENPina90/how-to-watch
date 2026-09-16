@@ -102,49 +102,71 @@
 
   <div class="row justify-content-center list-layout">
     <div class="col-8">
-      <%= simple_form_for([@list, @entry], custom: true, html: { id: 'custom-entry-form' }) do |f| %>
-        <%= f.input :list_id, label: 'Channel', collection: @user_lists, selected: @entry.list_id || @list.id %>
+      <%= simple_form_for([@list, @entry], custom: true,
+                         html: { id: 'custom-entry-form', data: { controller: 'fanedit-fields' } }) do |f| %>
         <%= f.input :name %>
-        <%# The values the app can actually draw: `entries/entry_#{media}` is a partial name,
-            so an entry saved as anything outside this set has no card. The two that were
-            offered here before -- `show` and `other` -- were both outside it. %>
-        <%= f.input :media, collection: [['Fanedit', 'fanedit'], ['Movie', 'movie'], ['Series', 'series'], ['Anime', 'anime'], ['Episode', 'episode']] %>
+
+        <div class="entry-form__row">
+          <%= f.input :list_id, label: 'Channel', collection: @user_lists, selected: @entry.list_id || @list.id %>
+          <%# The values the app can actually draw -- Entry::MEDIA_TYPES, which is also what
+              the edit form, the bulk editor and the CSV template offer. `entries/_entry_#{media}`
+              is a partial name, so an entry saved as anything outside that set has no card. %>
+          <%= f.input :media, collection: Entry.media_options, include_blank: false,
+                input_html: { data: { fanedit_fields_target: 'media', action: 'change->fanedit-fields#toggle' } } %>
+        </div>
+
+        <%= render 'entries/fanedit_fields', f: f, entry: @entry %>
+
         <%= f.input :source_url, label: 'Source URL',
               input_html: { value: @entry.current_source_url },
               hint: 'Google Drive, mega, YouTube or archive.org link — or any direct URL. Leave blank for entries that play from an IMDb id.' %>
 
-        <%# Three ways to the same picture, and they are not the same thing. `pic` points at
-            somebody else's host for as long as it stays up -- which is what the
-            broken-poster audit spends its time finding out about -- while the two below keep
-            a copy. The prefill fills `pic` with whatever the API had. A duplicate's uploaded
-            poster goes in the fetch field, so the copy keeps a picture of its own rather than
-            pointing at a file that goes when the original is deleted. %>
-        <%= f.input :pic, label: 'Poster URL (linked, not stored)' %>
-        <%= f.input :poster_url, as: :url, label: 'Fetch a poster from a link',
-              input_html: { value: (entry_poster_url(@duplicate_of) if @duplicate_of&.poster&.attached?),
-                            placeholder: 'https://…' },
-              hint: 'Downloads the image and keeps a copy, so it does not go dead later.' %>
-        <%= f.input :poster, as: :file, label: 'Upload a poster image' %>
+        <%# A duplicate's uploaded poster is offered back as a link to fetch, so the copy
+            keeps a picture of its own rather than pointing at a file that goes when the
+            original is deleted. %>
+        <%= render 'entries/poster_fields', f: f, entry: @entry,
+              fetch_value: (entry_poster_url(@duplicate_of) if @duplicate_of&.poster&.attached?) %>
 
-        <%= f.input :imdb, label: 'IMDb id', hint: 'Entries with no source URL play from this.' %>
-        <%= f.input :tmdb, label: 'TMDB id' %>
-        <%= f.input :year %>
-        <%# What the cable schedule lays a slot out by. Left blank it falls back to a flat
-            guess, and a guess that is short cuts the programme off partway through. %>
-        <%= f.input :length, label: 'Runtime (minutes)',
-              hint: 'Used by the cable schedule. Left blank it guesses, and a short guess cuts the programme off.' %>
-        <%= f.input :series %>
-        <%= f.input :season %>
-        <%= f.input :episode %>
-        <%= f.input :category %>
-        <%= f.input :genre %>
-        <%= f.input :rating %>
-        <%= f.input :director %>
-        <%= f.input :writer %>
-        <%= f.input :actors %>
+        <div class="entry-form__row entry-form__row--narrow">
+          <%= f.input :imdb, label: 'IMDb id', hint: 'Entries with no source URL play from this.' %>
+          <%= f.input :tmdb, label: 'TMDB id' %>
+          <%= f.input :year %>
+          <%# What the cable schedule lays a slot out by. Left blank it falls back to a flat
+              guess, and a guess that is short cuts the programme off partway through. %>
+          <%= f.input :length, label: 'Runtime (min)',
+                hint: 'Used by the cable schedule. Left blank it guesses, and a short guess cuts the programme off.' %>
+        </div>
+
         <%= f.input :plot %>
         <%= f.input :note %>
-        <%= f.input :review %>
+
+        <%# Everything the metadata APIs would have filled in if they knew about this one.
+            Typing a cast list by hand is a thing somebody does on purpose, not a thing the
+            form should ask thirty seconds of everybody else for. %>
+        <details class="entry-form__more">
+          <summary><i class="fa-solid fa-chevron-down"></i>Cataloguing and credits</summary>
+
+          <div class="entry-form__row">
+            <%= f.input :series %>
+            <%= f.input :category %>
+            <%= f.input :genre %>
+          </div>
+
+          <div class="entry-form__row entry-form__row--narrow">
+            <%= f.input :season %>
+            <%= f.input :episode %>
+            <%= f.input :rating %>
+          </div>
+
+          <div class="entry-form__row">
+            <%= f.input :director %>
+            <%= f.input :writer %>
+          </div>
+
+          <%= f.input :actors %>
+          <%= f.input :review %>
+        </details>
+
         <%# What a filled-in entry knows that the form has no field for. Without these a
             duplicate lost its per-entry provider -- and with it the way it played -- and an
             episode from the search overlay lost the series it belongs to. %>

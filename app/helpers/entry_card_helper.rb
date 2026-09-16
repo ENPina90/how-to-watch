@@ -79,6 +79,52 @@ module EntryCardHelper
     end
   end
 
+  # What a fanedit card says in place of the year and the rating a film's card carries.
+  # Neither of those describes an edit: the year is the source film's, and there is no
+  # rating -- IMDb and Letterboxd have never heard of a cut that is not theirs, so `rating`
+  # on a fanedit is either blank or the original's borrowed by the duplicate it was made
+  # from. What somebody scanning a channel of these wants is what it was cut from and who
+  # cut it, which is what the two below say.
+
+  # "TV-to-Movie edit of Star Wars", with the title linked to whichever catalogue this
+  # entry can be found in. Nil when there is nothing to say, so the card skips the line.
+  def fanedit_origin(entry)
+    return if entry.original.blank? && entry.fanedit_type.blank?
+    return entry.fanedit_type if entry.original.blank?
+
+    url = fanedit_original_url(entry)
+    title = url ? card_external_link(entry.original, url) : entry.original
+    lead = entry.fanedit_type.present? ? "#{entry.fanedit_type} edit of" : 'Edit of'
+
+    safe_join([lead, ' ', title])
+  end
+
+  # "By Harmy", linked to wherever the edit was published. The name shows either way: who
+  # made a cut is worth saying even when there is nowhere to send anybody for it.
+  def fanedit_credit(entry)
+    return if entry.faneditor.blank?
+
+    name = entry.fanedit_link.present? ? card_external_link(entry.faneditor, entry.fanedit_link) : entry.faneditor
+
+    safe_join(['By ', name])
+  end
+
+  # IMDb first: it is the id this app keys playback off, so a fanedit that has one has it
+  # filled in already. The Letterboxd slug is the fallback, and an entry with neither is
+  # left as plain text rather than sent to a search page that may find nothing.
+  def fanedit_original_url(entry)
+    return "https://www.imdb.com/title/#{entry.imdb}/" if entry.imdb.to_s.match?(LetterboxdFilm::IMDB_FORMAT)
+
+    LetterboxdFilm.film_url(entry.letterboxd_slug)
+  end
+
+  # Every card is a turbo frame of its own, so a link without a target tries to draw
+  # imdb.com inside the card. `_blank` is what an outbound link wants anyway, and `noopener`
+  # is what `_blank` wants.
+  def card_external_link(text, url)
+    link_to text, url, target: '_blank', rel: 'noopener noreferrer'
+  end
+
   def entry_card(entry, **locals)
     render("entries/entry_#{entry.media.downcase}", entry: entry, **locals)
       .to_str

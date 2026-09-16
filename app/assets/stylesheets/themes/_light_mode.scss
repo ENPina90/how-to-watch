@@ -353,3 +353,49 @@ body.light-mode .page-container .admin-save:hover {
   background-color: #157a5c;
   color: #ffffff !important;
 }
+
+/* The scroll-unlock caret sits over the fade at the bottom of a card's synopsis, so in
+   this theme it needs the cream card's contrast rather than the dark one's. */
+body.light-mode .card-scroll-toggle {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+body.light-mode .card-scroll-toggle:hover {
+  color: #000000;
+}
+
+/* The tab strip and the two panes behind it. The strip has to be the card's own colour or
+   text scrolled up behind it shows through, and in this theme the card is cream. */
+body.light-mode .card-tabs {
+  background-color: #f5f2e8;
+}
+
+body.light-mode .card-tab {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+body.light-mode .card-tab:hover {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+body.light-mode .card-tab--current {
+  color: #000000;
+}
+
+body.light-mode .card-pane__list dt {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+body.light-mode .card-pane__note {
+  background: rgba(0, 0, 0, 0.04);
+  color: #000000;
+}
+
+body.light-mode .card-pane__note:hover {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+body.light-mode .card-pane__note:focus {
+  border-color: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.06);
+}

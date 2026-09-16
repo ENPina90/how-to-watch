@@ -27,7 +27,7 @@
                 hint: "Moves them to the end of that channel." %>
           <%# A select rather than the edit form's free text: a typo here is written into
               every selected entry at once, and picks the wrong card for all of them. %>
-          <%= f.input :media, collection: %w[movie series anime episode fanedit],
+          <%= f.input :media, collection: Entry.media_options,
                 include_blank: "— Leave unchanged —" %>
           <%= f.input :length, as: :integer, label: "Runtime (minutes)" %>
           <%= f.input :source_url, label: "Source URL",

@@ -154,6 +154,11 @@
 
 .card-details {
   position: relative;
+  // A stacking context of its own, so the z-index the tab strip needs to sit over the
+  // synopsis is settled *inside* the card. Without it the strip's `z-index: 2` competed in
+  // the root context with `.layout-title` (2) and the sticky section heading (1), so a card
+  // scrolled up behind the heading painted its tabs on top of it.
+  isolation: isolate;
   grid-area: details;
   flex-grow: 1;
   padding: 16px 16px 16px 16px;
@@ -175,12 +180,32 @@
   justify-content: flex-start;
 
   .card-plot {
-    overflow-y: scroll;
+    // NOT scrollable by default. It was `overflow-y: scroll`, which turned every card with
+    // a long synopsis into a scroll trap: the wheel over a card scrolled the plot instead
+    // of the page, so getting down a channel of 1,200 of them meant steering around them.
+    // A long plot is clipped and faded, and the caret below unlocks scrolling for the one
+    // card you ask.
+    overflow: hidden;
+    // Fills `.card-panes`, which is the flex item and owns the height, but stays IN FLOW.
+    //
+    // It was `position: absolute; inset: 0`, which does size it the same and guarantees it
+    // cannot stretch the card -- and quietly broke the card sideways. The grid column the
+    // details sit in is auto-sized, so its width comes from what its contents ask for, and
+    // an absolutely positioned child asks for nothing: the column collapsed to the width of
+    // the three short meta rows and left a gap between the poster and the text. Measured on
+    // one card, 302|302 with no gap became 361|243 with 59px of nothing in the middle.
+    //
+    // `height: 100%` of a flex-sized parent does the same job in flow: the plot is exactly
+    // the box it is given, never taller, and still has a width to contribute.
+    height: 100%;
     width: 100%;
-    // height: 30%;
-    flex: 1 0 12vh;
+    margin: 0;
     // font-size: 12px;
-    padding-bottom: 64px;
+    // Room for the tab strip, held open whether or not the strip is drawn yet: it arrives
+    // on hover, and a synopsis that shifts as the pointer lands is a page of cards
+    // twitching one after another as you cross it. Enough of it that the first line is not
+    // sitting against the tabs.
+    padding: 36px 0 64px;
     // Fade out towards bottom of scroll
     mask-image: linear-gradient(
       to bottom,
@@ -191,6 +216,268 @@
     &::-webkit-scrollbar {
       display: none; /* for Chrome, Safari, and Opera */
     }
+  }
+
+  // Hidden while Details or Notes is on top of it, but NOT with the `hidden` attribute:
+  // that takes the plot out of the flow, and out of the flow it stops telling the
+  // auto-sized grid column how wide the details should be -- so opening a tab collapsed
+  // the column and opened a gap between the poster and the text. `visibility` leaves the
+  // box exactly where it was and only stops it painting.
+  .card-plot--behind {
+    visibility: hidden;
+  }
+
+  // Unlocked by the caret, and re-locked when the pointer leaves the card, so a card that
+  // has been scrolled cannot go on swallowing the wheel once you have moved off it. The
+  // fade goes with it: it says "there is more", and once you can reach the more it is just
+  // text that has gone dim.
+  .card-plot--unlocked,
+  .card-pane--unlocked {
+    overflow-y: auto;
+    mask-image: none;
+  }
+}
+
+// The box below is in the card markup. Everything that goes *inside* it -- the tab strip,
+// the caret, the fetched pane -- is built by card_panes_controller.js on first hover, and
+// none of it affects the card's layout, which is the point of the split. See the note in
+// `entries/_card_panes.html.erb` for why a channel page cannot afford to send it ~1,200
+// times.
+
+// The synopsis's box, and what the tab strip, the caret and the fetched pane are all
+// positioned against. It is in the card markup rather than wrapped around the plot on
+// first hover: a card has to be exactly the same shape before the pointer arrives as
+// after it, and the only way to be sure of that is for nothing about the layout to change.
+//
+// It is the flex item of the details column, and it owns the height: the plot fills it at
+// `height: 100%` and the fetched pane is pinned to it, so neither can be the thing that
+// decides how tall a card is -- which is what the note box, with its minimum height, had
+// been doing.
+//
+// Shrink is on (it was `1 0 12vh` when the plot carried this). With it off, a card whose
+// rows above the synopsis ran tall could not give the space back: the synopsis kept its
+// 12vh, the details column overflowed, and the card grew to fit. Clipped text is the one
+// part of a card that should give.
+.card-panes {
+  position: relative;
+  flex: 1 1 12vh;
+  min-height: 0;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+// The fetched pane, unlike the plot, IS taken out of the flow. It is the one that has to
+// be: the note box carries a minimum height, and in flow that was the thing deciding how
+// tall the details column was, so opening Notes changed the shape of the card. Out of flow
+// it can decide nothing -- and it costs no width, because the plot beside it is in flow
+// and already tells the column how wide to be.
+.card-pane {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  width: 100%;
+  padding-top: 36px;
+  // Not the plot's 64px. That much room exists so a paragraph running off the bottom has
+  // somewhere to fade out; a list of five fields and a note box just leave a hole.
+  padding-bottom: 8px;
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1),
+    90%,
+    rgba(0, 0, 0, 0.2)
+  );
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// The note box fills what it is given rather than being sized by hand, and nothing fades:
+// a box you type into with a dimmed bottom edge looks like a rendering fault.
+.card-pane--notes {
+  mask-image: none;
+}
+
+.card-pane__section--notes {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+// Sits over the top of the synopsis rather than above it: the card's height is fixed and
+// the plot is the only part that can give, so a strip in the flow would cost three lines
+// of synopsis on every card whether or not anybody wanted the tabs.
+.card-tabs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  padding-bottom: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  // Opaque, not a wash: text scrolled up behind the strip has to disappear cleanly rather
+  // than show through it at half strength. The card's own colour, so the strip reads as
+  // part of the card and not as something floating over it.
+  background-color: #0a0a0a;
+}
+
+.card-tab {
+  // An equal share of the width each, rather than three words bunched at the left: the
+  // strip reads as the three things the card can show, so it should span what it governs.
+  flex: 1;
+  text-align: center;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 2px 4px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+.card-tab--current {
+  color: #fff;
+  border-bottom-color: currentColor;
+}
+
+// The foot of the details column, below the synopsis box rather than inside it, which is
+// the tab strip at the top answered at the other end.
+//
+// It was a strip across the bottom of the synopsis itself, and before that a round button
+// in the corner. Both sat on the text: the synopsis is clipped at its box edge rather than
+// ending there, so the control landed on whatever line happened to be last and cut the
+// fade in half. There is already a gap under the box -- the box's own bottom margin and
+// the column's padding -- and that is where a control about the text belongs, clear of it.
+.card-scroll-toggle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 24px;
+  border: 0;
+  // Nothing to mask any more, sitting in clear space.
+  background: none;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.75rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+
+  &:hover {
+    color: #fff;
+  }
+
+  i {
+    transition: transform 0.15s ease;
+  }
+}
+
+// Both appear only while the pointer is on the card, which is the whole point: a channel
+// page should read as posters and titles until you go looking.
+.grid-card:hover {
+  .card-tabs,
+  .card-scroll-toggle:not([hidden]) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+}
+
+// Pointing up once scrolling is unlocked, since pressing it again locks it back. The
+// chevron turns, not the strip.
+.card-scroll-toggle--unlocked i {
+  transform: rotate(180deg);
+}
+
+.card-pane__list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 0;
+  font-size: 0.8rem;
+
+  dt {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  dd {
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    + a {
+      margin-left: 8px;
+    }
+  }
+}
+
+.card-pane__empty {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+// A plain box that looks like the card until you click into it. A note is a scrap of text
+// somebody adds in passing, so anything that looks like a form to fill in is too much
+// furniture for it.
+.card-pane__note {
+  width: 100%;
+  // Fills the pane under the tabs, less whatever the status line takes. It was sized with
+  // a height calculation and a minimum, which between them could ask for more room than
+  // the card had.
+  flex: 1;
+  min-height: 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  resize: none;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.07);
+  }
+}
+
+.card-pane__note--read {
+  white-space: pre-wrap;
+}
+
+.card-pane__status {
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+
+  &.is-shown {
+    opacity: 0.7;
   }
 }
 
@@ -247,4 +534,30 @@
 
 .episode-name {
   font-size: 0.9rem;
+}
+
+/* The two lines a fanedit card carries where a film's carries a year and a rating: what it
+   was cut from, and who cut it. Both may hold an outbound link -- the source film on IMDb
+   or Letterboxd, and the editor's page for the cut -- so the link is underlined rather
+   than recoloured, since the card menu below already owns colour as a signal. */
+.fanedit-origin,
+.fanedit-credit {
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+.fanedit-credit {
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.fanedit-origin a,
+.fanedit-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    text-decoration-thickness: 2px;
+  }
 }
