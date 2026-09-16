@@ -79,6 +79,11 @@ Rails.application.routes.draw do
   # that need no password to change. Email and password stay with Devise.
   resource :profile, only: %i[show update], controller: 'users'
 
+  # Somebody else's profile: what they have made and what they have been watching. The
+  # singular `profile` above is your own account settings and answers a different question,
+  # which is why this is not another action on the same controller.
+  resources :members, only: :show
+
   # Admins viewing the site as another user (see Impersonation)
   post '/impersonate/:id', to: 'impersonations#create', as: :impersonate_user
   delete '/impersonate', to: 'impersonations#destroy', as: :stop_impersonating

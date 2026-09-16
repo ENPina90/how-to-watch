@@ -207,6 +207,17 @@ class User < ApplicationRecord
     LetterboxdList.new(self).list
   end
 
+  # Their page on Letterboxd, for anybody who has linked an account. `username` *is* the
+  # handle -- that is what the field is for and why linking is refused without one -- so
+  # there is nothing else to build this from, and nothing to show when the account is not
+  # linked. Checked against the same shape the feed reader accepts rather than interpolated
+  # raw: a handle with a slash in it would be a link somewhere else entirely.
+  def letterboxd_profile_url
+    return unless letterboxd_enabled? && username.to_s.match?(/\A[a-z0-9_]{1,32}\z/i)
+
+    "#{LetterboxdFeed::BASE_URL}/#{username}/"
+  end
+
   # What the profile page reports. :waiting covers both "queued" and "the worker never
   # picked it up", which look identical from here -- and a wait that never resolves is
   # itself the signal that nothing is running the queue.
