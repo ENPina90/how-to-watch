@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_15_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_16_143941) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -97,6 +97,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_15_130000) do
     t.integer "current_season"
     t.string "director"
     t.integer "episode"
+    t.string "fanedit_link"
+    t.string "fanedit_type"
     t.string "faneditor"
     t.string "franchise"
     t.string "genre"
@@ -108,6 +110,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_15_130000) do
     t.string "media"
     t.string "name"
     t.string "note"
+    t.string "original"
     t.string "pic"
     t.text "plot"
     t.integer "position"
