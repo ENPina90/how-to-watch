@@ -61,9 +61,13 @@ auto-subscribes to default lists and **creates a "<Name>'s Watchlist" list** wit
   and nullified rather than cascading if that list is deleted. Set from the channel's edit
   page via `PATCH /lists/:id/toggle_favorite`, which checks ownership itself because
   `can_edit_list?` also lets anyone edit a default channel. `User#favorite?`, `#favorite!`
-  (moves it), `#unfavorite!`.
+  (moves it), `#unfavorite!`. A channel that **changes hands** takes the previous owner's
+  favourite with it (`List#release_stale_favourites`): the row is already written, so the
+  validation would otherwise fail that member's *next* save, on an unrelated form.
 
-**`List`** — a channel. Owned by a user.
+**`List`** — a channel. Owned by a user; an admin can hand one to another account from its
+edit page. `user_id` is permitted in `list_params` for admins only — hiding the field would
+not be enough, because `can_edit_list?` is true for *any* member on a default channel.
 - `ordered` — true: play in `position` order; false: play a random unwatched entry.
 - `private`, `default` (admin-set; everyone auto-subscribes), `mobile` (marks the channel
   created with the account; a record of where it came from, not what it is for — the
@@ -225,7 +229,9 @@ does — but reactivating that provider would need this fixed first.
 Three buckets: your lists, recently watched (via `user_entries.completed_at`), and
 community channels. The community row is for discovery: `List.discoverable_by` leaves out
 the viewer's own channels, their subscriptions and the cable dial (`default`), and shows
-private ones only to admins. `List.by_recent_activity` orders it by the latest of the
+private ones only to admins. It also leaves out empty ones (`List.non_empty`, the same
+recursive count as the card's, so a channel of channels is not empty) — there is nothing to
+watch in one, and its creator still sees it in Your Channels. `List.by_recent_activity` orders it by the latest of the
 channel's `updated_at`, its newest entry, and anybody's `user_entries` or
 `user_list_positions` row in it. `lists.last_watched_at` is never written; don't sort by
 it. Each card calls
@@ -685,7 +691,7 @@ results. `POST reset_source` moves every channel onto one provider.
 | `VidsrcAvailability` / `VidsrcCatalog` | Asks VidSrc whether it actually holds a file for an entry |
 | `EmbedAvailabilityAudit` / `UnplayableEmbedNotifier` | The sweep behind `embed_availability_scan`, and the notifications it raises |
 | `PosterAudit` / `BrokenPosterNotifier` | Same shape, for posters whose image has gone |
-| `MissingRuntimeAudit` / `MissingRuntimeNotifier` | Same shape, for scheduled entries cable has to guess a runtime for |
+| `MissingRuntimeAudit` / `MissingRuntimeNotifier` | Same shape, for every entry with no runtime recorded; `Row#channel` names the dial channel that reaches one, and is nil for the rest |
 | `NewEpisodeImporter` / `NewEpisodeNotifier` | The sweep behind `new_episode_scan`: extends each series with episodes TMDB shows have really aired, and tells the channel's owner (§5.12) |
 | `SourceExpiryNotifier` | Warns admins before a provider domain lapses (§4) |
 | `AdminStatistics` | The dashboard's numbers, one seven-day window throughout |
@@ -711,7 +717,7 @@ Cloudinary). `LetterboxdSyncJob` refreshes one member's Letterboxd channel on de
 | `LetterboxdWeeklyRefreshJob` | Mondays | Re-read every linked member's diary |
 | `BrokenPosterScanJob` | Mondays | Poster URLs that no longer answer with an image |
 | `EmbedAvailabilityScanJob` | Tuesdays | Entries VidSrc has no file for |
-| `MissingRuntimeScanJob` | Wednesdays | Scheduled entries cable must guess a runtime for |
+| `MissingRuntimeScanJob` | Wednesdays | Every entry with no runtime recorded; the ones already on the dial are named with their channel |
 | `NewEpisodeScanJob` | Thursdays | Episodes aired since each series was filled in; tells the channel's owner (§5.12) |
 
 The schedule is loaded **on the Sidekiq server only** (`config/initializers/sidekiq.rb`) —
