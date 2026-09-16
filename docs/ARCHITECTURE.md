@@ -641,6 +641,21 @@ results. `POST reset_source` moves every channel onto one provider.
   times. `spec/requests/list_show_payload_spec.rb` fails if a per-entry modal comes back.
   The watch page is the exception: it shows one entry, so it keeps its own
   `entries/_review_modal` with turbo disabled, answering the same `#reviewModal` id.
+- **The card's tabs are built on hover and fetched on open**, for the same budget.
+  `card_panes_controller.js` is attached to `.card-details` by a bare `data-controller` --
+  the only thing the tabs cost the markup, about thirty bytes -- and builds the Synopsis /
+  Details / Notes strip, the scroll-unlock caret and the pane the first time the pointer
+  lands on a card. Opening Details or Notes fetches `GET /entries/:id/panes`
+  (`entries/_card_panes`), which is why that fragment may hold the `<textarea>` a card may
+  not: `entry_card` collapses whitespace between tags, and a textarea is the one element
+  where that would change its contents. `EntryPanesHelper::ALREADY_ON_CARD` is what keeps
+  the pane from repeating what the card above it already prints, per media type. The note
+  saves to `PATCH /entries/:id/note` on blur; it is a column on the entry -- the channel's
+  note, not the reader's -- so `check_edit_permissions` covers it, and a member's own
+  thoughts remain the review on `UserEntry`.
+- **The synopsis does not scroll.** `.card-plot` is clipped and faded; the caret above
+  unlocks one card at a time and leaving the card re-locks it. It was `overflow-y: scroll`,
+  which made every card with a long plot a scroll trap on a page of 1,200 of them.
 - **`services/tmdb_search_behavior.js`** holds the six methods `list_search` and
   `mobile_search` share (`tmdbSearch`, `tmdbShow`, `showOverlay`, `handleClickOutside`,
   `hideResults`, `showToast`), applied to both prototypes with `Object.assign`. If you are
