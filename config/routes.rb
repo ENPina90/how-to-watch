@@ -26,6 +26,7 @@ Rails.application.routes.draw do
       # the weekly schedule runs, so there is one implementation and one set of results.
       post :run_poster_scan
       post :run_embed_scan
+      post :run_runtime_scan
       post :run_episode_scan
     end
 
