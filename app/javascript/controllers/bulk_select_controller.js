@@ -129,6 +129,20 @@ export default class extends Controller {
     this.attachIds(event.target, ids);
   }
 
+  // Marking a run of rows watched. Worth confirming like the others, though it is the one
+  // of the three that can be put back: it writes this member's own progress, and "watched"
+  // on a channel several people share means watched by you.
+  confirmComplete(event) {
+    const ids = this.selectedIds;
+
+    if (ids.length === 0 || !window.confirm(`Mark ${this.entries(ids.length)} as watched?`)) {
+      event.preventDefault();
+      return;
+    }
+
+    this.attachIds(event.target, ids);
+  }
+
   confirmEdit(event) {
     const ids = this.selectedIds;
     const changes = this.filledFields(event.target);

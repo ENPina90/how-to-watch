@@ -23,6 +23,16 @@
                   Select all
                 </label>
                 <span class="bulk-toolbar__count"><span data-bulk-select-target="count">0</span> selected</span>
+                <%# First of the three, and the only one that is nobody else's business: it
+                    records that *you* have watched them. Edit and Delete change the entries
+                    themselves, for everyone the channel is shared with. %>
+                <%= form_with url: complete_list_bulk_entries_path(@list), method: :patch, class: "d-inline",
+                              data: { action: "submit->bulk-select#confirmComplete" } do %>
+                  <button type="submit" class="btn btn-sm btn-outline-success" disabled
+                          data-bulk-select-target="action">
+                    <i class="fa-solid fa-check"></i> Watched
+                  </button>
+                <% end %>
                 <button type="button" class="btn btn-sm btn-outline-secondary" disabled
                         data-bs-toggle="modal" data-bs-target="#bulkEditModal"
                         data-bulk-select-target="action">

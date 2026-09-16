@@ -1,13 +1,18 @@
 # frozen_string_literal: true
 
-# Deleting or editing several entries at once, from the checkboxes in a channel's minimal
-# view. One request and one confirmation for the lot, rather than a pen and a trash can per
-# row -- tidying a two-hundred-episode import one "Are you sure?" at a time is what this
-# replaces.
+# Deleting, editing or marking watched several entries at once, from the checkboxes in a
+# channel's minimal view. One request and one confirmation for the lot, rather than a pen
+# and a trash can per row -- tidying a two-hundred-episode import one "Are you sure?" at a
+# time is what this replaces.
 #
-# Both actions are all or nothing. Half a bulk edit is worse than none: the page would show
-# some rows changed and some not, with nothing to say which, and the only way to find out
-# would be to open each one.
+# The edit and the delete are all or nothing. Half a bulk edit is worse than none: the page
+# would show some rows changed and some not, with nothing to say which, and the only way to
+# find out would be to open each one.
+#
+# Marking watched is the odd one out and deliberately so: `completed` is per person, living
+# in UserEntry, so it writes this member's own progress and changes nothing anybody else
+# sees. There is nothing there to be left half-done that pressing it again would not put
+# right, and a row already watched is left alone rather than restamped with today's date.
 class BulkEntriesController < ApplicationController
   # What a bulk edit may set. Everything on the entry edit form except:
   #
@@ -47,6 +52,26 @@ class BulkEntriesController < ApplicationController
     Entry.transaction { @entries.each(&:destroy!) }
 
     back_to_list(notice: "Deleted #{helpers.pluralize(@entries.size, 'entry')} from #{@list.name}")
+  end
+
+  # Marking the ticked rows watched, for whoever pressed the button.
+  #
+  # Rows already watched are counted but not written again: `mark_completed!` stamps
+  # `completed_at`, and restamping would drag a film watched last year to the top of
+  # "recently completed" for no better reason than having been inside a selection.
+  #
+  # The count says so, because a selection that changed less than it looked like it would is
+  # worth hearing about: ticking a whole season to catch the two nobody had marked should
+  # report two, not twenty-two.
+  def complete
+    unwatched = @entries.reject { |entry| entry.completed_by?(current_user) }
+    unwatched.each { |entry| entry.mark_completed_by!(current_user) }
+
+    already = @entries.size - unwatched.size
+    notice = "Marked #{helpers.pluralize(unwatched.size, 'entry')} as watched"
+    notice += " (#{already} already #{already == 1 ? 'was' : 'were'})" if already.positive?
+
+    back_to_list(notice: notice)
   end
 
   # Dropping several ticked rows at once. They land together, in the order they already had,
