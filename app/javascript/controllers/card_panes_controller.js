@@ -25,8 +25,9 @@ export default class extends Controller {
     this.card = this.element.closest(".grid-card") || this.element;
     // Not a data-action: the attribute would ship on every card, and this listener is the
     // whole reason the controller is here.
-    this.onEnter = () => this.build();
-    this.onLeave = () => this.leave();
+    this.hovered = false;
+    this.onEnter = () => { this.hovered = true; this.build(); };
+    this.onLeave = () => { this.hovered = false; this.leave(); };
     this.card.addEventListener("mouseenter", this.onEnter);
     this.card.addEventListener("mouseleave", this.onLeave);
   }
@@ -124,7 +125,15 @@ export default class extends Controller {
         if (note) {
           // On the way out rather than as you type: a note is a sentence somebody finishes,
           // and a request per keystroke is a request per keystroke.
-          note.addEventListener("blur", () => this.saveNote(note));
+          note.addEventListener("blur", () => {
+            this.saveNote(note);
+            // `leave` refuses to close a note that is being typed in, so a card whose box
+            // still had focus when the pointer left stayed open on Notes -- and with the
+            // strip only drawn on hover, that left a card sitting there showing a bare box
+            // and no way to tell what it was. Finishing with the note outside the card
+            // finishes the card.
+            if (!this.hovered) this.show("synopsis");
+          });
         }
       })
       .catch(() => {

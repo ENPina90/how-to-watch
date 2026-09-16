@@ -183,7 +183,12 @@
     overflow: hidden;
     width: 100%;
     // height: 30%;
-    flex: 1 0 12vh;
+    // Allowed to shrink (it was `1 0 12vh`). With shrink off, a card whose rows above the
+    // synopsis ran tall -- a genre that wraps, a narrow column -- could not give the space
+    // back, so the synopsis held its 12vh, the details column overflowed and the card grew
+    // to fit. The synopsis is clipped text: it is the one part of a card that should give.
+    flex: 1 1 12vh;
+    min-height: 0;
     // font-size: 12px;
     // Room for the tab strip, held open whether or not the strip is drawn yet. The tabs
     // arrive on hover, so reserving the line only then made the synopsis jump down as the
@@ -227,7 +232,8 @@
 // wrapping it on first hover moves nothing.
 .card-panes {
   position: relative;
-  flex: 1 0 12vh;
+  // The same as the plot it stands in for, shrink included -- see the note there.
+  flex: 1 1 12vh;
   min-height: 0;
   width: 100%;
   margin-bottom: 1rem;
@@ -322,29 +328,42 @@
   border-bottom-color: currentColor;
 }
 
-// Centred on the bottom edge, over the fade, where the text it is talking about runs out.
+// A strip along the bottom edge with the chevron centred in it, which is the tab strip at
+// the top of the pane answered at the other end.
+//
+// Not a small round button sitting on the text. The synopsis is clipped at the pane's edge
+// rather than ending there, so whatever the last line happens to be runs straight under
+// the control -- a button floating mid-sentence, with words either side of it. A strip
+// takes the line cleanly instead, and the fade was already dimming that much of it.
 .card-scroll-toggle {
   position: absolute;
-  left: 50%;
-  bottom: 4px;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 100%;
+  height: 26px;
   border: 0;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.65);
+  background: linear-gradient(
+    to top,
+    #0a0a0a 55%,
+    rgba(10, 10, 10, 0)
+  );
   color: rgba(255, 255, 255, 0.75);
   font-size: 0.75rem;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.15s ease;
   cursor: pointer;
 
   &:hover {
     color: #fff;
+  }
+
+  i {
+    transition: transform 0.15s ease;
   }
 }
 
@@ -360,9 +379,9 @@
 }
 
 // Pointing up once scrolling is unlocked, since pressing it again locks it back. The
-// centring translate has to be restated: one transform property, not two.
-.card-scroll-toggle--unlocked {
-  transform: translateX(-50%) rotate(180deg);
+// chevron turns, not the strip.
+.card-scroll-toggle--unlocked i {
+  transform: rotate(180deg);
 }
 
 .card-pane__list {
