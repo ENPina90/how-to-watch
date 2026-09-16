@@ -91,13 +91,24 @@ not be enough, because `can_edit_list?` is true for *any* member on a default ch
 `List#can_be_added_to?` / `#is_descendant_of?`. `lists.parent_list_id` is the superseded
 single-parent version, still declared as a `belongs_to`.
 
-**`Entry`** — one watchable item in a list. `media` is free text, normalized to lowercase,
-and drives nearly every branch in the app: `movie`, `series`, `anime`, `episode`, `fanedit`.
+**`Entry`** — one watchable item in a list. `media` is a column of free text, normalized to
+lowercase, and drives nearly every branch in the app. `Entry::MEDIA_TYPES` is the set the
+app can actually draw — `fanedit`, `movie`, `series`, `anime`, `episode` — since
+`entries/_entry_#{media}` is a partial name; every form offers it as a select
+(`Entry.media_options`), and the CSV template reads the same constant. It is deliberately
+*not* validated: the importers and the OMDB path write `media` from data this app does not
+control, and refusing a row over a card it cannot draw would lose the entry entirely.
 - Identity: `imdb`, `tmdb`, `series_imdb` (for episodes/series).
 - Art: `pic` (remote URL) plus an Active Storage `poster` attachment (Cloudinary).
 - Ordering: `position` (integer, within the list).
 - Playback: `provider_id` → `Source`, `source_key` (opaque id for "direct" providers).
 - `current_id` → `Subentry`: legacy list-level "current episode" pointer.
+- Fanedits: `original`, `faneditor`, `fanedit_link` and `fanedit_type` describe a cut —
+  what it was made from, who made it, where it was published, and which of
+  `Entry::FANEDIT_TYPES` it is (the only one of the four that is validated, since nothing
+  but the form writes it). The forms show them only while the media select says `fanedit`,
+  and `entries/_entry_fanedit` prints them in place of the year and rating a film's card
+  carries, linking the original through `imdb` or `letterboxd_slug` where there is one.
 
 **`Subentry`** — an episode belonging to a series/anime `Entry`. `season` and `episode` are
 integers (they were strings until 2026-08-25, which is why old code sorted with
