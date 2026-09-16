@@ -89,7 +89,11 @@ export default class extends Controller {
       tab.classList.toggle("card-tab--current", i === ["synopsis", "details", "notes"].indexOf(name));
     });
 
-    this.plot.hidden = name !== "synopsis";
+    // A class rather than `hidden`: the plot has to stay in the flow even when a pane is
+    // over it, because it is what tells the auto-sized grid column how wide the details
+    // column should be. Taken out, the column collapses to the width of the meta rows and
+    // a gap opens between the poster and the text.
+    this.plot.classList.toggle("card-plot--behind", name !== "synopsis");
     this.pane.hidden = name === "synopsis";
     // The fade says "there is more below" and belongs to flowing text. Over a box somebody
     // is about to type in it just looks like the bottom of the card has failed to paint.
