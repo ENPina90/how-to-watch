@@ -130,6 +130,17 @@
 // Global flag to prevent multiple initializations
 window.sidebarInitialized = false;
 
+// Drives the standalone left-sidebar toggle: the `sidebarCollapseBtn` / `sidebarExpandBtn`
+// pair at the top of this partial. A page that also carries a right-hand sidebar renders
+// the unified pair instead, and initializeUnifiedSidebarControl below works the sidebar
+// there -- so the two sets of controls are alternatives, never both present.
+//
+// Which means a missing button says "this page is in unified mode", not "the DOM has not
+// caught up yet". The markup is above this script and is always parsed by the time it runs,
+// so there is no race here to retry through. This used to reschedule itself every 50ms
+// until the buttons appeared, and on the watch page -- where they never do -- that left two
+// retry chains spinning at 20Hz for the lifetime of the page, logging as they went. Absence
+// is a permanent answer: return without rescheduling.
 function initializeSidebar() {
   if (window.sidebarInitialized) return;
 
@@ -138,17 +149,9 @@ function initializeSidebar() {
   const expandBtn = document.getElementById('sidebarExpandBtn');
   const pageContainer = document.getElementById('pageContainer');
 
-  console.log('Initializing sidebar:', { sidebar: !!sidebar, collapseBtn: !!collapseBtn, expandBtn: !!expandBtn, pageContainer: !!pageContainer });
-
-  if (!sidebar || !collapseBtn || !expandBtn) {
-    // If elements aren't ready, try again in a short time
-    console.log('Elements not ready, retrying in 50ms');
-    setTimeout(initializeSidebar, 50);
-    return;
-  }
+  if (!sidebar || !collapseBtn || !expandBtn) return;
 
   window.sidebarInitialized = true;
-  console.log('Sidebar initialized successfully');
 
   // Ensure initial state is correct (defensive programming)
   const isCollapsed = sidebar.classList.contains('d-none');
@@ -221,46 +224,31 @@ setTimeout(initializeSidebar, 100);
 // Now Playing Toggle Functionality
 window.nowPlayingInitialized = false;
 
+// The Now Playing card is rendered above this script too, so the same rule applies: if it
+// is not in the document it is not on this page, and retrying will not conjure it.
 function initializeNowPlayingToggle() {
-  if (window.nowPlayingInitialized) {
-    console.log('Now Playing already initialized, skipping');
-    return;
-  }
+  if (window.nowPlayingInitialized) return;
 
   const nowPlayingToggle = document.getElementById('nowPlayingToggle');
   const nowPlayingContent = document.getElementById('nowPlayingContent');
   const nowPlayingCaretIcon = document.getElementById('nowPlayingCaretIcon');
 
-  console.log('Initializing Now Playing toggle:', {
-    toggle: !!nowPlayingToggle,
-    content: !!nowPlayingContent,
-    icon: !!nowPlayingCaretIcon
-  });
-
-  if (!nowPlayingToggle || !nowPlayingContent || !nowPlayingCaretIcon) {
-    console.log('Now Playing elements not ready, retrying...');
-    setTimeout(initializeNowPlayingToggle, 50);
-    return;
-  }
+  if (!nowPlayingToggle || !nowPlayingContent || !nowPlayingCaretIcon) return;
 
   window.nowPlayingInitialized = true;
-  console.log('Now Playing toggle initialized successfully');
 
   nowPlayingToggle.addEventListener('click', function(e) {
-    console.log('Now Playing toggle clicked!');
     e.preventDefault();
     e.stopPropagation();
 
     if (nowPlayingContent.classList.contains('d-none')) {
       // Expand
-      console.log('Expanding Now Playing');
       nowPlayingContent.classList.remove('d-none');
       nowPlayingContent.style.display = 'block';
       nowPlayingCaretIcon.classList.remove('fa-caret-up');
       nowPlayingCaretIcon.classList.add('fa-caret-down');
     } else {
       // Collapse
-      console.log('Collapsing Now Playing');
       nowPlayingContent.classList.add('d-none');
       nowPlayingContent.style.display = 'none';
       nowPlayingCaretIcon.classList.remove('fa-caret-down');
@@ -278,6 +266,9 @@ setTimeout(initializeNowPlayingToggle, 100);
 
 // Unified Sidebar Control (for pages with both left and right sidebars)
 window.unifiedSidebarInitialized = false;
+// Counted on `window` rather than held in a `let`, like the flag above it: Turbo can
+// re-evaluate this inline script, and a top-level `let` would throw on the second pass.
+window.unifiedSidebarAttempts = 0;
 
 function initializeUnifiedSidebarControl() {
   if (window.unifiedSidebarInitialized) return;
@@ -292,13 +283,18 @@ function initializeUnifiedSidebarControl() {
   const entriesSidebar = document.getElementById('entriesSidebar');
   const pageContainer = document.getElementById('pageContainer');
 
+  // This one is a genuine race, unlike the guards above: `entriesSidebar` comes from the
+  // watch view, inside the layout's `yield`, while this partial renders further up the
+  // body. It really can still be unparsed on the first attempt. So retry -- but count the
+  // attempts, because an unbounded retry is exactly what turned initializeSidebar into a
+  // permanent 20Hz loop. Two seconds is far longer than parsing the rest of the page takes;
+  // past that the sidebar is not coming and the answer is no.
   if (!mainSidebar || !entriesSidebar) {
-    setTimeout(initializeUnifiedSidebarControl, 50);
+    if (window.unifiedSidebarAttempts++ < 40) setTimeout(initializeUnifiedSidebarControl, 50);
     return;
   }
 
   window.unifiedSidebarInitialized = true;
-  console.log('Unified sidebar control initialized');
 
   // Check localStorage for saved sidebar state (cinema mode only)
   const savedState = localStorage.getItem('cinemaSidebarsExpanded');
@@ -309,8 +305,6 @@ function initializeUnifiedSidebarControl() {
 
   if (shouldExpand && areBothCollapsed) {
     // User wants sidebars expanded - show them
-    console.log('Restoring expanded sidebar state from localStorage');
-
     mainSidebar.classList.remove('d-none');
     mainSidebar.style.display = 'flex';
     mainSidebar.style.visibility = 'visible';
@@ -342,8 +336,6 @@ function initializeUnifiedSidebarControl() {
       watchControls.style.setProperty('--watch-controls-right', '390px');
     }
   } else if (areBothCollapsed) {
-    console.log('Both sidebars collapsed on init - setting full width');
-
     if (pageContainer) {
       pageContainer.style.setProperty('margin-left', '0', 'important');
       pageContainer.style.setProperty('margin-right', '0', 'important');
@@ -378,7 +370,6 @@ function initializeUnifiedSidebarControl() {
   collapseButtons.forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
-      console.log('Collapsing both sidebars');
 
       // Hide both sidebars
       mainSidebar.classList.add('d-none');
@@ -423,7 +414,6 @@ function initializeUnifiedSidebarControl() {
   if (unifiedCollapseBtn) {
     unifiedCollapseBtn.addEventListener('click', function(e) {
       e.preventDefault();
-      console.log('Expanding both sidebars');
 
       // Show both sidebars
       mainSidebar.classList.remove('d-none');
