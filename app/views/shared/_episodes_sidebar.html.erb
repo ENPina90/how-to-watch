@@ -92,6 +92,10 @@
 // Global flag to prevent multiple initializations
 window.episodesSidebarInitialized = false;
 
+// All three elements are rendered above this script, in this partial, unconditionally --
+// so if any of them is missing the partial is not on the page and no amount of waiting will
+// change that. See the note on initializeSidebar in shared/_sidebar: that guard retried on
+// absence instead, and spun at 20Hz for the lifetime of the watch page.
 function initializeEpisodesSidebar() {
   if (window.episodesSidebarInitialized) return;
 
@@ -100,16 +104,9 @@ function initializeEpisodesSidebar() {
   const expandBtn = document.getElementById('episodesSidebarExpandBtn');
   const pageContainer = document.getElementById('pageContainer');
 
-  console.log('Initializing episodes sidebar:', { sidebar: !!sidebar, collapseBtn: !!collapseBtn, expandBtn: !!expandBtn, pageContainer: !!pageContainer });
-
-  if (!sidebar || !collapseBtn || !expandBtn) {
-    console.log('Episodes sidebar elements not ready, retrying in 50ms');
-    setTimeout(initializeEpisodesSidebar, 50);
-    return;
-  }
+  if (!sidebar || !collapseBtn || !expandBtn) return;
 
   window.episodesSidebarInitialized = true;
-  console.log('Episodes sidebar initialized successfully');
 
   // Ensure initial state is correct
   const isCollapsed = sidebar.classList.contains('d-none');
