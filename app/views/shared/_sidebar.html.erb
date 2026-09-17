@@ -305,8 +305,6 @@ function initializeUnifiedSidebarControl() {
 
   if (shouldExpand && areBothCollapsed) {
     // User wants sidebars expanded - show them
-    console.log('Restoring expanded sidebar state from localStorage');
-
     mainSidebar.classList.remove('d-none');
     mainSidebar.style.display = 'flex';
     mainSidebar.style.visibility = 'visible';
@@ -338,8 +336,6 @@ function initializeUnifiedSidebarControl() {
       watchControls.style.setProperty('--watch-controls-right', '390px');
     }
   } else if (areBothCollapsed) {
-    console.log('Both sidebars collapsed on init - setting full width');
-
     if (pageContainer) {
       pageContainer.style.setProperty('margin-left', '0', 'important');
       pageContainer.style.setProperty('margin-right', '0', 'important');
@@ -374,7 +370,6 @@ function initializeUnifiedSidebarControl() {
   collapseButtons.forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
-      console.log('Collapsing both sidebars');
 
       // Hide both sidebars
       mainSidebar.classList.add('d-none');
@@ -419,7 +414,6 @@ function initializeUnifiedSidebarControl() {
   if (unifiedCollapseBtn) {
     unifiedCollapseBtn.addEventListener('click', function(e) {
       e.preventDefault();
-      console.log('Expanding both sidebars');
 
       // Show both sidebars
       mainSidebar.classList.remove('d-none');
