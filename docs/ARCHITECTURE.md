@@ -650,6 +650,10 @@ Reached from the dashboard's Entries figure. Built for its length rather than pa
   and delete answer with a stream for that row only. The controller holds the toolbar by
   reference because a redrawn or removed row takes it out of the document, and it queues an
   open that arrives while the modal is still fading out — Bootstrap ignores `show()` then.
+- **The stream mark is its column's switch.** Pressing it sends `PATCH
+  /admin/entries/:id/stream` with the value wanted (never a bare "flip"), written straight
+  to the column. Delegated from the table body; the marks are operable through `role` and
+  `tabindex` rather than a wrapper element per row.
 - **`/admin/subentries`** (`Admin::SubentriesController`) is the same table for every
   episode, sharing the toolbar, modal and sort headings. The toolbar's link templates fill
   `ROW_ID` from the row's own id and `PARENT_ID` from its `data-parent`, since an episode is
