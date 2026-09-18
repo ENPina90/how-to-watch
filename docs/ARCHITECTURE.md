@@ -650,6 +650,13 @@ Reached from the dashboard's Entries figure. Built for its length rather than pa
   and delete answer with a stream for that row only. The controller holds the toolbar by
   reference because a redrawn or removed row takes it out of the document, and it queues an
   open that arrives while the modal is still fading out — Bootstrap ignores `show()` then.
+- **`/admin/subentries`** (`Admin::SubentriesController`) is the same table for every
+  episode, sharing the toolbar, modal and sort headings. The toolbar's link templates fill
+  `ROW_ID` from the row's own id and `PARENT_ID` from its `data-parent`, since an episode is
+  watched through its show (`/entries/:show/watch?subentry=:id`). Two columns differ because
+  the data does: the source is the show's (an episode has no provider), and there is no
+  stream column (`subentries` has no `stream`). The show is not editable from here — moving
+  an episode would strand its old show's `current_id` and members' saved positions.
 - A full layout of this page is expensive (~50–140ms a time, more under DevTools), and
   opening a Bootstrap modal forces more than one. Measure it in a **foreground** tab: a
   background one has its timers and animation frames throttled, which reads as multi-second
