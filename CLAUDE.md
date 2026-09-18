@@ -132,7 +132,10 @@ Full write-ups are in `ARCHITECTURE.md` §5.9–§5.14. What follows is the part
   `app/controllers/concerns/access_control.rb` rather than scattered declarations; only
   GETs pass through, and anything unlisted falls through to Devise.
 - **Admin dashboard** (`app/controllers/admin/`) — statistics, the site switches, commercial
-  reels, the cable dial, and on-demand runs of the scheduled sweeps.
+  reels, the cable dial, on-demand runs of the scheduled sweeps, and `/admin/entries`: every
+  entry as one sortable table. That page renders ~3,500 rows, so keep its row partial to the
+  entry's data — its actions are one toolbar the page moves between rows, and
+  `entries_admin_spec.rb` fails if a per-row form or action set comes back.
 
 ### Impersonation
 
