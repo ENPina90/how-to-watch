@@ -551,7 +551,7 @@ class EntriesController < ApplicationController
     if @entry.media == 'series' || @entry.media == 'anime'
       # Use user-level episode positioning
       user_position = UserEntryPosition.find_or_create_for(current_user, @entry)
-      user_position.go_to_previous!
+      user_position.go_to_previous!(from: reported_episode || user_position.current_subentry)
 
       if params[:mode] == 'watch'
         redirect_to watch_entry_path(@entry, channel: watching_channel.id)
@@ -568,8 +568,10 @@ class EntriesController < ApplicationController
 
     if @entry.media == 'series' || @entry.media == 'anime'
       # Use user-level episode positioning
+      # From the episode on screen where the page says which: the player may already have
+      # moved the stored one on as this episode's credits started.
       user_position = UserEntryPosition.find_or_create_for(current_user, @entry)
-      user_position.advance_to_next!
+      user_position.advance_to_next!(from: reported_episode || user_position.current_subentry)
 
       if params[:mode] == 'watch'
         redirect_to watch_entry_path(@entry, channel: watching_channel.id)
@@ -656,6 +658,14 @@ class EntriesController < ApplicationController
   # the tracking off entirely; a session that lapses mid-film is a write like any other and
   # goes to the sign-in page, where nothing is listening for the answer.
   def progress
+    # A series' page says which episode it is reporting on. Once that episode ran out the
+    # viewer was moved on to the next one, and the reports that follow -- a pause in the
+    # credits, the last word as the page goes away -- are about an episode they have left.
+    # There is one position per show, not per episode, so recording them would start the
+    # next episode at the last one's credits.
+    episode = reported_episode
+    return head :no_content if episode && episode != @entry.current_subentry_for_user(current_user)
+
     user_entry = current_user.user_entry_for!(@entry)
     was_completed = user_entry.completed?
 
@@ -663,13 +673,19 @@ class EntriesController < ApplicationController
     # channel it is watched from. Looked up rather than taken as a number from the request:
     # the setting belongs to the channel, and watching_channel already refuses a channel
     # that does not hold this entry.
-    user_entry.record_progress!(
-      params[:progress],
+    report = {
       duration: params[:duration],
       finished: params[:finished].to_s == 'true',
       unattended: params[:unattended].to_s == 'true',
       credits: watching_channel.skip_credits_seconds
-    )
+    }
+    user_entry.record_progress!(params[:progress], **report)
+
+    # Asked of every report rather than only the one that ticks the show off: that flag
+    # flips once for the whole series, and every episode runs out.
+    if episode && user_entry.watched_by?(params[:progress], **report)
+      move_past_watched_episode(episode)
+    end
 
     # The eye in the ring is drawn from the row this just wrote, and the page it is on is
     # not going to be rendered again -- the viewer is watching a film on it. Sitting through
@@ -683,6 +699,7 @@ class EntriesController < ApplicationController
     # loaded, and what is in it was read before this request wrote to it.
     if !was_completed && user_entry.completed?
       @entry.user_entries.reset
+      move_channel_past_watched
 
       return render turbo_stream: turbo_stream.replace(
         "completed-#{@entry.id}",
@@ -918,6 +935,42 @@ class EntriesController < ApplicationController
     # for somebody who has never played this entry.
     def resume_position
       current_user&.user_entry_for(@entry)&.resume_position(credits: @channel.skip_credits_seconds)
+    end
+
+    # Once the player has called this entry watched, the channel that owns it moves on, so
+    # the next visit to the channel starts on something not yet seen. Position is a number
+    # within the owning channel, as in #watch, so that is the one moved -- a channel
+    # borrowing the entry has no position for it.
+    #
+    # Not for a series. Its one completion flag is ticked by the first episode to run out,
+    # and moving the channel past the show would strand every episode after it.
+    def move_channel_past_watched
+      return if @entry.media == 'series' || @entry.media == 'anime'
+
+      @entry.list.position_for_user(current_user)&.move_past!(@entry)
+    end
+
+    # The episode of a series the player has just called watched: the show moves on to the
+    # episode after it, which starts from the beginning (UserEntryPosition clears the
+    # show's player position whenever the episode changes). After the last one there is
+    # nothing left of the show, so it is the channel that moves on, as it does for a film.
+    def move_past_watched_episode(episode)
+      following = @entry.subentry_after(episode)
+
+      if following
+        @entry.update_user_subentry!(current_user, following)
+      else
+        @entry.list.position_for_user(current_user)&.move_past!(@entry)
+      end
+    end
+
+    # The episode a request says it is about, from `?subentry=`: the page reporting
+    # progress, or the arrows and up-next card stepping from what is on screen. Only one of
+    # this entry's own episodes counts; anything else is as if nothing were named.
+    def reported_episode
+      return nil if params[:subentry].blank?
+
+      @entry.subentries.find_by(id: params[:subentry])
     end
 
     # What the up-next card will move to, as a plain GET of the player page. Mirrors what

@@ -20,33 +20,35 @@ class UserEntryPosition < ApplicationRecord
     end
   end
 
-  # Advance to next episode
-  def advance_to_next!
-    return unless current_subentry
+  # Advance to next episode.
+  #
+  # `from` is the episode the viewer is looking at, where the page knows it. It is usually
+  # the stored one, but not after an episode runs out: the player moves the stored position
+  # on as the credits start (EntriesController#progress), and the up-next card or the arrow
+  # pressed a moment later means "the one after what I just watched" -- stepping from the
+  # stored position instead would skip an episode.
+  def advance_to_next!(from: current_subentry)
+    return unless from
 
     # Asked of the entry rather than worked out here, so that warming the next episode and
     # actually moving to it can never disagree about which one it is.
-    following = entry.subentry_after(current_subentry)
-    return current_subentry if following.nil? # At end, stay on last episode
+    following = entry.subentry_after(from)
+    following ||= from # At end, stay on last episode
 
     update!(current_subentry: following)
     following
   end
 
-  # Go to previous episode
-  def go_to_previous!
-    return unless current_subentry
+  # Go to previous episode. `from` as for advance_to_next!.
+  def go_to_previous!(from: current_subentry)
+    return unless from
 
     subentries = entry.subentries.order(:season, :episode)
-    current_index = subentries.index(current_subentry)
+    current_index = subentries.index(from)
 
-    if current_index && current_index > 0
-      prev_subentry = subentries[current_index - 1]
-      update!(current_subentry: prev_subentry)
-      prev_subentry
-    else
-      current_subentry # At beginning, stay on first episode
-    end
+    target = current_index && current_index > 0 ? subentries[current_index - 1] : from # At beginning, stay on first episode
+    update!(current_subentry: target)
+    target
   end
 
   # Set to specific subentry

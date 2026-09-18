@@ -14,6 +14,10 @@
      data-bs-backdrop="false"
      data-auto-advance-entry-id-value="<%= entry.id %>"
      data-auto-advance-channel-id-value="<%= channel.id %>"
+     <%# The episode on screen, so "next" is the one after it. By the time this counts down
+         the server has usually moved the series on already, and stepping from there
+         would skip one. %>
+     data-auto-advance-subentry-id-value="<%= local_assigns[:subentry]&.id %>"
      data-auto-advance-is-ordered-value="<%= channel.ordered? %>"
      <%# The same number that decided when this was raised, so the count reaches zero as
          the film does rather than at a moment of its own. %>

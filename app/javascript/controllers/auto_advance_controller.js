@@ -26,6 +26,8 @@ export default class extends Controller {
     entryId: Number,
     channelId: Number,
     isOrdered: Boolean,
+    // The episode on screen, for a series; blank otherwise. See advance().
+    subentryId: String,
     // AppSetting#up_next_lead_seconds. From the page rather than a constant here, because
     // it is the same number that decided when this card was raised.
     seconds: Number
@@ -106,14 +108,18 @@ export default class extends Controller {
 
     // The channel is carried through because the entry being watched is not always in the
     // channel it is being watched *from*, and "next" means next on the one you are on.
-    const channel = `mode=watch&channel=${this.channelIdValue}`
+    //
+    // A series names the episode on screen as well: the server moved it on to the next one
+    // as the credits started, and "next" from there would skip an episode.
+    let query = `mode=watch&channel=${this.channelIdValue}`
+    if (this.subentryIdValue) query += `&subentry=${this.subentryIdValue}`
 
     // An ordered channel plays in its order; an unordered one picks something unseen, the
     // same as the shuffle button in the ring does.
     if (this.isOrderedValue) {
-      this.submitPatch(`/entries/${this.entryIdValue}/increment_current?${channel}`)
+      this.submitPatch(`/entries/${this.entryIdValue}/increment_current?${query}`)
     } else {
-      this.submitPatch(`/entries/${this.entryIdValue}/shuffle_current?${channel}`)
+      this.submitPatch(`/entries/${this.entryIdValue}/shuffle_current?${query}`)
     }
   }
 

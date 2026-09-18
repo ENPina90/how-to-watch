@@ -118,8 +118,10 @@
              on the way past instead. %>
          data-action="cinema-navigation:leaving@document->player-progress#saveNow"
          <%# The channel rides along because its credits skip decides where the entry
-             ends, and the server judges completion by it. %>
-         data-player-progress-url-value="<%= progress_entry_path(@entry, channel: @channel.id) %>"
+             ends, and the server judges completion by it. The episode does because the
+             server moves a series on once one runs out, and needs to tell the reports
+             about this one from those about the one it has moved to. %>
+         data-player-progress-url-value="<%= progress_entry_path(@entry, channel: @channel.id, subentry: @current_subentry&.id) %>"
          data-player-progress-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
          data-player-progress-frame-value="cinema"
          data-player-progress-token-value="<%= form_authenticity_token %>"
@@ -220,7 +222,7 @@
           something -- a position, a completion, an edit -- so a signed-out visitor gets
           the ring without them rather than buttons that bounce off the sign-in page. %>
       <% if user_signed_in? %>
-        <%= button_to increment_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
+        <%= button_to increment_current_entry_path(@entry, mode: 'watch', channel: @channel.id, subentry: @current_subentry&.id), method: :patch,
               class: 'p-0 border-0 bg-transparent text-decoration-none',
               form: { class: 'd-inline', data: { cinema_move: true } } do %>
           <i class="fa-solid fa-3x fa-caret-right position-absolute top-50 end-0 translate-middle-y"></i>
@@ -252,7 +254,7 @@
         <i class="fa-solid fa-3x fa-caret-down position-absolute bottom-0 start-50 translate-middle-x"></i>
       <% end %>
       <% if user_signed_in? %>
-        <%= button_to decrement_current_entry_path(@entry, mode: 'watch', channel: @channel.id), method: :patch,
+        <%= button_to decrement_current_entry_path(@entry, mode: 'watch', channel: @channel.id, subentry: @current_subentry&.id), method: :patch,
               class: 'p-0 border-0 bg-transparent text-decoration-none',
               form: { class: 'd-inline', data: { cinema_move: true } } do %>
           <i class="fa-solid fa-3x fa-caret-left position-absolute top-50 start-0 translate-middle-y"></i>
@@ -340,7 +342,7 @@
     outside it is not rendered at all while fullscreen, and a countdown nobody can see
     would advance the channel unannounced. %>
 <% if user_signed_in? && @channel.auto_next_for(current_user) %>
-  <%= render 'entries/auto_advance_modal', entry: @entry, channel: @channel %>
+  <%= render 'entries/auto_advance_modal', entry: @entry, channel: @channel, subentry: @current_subentry %>
 <% end %>
   </div>
 </div>
