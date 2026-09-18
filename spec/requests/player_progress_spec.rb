@@ -79,6 +79,89 @@ RSpec.describe 'Player progress', type: :request do
     end
   end
 
+  # Coming back to the channel should open what comes after, not replay what just ended.
+  describe 'moving the channel on once an entry is watched' do
+    let(:list) { create(:list, user: user, ordered: true) }
+    let!(:entry) { create(:entry, list: list, name: 'One', media: 'episode', position: 1, length: 100) }
+    let!(:seen) { create(:entry, list: list, name: 'Two', media: 'episode', position: 2, length: 100) }
+    let!(:unseen) { create(:entry, list: list, name: 'Three', media: 'episode', position: 3, length: 100) }
+
+    before do
+      sign_in user
+      user.user_entry_for!(seen).mark_completed!
+      list.position_for_user!(user).update!(current_position: entry.position)
+    end
+
+    def position
+      list.position_for_user(user).reload.current_position
+    end
+
+    it 'steps to the next unwatched entry when the player calls this one watched' do
+      post progress_entry_path(entry), params: { progress: 5_700 }
+
+      expect(position).to eq(unseen.position)
+      get list_watch_current_path(list)
+      expect(response).to redirect_to(watch_entry_path(unseen, channel: list.id))
+    end
+
+    it 'stays put for a report short of the mark' do
+      post progress_entry_path(entry), params: { progress: 600 }
+
+      expect(position).to eq(entry.position)
+    end
+
+    it 'stays put for an unattended report' do
+      post progress_entry_path(entry), params: { progress: 5_700, unattended: 'true' }
+
+      expect(position).to eq(entry.position)
+    end
+
+    # The report sent as the page unloads can land after the next page has recorded itself.
+    it 'leaves a position the viewer has already moved elsewhere' do
+      list.position_for_user(user).update!(current_position: seen.position)
+
+      post progress_entry_path(entry), params: { progress: 5_700 }
+
+      expect(position).to eq(seen.position)
+    end
+
+    # Only the crossing moves it: pausing in the credits afterwards must not skip ahead.
+    it 'does not move again on later reports for an entry already watched' do
+      post progress_entry_path(entry), params: { progress: 5_700 }
+      list.position_for_user(user).update!(current_position: entry.position)
+
+      post progress_entry_path(entry), params: { progress: 5_800 }
+
+      expect(position).to eq(entry.position)
+    end
+
+    it 'stays on the last entry when nothing after it is unwatched' do
+      list.position_for_user(user).update!(current_position: unseen.position)
+
+      post progress_entry_path(unseen), params: { progress: 5_700 }
+
+      expect(position).to eq(unseen.position)
+    end
+
+    it 'leaves the position of an unordered channel alone' do
+      list.update!(ordered: false)
+
+      post progress_entry_path(entry), params: { progress: 5_700 }
+
+      expect(position).to eq(entry.position)
+    end
+
+    # The first episode to run out ticks the whole show, which is no reason to leave it.
+    it 'does not move past a series' do
+      show = create(:entry, list: list, name: 'A Show', media: 'series', position: 4, length: 45)
+      list.position_for_user(user).update!(current_position: show.position)
+
+      post progress_entry_path(show), params: { progress: 2_700 }
+
+      expect(position).to eq(show.position)
+    end
+  end
+
   # A write like any other: guests never get through, so a session that lapsed mid-film
   # records nothing rather than writing against whoever comes next.
   it 'records nothing for a signed-out viewer' do

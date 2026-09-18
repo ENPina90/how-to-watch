@@ -683,6 +683,7 @@ class EntriesController < ApplicationController
     # loaded, and what is in it was read before this request wrote to it.
     if !was_completed && user_entry.completed?
       @entry.user_entries.reset
+      move_channel_past_watched
 
       return render turbo_stream: turbo_stream.replace(
         "completed-#{@entry.id}",
@@ -918,6 +919,19 @@ class EntriesController < ApplicationController
     # for somebody who has never played this entry.
     def resume_position
       current_user&.user_entry_for(@entry)&.resume_position(credits: @channel.skip_credits_seconds)
+    end
+
+    # Once the player has called this entry watched, the channel that owns it moves on, so
+    # the next visit to the channel starts on something not yet seen. Position is a number
+    # within the owning channel, as in #watch, so that is the one moved -- a channel
+    # borrowing the entry has no position for it.
+    #
+    # Not for a series. Its one completion flag is ticked by the first episode to run out,
+    # and moving the channel past the show would strand every episode after it.
+    def move_channel_past_watched
+      return if @entry.media == 'series' || @entry.media == 'anime'
+
+      @entry.list.position_for_user(current_user)&.move_past!(@entry)
     end
 
     # What the up-next card will move to, as a plain GET of the player page. Mirrors what
