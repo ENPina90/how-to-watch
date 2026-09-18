@@ -241,6 +241,13 @@
   color: rgba(255, 255, 255, 0.3);
 }
 
+// A provider that cannot be started by the page. Dimmer still than the parameter beside it:
+// it is the absence of a capability, not a setting somebody chose.
+.source-card__autoplay--none {
+  color: rgba(255, 255, 255, 0.22);
+  font-style: italic;
+}
+
 .source-card__actions {
   display: flex;
   flex-wrap: wrap;
