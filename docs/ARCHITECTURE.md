@@ -777,7 +777,8 @@ Reached from the dashboard's Entries figure. Built for its length rather than pa
 | `PosterCandidates` | poster options for the picker (TMDB, OMDB, recent list entries) |
 | `TmdbService` | the TMDB client: typed endpoints (`fetch_show`, `fetch_season`, `fetch_episode`, `find_by_imdb_id`, …) through one `get_json` with timeouts, raising `TmdbService::RequestError`; plus trailers, posters and image URL validation |
 | `ImdbScraper` | scrapes IMDb search results for top-rated episodes (HTTParty + Nokogiri) |
-| `UrlCheckerService` | fetches a source URL and checks for a non-empty `<title>` → sets `entries.stream` |
+| `UrlCheckerService` | fetches a source URL and checks for a non-empty `<title>` → sets `entries.stream`. **Not used for MEGA**, whose embed page has no `<title>` and so failed every time |
+| `MegaAvailability` | asks MEGA's API whether a MEGA link plays: the file exists (`g` without `g: 1`, so no transfer quota is spent) and the link's key decrypts its attributes. `:available` / `:missing` / `:unknown`, fifty links a request; `:unknown` never writes "broken". `Entry#check_source` uses it for MEGA, and `entry:check_mega` re-checks in bulk |
 | `ImageRepairService` / `PosterMigrationService` | fix broken `pic` URLs; copy `pic` → Active Storage/Cloudinary. Return `{status: :migrated|:repaired|:valid|:failed|:skipped|:error, message:}` — **status values are symbols** |
 | `EntryPrefill` | Builds an **unsaved** Entry from OMDB (or TMDB, for a standalone episode) for the custom-entry form to open filled in |
 | `EntryCsvTemplate` / `EntryCsvImporter` | The blank sheet `/entries/new` hands out and reads back. `COLUMNS` is the contract between them; a row with an `imdb` id is looked up and what was typed wins over what the lookup said |
@@ -947,6 +948,7 @@ neither needs a local Redis.
   `DATABASE_URL`, `REDIS_URL`, `RAILS_MASTER_KEY`, `SECRET_KEY_BASE`, `CLOUDINARY_URL`
   and the TMDB/OMDB keys.
 - Useful rake tasks: `sources:seed`, `sources:backfill`, `entry:check_sources`,
+  `entry:check_mega APPLY=1` (MEGA entries, against MEGA's own API),
   `images:check` / `images:repair`, `positions:fix_invalid`, `db:backup:full`,
   `db:backup:restore[file]`, `export:entries`.
 - Task guides live in `docs/guides/` (Railway deploy, backups, image repair, poster

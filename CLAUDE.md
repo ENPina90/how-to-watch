@@ -57,7 +57,7 @@ RuboCop is configured but the codebase has never been brought to clean. Do **not
 blanket `-a`/`-A` autocorrect: it would touch nearly every file and bury real changes.
 
 Useful rake tasks: `sources:seed`, `sources:audit`, `sources:backfill APPLY=1`,
-`entry:check_sources`, `images:check` / `images:repair`, `positions:fix_invalid`,
+`entry:check_sources`, `entry:check_mega APPLY=1`, `images:check` / `images:repair`, `positions:fix_invalid`,
 `posters:audit`, `commercials:seed`, `commercials:durations`, `db:backup:full`,
 `db:backup:restore[file]`, `export:entries`. `bundle exec rake -T` lists them all;
 definitions are in `lib/tasks/`.
