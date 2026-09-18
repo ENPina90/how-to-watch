@@ -125,7 +125,15 @@ the entry's own `source_key`: a Drive file id, mega key, YouTube id, or a full U
 fragment). MEGA is the exception: its player options live in one run of number-letter pairs
 behind the key's `!` (`#KEY!900s1a`), so autoplay is a `1a` pair there
 (`Source::FRAGMENT_AUTOPLAY_FLAGS`) and the start position is an `Ns` pair in the same run
-(`Source::FRAGMENT_RESUME_FLAGS`). Google Drive's preview player cannot autoplay at all.
+(`Source::FRAGMENT_RESUME_FLAGS`). **`Source#autoplays?`** is the question to ask, not
+`autoplay_param` — it counts both routes, so MEGA reads as capable despite having no
+parameter. Three providers cannot be started by the page at all: Google Drive, archive.org
+and the custom catch-all. Drive is the one that looks as if it should — its preview is a
+YouTube player with `enablejsapi=1` on it that answers the IFrame API in full, but Drive
+builds that URL with `origin=https://drive.google.com`, so commands from this app are
+dropped (probed from both origins 2026-09-18: 101 replies from Drive's origin, silence from
+ours). No query parameter reaches it either, and the file bytes sit behind a virus-scan
+interstitial above ~100MB.
 Substitution is a plain `gsub`, no eval.
 
 ### 3.2 Per-user tracking (the important part)
@@ -442,6 +450,14 @@ that is something the viewer chose rather than a side effect of rendering a page
 - Runtime gaps are guessed (`FALLBACK_MINUTES`, 100 for a film, 30 otherwise) rather than
   dropping the entry, and `MIN_MINUTES` (5) keeps bad catalogue data from filling a day with
   thousands of rows. `MAX_SLOTS_PER_DAY` (200) is the backstop.
+- Entries on a **direct provider the page cannot start** get no slots (`unschedulable?`).
+  A channel is the programme already running when you turn it on, and Drive, archive.org and
+  custom all wait for their own play button — and take no start position either, so pressing
+  one an hour into a slot begins at the beginning, an hour behind everyone else on that
+  channel. Direct providers only, deliberately: on an imdb provider the same signal is
+  `autoplay_param`, which the source form calls optional, so reading it here would take the
+  whole dial dark for a blank field. A channel left with nothing schedulable goes off air,
+  which `plan` already handles.
 - `CableScheduleJob` deals tomorrow daily and fills today **only if it is empty**
   (`ensure_day!` leaves an existing schedule alone, so it can never pull a running programme
   out from under anybody). `CableSchedule.prune!` keeps `RETAIN_DAYS` (2).
