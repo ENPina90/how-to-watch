@@ -530,11 +530,33 @@ module CableSchedule
   # worked through, so a dead programme is four minutes of black frame before the clock
   # moves the channel on by itself.
   #
+  # A direct provider the page cannot start is the same fault and a longer one. Drive,
+  # archive.org and the custom catch-all all wait for somebody to press their own play
+  # button (Source#autoplays?), which is the one thing a channel never asks: /cable is the
+  # programme that is already running when you turn it on. Worse, none of those three takes
+  # a start position either, so the offset the slot would be joined at is dropped -- pressed
+  # by hand an hour into a slot it still begins at the beginning, an hour behind everybody
+  # else watching the same channel. A programme nobody can be in sync with is not one to
+  # schedule, and on the dial here that is 29 entries out of 1,202 on the one channel that
+  # has any.
+  #
+  # Direct providers only, and the restraint is the point. For those three the answer is a
+  # fact about one known player. For an imdb provider it is `autoplay_param`, a column the
+  # source form calls optional -- "blank = ignores autoplay" -- so a blank one is a
+  # misconfiguration far more often than a player that genuinely cannot start, and reading
+  # it here would take every channel on the dial off the air at once for a field somebody
+  # left empty. A silent blackout is a worse failure than the one being fixed, so an imdb
+  # provider still airs whatever its column says and the page simply does not autoplay,
+  # exactly as it did before.
+  #
   # `stream` is three-valued and only `false` means broken: it is nil for an entry nothing
   # has ever checked, and dropping those would take most of a young channel off the air on
   # no evidence. The same reading EmbedAvailabilityScanJob takes of the column.
   def unschedulable?(entry)
     return true if entry.imdb.blank? && entry.source_key.blank?
+
+    source = entry.resolved_source
+    return true if source&.direct? && !source.autoplays?
 
     entry.stream == false
   end

@@ -35,7 +35,8 @@
             collection: [['Always', true], ['Never', false]],
             include_blank: 'Follow each channel',
             label: 'Auto play',
-            hint: 'Start playing as soon as an entry opens.' %>
+            hint: 'Start playing as soon as an entry opens. Google Drive, archive.org and ' \
+                  'custom sources cannot be started by the page and always wait for a click.' %>
       <%= f.input :auto_next, as: :select,
             collection: [['Always', true], ['Never', false]],
             include_blank: 'Follow each channel',

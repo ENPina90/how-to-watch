@@ -16,7 +16,7 @@
   <% end %>
   <%= f.input :sort, collection: ['Year', 'Genre', 'Watched', 'Type', 'Length'], include_blank: true %>
   <%= f.association :provider, collection: Source.active.order(:position), label_method: ->(s) { "#{s.name} (#{s.kind})" }, include_blank: false, label: 'Default source provider', hint: 'Provider used for entries in this channel that don\'t override it' %>
-  <%= f.input :auto_play, as: :boolean, label: 'Auto Play', hint: 'Automatically start playing entries when opened' %>
+  <%= f.input :auto_play, as: :boolean, label: 'Auto Play', hint: 'Automatically start playing entries when opened. Google Drive, archive.org and custom sources cannot be started by the page and always wait for a click.' %>
   <%= f.input :auto_next, as: :boolean, label: 'Auto Next', hint: 'Automatically advance to next entry when current one is completed' %>
   <%= f.button :submit %>
 <% end %>

@@ -95,6 +95,32 @@ RSpec.describe Source do
     end
   end
 
+  # Whether the page can start a player at all. Asked as a capability rather than read off
+  # `autoplay_param`, because the column is only one of the two routes there.
+  describe '#autoplays?' do
+    it 'is true for a provider with an autoplay query parameter' do
+      expect(source({ 'movie' => 'https://p.test/%{imdb}' }, autoplay_param: 'autoplay')).to be_autoplays
+    end
+
+    # The case the old check got backwards: no parameter, and it autoplays fine.
+    it 'is true for MEGA, which takes the flag in the key fragment' do
+      mega = described_class.find_or_initialize_by(slug: 'mega').tap do |s|
+        s.update!(name: 'MEGA', kind: 'direct', autoplay_param: nil,
+                  templates: { 'default' => 'https://mega.nz/embed/%{source_key}' })
+      end
+
+      expect(mega.autoplay_param).to be_blank
+      expect(mega).to be_autoplays
+    end
+
+    it 'is false for a provider with neither route' do
+      drive = source({ 'default' => 'https://drive.google.com/file/d/%{source_key}/preview' },
+                     kind: 'direct', slug: 'google-drive')
+
+      expect(drive).not_to be_autoplays
+    end
+  end
+
   # The other half of that option run. MEGA answers no message from the page, so where it
   # starts is decided as the frame is written or not at all -- and unlike every other
   # resumable provider it reads the position from behind the `#` rather than from the query.

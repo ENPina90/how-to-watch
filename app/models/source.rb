@@ -262,6 +262,30 @@ class Source < ApplicationRecord
     'mega' => '1a'
   }.freeze
 
+  def fragment_autoplay_flag = FRAGMENT_AUTOPLAY_FLAGS[slug]
+
+  # Will this provider's player start without somebody pressing its button?
+  #
+  # Both routes count, which is the reason this is a predicate rather than a look at
+  # `autoplay_param`: MEGA has no query parameter and autoplays perfectly well through the
+  # fragment, so reading the column alone calls it incapable and gets it backwards.
+  #
+  # Three providers genuinely cannot: Drive, archive.org and the custom catch-all. Drive is
+  # the one worth naming, because its preview looks like it should. It is a YouTube player
+  # underneath, with `enablejsapi=1` already on it, and it answers the IFrame API in full --
+  # but Drive builds that URL server-side with `origin=https://drive.google.com`, so a
+  # command from this app is dropped and a reply would go to Drive rather than to us.
+  # Probed 2026-09-18 from both origins: 101 replies from drive.google.com, silence from
+  # ours, and 54 play commands left the play button exactly where it was. There is no query
+  # parameter either -- `/preview?autoplay=1` produces a byte-identical inner player URL --
+  # and the file bytes are behind a virus-scan interstitial for anything over ~100MB, so
+  # there is no serving it into a `<video autoplay>` of our own.
+  #
+  # So this exists to be honest about it rather than to work around it. `auto_play` is a
+  # channel setting a member can switch on, and it used to answer with silence on these
+  # three.
+  def autoplays? = autoplay_param.present? || fragment_autoplay_flag.present?
+
   # The same story for the start position, which is why this sits next to autoplay rather
   # than next to RESUME_PARAMS: MEGA takes it as another pair in that same option run, so
   # `#KEY!900s1a` starts fifteen minutes in. Only the letter is named here because the
@@ -373,7 +397,7 @@ class Source < ApplicationRecord
   end
 
   def append_autoplay(url, autoplay)
-    if (flag = FRAGMENT_AUTOPLAY_FLAGS[slug])
+    if (flag = fragment_autoplay_flag)
       return autoplay ? append_fragment_flag(url, flag) : url
     end
 

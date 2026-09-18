@@ -67,8 +67,16 @@
           <% else %>
             <em>no templates</em>
           <% end %>
+          <%# The capability rather than the column: MEGA autoplays through its key fragment
+              and has no parameter to show, so asking for `autoplay_param` called it
+              incapable. Saying nothing at all for the three that cannot is what left
+              "Auto Play" looking broken rather than inapplicable -- see Source#autoplays?. %>
           <% if source.autoplay_param.present? %>
             <span class="source-card__autoplay">autoplay: <%= source.autoplay_param %></span>
+          <% elsif source.fragment_autoplay_flag.present? %>
+            <span class="source-card__autoplay">autoplay: <%= source.fragment_autoplay_flag %> in the key fragment</span>
+          <% else %>
+            <span class="source-card__autoplay source-card__autoplay--none">plays on a click only</span>
           <% end %>
         </p>
 
