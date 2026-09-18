@@ -1,11 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 import { Modal } from "bootstrap"
 
-// /admin/entries: the row actions and the edit modal, each of which exists once for a
-// table several thousand rows long.
+// The admin tables -- /admin/entries and /admin/subentries: the row actions and the edit
+// modal, each of which exists once for a table thousands of rows long.
 //
 // The actions are one toolbar, moved into whichever row is pointed at or focused, with its
-// links rewritten to that row's entry. Drawn per row they were seven of every row's sixteen
+// links rewritten to that row's record. Its links are templates: ROW_ID is the number on the
+// end of the row's own id (`entry_12`, `subentry_34`), and PARENT_ID is the row's
+// `data-parent` -- an episode is watched through its show, so its watch link needs both. Drawn per row they were seven of every row's sixteen
 // elements -- some 24,000 nodes for controls only ever visible on one row at a time.
 //
 // The pencil is then an ordinary link aimed at the frame inside the modal, so pressing it
@@ -41,12 +43,16 @@ export default class extends Controller {
   // Fired by every mouseover in the table, so the same row twice running is the common case
   // and costs one comparison.
   reveal({ target }) {
-    const row = target.closest("tr[id^='entry_']")
+    const row = target.closest("tbody > tr[id]")
     if (!row || (row === this.row && row.contains(this.actions))) return
 
-    const id = row.id.slice("entry_".length)
+    const id = row.id.match(/_(\d+)$/)?.[1]
+    if (!id) return
+
     for (const link of this.actions.querySelectorAll("a[data-template]")) {
-      link.href = link.dataset.template.replace("ENTRY_ID", id)
+      link.href = link.dataset.template
+        .replace("ROW_ID", id)
+        .replace("PARENT_ID", row.dataset.parent ?? "")
     }
 
     // Named, so the prompt says which entry is about to go rather than "this one" -- the
@@ -54,7 +60,7 @@ export default class extends Controller {
     const name = row.querySelector(".et-name > a")?.textContent.trim()
     this.deleteLink.dataset.turboConfirm = name
       ? `Delete “${name}”? This cannot be undone.`
-      : "Delete this entry? This cannot be undone."
+      : "Delete this row? This cannot be undone."
 
     row.querySelector(".et-name")?.append(this.actions)
     this.row = row

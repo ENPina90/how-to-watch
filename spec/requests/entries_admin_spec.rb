@@ -108,7 +108,7 @@ RSpec.describe 'The admin entries table', type: :request do
       expect(response.body.scan('class="et-act"').size).to eq(1)
       # Aimed at a placeholder the page fills in, not at any one entry. (The layout's own
       # Log out link is a delete as well, which is why this counts the address.)
-      expect(response.body.scan(%(data-template="#{admin_entry_path('ENTRY_ID')}")).size).to eq(1)
+      expect(response.body.scan(%(data-template="#{admin_entry_path('ROW_ID')}")).size).to eq(1)
       expect(response.body).not_to match(%r{href="/admin/entries/\d+})
       # The rows themselves -- the layout has forms of its own elsewhere on the page.
       rows = response.body[%r{<tbody.*?</tbody>}m]

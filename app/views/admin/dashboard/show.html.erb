@@ -82,7 +82,7 @@
       <div class="admin-stat">
         <span class="admin-stat__value"><%= number_with_delimiter(stats.entries_total) %></span>
         <span class="admin-stat__label">Entries</span>
-        <span class="admin-stat__note"><%= number_with_delimiter(stats.entries_new) %> added this week · <%= link_to 'Browse', admin_entries_path %></span>
+        <span class="admin-stat__note"><%= number_with_delimiter(stats.entries_new) %> added this week · <%= link_to 'Browse', admin_entries_path %> · <%= link_to 'Episodes', admin_subentries_path %></span>
       </div>
       <div class="admin-stat">
         <span class="admin-stat__value"><%= number_with_delimiter(stats.completions) %></span>

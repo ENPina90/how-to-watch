@@ -800,6 +800,12 @@
 .et-col-source { width: 16%; }
 .et-col-stream { width: 10%; }
 
+/* /admin/subentries: the same table, with the show where the channel was and the season and
+   episode where the media was -- and no stream column, since episodes have none. */
+.et-col-episode-name { width: 36%; }
+.et-col-show         { width: 28%; }
+.et-col-se           { width: 10%; }
+
 .entry-table__table th {
   position: sticky;
   top: var(--et-sticky-top);

@@ -3,7 +3,7 @@
     <h1 class="admin-title">All entries</h1>
     <p class="admin-subtitle">
       <%= number_with_delimiter(@entries.size) %> entries across every channel.
-      Point at a row to watch, edit or delete it.
+      Point at a row to watch, edit or delete it. · <%= link_to 'All episodes', admin_subentries_path %>
     </p>
   </header>
 
@@ -33,33 +33,8 @@
     </tbody>
   </table>
 
-  <%# The row actions, once for the whole table. entry-table moves this into the row being
-      pointed at and points the links at that entry, filling in ENTRY_ID. Parked in a hidden
-      holder until the first row asks for it. %>
-  <div hidden>
-    <span class="et-act" data-entry-table-target="actions">
-      <a href="#" data-template="<%= watch_entry_path('ENTRY_ID') %>" title="Watch"><i class="fa-solid fa-play"></i></a>
-      <a href="#" data-template="<%= edit_admin_entry_path('ENTRY_ID') %>" data-turbo-frame="entry_table_edit" title="Edit"><i class="fa-solid fa-pen"></i></a>
-      <a href="#" data-template="<%= admin_entry_path('ENTRY_ID') %>" data-turbo-method="delete" data-turbo-confirm="Delete this entry?" title="Delete" data-entry-table-target="delete"><i class="fa-solid fa-trash"></i></a>
-    </span>
-  </div>
-
-  <%# The one edit modal for the whole table. Its body is a frame the row pencils aim at, so
-      pressing one fetches that entry's form into it; entry-table opens the modal once the
-      form has arrived, and closes it again when a save succeeds. %>
-  <div class="modal fade" id="entryTableEditModal" tabindex="-1"
-       aria-labelledby="entryTableEditTitle" aria-hidden="true"
-       data-entry-table-target="modal">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="entryTableEditTitle">Edit entry</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <turbo-frame id="entry_table_edit" data-entry-table-target="frame"></turbo-frame>
-        </div>
-      </div>
-    </div>
-  </div>
+  <%= render 'admin/shared/row_tools', noun: 'entry',
+        watch: watch_entry_path('ROW_ID'),
+        edit: edit_admin_entry_path('ROW_ID'),
+        destroy: admin_entry_path('ROW_ID') %>
 </div>

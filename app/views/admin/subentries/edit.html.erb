@@ -1,0 +1,29 @@
+<%# The edit form for one episode, fetched into the modal frame on /admin/subentries. Only
+    what an episode owns: its name, place in the show, and runtime -- the runtime being what
+    the cable schedule lays the episode's slot out by. The show and the source are shown but
+    not edited; see Admin::SubentriesController for why each. %>
+<turbo-frame id="entry_table_edit">
+  <%= simple_form_for @subentry, url: admin_subentry_path(@subentry), method: :patch do |f| %>
+    <%= f.error_notification %>
+
+    <%= f.input :name %>
+
+    <div class="entry-form__row entry-form__row--narrow">
+      <%= f.input :season %>
+      <%= f.input :episode %>
+      <%= f.input :length, label: 'Runtime (min)' %>
+    </div>
+
+    <p class="entry-table__resolved">
+      Episode of <%= link_to @subentry.entry.name, entry_path(@subentry.entry), data: { turbo_frame: '_top' } %>,
+      playing from <strong><%= @subentry.entry.resolved_source&.name || 'nothing — no provider resolves' %></strong>.
+      The source belongs to the show: change it on the show's row in
+      <%= link_to 'All entries', admin_entries_path, data: { turbo_frame: '_top' } %>.
+    </p>
+
+    <div class="entry-table__form-actions">
+      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+      <%= f.button :submit, 'Save', class: 'btn btn-primary' %>
+    </div>
+  <% end %>
+</turbo-frame>

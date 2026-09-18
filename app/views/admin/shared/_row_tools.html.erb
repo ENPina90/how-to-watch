@@ -1,0 +1,35 @@
+<%# The row actions and the edit modal for an admin table, once per page -- shared by
+    /admin/entries and /admin/subentries. entry-table (on the page wrapper) moves the toolbar
+    into whichever row is pointed at, filling ROW_ID and PARENT_ID in these templates from
+    that row; the pencil loads the row's form into the modal's frame.
+
+    Locals: `noun` for the modal title, and `watch` / `edit` / `destroy` -- the three link
+    templates, as paths with ROW_ID (and PARENT_ID where it is needed) left in them. %>
+
+<%# Parked in a hidden holder until the first row asks for it. %>
+<div hidden>
+  <span class="et-act" data-entry-table-target="actions">
+    <a href="#" data-template="<%= watch %>" title="Watch"><i class="fa-solid fa-play"></i></a>
+    <a href="#" data-template="<%= edit %>" data-turbo-frame="entry_table_edit" title="Edit"><i class="fa-solid fa-pen"></i></a>
+    <a href="#" data-template="<%= destroy %>" data-turbo-method="delete" data-turbo-confirm="Delete this row?" title="Delete" data-entry-table-target="delete"><i class="fa-solid fa-trash"></i></a>
+  </span>
+</div>
+
+<%# The one edit modal for the whole table. Its body is a frame the pencil aims at, so
+    pressing it fetches that row's form into it; entry-table opens the modal once the form
+    has arrived, and closes it again when a save succeeds. %>
+<div class="modal fade" id="entryTableEditModal" tabindex="-1"
+     aria-labelledby="entryTableEditTitle" aria-hidden="true"
+     data-entry-table-target="modal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="entryTableEditTitle">Edit <%= noun %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <turbo-frame id="entry_table_edit" data-entry-table-target="frame"></turbo-frame>
+      </div>
+    </div>
+  </div>
+</div>
