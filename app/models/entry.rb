@@ -171,9 +171,24 @@ class Entry < ApplicationRecord
 
   # Checks the URL the player will actually load, rather than the legacy `source` column
   # that new entries no longer write.
+  #
+  # MEGA is asked through its own API instead (MegaAvailability). The page-title test below
+  # cannot judge it -- MEGA's embed page has no <title> -- and called every MEGA link broken
+  # on arrival. Its answer is three-valued: an :unknown (MEGA not answering) leaves the mark
+  # as it was rather than writing "broken", and a known answer is written straight to the
+  # column so an unrelated validation problem on the entry cannot stop it being recorded.
   def check_source
+    return check_mega_source if MegaAvailability.applies_to?(self)
+
     url = embed_url
     update(stream: url.present? && UrlCheckerService.new(url).valid_source?)
+  end
+
+  def check_mega_source
+    result = MegaAvailability.new.for_entry(self)
+    return if result.unknown?
+
+    update_columns(stream: result.available?, updated_at: Time.current)
   end
 
   def release_subentry_references
