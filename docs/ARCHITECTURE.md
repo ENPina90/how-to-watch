@@ -122,9 +122,11 @@ integers (they were strings until 2026-08-25, which is why old code sorted with
 placeholders. `kind` is `imdb` (works for any entry with an IMDb id) or `direct` (needs
 the entry's own `source_key`: a Drive file id, mega key, YouTube id, or a full URL).
 `autoplay_param` is a query parameter appended as `=1`/`=0` (placed before any `#`
-fragment). MEGA is the exception: it takes a `1a` flag inside the key fragment instead,
-declared in `Source::FRAGMENT_AUTOPLAY_FLAGS`. Google Drive's preview player cannot autoplay
-at all. Substitution is a plain `gsub`, no eval.
+fragment). MEGA is the exception: its player options live in one run of number-letter pairs
+behind the key's `!` (`#KEY!900s1a`), so autoplay is a `1a` pair there
+(`Source::FRAGMENT_AUTOPLAY_FLAGS`) and the start position is an `Ns` pair in the same run
+(`Source::FRAGMENT_RESUME_FLAGS`). Google Drive's preview player cannot autoplay at all.
+Substitution is a plain `gsub`, no eval.
 
 ### 3.2 Per-user tracking (the important part)
 
@@ -216,11 +218,18 @@ truncated URL. `rails sources:audit` reports anything that stops resolving.
   door, `youtube` for YouTube. `syncable?` is what decides whether a watch party can actually
   drive a provider's player (§5.10), and an adapter is also the only way position tracking,
   the up-next card and the automatic watched mark hear anything (§5.8). MEGA, Drive,
-  archive.org and custom have none — MEGA's embed registers no message listener and posts
-  nothing to its parent (checked 2026-09-15), so there is nothing there to drive. Alongside
+  archive.org and custom have none — MEGA's embed posts nothing to its parent and answers
+  nothing sent to it (re-probed 2026-09-18 with the YouTube, player.js, Vimeo and JW Player
+  protocols against a playing embed: not one reply), so there is nothing there to drive.
+  Alongside
   it: `resume_param` / `resumable?` (`startAt` on vidsrc, `start` on YouTube — start a film
   part-way in, which is how `/cable` joins a programme already running and how up-next
-  resumes), `subtitle_param` (cable turns subtitles off by default), `player_params` (what a
+  resumes). **`resumable?` is not the same question as `syncable?`**: MEGA can be told where
+  to start even though it will not say a word back, because its start position is a pair in
+  the key fragment rather than a query parameter — so it is resumable and not syncable, and
+  a provider with no adapter is no longer the same thing as a provider that begins at the
+  beginning. Drive and custom still are. Also alongside: `subtitle_param` (cable turns
+  subtitles off by default), `player_params` (what a
   player needs on its URL before it will talk at all — YouTube's `enablejsapi=1`, without
   which its embed answers no handshake and the adapter hears silence) and
   `preconnect_origins` (emitted on the player page).
