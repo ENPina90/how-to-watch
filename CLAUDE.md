@@ -75,9 +75,10 @@ local Redis is required.
 - `docs/guides/` — task guides (backups, Railway deploy, image repair, Letterboxd, VidSrc).
   Written Sept 2025; check them against the code before following.
 
-**`ARCHITECTURE.md` is partly stale.** It was last verified 2026-08-26 and predates several
-subsystems now in the tree (see below).
-Trust the code over the doc, and update the doc when you touch what it describes.
+`ARCHITECTURE.md` carries its own **Last verified** date in the header — check that first,
+and trust the code over the doc wherever they disagree. It does cover cable, watch parties,
+voting, notifications, access modes and the admin dashboard (§5.9–§5.14); the note that
+once said otherwise outlived the doc catching up. Update the section you touch.
 
 ## Architecture notes
 
@@ -104,7 +105,9 @@ active `kind: "imdb"` source) → `Source#url_for`, which substitutes `%{imdb}`,
 Nothing constructs a provider URL outside a template, and there is no legacy fallback left.
 **To fix a dead provider, edit that one `Source` row's template** — no per-entry backfill.
 
-### Subsystems not yet in ARCHITECTURE.md
+### Subsystems worth reading about before you touch them
+
+Full write-ups are in `ARCHITECTURE.md` §5.9–§5.14. What follows is the part that bites.
 
 - **Cable** (`CableController`, `CableSlot`, `CableSchedule`, `CommercialReel`) — channels
   that are already running when you turn them on. The schedule is rows in `cable_slots`,
@@ -161,8 +164,11 @@ drifted apart.
 ### Route verbs are load-bearing
 
 Anything that writes is PATCH/POST — CSRF tokens do not protect GET, so a prefetch or an
-`<img src>` could otherwise change state. `entries#watch` and `lists#watch_current` are the
-deliberate exceptions (they write position as a side effect of navigation).
+`<img src>` could otherwise change state. There are three deliberate exceptions:
+`entries#watch` and `lists#watch_current` write position as a side effect of navigation,
+and the cable pages (`cable#show`, `cable#guide`) deal a day that is not laid out yet. The
+cable one writes nothing about the viewer, and is safe to repeat and safe to lose, which is
+what makes it acceptable on a GET.
 `spec/requests/entry_write_verbs_spec.rb` and its siblings enforce this. The watch page
 sets `data-turbo="false"`, so its controls must be `button_to` forms — `data-turbo-method`
 links silently fall back to GET there.

@@ -3,7 +3,7 @@
 **Purpose:** the map of this codebase. Read this before diagnosing anything; the last
 section ("Debugging map") goes from symptom → the file that actually owns the behavior.
 
-**Last verified:** 2026-09-11 against `master` @ `1ac4aef`.
+**Last verified:** 2026-09-18 against `master` @ `7965536`.
 
 ---
 
@@ -436,8 +436,16 @@ that is something the viewer chose rather than a side effect of rendering a page
 - `CableScheduleJob` deals tomorrow daily and fills today **only if it is empty**
   (`ensure_day!` leaves an existing schedule alone, so it can never pull a running programme
   out from under anybody). `CableSchedule.prune!` keeps `RETAIN_DAYS` (2).
-- `cable#show` and `cable#guide` also call `ensure_day!` on the way through, so the dial
-  never has a dead channel on it after a deploy or a newly-defaulted channel.
+- `cable#show` and `cable#guide` also lay out a missing day on the way through, so the dial
+  never has a dead channel on it after a deploy or a newly-defaulted channel. `show` deals
+  the one channel with `ensure_day!`; the guide covers the whole dial across a two-day
+  window, so it uses `ensure_days!`, which answers "which of these are already laid out"
+  in **one** query rather than an `exists?` per channel per day. A dial whose schedules are
+  dealt costs the same whether it holds two channels or six —
+  `spec/requests/cable_guide_queries_spec.rb` is what keeps it that way.
+  A channel with nothing playable on it produces no slots, so it is re-planned on each
+  visit; that is what lets it pick up an entry that becomes playable, and it is the one
+  case where the guide's cost grows with the dial.
 - **Route order is load-bearing**: `get 'cable/guide'`, `cable/listings` and `cable/0` must
   stay above `get 'cable/:id'`, or "guide" is read as a channel id, cast to nothing, and
   quietly serves channel one -- and `0` serves channel one instead of the trailers.
@@ -720,6 +728,7 @@ results. `POST reset_source` moves every channel onto one provider.
 | `MissingRuntimeAudit` / `MissingRuntimeNotifier` | Same shape, for every entry with no runtime recorded; `Row#channel` names the dial channel that reaches one, and is nil for the rest |
 | `NewEpisodeImporter` / `NewEpisodeNotifier` | The sweep behind `new_episode_scan`: extends each series with episodes TMDB shows have really aired, and tells the channel's owner (§5.12) |
 | `SourceExpiryNotifier` | Warns admins before a provider domain lapses (§4) |
+| `AdminStateNotifier` | The base class the four reconciling notifiers above share. Each of them is about a *state*, not an event, so a run works out the warnings that should exist now, creates the missing ones and deletes the ones no longer earned — fixing the thing clears its warning without anyone dismissing it. A subclass supplies its `kind`, a `dedupe_key` for a row, and the subject/data a row becomes; the transaction, the per-admin loop and the sweep of rows belonging to ex-admins live in the base. `NewEpisodeNotifier` is deliberately **not** one of these: an episode appearing is an event, and there is nothing to reconcile |
 | `AdminStatistics` | The dashboard's numbers, one seven-day window throughout |
 | `DeploymentStatus` | Which build is actually running, recorded by the worker at boot |
 | `YoutubeVideoFacts` | Reads a commercial reel's runtime off YouTube |
@@ -814,13 +823,20 @@ neither needs a local Redis.
   writes may be reachable that way. There is **no `index`** action.
   - `lists#watch_current` and `entries#watch` are the deliberate exceptions: they render
     or redirect to the player and write the user's position as a side effect of "I am
-    watching this now". They are navigation targets, not actions.
+    watching this now". They are navigation targets, not actions. The cable pages are the
+    third (see §10): they write no viewer state, but they do deal a day that is missing.
   - The watch page sets `data-turbo="false"`, so its controls are `button_to` forms —
     `data-turbo-method` links would silently fall back to GET there.
 - `sources` (admin only) — plus member `renew` / `deactivate` (both PATCH: they change how
   the app plays things) and `test` (GET: it only plays something), and collection `reorder`.
-- `/cable`, `/cable/:id` (a list on the dial, or a decade's key), `/cable/guide`, `/cable/0` — all GET, none of them write to the
-  database. **`cable/guide` and `cable/0` must stay declared above `cable/:id`** (§5.9).
+- `/cable`, `/cable/:id` (a list on the dial, or a decade's key), `/cable/guide`, `/cable/0` —
+  all GET. They write **nothing about the viewer**, which is the property §5.9 cares about,
+  but they are not read-only: both `cable#show` and `cable#guide` lay out a missing day
+  through `ensure_day!`/`ensure_days!`, so a GET can insert `cable_slots`. That is the third
+  deliberate exception to the verb rule, alongside `entries#watch` and `lists#watch_current`.
+  It is safe to repeat and safe to lose — a day already laid out is left alone — which is
+  what makes it acceptable on a GET.
+  **`cable/guide` and `cable/0` must stay declared above `cable/:id`** (§5.9).
 - `/trailers` (GET) — the trailer reel on its own page. Writes only `session[:trailers_seen]`.
 - `watch_parties`, keyed by `param: :token` rather than id (§5.10).
 - `resource :vote` nested under a list, with `cast` / `close` / `remove_option` (§5.11).
@@ -902,6 +918,9 @@ tell you how far behind it is likely to be. Trust the code; update the section y
 
 | Symptom | Start here |
 |---|---|
+| The guide gets slower as the dial grows | `CableSchedule.ensure_days!` — it answers "which of these days are laid out" in one query. If a channel has nothing playable on it, it produces no slots and is re-planned on every visit, which is the one case where cost grows with the dial. `spec/requests/cable_guide_queries_spec.rb` pins the flat case. |
+| A page issues the same `sources` query over and over | `Source.active_imdb` memoises them on `Current` for the request; `Entry#resolved_source` and `#eligible_sources` both go through it. Rails' query cache covers some of this, but a page that writes while it renders drops that cache. A write to any `Source` clears the memo. |
+| An admin warning will not clear, or comes back | the notifier reconciles rather than appends (`AdminStateNotifier`), so the row survives only while `key_for` still matches something in the current set. A key that encodes changing state (a URL digest, an expiry date) is what makes dismissal safe. |
 | List page 500s while grouping | `ListsController#filter_entries` + `sort_sections`; nullable `genre`/`year`/`rating` are the usual cause. |
 | Player is blank / "No video source available" | `Entry#embed_url` → `#resolved_source` → the `Source` row's `templates`; then `Entry#legacy_embed_url`. Check the source is `active` and its template has a key for that `media`. |
 | Wrong episode plays | `UserEntryPosition` for that user+entry; `Entry#current_subentry_for_user`; for anime, `Subentry#calculate_absolute_episode_number`. |
