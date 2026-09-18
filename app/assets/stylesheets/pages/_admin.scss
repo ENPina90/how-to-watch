@@ -771,3 +771,167 @@
     gap: 14px;
   }
 }
+
+/* /admin/entries: every entry in the app as one table, several thousand rows long. Styled
+   for that length -- fixed column widths so the browser need not measure every cell before
+   drawing any, a heading that stays in view while scrolling, and actions that exist on every
+   row but only show on the one being pointed at. */
+.admin-dashboard.entry-table {
+  max-width: 1400px;
+}
+
+.entry-table__table {
+  /* The navbar is sticky and 60px tall; the heading stops beneath it rather than behind. */
+  --et-sticky-top: 60px;
+
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  background-color: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+}
+
+.et-col-name   { width: 34%; }
+.et-col-list   { width: 22%; }
+.et-col-media  { width: 9%; }
+.et-col-length { width: 9%; }
+.et-col-source { width: 16%; }
+.et-col-stream { width: 10%; }
+
+.entry-table__table th {
+  position: sticky;
+  top: var(--et-sticky-top);
+  z-index: 1;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background-color: #1b1b1b;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+/* Colours below are all `.admin-dashboard ... !important`, the same as the rest of this
+   file: the layout paints every link and icon inside .page-container white with
+   !important, which would otherwise flatten the sorted heading into the others and turn the
+   stream ticks and crosses white. */
+.admin-dashboard .entry-table__table th a {
+  color: rgba(255, 255, 255, 0.55) !important;
+  text-decoration: none;
+}
+
+.admin-dashboard .entry-table__table th[aria-sort="ascending"] a,
+.admin-dashboard .entry-table__table th[aria-sort="descending"] a,
+.admin-dashboard .entry-table__table th a:hover {
+  color: #fff !important;
+}
+
+.admin-dashboard .entry-table__table th a i {
+  color: inherit !important;
+}
+
+.entry-table__table td {
+  padding: 7px 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.75);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.entry-table__table tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* The name cell holds the link and, pinned to its right edge, the three actions. Absolute
+   so they sit over the end of a long name rather than squeezing it, with a background so
+   the name does not show through them. */
+.entry-table__table .et-name {
+  position: relative;
+}
+
+.et-name > a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.et-name > a:hover {
+  text-decoration: underline;
+}
+
+.et-act {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  padding-left: 12px;
+  visibility: hidden;
+  background: linear-gradient(to right, transparent, #1f1f1f 12px);
+  transform: translateY(-50%);
+}
+
+/* Hover for a mouse, focus for a keyboard, and always on a touch screen, which has no
+   hover to reveal them with. */
+tr:hover .et-act,
+.et-name:focus-within .et-act {
+  visibility: visible;
+}
+
+@media (hover: none) {
+  .et-act {
+    visibility: visible;
+  }
+}
+
+.et-act a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 0.78rem;
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.admin-dashboard .et-act a {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.admin-dashboard .et-act a i {
+  color: inherit !important;
+}
+
+.admin-dashboard .et-act a:hover,
+.admin-dashboard .et-act a:focus-visible {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.admin-dashboard .et-act a[data-turbo-method="delete"]:hover {
+  color: #ff6b6b !important;
+}
+
+.et-stream {
+  text-align: center;
+}
+
+.admin-dashboard .et-ok  { color: #1db954 !important; }
+.admin-dashboard .et-bad { color: #ff6b6b !important; }
+.admin-dashboard .et-na  { color: rgba(255, 255, 255, 0.3) !important; }
+
+.entry-table__resolved {
+  margin: 4px 0 16px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.entry-table__form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

@@ -1,0 +1,15 @@
+<%# One row of /admin/entries, drawn several thousand times on one page -- so it is the
+    entry's data and nothing else. The watch / edit / delete actions are not here: there is
+    one set of them on the page, and entry-table moves it into whichever row is pointed at or
+    focused, building its links from this row's id. Rendered per row they were seven of each
+    row's sixteen elements, some 24,000 across the table, for controls only ever visible on
+    one row at a time. The name cell is where they go, which is why it is the one with a
+    class. %>
+<tr id="<%= dom_id(entry) %>">
+  <td class="et-name"><%= link_to entry.name, entry_path(entry) %></td>
+  <td><%= entry.list.name %></td>
+  <td><%= entry.media %></td>
+  <td><%= "#{entry.length} min" if entry.length.to_i.positive? %></td>
+  <td><%= entry.resolved_source&.name %></td>
+  <td class="et-stream"><%= entry_stream_mark(entry.stream) %></td>
+</tr>

@@ -30,6 +30,12 @@ Rails.application.routes.draw do
       post :run_episode_scan
     end
 
+    # Every entry in the app as one sortable table. Under /admin rather than beside the
+    # other entry routes because it reaches across every member's channels, private ones
+    # included, and deletes from any of them. No show or new: the name links to the
+    # ordinary entry page, and entries are still added from inside a channel.
+    resources :entries, only: %i[index edit update destroy]
+
     # The adverts that fill the gap between programmes on /cable. Admin-only and nowhere
     # else in the app, so they live under /admin rather than beside /sources.
     resources :commercial_reels, except: :show do
