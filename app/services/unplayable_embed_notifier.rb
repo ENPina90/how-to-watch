@@ -10,10 +10,8 @@
 # show, the episode -- so dismissing hides this entry as it stands. Pointing it at a
 # different id, or a series at a different episode, is a new question and a new
 # notification.
-class UnplayableEmbedNotifier
+class UnplayableEmbedNotifier < AdminStateNotifier
   Result = Struct.new(:created, :removed, keyword_init: true)
-
-  def self.call(...) = new(...).call
 
   # Takes the rows rather than running the audit: the scan asks VidSrc once and then both
   # marks the entries and raises the notifications off the same answer.
@@ -22,66 +20,34 @@ class UnplayableEmbedNotifier
   end
 
   def call
-    created = 0
-    removed = 0
-
-    ActiveRecord::Base.transaction do
-      admins.each do |admin|
-        created += create_missing(admin, @missing)
-        removed += remove_stale(admin, @missing)
-      end
-
-      removed += Notification.where(kind: Notification::UNPLAYABLE_EMBED)
-                             .where.not(user_id: admins.map(&:id))
-                             .delete_all
-    end
+    created, removed = reconcile(@missing)
 
     Result.new(created: created, removed: removed)
   end
 
   private
 
-  def admins = @admins ||= User.where(admin: true).to_a
+  def kind = Notification::UNPLAYABLE_EMBED
 
   def key_for(row)
     lookup = row.lookup
     episode = lookup.season && "#{lookup.season}x#{lookup.episode}"
 
-    ["#{Notification::UNPLAYABLE_EMBED}:#{row.entry.id}", lookup.type, lookup.imdb, episode].compact.join(':')
+    ["#{kind}:#{row.entry.id}", lookup.type, lookup.imdb, episode].compact.join(':')
   end
 
-  def create_missing(admin, rows)
-    existing = admin_keys(admin)
-
-    rows.count do |row|
-      next false if existing.include?(key_for(row))
-
-      Notification.create!(
-        user: admin,
-        kind: Notification::UNPLAYABLE_EMBED,
-        subject: row.entry,
-        dedupe_key: key_for(row),
-        data: {
-          'name' => row.entry.name,
-          'list' => row.entry.list.name,
-          'media' => row.entry.media,
-          'imdb' => row.lookup.imdb,
-          'episode' => (row.lookup.season && "S#{row.lookup.season}E#{row.lookup.episode}"),
-          'provider' => row.entry.resolved_source&.slug,
-          'reason' => row.reason
-        }.compact
-      )
-      true
-    end
-  end
-
-  def remove_stale(admin, rows)
-    Notification.where(user: admin, kind: Notification::UNPLAYABLE_EMBED)
-                .where.not(dedupe_key: rows.map { |row| key_for(row) })
-                .delete_all
-  end
-
-  def admin_keys(admin)
-    Notification.where(user: admin, kind: Notification::UNPLAYABLE_EMBED).pluck(:dedupe_key).to_set
+  def notification_for(row)
+    {
+      subject: row.entry,
+      data: {
+        'name' => row.entry.name,
+        'list' => row.entry.list.name,
+        'media' => row.entry.media,
+        'imdb' => row.lookup.imdb,
+        'episode' => (row.lookup.season && "S#{row.lookup.season}E#{row.lookup.episode}"),
+        'provider' => row.entry.resolved_source&.slug,
+        'reason' => row.reason
+      }.compact
+    }
   end
 end

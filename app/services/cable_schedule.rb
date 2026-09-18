@@ -349,6 +349,33 @@ module CableSchedule
     build_day!(channel, date)
   end
 
+  # The same thing for a whole dial at once. `ensure_day!` asks the database whether that
+  # one day is laid out, which is fine for the job dealing one day but not for the guide:
+  # it renders every channel over a two-day window, so it asked once per channel per day
+  # before it could draw anything. One query answers all of them.
+  #
+  # Days are dealt in order within a channel, because each one opens where the one before
+  # finished -- the same reason redeal! deals them in order.
+  def ensure_days!(channels, dates)
+    channels = channels.to_a
+    dates = dates.to_a
+    return 0 if channels.empty? || dates.empty?
+
+    laid_out = slots_for_all(channels).where(airs_on: dates)
+                                      .distinct
+                                      .pluck(:list_id, :era, :airs_on)
+                                      .to_set
+
+    channels.sum do |channel|
+      owner = slot_owner(channel)
+      dates.sum do |date|
+        next 0 if laid_out.include?([owner[:list_id], owner[:era], date])
+
+        build_day!(channel, date)
+      end
+    end
+  end
+
   # Yesterday's schedule is still worth having while a programme that started before
   # midnight is running; the week before last is rows nothing will ever read again.
   def prune!(before: today - RETAIN_DAYS)

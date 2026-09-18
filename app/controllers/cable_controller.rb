@@ -216,9 +216,9 @@ class CableController < ApplicationController
     #
     # Today forward only. A day that has already been is not filled in on demand -- see
     # days_to_fill. What was on yesterday is whatever was really on, or nothing.
-    CableSchedule.days_to_fill(@window).each do |date|
-      CableSchedule.dial.each { |channel| CableSchedule.ensure_day!(channel, date) }
-    end
+    # One query to find which of these days are already laid out, rather than an `exists?`
+    # per channel per day -- and `dial` read once rather than once per day.
+    CableSchedule.ensure_days!(CableSchedule.dial, CableSchedule.days_to_fill(@window))
 
     @now = Time.current
     @rows = CableSchedule.guide(at: @now, in_zone: @zone)

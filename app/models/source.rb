@@ -25,6 +25,25 @@ class Source < ApplicationRecord
 
   scope :active, -> { where(active: true) }
 
+  # Every imdb entry that names no provider, and no channel provider either, falls back to
+  # these -- so `Entry#resolved_source` and `#eligible_sources` ask for them once per entry
+  # while a page renders. It is the same handful of rows every time, so it is memoised per
+  # request the way AppSetting.current is. Rails' query cache covers some of this already,
+  # but any write in the request drops that cache and the lookups come back.
+  def self.active_imdb
+    Current.active_imdb_sources ||= active.where(kind: 'imdb').order(:position).to_a
+  end
+
+  # The one an entry falls back to. `.first` of the memo rather than its own LIMIT 1 query.
+  def self.default_imdb = active_imdb.first
+
+  # A write invalidates the memo, so the rest of the request sees what it just saved.
+  after_commit :clear_active_imdb_memo
+
+  def clear_active_imdb_memo
+    Current.active_imdb_sources = nil
+  end
+
   # --- Expiry ---------------------------------------------------------------------------
   #
   # `valid_until` is when the provider's address should be checked again, not a promise it

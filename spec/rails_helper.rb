@@ -26,6 +26,11 @@ RSpec.configure do |config|
   config.fixture_paths = ["#{::Rails.root}/spec/fixtures"]
   config.use_transactional_fixtures = true
 
+  # Current holds per-request memos (AppSetting.current, Source.active_imdb). Rails clears
+  # them around a real request, but a model spec has no request around it, so without this
+  # one example's memo answers the next example's question.
+  config.before { Current.reset }
+
   config.include Devise::Test::ControllerHelpers, type: :controller
   config.include Devise::Test::IntegrationHelpers, type: :request
   config.include FactoryBot::Syntax::Methods
