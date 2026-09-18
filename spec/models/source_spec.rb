@@ -87,11 +87,79 @@ RSpec.describe Source do
 
     # MEGA keeps only the first run of options, so a second `!1a` would be ignored.
     it 'joins options already pasted onto the key' do
-      expect(mega.url_for(entry_keyed('ID#KEY!90s'), autoplay: true)).to eq('https://mega.nz/embed/ID#KEY!90s1a')
+      expect(mega.url_for(entry_keyed('ID#KEY!1m'), autoplay: true)).to eq('https://mega.nz/embed/ID#KEY!1m1a')
     end
 
     it 'does not add the flag twice' do
       expect(mega.url_for(entry_keyed('ID#KEY!1a'), autoplay: true)).to eq('https://mega.nz/embed/ID#KEY!1a')
+    end
+  end
+
+  # The other half of that option run. MEGA answers no message from the page, so where it
+  # starts is decided as the frame is written or not at all -- and unlike every other
+  # resumable provider it reads the position from behind the `#` rather than from the query.
+  describe 'the start position on MEGA' do
+    let(:mega) do
+      described_class.find_or_initialize_by(slug: 'mega').tap do |source|
+        source.update!(name: 'MEGA', kind: 'direct', autoplay_param: nil,
+                       templates: { 'default' => 'https://mega.nz/embed/%{source_key}' })
+      end
+    end
+
+    def entry_keyed(key) = build(:entry, list: list, media: 'fanedit', source_key: key)
+
+    it 'counts as resumable even with no query parameter to carry a position' do
+      expect(mega).to be_resumable
+    end
+
+    it 'writes the position into the key fragment' do
+      expect(mega.url_for(entry_keyed('ID#KEY'), start_at: 900))
+        .to eq('https://mega.nz/embed/ID#KEY!900s')
+    end
+
+    # Ahead of the rest of the run, which is the order MEGA's own embed dialog writes.
+    it 'puts the position in front of the flags already in the run' do
+      expect(mega.url_for(entry_keyed('ID#KEY'), autoplay: true, start_at: 900))
+        .to eq('https://mega.nz/embed/ID#KEY!900s1a')
+    end
+
+    it 'rounds a fractional position, as the query-parameter providers do' do
+      expect(mega.url_for(entry_keyed('ID#KEY'), start_at: 742.5))
+        .to eq('https://mega.nz/embed/ID#KEY!743s')
+    end
+
+    # The bug this is all for. A key pasted out of somebody's browser carries the position
+    # they were sitting at, and MEGA obeys it on every load -- so the entry played from
+    # 1:40 for ever, and a reloaded frame looked like it was resuming from the page load.
+    it 'replaces a position already pasted onto the key rather than joining it' do
+      expect(mega.url_for(entry_keyed('ID#KEY!100s1a'), autoplay: true, start_at: 900))
+        .to eq('https://mega.nz/embed/ID#KEY!900s1a')
+    end
+
+    it 'takes a pasted position out when there is no position to play from' do
+      expect(mega.url_for(entry_keyed('ID#KEY!100s'), autoplay: true))
+        .to eq('https://mega.nz/embed/ID#KEY!1a')
+    end
+
+    # Nothing left in the run means nothing to write: no bare `!` on the end.
+    it 'leaves no empty option run behind' do
+      expect(mega.url_for(entry_keyed('ID#KEY!100s'))).to eq('https://mega.nz/embed/ID#KEY')
+    end
+
+    it 'leaves a link with no key fragment alone' do
+      expect(mega.url_for(entry_keyed('ID'), start_at: 900)).to eq('https://mega.nz/embed/ID')
+    end
+
+    # Drive and the catch-all have neither route to a position. The offset is computed for
+    # them all the same -- the cable schedule does not know what it is talking to -- so
+    # dropping it silently has to stay the behaviour rather than becoming an error.
+    it 'still drops the position for a provider with no way to take one' do
+      drive = source({ 'default' => 'https://drive.test/file/%{source_key}/preview' },
+                     kind: 'direct', slug: 'google-drive')
+
+      expect(drive).not_to be_resumable
+      expect(drive.url_for(entry_keyed('ABC'), start_at: 900))
+        .to eq('https://drive.test/file/ABC/preview')
     end
   end
 

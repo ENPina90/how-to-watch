@@ -218,7 +218,7 @@ class Source < ApplicationRecord
   }.freeze
 
   def resume_param = RESUME_PARAMS[sync_adapter]
-  def resumable?   = resume_param.present?
+  def resumable?   = resume_param.present? || fragment_resume_flag.present?
 
   # The parameter that picks a subtitle track at load time, so it can be taken back out
   # again for a page that does not want one.
@@ -261,6 +261,25 @@ class Source < ApplicationRecord
   FRAGMENT_AUTOPLAY_FLAGS = {
     'mega' => '1a'
   }.freeze
+
+  # The same story for the start position, which is why this sits next to autoplay rather
+  # than next to RESUME_PARAMS: MEGA takes it as another pair in that same option run, so
+  # `#KEY!900s1a` starts fifteen minutes in. Only the letter is named here because the
+  # number is the position -- unlike the autoplay flag, which is the whole pair.
+  #
+  # Measured against the embed 2026-09-18: asked for 900s the player reported 910.9 a
+  # moment later, 60s reported 71.4, and it obeys on every document load rather than
+  # keeping a position of its own. Keyed by slug for the same reason autoplay is -- the
+  # flag belongs to MEGA's player, and there is only the one domain.
+  #
+  # This is the whole of what MEGA will accept. It answers no message from the page (probed
+  # 2026-09-18 with the YouTube, player.js, Vimeo and JW protocols: not one reply), so the
+  # frame is written knowing where to start or it is not told at all.
+  FRAGMENT_RESUME_FLAGS = {
+    'mega' => 's'
+  }.freeze
+
+  def fragment_resume_flag = FRAGMENT_RESUME_FLAGS[slug]
 
   # Origins a provider's player reaches for *after* the page has framed it, so they can be
   # warmed while the first frame is still loading.
@@ -380,9 +399,38 @@ class Source < ApplicationRecord
   # Whole seconds: the player rounds a fractional position anyway, and a URL is easier to
   # read in a bug report without six decimal places of nothing.
   def append_resume(url, seconds)
+    return append_fragment_resume(url, seconds) if fragment_resume_flag.present?
     return url if resume_param.blank? || seconds.to_f <= 0
 
     append_param(url, resume_param, seconds.to_f.round)
+  end
+
+  # Write the start position into MEGA's option run.
+  #
+  # Rewritten rather than appended, which is the one way this differs from
+  # append_fragment_flag above. A key pasted out of somebody's browser carries whatever
+  # position that person was sitting at -- three entries in this library were pinned at
+  # 1:40 and 8:26 by exactly that, and one of them had no autoplay pair either -- and two
+  # `s` pairs in one run is not something the parser answers predictably. So the position
+  # in the run belongs to the app: any that is already there comes out, and ours goes in
+  # only when there is one to write.
+  #
+  # That makes a stale offset in a stored source_key harmless rather than permanent, which
+  # is why no backfill goes with this. Written ahead of the rest of the run to match the
+  # order MEGA's own embed dialog produces (`!90s1a1m`).
+  #
+  # A link with no key fragment cannot play at all, so it is left be -- the same guard, and
+  # the same reason, as append_fragment_flag.
+  def append_fragment_resume(url, seconds)
+    base, fragment = url.split('#', 2)
+    return url if fragment.nil?
+
+    key, options = fragment.split('!', 2)
+    kept  = options.to_s.gsub(/\d+#{Regexp.escape(fragment_resume_flag)}/, '')
+    start = seconds.to_f.positive? ? "#{seconds.to_f.round}#{fragment_resume_flag}" : ''
+    run   = "#{start}#{kept}"
+
+    run.empty? ? "#{base}##{key}" : "#{base}##{key}!#{run}"
   end
 
   # Remove the subtitle language the template asks for, leaving the rest of the URL as it
