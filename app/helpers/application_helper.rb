@@ -93,10 +93,6 @@ module ApplicationHelper
     key.to_s.parameterize.presence || Digest::MD5.hexdigest(key.to_s)[0, 8]
   end
 
-  def dom_id_for_partial(entry)
-    "entry_#{entry.id}_partial"
-  end
-
   # Helper method to check if current user can edit an entry
   # Works even when current_user is nil (for default lists)
   def can_edit_entry?(entry)
