@@ -428,8 +428,18 @@ re-render the card twelve times a minute to say what it already says.
 That same crossing also **moves the owning channel's `UserListPosition` on** to the next
 unwatched entry (`UserListPosition#move_past!`), so reopening the channel does not replay
 what just ended. Only on an ordered channel, only while the position still points at this
-entry (the unload report can land after the next page has recorded itself), and never for
-a series or anime, whose single `completed` flag is ticked by the first episode to finish.
+entry (the unload report can land after the next page has recorded itself).
+
+A series or anime cannot use that crossing: its single `completed` flag is ticked by the
+first episode to finish. Instead the watch page names the episode on screen
+(`?subentry=`) in its progress URL, and **every** report that counts as watched
+(`UserEntry#watched_by?`) moves the show's `UserEntryPosition` to the next episode, which
+also clears `player_progress`. After the last episode it is the channel that moves on.
+Reports naming an episode the viewer has since left are dropped whole, so a pause in the
+credits cannot plant the old episode's position on the new one. Because the show has
+usually moved on before the up-next card fires, the card and the ring's arrows pass the
+same `?subentry=` to `increment_current` / `decrement_current`, which step from that
+episode rather than the stored one — otherwise the card would skip an episode.
 
 `PATCH /entries/:id/runtime` is the player correcting the catalogue when a file turns out
 to run to something other than what TMDB said.
