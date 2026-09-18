@@ -43,8 +43,15 @@ class Subentry < ApplicationRecord
 
   private
 
+  # When the show's current-episode pointer is on this episode, step it back to the one
+  # before (or clear it, for the first). Only then: it used to move on every delete,
+  # whichever episode went, so deleting a stray episode anywhere in a show sent everybody
+  # without a saved position of their own to the one before the deleted episode -- and
+  # handed a show with no pointer at all a pointer it had never had.
   def nullify_current_entries
     entry = self.entry
+    return unless entry.current_id == id
+
     siblings = entry.subentries.order(:season, :episode)
     index = siblings.index(self)
     next_entry = index == 0 ? nil : siblings[index - 1].id
