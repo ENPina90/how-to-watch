@@ -425,6 +425,12 @@ it sits on is not going to be rendered again while a film plays on it. Everythin
 stays `204`: the report arrives on every pause and seek, and a stream per report would
 re-render the card twelve times a minute to say what it already says.
 
+That same crossing also **moves the owning channel's `UserListPosition` on** to the next
+unwatched entry (`UserListPosition#move_past!`), so reopening the channel does not replay
+what just ended. Only on an ordered channel, only while the position still points at this
+entry (the unload report can land after the next page has recorded itself), and never for
+a series or anime, whose single `completed` flag is ticked by the first episode to finish.
+
 `PATCH /entries/:id/runtime` is the player correcting the catalogue when a file turns out
 to run to something other than what TMDB said.
 
