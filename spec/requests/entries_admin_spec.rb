@@ -95,7 +95,7 @@ RSpec.describe 'The admin entries table', type: :request do
 
       get admin_entries_path
 
-      expect(response.body).to include('fa-check et-ok', 'fa-xmark et-bad', 'title="Never checked"')
+      expect(response.body).to include('fa-check et-ok', 'fa-xmark et-bad', 'title="Never checked (press to mark working)"')
     end
 
     # The actions are one toolbar the page moves between rows, not a set per row. Per row they
@@ -242,6 +242,76 @@ RSpec.describe 'The admin entries table', type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
       expect(response.body).to include('<turbo-frame id="entry_table_edit">', "can&#39;t be blank")
       expect(target.reload.name).to eq('Alien')
+    end
+  end
+
+  # The tick or cross in the stream column is also its switch.
+  describe 'pressing a stream mark' do
+    before { sign_in admin }
+
+    it 'sets the value asked for and redraws only that row' do
+      target = entry('Alien', stream: false)
+
+      patch stream_admin_entry_path(target), params: { value: 'true' }, as: :turbo_stream
+
+      expect(target.reload.stream).to be(true)
+      expect(response.body).to include(%(action="replace" target="entry_#{target.id}"), 'fa-check et-ok', 'marked working')
+    end
+
+    it 'marks a working stream broken' do
+      target = entry('Alien', stream: true)
+
+      patch stream_admin_entry_path(target), params: { value: 'false' }, as: :turbo_stream
+
+      expect(target.reload.stream).to be(false)
+    end
+
+    # A value, not a flip: the same press arriving twice must not undo itself.
+    it 'sets the same value twice rather than toggling back' do
+      target = entry('Alien', stream: false)
+
+      2.times { patch stream_admin_entry_path(target), params: { value: 'true' }, as: :turbo_stream }
+
+      expect(target.reload.stream).to be(true)
+    end
+
+    # Never checked is set from the edit form; a press means somebody has looked.
+    it 'refuses anything but true or false' do
+      target = entry('Alien', stream: true)
+
+      patch stream_admin_entry_path(target), params: { value: '' }, as: :turbo_stream
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(target.reload.stream).to be(true)
+    end
+
+    # One flag on a row: an unrelated validation problem on the entry must not block it.
+    it 'flips an entry that would fail validation for some other reason' do
+      target = entry('Alien', stream: false)
+      target.update_columns(name: '')
+
+      patch stream_admin_entry_path(target), params: { value: 'true' }, as: :turbo_stream
+
+      expect(target.reload.stream).to be(true)
+    end
+
+    it 'refuses a member who is not an admin' do
+      target = entry('Alien', stream: false)
+      sign_out admin
+      sign_in owner
+
+      patch stream_admin_entry_path(target), params: { value: 'true' }
+
+      expect(target.reload.stream).to be(false)
+    end
+
+    it 'draws each mark as something a keyboard can reach and press' do
+      entry('Alien', stream: nil)
+
+      get admin_entries_path
+
+      expect(response.body).to include('class="et-na et-flip"', 'role="button"', 'tabindex="0"')
+      expect(response.body).to include(%(data-entry-table-stream-url-value="#{stream_admin_entry_path('ROW_ID')}"))
     end
   end
 

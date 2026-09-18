@@ -34,7 +34,10 @@ Rails.application.routes.draw do
     # other entry routes because it reaches across every member's channels, private ones
     # included, and deletes from any of them. No show or new: the name links to the
     # ordinary entry page, and entries are still added from inside a channel.
-    resources :entries, only: %i[index edit update destroy]
+    resources :entries, only: %i[index edit update destroy] do
+      # The tick or cross in the table's stream column, pressed. PATCH because it writes.
+      patch :stream, on: :member
+    end
     # The same table for the episodes under every show. Episodes have no routes of their own
     # anywhere else -- they are edited through their show's form -- so these are the only
     # ones, and admin-only for the same reasons as the entries above.

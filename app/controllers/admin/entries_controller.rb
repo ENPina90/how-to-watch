@@ -18,7 +18,7 @@ module Admin
   #     and a save or a delete answers with a stream that touches that one row. Drawing the
   #     table again after every edit would cost more than the edit.
   class EntriesController < BaseController
-    before_action :set_entry, only: %i[edit update destroy]
+    before_action :set_entry, only: %i[edit update destroy stream]
 
     # What each heading sorts by. Names are compared case-insensitively, so "the Thing"
     # does not sort after every capitalised title.
@@ -69,6 +69,29 @@ module Admin
         @lists = List.order(:name).pluck(:name, :id)
         render :edit, status: :unprocessable_entity
       end
+    end
+
+    # The stream mark in the table, pressed: working becomes broken and broken becomes
+    # working. The page sends the value it wants rather than asking for a flip, so a double
+    # click, or a second tab showing the old mark, sets the same thing twice instead of
+    # undoing itself.
+    #
+    # Only true or false. "Never checked" is set from the edit form -- a mark pressed says
+    # somebody has now looked, which is exactly what never checked is not.
+    #
+    # Written straight to the column. It is one flag on a row somebody has just looked at,
+    # and routing it through validation would refuse the flip on an entry whose name happens
+    # to clash with another in its channel -- a problem the flag has nothing to do with.
+    def stream
+      value = ActiveModel::Type::Boolean.new.cast(params[:value])
+      return head :unprocessable_entity if value.nil?
+
+      @entry.update_columns(stream: value, updated_at: Time.current)
+      flash.now[:notice] = "#{@entry.name} marked #{value ? 'working' : 'broken'}."
+      render turbo_stream: [
+        turbo_stream.replace(@entry, partial: 'admin/entries/row', locals: { entry: @entry }),
+        turbo_stream.replace('flash', partial: 'shared/flashes')
+      ]
     end
 
     # The model's own destroy, so every callback the channel page's delete relies on runs

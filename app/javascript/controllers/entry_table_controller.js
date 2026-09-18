@@ -1,5 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 import { Modal } from "bootstrap"
+// The vendored turbo build exports the namespace and nothing else -- there is no named
+// renderStreamMessage to import (see player_progress_controller.js).
+import { Turbo } from "@hotwired/turbo-rails"
 
 // The admin tables -- /admin/entries and /admin/subentries: the row actions and the edit
 // modal, each of which exists once for a table thousands of rows long.
@@ -17,6 +20,9 @@ import { Modal } from "bootstrap"
 // cancels the click -- and a cancelled click is one Turbo declines to follow into a frame.
 export default class extends Controller {
   static targets = ["modal", "frame", "actions", "delete"]
+  // Where a pressed stream mark is sent, with ROW_ID for the entry. Only the entries table
+  // has one: episodes have no stream to flip.
+  static values = { streamUrl: String }
 
   connect() {
     // Held rather than looked up each time. The toolbar lives inside a row once placed, and a
@@ -70,6 +76,61 @@ export default class extends Controller {
   // tens of milliseconds -- faster than the fade. So a pencil pressed just after closing
   // used to load its form into a modal that then finished closing over it. Asked mid-close,
   // the open waits for the close to finish instead.
+  // The stream mark, pressed: working becomes broken, and broken or never-checked becomes
+  // working. Delegated from the table like the toolbar, so the several thousand marks carry
+  // no listener each. The value wanted is read off the mark and sent as a value rather than
+  // as "flip", so a double press sets the same thing twice rather than undoing itself.
+  async flip(event) {
+    const mark = event.target.closest(".et-flip")
+    if (!mark || !this.hasStreamUrlValue) return
+    if (event.type === "keydown" && event.key !== "Enter" && event.key !== " ") return
+
+    event.preventDefault()
+    if (mark.dataset.pending) return
+
+    const row = mark.closest("tbody > tr[id]")
+    const id = row?.id.match(/_(\d+)$/)?.[1]
+    if (!id) return
+
+    const hadFocus = document.activeElement === mark
+    mark.dataset.pending = "true"
+    mark.classList.remove("et-flip--failed")
+
+    const body = new FormData()
+    body.append("value", mark.classList.contains("et-ok") ? "false" : "true")
+
+    try {
+      const response = await fetch(this.streamUrlValue.replace("ROW_ID", id), {
+        method: "PATCH",
+        headers: {
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content ?? "",
+          Accept: "text/vnd.turbo-stream.html"
+        },
+        body
+      })
+      if (!response.ok) throw new Error(`stream flip answered ${response.status}`)
+
+      // Redraws the row -- and the flash saying what changed. The mark pressed goes with the
+      // old row, so a keyboard user's focus is put back on the new one.
+      Turbo.renderStreamMessage(await response.text())
+      if (hadFocus) this.refocus(row.id)
+    } catch (error) {
+      console.error(error)
+      delete mark.dataset.pending
+      mark.classList.add("et-flip--failed")
+    }
+  }
+
+  // The stream renders on the next frame or two rather than on the spot, so wait for the
+  // replacement row rather than focusing the one about to be thrown away.
+  async refocus(rowId) {
+    for (let frame = 0; frame < 10; frame++) {
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      const mark = document.getElementById(rowId)?.querySelector(".et-flip")
+      if (mark && !mark.dataset.pending) return mark.focus()
+    }
+  }
+
   open = () => {
     if (this.isClosing) {
       this.reopen = true

@@ -39,11 +39,17 @@ module EntryTableHelper
   # `stream` is three-valued and the table says so: a tick for known to work, a cross for
   # known broken -- which is what keeps an entry off the cable schedule -- and a dash for
   # never checked, which is not the same as either.
+  #
+  # The mark is also the switch: pressing it flips working and broken, and a dash becomes
+  # working (entry-table sends it). Made operable with attributes on the mark itself rather
+  # than by wrapping it in a <button>: a wrapper would be another element on every one of
+  # several thousand rows, and the click is delegated from the table anyway.
   def entry_stream_mark(stream)
+    flip = { role: 'button', tabindex: 0 }
     case stream
-    when true  then tag.i(class: 'fa-solid fa-check et-ok', title: 'Working')
-    when false then tag.i(class: 'fa-solid fa-xmark et-bad', title: 'Broken')
-    else tag.span('–', class: 'et-na', title: 'Never checked')
+    when true  then tag.i(**flip, class: 'fa-solid fa-check et-ok et-flip', title: 'Working (press to mark broken)')
+    when false then tag.i(**flip, class: 'fa-solid fa-xmark et-bad et-flip', title: 'Broken (press to mark working)')
+    else tag.span('–', **flip, class: 'et-na et-flip', title: 'Never checked (press to mark working)')
     end
   end
 end

@@ -926,6 +926,33 @@ tr:hover .et-act,
   text-align: center;
 }
 
+/* The stream mark is also its column's switch (entry-table#flip). */
+.et-flip {
+  display: inline-block;
+  min-width: 26px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.et-flip:hover,
+.et-flip:focus-visible {
+  background-color: rgba(255, 255, 255, 0.12);
+  outline: none;
+}
+
+/* Sent and not yet answered: a second press would be ignored anyway, and this says so. */
+.et-flip[data-pending] {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* The request failed and the mark is unchanged -- outlined so the press is not mistaken
+   for having worked. */
+.et-flip--failed {
+  box-shadow: inset 0 0 0 1px #ff6b6b;
+}
+
 .admin-dashboard .et-ok  { color: #1db954 !important; }
 .admin-dashboard .et-bad { color: #ff6b6b !important; }
 .admin-dashboard .et-na  { color: rgba(255, 255, 255, 0.3) !important; }

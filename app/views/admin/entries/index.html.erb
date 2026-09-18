@@ -1,9 +1,10 @@
-<div class="admin-dashboard entry-table" data-controller="entry-table">
+<div class="admin-dashboard entry-table" data-controller="entry-table"
+     data-entry-table-stream-url-value="<%= stream_admin_entry_path('ROW_ID') %>">
   <header class="admin-header">
     <h1 class="admin-title">All entries</h1>
     <p class="admin-subtitle">
       <%= number_with_delimiter(@entries.size) %> entries across every channel.
-      Point at a row to watch, edit or delete it. · <%= link_to 'All episodes', admin_subentries_path %>
+      Point at a row to watch, edit or delete it; press a stream mark to flip it. · <%= link_to 'All episodes', admin_subentries_path %>
     </p>
   </header>
 
@@ -28,7 +29,8 @@
     <%# Delegated from here rather than bound per row: one listener for the whole table, and
         rows a save or a delete redraws need nothing re-attached. focusin as well as
         mouseover, so a keyboard reaches the actions too. %>
-    <tbody data-action="mouseover->entry-table#reveal focusin->entry-table#reveal">
+    <%# click and keydown for the stream marks, which are the switch for their own column. %>
+    <tbody data-action="mouseover->entry-table#reveal focusin->entry-table#reveal click->entry-table#flip keydown->entry-table#flip">
       <%= render partial: 'admin/entries/row', collection: @entries, as: :entry %>
     </tbody>
   </table>
