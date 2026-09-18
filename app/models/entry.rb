@@ -306,8 +306,11 @@ class Entry < ApplicationRecord
   # Pass the current subentry for series/anime so season/episode resolve correctly.
   # Blank means nothing can play it -- callers show "no source available" rather than
   # loading an iframe that cannot work.
-  # `start_at` resumes a part-watched entry, and is only honoured by a provider whose
-  # player takes a position (see Source::RESUME_PARAMS); everywhere else it is dropped.
+  # `start_at` resumes a part-watched entry, and is only honoured by a provider whose player
+  # takes a position -- as a query parameter (Source::RESUME_PARAMS) or, for MEGA, inside
+  # the key fragment (Source::FRAGMENT_RESUME_FLAGS). Everywhere else it is still dropped,
+  # so a caller that computes an offset cannot assume it was used: Drive and the custom
+  # catch-all begin at the beginning whatever they are told.
   def embed_url(subentry: nil, autoplay: false, start_at: nil, subtitles: true)
     resolved_source&.url_for(self, subentry: subentry, autoplay: autoplay, start_at: start_at,
                                    subtitles: subtitles).presence
