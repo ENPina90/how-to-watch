@@ -108,11 +108,24 @@ class UserEntry < ApplicationRecord
     changes = { player_progress: seconds }
     # `completed` going true fires set_completed_at and set_last_watched_at, which stamp
     # the present -- right here, because this is somebody watching it now.
-    if !completed? && !unattended && watched_enough?(seconds, duration, finished, credits)
+    if !completed? &&
+       watched_by?(seconds, duration: duration, finished: finished, unattended: unattended, credits: credits)
       changes[:completed] = true
     end
 
     update!(changes)
+  end
+
+  # Whether a report of the player reaching `seconds` says somebody has watched this --
+  # the judgement record_progress! ticks the entry off by, asked on its own.
+  #
+  # A series needs it asked apart from the flag: `completed` is one flag for the whole
+  # show and only ever flips once, but every episode runs out, and each one that does
+  # moves the viewer on to the next (see EntriesController#progress).
+  def watched_by?(seconds, duration: nil, finished: false, unattended: false, credits: nil)
+    return false if unattended
+
+    watched_enough?([seconds.to_f, 0.0].max, duration, finished, credits)
   end
 
   # Where the player should pick up, or nil to start from the beginning.
