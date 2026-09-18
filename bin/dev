@@ -3,7 +3,13 @@
 # request, so development needs a watcher running alongside the server.
 set -e
 
-if command -v foreman > /dev/null 2>&1; then
+# Asked by running it, not by looking for it. Under rbenv there is a shim on PATH for every
+# gem binary installed under *any* Ruby version, so `command -v foreman` answers yes on a
+# machine where foreman is installed under some other version -- and the shim then exits 127
+# with "rbenv: foreman: command not found". That took the `if` without ever reaching the
+# fallback below, so `bin/dev` simply died and the documented behaviour of falling back
+# quietly never happened.
+if foreman --version > /dev/null 2>&1; then
   foreman start -f Procfile.dev "$@"
 else
   bin/rails dartsass:watch &
