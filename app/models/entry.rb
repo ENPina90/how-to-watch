@@ -286,7 +286,7 @@ class Entry < ApplicationRecord
 
     # imdb entries can play on any active imdb provider; direct entries only work on
     # their own linked provider (its source_key is provider-specific), so keep it.
-    return Source.active.where(kind: 'imdb').order(:position).first if imdb.present?
+    return Source.default_imdb if imdb.present?
 
     linked
   end
@@ -296,7 +296,7 @@ class Entry < ApplicationRecord
   #   - its own direct provider, when a source_key is present (the key is provider-specific).
   def eligible_sources
     sources = []
-    sources.concat(Source.active.where(kind: 'imdb').order(:position).to_a) if imdb.present?
+    sources.concat(Source.active_imdb) if imdb.present?
     current = resolved_source
     sources << current if current&.direct? && source_key.present?
     sources.uniq

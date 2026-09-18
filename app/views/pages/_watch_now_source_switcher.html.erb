@@ -1,7 +1,7 @@
 <%# Source switcher for the transient watch_now page. No Entry exists here, so buttons
     swap the iframe src client-side. All providers are treated as imdb-kind. Buttons are
     numbered rather than named -- the provider's name is the tooltip. %>
-<% imdb_sources = Source.active.where(kind: 'imdb').order(:position) %>
+<% imdb_sources = Source.active_imdb %>
 
 <div class="source-switcher source-switcher--watch-now d-flex align-items-center gap-2 flex-nowrap justify-content-center">
   <% rendered = 0 %>

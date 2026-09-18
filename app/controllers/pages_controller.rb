@@ -71,7 +71,7 @@ class PagesController < ApplicationController
       imdb: @imdb_id, series_imdb: @imdb_id,
       season: @season, episode: @episode, absolute_episode: @episode, source_key: nil
     }
-    @default_source = Source.active.where(kind: 'imdb').order(:position).first
+    @default_source = Source.default_imdb
 
     # Set sidebar state for watch_now page
     @sidebar_collapsed = false
