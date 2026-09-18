@@ -636,6 +636,32 @@ the same jobs the weekly schedule runs, so there is one implementation and one s
 results. `POST reset_source` moves every channel onto one provider.
 `Visit` backs the traffic figures.
 
+**`/admin/entries`** (`Admin::EntriesController`) is every entry in one table — name,
+channel, media, runtime, the provider it plays from, and stream state — sortable by each.
+Reached from the dashboard's Entries figure. Built for its length rather than paginated:
+
+- Sorting is server-side on a whitelisted column (`?sort=&direction=`), blanks last. The
+  source column sorts in Ruby by `Entry#resolved_source`, not by a SQL copy of that rule.
+- Only the displayed columns are selected, channels and sources preloaded — three queries.
+- **The row actions are one toolbar**, moved by `entry_table_controller.js` into whichever
+  row is hovered or focused and pointed at it by filling `ENTRY_ID` in its link templates.
+  Per row they were seven of each row's sixteen elements (56k DOM nodes → 32k).
+- The pencil loads that one entry's reduced form into a single modal `<turbo-frame>`; save
+  and delete answer with a stream for that row only. The controller holds the toolbar by
+  reference because a redrawn or removed row takes it out of the document, and it queues an
+  open that arrives while the modal is still fading out — Bootstrap ignores `show()` then.
+- **`/admin/subentries`** (`Admin::SubentriesController`) is the same table for every
+  episode, sharing the toolbar, modal and sort headings. The toolbar's link templates fill
+  `ROW_ID` from the row's own id and `PARENT_ID` from its `data-parent`, since an episode is
+  watched through its show (`/entries/:show/watch?subentry=:id`). Two columns differ because
+  the data does: the source is the show's (an episode has no provider), and there is no
+  stream column (`subentries` has no `stream`). The show is not editable from here — moving
+  an episode would strand its old show's `current_id` and members' saved positions.
+- A full layout of this page is expensive (~50–140ms a time, more under DevTools), and
+  opening a Bootstrap modal forces more than one. Measure it in a **foreground** tab: a
+  background one has its timers and animation frames throttled, which reads as multi-second
+  stalls that are not the page's.
+
 ---
 
 ## 6. Front end

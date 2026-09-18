@@ -1,0 +1,40 @@
+<div class="admin-dashboard entry-table" data-controller="entry-table">
+  <header class="admin-header">
+    <h1 class="admin-title">All entries</h1>
+    <p class="admin-subtitle">
+      <%= number_with_delimiter(@entries.size) %> entries across every channel.
+      Point at a row to watch, edit or delete it. · <%= link_to 'All episodes', admin_subentries_path %>
+    </p>
+  </header>
+
+  <%# `table-layout: fixed` with widths set here: the browser sizes every column from this
+      row alone instead of measuring every cell of every row first, which on a table this
+      long is most of the time it takes to draw. %>
+  <table class="entry-table__table">
+    <colgroup>
+      <col class="et-col-name"><col class="et-col-list"><col class="et-col-media">
+      <col class="et-col-length"><col class="et-col-source"><col class="et-col-stream">
+    </colgroup>
+    <thead>
+      <tr>
+        <%= entry_table_heading 'Name', 'name', sort: @sort, direction: @direction %>
+        <%= entry_table_heading 'Channel', 'list', sort: @sort, direction: @direction %>
+        <%= entry_table_heading 'Media', 'media', sort: @sort, direction: @direction %>
+        <%= entry_table_heading 'Runtime', 'length', sort: @sort, direction: @direction %>
+        <%= entry_table_heading 'Source', 'source', sort: @sort, direction: @direction %>
+        <%= entry_table_heading 'Stream', 'stream', sort: @sort, direction: @direction %>
+      </tr>
+    </thead>
+    <%# Delegated from here rather than bound per row: one listener for the whole table, and
+        rows a save or a delete redraws need nothing re-attached. focusin as well as
+        mouseover, so a keyboard reaches the actions too. %>
+    <tbody data-action="mouseover->entry-table#reveal focusin->entry-table#reveal">
+      <%= render partial: 'admin/entries/row', collection: @entries, as: :entry %>
+    </tbody>
+  </table>
+
+  <%= render 'admin/shared/row_tools', noun: 'entry',
+        watch: watch_entry_path('ROW_ID'),
+        edit: edit_admin_entry_path('ROW_ID'),
+        destroy: admin_entry_path('ROW_ID') %>
+</div>

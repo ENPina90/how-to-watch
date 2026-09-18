@@ -1,0 +1,36 @@
+<div class="admin-dashboard entry-table" data-controller="entry-table">
+  <header class="admin-header">
+    <h1 class="admin-title">All episodes</h1>
+    <p class="admin-subtitle">
+      <%= number_with_delimiter(@subentries.size) %> episodes across every show.
+      Point at a row to watch, edit or delete it. · <%= link_to 'All entries', admin_entries_path %>
+    </p>
+  </header>
+
+  <%# Fixed widths for the reason the entries table gives: the browser sizes the columns from
+      this row alone instead of measuring every cell first. %>
+  <table class="entry-table__table">
+    <colgroup>
+      <col class="et-col-episode-name"><col class="et-col-show"><col class="et-col-se">
+      <col class="et-col-length"><col class="et-col-source">
+    </colgroup>
+    <thead>
+      <tr>
+        <%= entry_table_heading 'Name', 'name', sort: @sort, direction: @direction %>
+        <%= entry_table_heading 'Show', 'show', sort: @sort, direction: @direction %>
+        <%= entry_table_heading 'Episode', 'episode', sort: @sort, direction: @direction %>
+        <%= entry_table_heading 'Runtime', 'length', sort: @sort, direction: @direction %>
+        <%= entry_table_heading 'Source', 'source', sort: @sort, direction: @direction %>
+      </tr>
+    </thead>
+    <tbody data-action="mouseover->entry-table#reveal focusin->entry-table#reveal">
+      <%= render partial: 'admin/subentries/row', collection: @subentries, as: :subentry %>
+    </tbody>
+  </table>
+
+  <%# An episode plays through its show's page, pointed at the episode. %>
+  <%= render 'admin/shared/row_tools', noun: 'episode',
+        watch: watch_entry_path('PARENT_ID', subentry: 'ROW_ID'),
+        edit: edit_admin_subentry_path('ROW_ID'),
+        destroy: admin_subentry_path('ROW_ID') %>
+</div>

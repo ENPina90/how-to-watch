@@ -1,0 +1,11 @@
+<%# One row of /admin/subentries -- the episode's data and nothing else, as on the entries
+    table: the actions are the page's one toolbar, moved in by entry-table. `data-parent` is
+    the show, because an episode is watched through its show's page. The name goes to the
+    show's page too: an episode has no page of its own. %>
+<tr id="<%= dom_id(subentry) %>" data-parent="<%= subentry.entry_id %>">
+  <td class="et-name"><%= link_to subentry_table_name(subentry), entry_path(subentry.entry_id) %></td>
+  <td><%= subentry.entry.name %></td>
+  <td><%= subentry_table_label(subentry) %></td>
+  <td><%= "#{subentry.length} min" if subentry.length.to_i.positive? %></td>
+  <td><%= subentry.entry.resolved_source&.name %></td>
+</tr>

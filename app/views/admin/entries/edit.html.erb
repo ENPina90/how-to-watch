@@ -1,0 +1,53 @@
+<%# The edit form for one row of /admin/entries, fetched into the page's modal frame when that
+    row's pencil is pressed. Deliberately only the fields the table shows: no poster, no
+    plot, no episodes -- the channel page's form is where those are, and none of them would
+    change the row this answers with. %>
+<turbo-frame id="entry_table_edit">
+  <%= simple_form_for @entry, url: admin_entry_path(@entry), method: :patch do |f| %>
+    <%= f.error_notification %>
+
+    <%= f.input :name %>
+
+    <div class="entry-form__row">
+      <%# Moving it goes to the end of the other channel -- see Admin::EntriesController. %>
+      <%= f.input :list_id, collection: @lists, include_blank: false, label: 'Channel' %>
+      <%= f.input :media, collection: Entry.media_options, include_blank: false %>
+    </div>
+
+    <div class="entry-form__row entry-form__row--narrow">
+      <%= f.input :length, label: 'Runtime (min)' %>
+      <%# Three answers, not two: blank is "never checked", which the cable schedule reads
+          differently from either of the others -- it still airs an unchecked entry, and
+          keeps a broken one off. %>
+      <%= f.input :stream, as: :select, label: 'Stream',
+            collection: [['Working', true], ['Broken', false]],
+            include_blank: 'Never checked' %>
+    </div>
+
+    <div class="entry-form__row">
+      <%= f.association :provider,
+            collection: Source.order(:position),
+            label_method: ->(source) { "#{source.name} (#{source.kind})#{' — inactive' unless source.active?}" },
+            include_blank: '— Inherit channel default —',
+            label: 'Source provider' %>
+      <%= f.input :source_key, label: 'Source key',
+            hint: 'Direct providers only: Drive file id, mega key#fragment, YouTube id, or a full URL for Custom.' %>
+    </div>
+
+    <%# Never pre-filled. It is a way to set the two fields above in one go, not a field of its
+        own -- Entry#apply_source_url turns a pasted link into a provider and a key. %>
+    <%= f.input :source_url, label: '…or paste a link',
+          input_html: { value: nil, placeholder: 'https://drive.google.com/…' },
+          hint: 'Sets the provider and key above from a Drive, MEGA, YouTube or archive.org link. Overrides them if both are filled in.' %>
+
+    <p class="entry-table__resolved">
+      Plays from <strong><%= @entry.resolved_source&.name || 'nothing — no provider resolves' %></strong>
+      <% if @entry.provider_id.nil? && @entry.resolved_source %>(inherited)<% end %>
+    </p>
+
+    <div class="entry-table__form-actions">
+      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+      <%= f.button :submit, 'Save', class: 'btn btn-primary' %>
+    </div>
+  <% end %>
+</turbo-frame>
