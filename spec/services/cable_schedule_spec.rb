@@ -235,6 +235,39 @@ RSpec.describe CableSchedule do
       expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Unchecked'])
     end
 
+    # A channel is the programme already running when you turn it on, so a player that waits
+    # for its own play button can never be in step with it -- and none of the three that do
+    # takes a start position either, so even pressed by hand it begins at the beginning.
+    it 'skips an entry on a direct provider the page cannot start' do
+      drive = Source.create!(
+        name: 'Drive', slug: 'google-drive', kind: 'direct', active: true, position: 9,
+        autoplay_param: nil,
+        templates: { 'default' => 'https://drive.test/file/d/%{source_key}/preview' }
+      )
+      film('Startable', 90, 1)
+      create(:entry, list: channel, name: 'Click to play', media: 'movie', length: 90,
+                     position: 2, provider: drive, source_key: 'abc', imdb: nil)
+
+      described_class.build_day!(channel, date)
+
+      expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Startable'])
+    end
+
+    # Deliberately not symmetrical with the case above. `autoplay_param` is optional on the
+    # source form, so a blank one on an imdb provider is somebody leaving a field empty far
+    # more often than a player that cannot start -- and acting on it would take every
+    # channel on the dial off the air at once. The provider these specs run on has no
+    # autoplay param, which is exactly the shape of that mistake.
+    it 'still schedules on an imdb provider with no autoplay parameter' do
+      expect(provider.autoplay_param).to be_blank
+      expect(provider).not_to be_autoplays
+
+      film('Airs anyway', 90, 1)
+      described_class.build_day!(channel, date)
+
+      expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Airs anyway'])
+    end
+
     it 'gives a programme with no runtime a default rather than dropping it' do
       create(:entry, list: channel, name: 'Unknown length', media: 'movie', length: nil,
                      position: 1, imdb: 'tt1111111')
