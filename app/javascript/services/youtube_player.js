@@ -3,7 +3,7 @@
 // YouTube's IFrame API script is a wrapper around exactly this -- postMessage down to the
 // frame and back up -- so speaking the protocol directly costs neither a script from
 // youtube.com on every watch page nor the second frame the script would build. It is the
-// same handshake trailer-reel and cable-filler already rely on.
+// same handshake trailer-reel and cable-standby already rely on.
 //
 // The embed only talks to a page that has asked it to, and asking takes two things. The URL
 // must carry `enablejsapi=1` (Source::PLAYER_PARAMS adds it): without it the frame ignores

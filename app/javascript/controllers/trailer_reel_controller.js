@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // Trailers, one after another: /trailers, and channel 0 on /cable.
 //
 // There is no schedule to say when a trailer is over, so the player has to. YouTube's embed
-// answers a `listening` handshake -- the same one cable-filler uses to hear a reel refuse --
+// answers a `listening` handshake -- the same one cable-standby uses to hear a reel refuse --
 // and from then on reports its state, 0 being the end of the video. onStateChange is asked
 // for by name as well, because the embed has said "ended" both ways and there is no knowing
 // which it will use this year.

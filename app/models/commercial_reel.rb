@@ -98,7 +98,7 @@ class CommercialReel < ApplicationRecord
       # No enablejsapi, though the page depends on it to hear the player refuse -- a YouTube
       # embed that will not play says so only to whoever asked it to listen, and everyone
       # else gets "This video is unavailable" for the length of the break. The provider's URL
-      # carries it already (Source::PLAYER_PARAMS). See cable_filler.
+      # carries it already (Source::PLAYER_PARAMS). See cable_standby.
     }
     "#{base}#{base.include?('?') ? '&' : '?'}#{options.to_query}"
   end

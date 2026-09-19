@@ -472,6 +472,12 @@ that is something the viewer chose rather than a side effect of rendering a page
   on the guide. A flat guess used to fill gaps and was dropped too: short cuts the film off,
   long starts it over. `MissingRuntimeScanJob` fills gaps from TMDB weekly and reports the
   rest. `MAX_SLOTS_PER_DAY` (200) is the backstop.
+- **A player that will not play gets the "Please stand by" card** (`cable_standby_controller`,
+  `please_stand_by.png`). There are two triggers: YouTube's `onError`, for a reel or a
+  YouTube programme; and a fresh vidsrc frame that has posted no `PLAYER_EVENT` within 20s.
+  A frame adopted from a warmed spare (`data-adopted`) is never judged by silence, because
+  spares can play without reporting (§6a of VIDSRC.md). A break with no reel at all shows the
+  "We'll be right back" interlude instead: that is a gap, not a fault.
 - Entries on a **direct provider the page cannot start** get no slots (`unschedulable?`).
   A channel is the programme already running when you turn it on, and Drive, archive.org and
   custom all wait for their own play button — and take no start position either, so pressing

@@ -52,6 +52,29 @@ RSpec.describe 'Cable', type: :request do
       expect(response.body).to include('startAt=660')
     end
 
+    # A live vidsrc player speaks within a second, so one that never does has not started --
+    # and the stand-by card goes up instead of vidsrc's own "unavailable".
+    it 'listens for a vidsrc programme going silent' do
+      provider.update!(slug: 'vidsrc2')
+
+      travel_to(midnight + 11.minutes) do
+        sign_in user
+        get cable_channel_path(channel)
+      end
+
+      expect(response.body).to include('data-cable-standby-silence-value="true"')
+    end
+
+    # Silence proves nothing about a player with no adapter: it never says anything at all.
+    it 'does not judge a provider it cannot hear by its silence' do
+      travel_to(midnight + 11.minutes) do
+        sign_in user
+        get cable_channel_path(channel)
+      end
+
+      expect(response.body).to include('data-cable-standby-silence-value="false"')
+    end
+
     it 'defaults to the first channel on the dial' do
       sign_in user
       travel_to(midnight + 5.minutes) { get cable_path }
@@ -191,22 +214,25 @@ RSpec.describe 'Cable', type: :request do
       travel_to(midnight + 48.minutes) { get cable_channel_path(channel) }
 
       expect(response.body).to include('enablejsapi=1')
-      expect(response.body).to include('cable-filler')
+      expect(response.body).to include('data-cable-standby-youtube-value="true"')
     end
 
     # Rendered for every break rather than only the ones that start out empty: it is what
     # the page uncovers when the reel refuses, so it has to already be there.
-    it 'carries the caption through every break, ready but hidden' do
+    it 'carries the stand-by card through every break, ready but hidden' do
       travel_to(midnight + 48.minutes) { get cable_channel_path(channel) }
 
-      expect(response.body).to include('id="cableInterlude"')
-      expect(response.body[/<div id="cableInterlude"[^>]*>/]).to include('hidden')
+      expect(response.body[/<div id="cableStandBy"[^>]*>/]).to include('hidden')
+      expect(response.body).to include('please_stand_by')
+      expect(response.body).not_to include('id="cableInterlude"')
     end
 
-    it 'watches for a refusal only while a break is running' do
+    # A vidsrc programme is judged by silence, not by YouTube's handshake -- and a reel is
+    # judged the other way round.
+    it 'watches a programme for silence rather than for a YouTube refusal' do
       travel_to(midnight + 40.minutes) { get cable_channel_path(channel) }
 
-      expect(response.body).not_to include('cable-filler')
+      expect(response.body).to include('data-cable-standby-youtube-value="false"')
       expect(response.body).not_to include('id="cableInterlude"')
     end
 
