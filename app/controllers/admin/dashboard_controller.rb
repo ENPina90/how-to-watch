@@ -71,13 +71,14 @@ module Admin
                   notice: 'Stream check started. Unplayable entries will appear in your notifications.'
     end
 
-    # The one sweep that asks nothing outside the app -- it reads the catalogue. Enqueued
-    # like the others all the same: it walks every entry and its episodes.
+    # Asks TMDB for every missing runtime first, a few hundred requests on a bare catalogue,
+    # then walks every entry and its episodes -- so enqueued like the others.
     def run_runtime_scan
       MissingRuntimeScanJob.perform_later
 
       redirect_to admin_dashboard_path,
-                  notice: 'Runtime check started. Entries with no runtime will appear in your notifications.'
+                  notice: 'Runtime check started. Runtimes TMDB knows will be filled in; entries it ' \
+                          'cannot answer for will appear in your notifications.'
     end
 
     # Unlike the others, what this finds is not the admin's: each new episode goes to the
