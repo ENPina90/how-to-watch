@@ -20,7 +20,7 @@ import { playerAdapterFor, isControllable } from "services/player_adapter"
 //
 // Nothing happens through a commercial break. The page names no adapter while the adverts
 // are on, because they are not the programme and nothing here is meant to hold them --
-// see cable_filler_controller.
+// see cable_standby_controller.
 //
 // Two things it deliberately does not do. It never touches a warmed spare, because it
 // watches one named frame and the adapter ignores every other. And it stops once the

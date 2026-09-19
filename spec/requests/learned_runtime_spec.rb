@@ -3,9 +3,8 @@
 require 'rails_helper'
 
 # `entries.length` is the catalogue's claim about how long something runs, and for a good
-# few entries there is no claim at all. The cable schedule falls back to a flat guess, and a
-# guess that is short cuts a programme off partway through -- which is what happens to a
-# 46-minute episode laid out in a 30-minute slot. Only the player knows what it is holding.
+# few entries there is no claim at all, and the cable schedule keeps those off the air rather
+# than time them by a guess. Only the player knows what it is holding.
 RSpec.describe 'Learning an entry\'s runtime', :needs_provider, type: :request do
   let(:user) { create(:user) }
   let(:channel) { create(:list, user: user) }
@@ -84,6 +83,37 @@ RSpec.describe 'Learning an entry\'s runtime', :needs_provider, type: :request d
 
       expect(series.reload.length).to eq(46)
       expect(stranger.reload.length).to be_blank
+    end
+  end
+
+  # Cable no longer plays anything without a runtime, so the watch page is where one is
+  # learned. It hands the player the address only when there is a gap to fill.
+  describe 'the watch page' do
+    before { sign_in user }
+
+    it 'asks the player to report a film the catalogue has no runtime for' do
+      get watch_entry_path(entry)
+
+      expect(response.body).to include(%(data-player-progress-learn-url-value="#{runtime_entry_path(entry)}"))
+    end
+
+    it 'does not ask when the catalogue already has one' do
+      entry.update!(length: 142)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).not_to include('data-player-progress-learn-url-value')
+    end
+
+    # The show's own figure is the whole series, and is no answer for the episode.
+    it 'asks about the episode playing, however long the show claims to be' do
+      series = create(:entry, list: channel, media: 'series', imdb: 'tt0903747', length: 594, position: 2)
+      episode = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot')
+      series.update!(current: episode)
+
+      get watch_entry_path(series, subentry: episode.id)
+
+      expect(response.body).to include(runtime_entry_path(series, subentry: episode.id))
     end
   end
 

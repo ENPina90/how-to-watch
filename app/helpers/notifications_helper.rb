@@ -13,8 +13,8 @@ module NotificationsHelper
       expired?(notification) ? :urgent : :warn
     when Notification::BROKEN_POSTER, Notification::UNPLAYABLE_EMBED
       :warn
-    # Nothing is broken yet -- the guess may even be right. It is a job to do, not a fault
-    # to put right in a hurry.
+    # Nothing is broken -- the entry is simply held off the dial until it has a runtime. It is
+    # a job to do, not a fault to put right in a hurry.
     when Notification::MISSING_RUNTIME
       :info
     # News, not a problem.
@@ -129,40 +129,30 @@ module NotificationsHelper
     "#{name} has #{pluralize(bare, 'episode')} with no runtime"
   end
 
+  # Old rows still carry a `guess` in their data from when cable made one. It is not read:
+  # nothing is assumed any more, and a card naming a figure nobody uses would mislead.
   def missing_runtime_detail(notification)
     channel = notification.data['channel'].presence
-    guess = notification.data['guess']
-    assumed = guess ? pluralize(guess, 'minute') : 'a flat guess'
 
     if (bare = notification.data['episodes_missing'].to_i).positive?
       "#{bare} of its #{notification.data['episodes']} episodes have no runtime recorded, so " \
-        "#{missing_runtime_assumption(channel, assumed)} whenever one of them comes up. " \
-        "#{missing_runtime_harm(channel)}"
+        "#{missing_runtime_consequence(channel, 'those episodes')}. #{MISSING_RUNTIME_REMEDY}"
     elsif notification.data['episodes'].to_i.zero? && notification.data['media'] == 'series'
-      "It has no episodes imported and no runtime of its own, so " \
-        "#{missing_runtime_assumption(channel, assumed)}. Add its episodes, or set a runtime " \
-        'on the entry.'
+      "It has no episodes imported, so #{missing_runtime_consequence(channel, 'it')}. " \
+        'Add its episodes to put it on the air.'
     else
-      "It has no runtime recorded, so #{missing_runtime_assumption(channel, assumed)}. " \
-        "#{missing_runtime_harm(channel)}"
+      "It has no runtime recorded, so #{missing_runtime_consequence(channel, 'it')}. " \
+        "#{MISSING_RUNTIME_REMEDY}"
     end
   end
 
-  # On the dial the guess is being made now; off it, it is what would be made the moment
-  # anything schedules the entry -- which is the difference between a fault and a job to do.
-  def missing_runtime_assumption(channel, assumed)
-    channel ? "cable assumes #{assumed} on #{channel}" : "cable would assume #{assumed}"
+  # On the dial it is missing from a channel now; off it, it is what will happen the moment
+  # anything tries to schedule it -- which is the difference between a gap and a job to do.
+  def missing_runtime_consequence(channel, what)
+    channel ? "cable leaves #{what} out of #{channel}" : "cable will leave #{what} off any channel it joins"
   end
 
-  def missing_runtime_harm(channel)
-    unless channel
-      return 'Nothing schedules it yet, so nothing is guessing at it -- filling the runtime ' \
-             'in now keeps it right whenever it does go on a channel.'
-    end
-
-    'Where the guess is short the programme is cut off partway through; where it is long ' \
-      'the slot outlasts the film and the player starts it again from the beginning.'
-  end
+  MISSING_RUNTIME_REMEDY = 'Set the runtime and it goes on air from the next day dealt.'
 
   def broken_poster_detail(notification)
     where = notification.data['list'].presence

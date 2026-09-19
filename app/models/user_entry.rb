@@ -102,14 +102,17 @@ class UserEntry < ApplicationRecord
   # and then scrubs through it should not have that undone by the player.
   #
   # `credits` is the watching channel's skip -- see .completion_mark_for.
-  def record_progress!(seconds, duration: nil, finished: false, unattended: false, credits: nil)
+  #
+  # `episode` is the one playing, for a show: it is what has a runtime, not the show.
+  def record_progress!(seconds, duration: nil, finished: false, unattended: false, credits: nil, episode: nil)
     seconds = [seconds.to_f, 0.0].max
 
     changes = { player_progress: seconds }
     # `completed` going true fires set_completed_at and set_last_watched_at, which stamp
     # the present -- right here, because this is somebody watching it now.
     if !completed? &&
-       watched_by?(seconds, duration: duration, finished: finished, unattended: unattended, credits: credits)
+       watched_by?(seconds, duration: duration, finished: finished, unattended: unattended, credits: credits,
+                            episode: episode)
       changes[:completed] = true
     end
 
@@ -122,10 +125,10 @@ class UserEntry < ApplicationRecord
   # A series needs it asked apart from the flag: `completed` is one flag for the whole
   # show and only ever flips once, but every episode runs out, and each one that does
   # moves the viewer on to the next (see EntriesController#progress).
-  def watched_by?(seconds, duration: nil, finished: false, unattended: false, credits: nil)
+  def watched_by?(seconds, duration: nil, finished: false, unattended: false, credits: nil, episode: nil)
     return false if unattended
 
-    watched_enough?([seconds.to_f, 0.0].max, duration, finished, credits)
+    watched_enough?([seconds.to_f, 0.0].max, duration, finished, credits, episode)
   end
 
   # Where the player should pick up, or nil to start from the beginning.
@@ -136,10 +139,12 @@ class UserEntry < ApplicationRecord
   #
   # On a channel that skips credits, "the end" is where the channel moved them on -- which
   # is short of the file's own completion mark, and would otherwise reopen the entry there.
-  def resume_position(credits: nil)
+  #
+  # For a show the position is the episode's, so the mark is too -- pass the one playing.
+  def resume_position(credits: nil, episode: nil)
     return nil unless player_progress.to_f.positive?
 
-    mark = completion_mark(credits: credits)
+    mark = completion_mark(credits: credits, episode: episode)
     return nil if mark && player_progress >= mark
 
     player_progress
@@ -181,17 +186,20 @@ class UserEntry < ApplicationRecord
 
   private
 
-  def watched_enough?(seconds, duration, finished, credits)
+  def watched_enough?(seconds, duration, finished, credits, episode)
     return true if finished
 
-    mark = completion_mark(duration, credits: credits)
+    mark = completion_mark(duration, credits: credits, episode: episode)
     mark.present? && seconds >= mark
   end
 
   # The position past which the film counts as watched, or nil when nothing here knows how
   # long it is. See .runtime_for for how the catalogue and the player's duration are weighed.
-  def completion_mark(duration = nil, credits: nil)
-    runtime = self.class.runtime_for(entry.length.to_i * 60, duration)
+  #
+  # The catalogue's figure is Entry#runtime_seconds: for a show, the episode's, never the
+  # show's -- which is the whole series, and put the mark hours past the end of an episode.
+  def completion_mark(duration = nil, credits: nil, episode: nil)
+    runtime = self.class.runtime_for(entry.runtime_seconds(episode), duration)
 
     self.class.completion_mark_for(runtime, credits: credits)
   end

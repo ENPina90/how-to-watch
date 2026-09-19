@@ -119,7 +119,10 @@ RSpec.describe CommercialReel do
 
   describe 'the embed' do
     let!(:youtube) do
+      # With the autoplay parameter the real row carries -- without it, build_url writes no
+      # flag of its own and the spec cannot see the two disagree.
       Source.create!(name: 'YouTube', slug: 'youtube', kind: 'direct', active: true, position: 9,
+                     autoplay_param: 'autoplay',
                      templates: { 'default' => 'https://www.youtube.com/embed/%{source_key}' })
     end
 
@@ -128,6 +131,12 @@ RSpec.describe CommercialReel do
 
       expect(url).to start_with('https://www.youtube.com/embed/bbb?')
       expect(url).to include('start=90').and include('autoplay=1')
+    end
+
+    # YouTube obeys the first of two, so an `autoplay=0` from the provider ahead of the
+    # reel's own `autoplay=1` is a break that sits on a play button.
+    it 'asks to play at once exactly once' do
+      expect(eighty_seven.embed_url.scan(/autoplay=\d/)).to eq(['autoplay=1'])
     end
 
     # Nobody is meant to drive a commercial break.

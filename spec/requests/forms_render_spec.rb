@@ -31,8 +31,8 @@ RSpec.describe 'Forms render', :needs_provider, type: :request do
     expect(response.body).to include('name="entry[source_key]"')
   end
 
-  # The cable schedule lays a slot out by the runtime and guesses where there is none, and a
-  # guess that is short cuts the programme off partway through. Both forms are permitted to
+  # The cable schedule lays a slot out by the runtime and keeps an entry with none off the
+  # air. Both forms are permitted to
   # write `length` and neither offered anywhere to type it, so the only way to correct one
   # was the player happening to report it.
   describe 'the runtime field' do

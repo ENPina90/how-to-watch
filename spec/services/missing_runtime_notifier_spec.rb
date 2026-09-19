@@ -3,9 +3,8 @@
 require 'rails_helper'
 
 # `entries.length` is what the cable schedule lays a day out from. Where it is missing the
-# schedule guesses, and a guess that overshoots the real file leaves the slot outlasting the
-# programme -- at which point the player, handed a start position past the end, begins the
-# whole thing again. These are the warnings that make that visible before somebody meets it.
+# schedule leaves the programme out altogether, and nothing on the channel says anything has
+# gone. These are the warnings that make it visible.
 RSpec.describe MissingRuntimeNotifier do
   let!(:admin) { create(:user, :admin) }
   let(:channel) { create(:list, name: 'Annals', default: true) }
@@ -24,7 +23,7 @@ RSpec.describe MissingRuntimeNotifier do
       expect(Notification.pluck(:kind).uniq).to eq([Notification::MISSING_RUNTIME])
     end
 
-    it 'names the channel it is scheduled on and the length being assumed' do
+    it 'names the channel it is missing from' do
       entry = scheduled('No Runtime', nil)
 
       described_class.call
@@ -32,7 +31,17 @@ RSpec.describe MissingRuntimeNotifier do
 
       expect(data['name']).to eq('No Runtime')
       expect(data['channel']).to eq('Annals')
-      expect(data['guess']).to eq(CableSchedule.fallback_minutes(entry))
+      expect(data).not_to have_key('guess')
+    end
+
+    # Below CableSchedule::MIN_MINUTES a runtime is treated as missing, so it is warned
+    # about as missing -- the schedule and the sweep must agree on what airs.
+    it 'counts a runtime too short to be real as missing' do
+      entry = scheduled('Two Minutes', 2)
+
+      described_class.call
+
+      expect(Notification.find_by(subject: entry)).to be_present
     end
 
     # The sweep covers the catalogue, not only the dial: an entry goes onto a channel long
@@ -105,8 +114,7 @@ RSpec.describe MissingRuntimeNotifier do
       expect(data['episodes_missing']).to eq(1)
     end
 
-    # Nothing to pick an episode from, so the schedule falls back to the show -- which has
-    # no runtime either, and the guess is all that is left.
+    # Nothing to pick an episode from, so the show cannot air at all.
     it 'warns about a show with no episodes imported at all' do
       described_class.call
 

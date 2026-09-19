@@ -58,11 +58,13 @@ class User < ApplicationRecord
   # Capped by the runtime where there is one. A three-minute window over a two-minute
   # cartoon would drop the viewer into its credits -- past the mark where the entry counts
   # as watched, so it would be marked seen without ever having been shown.
-  def random_start_for(entry)
+  def random_start_for(entry, episode: nil)
     window = randomizer.to_f * 60
     return nil unless window.positive?
 
-    runtime = entry.length.to_i * 60
+    # The episode's runtime for a show, not the show's: capped by the whole series, the
+    # window was no cap at all, and a random start could land past the end of the episode.
+    runtime = entry.runtime_seconds(episode)
     window = [window, runtime * UserEntry::COMPLETION_FRACTION].min if runtime.positive?
     return nil unless window.positive?
 

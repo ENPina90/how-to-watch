@@ -139,8 +139,11 @@ module CableHelper
   # How long the programme runs, as the catalogue has it rather than as the slot was laid
   # out -- a slot runs on to the next five-minute mark and the difference is the break, so
   # its width is not the running time and should not be reported as one.
+  #
+  # For a show, the episode's and nothing else. Falling back to the show's figure printed the
+  # whole series as one episode's running time: "7 hr 1 min" for an hour of Sharp Objects.
   def cable_runtime(slot)
-    cable_runtime_label(slot.subentry&.length.presence || slot.entry.length)
+    cable_runtime_label(slot.entry.runtime_minutes(slot.subentry))
   end
 
   # Minutes, the way a listing says them: "45 min", "2 hr", "1 hr 57 min". Nil for nothing,

@@ -3,24 +3,23 @@
 # Finds the entries with no runtime recorded.
 #
 # `entries.length` is the catalogue's claim about how long something runs, and it is what
-# CableSchedule lays a day out from. Where it is missing the schedule falls back to a flat
-# guess -- a hundred minutes for a film, thirty for anything else -- and a guess that
-# overshoots the real file is not harmless: the slot outlasts the video, and the player,
-# handed a start position past the end, silently starts the whole thing again. That is the
-# fault this exists to make visible before somebody runs into it.
+# CableSchedule lays a day out from. Where it is missing -- for a show, where an episode's is
+# -- the schedule leaves that programme out entirely rather than guess (CableSchedule::
+# MIN_MINUTES says why). So a blank runtime is a film, or an episode, quietly missing from
+# every channel it is on, and nobody would notice it had gone. That is what this exists to
+# make visible.
 #
-# It sweeps the whole catalogue rather than only the dial. The harm above is what a blank
-# runtime does once something schedules it, and an entry goes onto a channel long after it
-# was added -- so the time worth hearing about it is before that, not the week it
-# misbehaves. What is already on a clock is still marked: `Row#channel` names the channel
-# that reaches an entry, and is nil for everything nothing schedules yet.
+# It sweeps the whole catalogue rather than only the dial, because an entry goes onto a
+# channel long after it was added and the time worth hearing about it is before then. What
+# is already on a channel is still marked: `Row#channel` names the channel that reaches an
+# entry, and is nil for everything nothing schedules yet.
 class MissingRuntimeAudit
   Row = Struct.new(:entry, :channel, keyword_init: true)
   Result = Struct.new(:checked, :missing, keyword_init: true)
 
   def self.call(...) = new(...).call
 
-  # Every entry, with what decides the question loaded up front: `guessed_at?` reads each
+  # Every entry, with what decides the question loaded up front: `untimed?` reads each
   # entry's episodes, and asking per entry is a query apiece across the whole catalogue.
   def self.everything
     dial = dial_channels
@@ -55,22 +54,26 @@ class MissingRuntimeAudit
   def call
     rows = @scope.uniq { |row| row.entry.id }
 
-    Result.new(checked: rows.size, missing: rows.select { |row| guessed_at?(row.entry) })
+    Result.new(checked: rows.size, missing: rows.select { |row| untimed?(row.entry) })
   end
 
-  # Would the schedule have to guess for this entry?
+  # Is any of this entry held off the schedule for want of a runtime?
   #
   # Not simply "has no runtime of its own". A show does not have a runtime -- its episodes
-  # do, and the schedule lays each slot out by whichever episode it picked. So a series
-  # whose episodes all carry one needs no guess, however blank the show itself is, and a
-  # series with even one bare episode does whenever that episode comes up.
+  # do, and the schedule times each slot by whichever episode it picked. So a series whose
+  # episodes all carry one is complete, however blank the show itself is, and a series with
+  # even one bare episode is missing that episode from the air. The test is CableSchedule's
+  # own, so the two cannot disagree about what counts as a runtime.
+  #
+  # A show with no episodes at all falls through to the show's own figure. Cable cannot air
+  # it either way, but a blank one there is the sign nothing was ever imported for it.
   #
   # Asked of the loaded records rather than in SQL, because `everything` has preloaded them
   # and a `where` here would go back to the database once per entry in the catalogue.
-  def guessed_at?(entry)
+  def untimed?(entry)
     episodes = entry.subentries
-    return episodes.any? { |episode| episode.length.to_i.zero? } if episodes.any?
+    return episodes.any? { |episode| CableSchedule.runtime_minutes(entry, episode).nil? } if episodes.any?
 
-    entry.length.to_i.zero?
+    entry.length.to_i < CableSchedule::MIN_MINUTES
   end
 end

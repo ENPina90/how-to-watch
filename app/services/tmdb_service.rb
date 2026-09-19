@@ -29,6 +29,10 @@ class TmdbService
     get_json("tv/#{tmdb_id}")
   end
 
+  def fetch_movie(tmdb_id)
+    get_json("movie/#{tmdb_id}")
+  end
+
   def fetch_season(tmdb_id, season_number)
     get_json("tv/#{tmdb_id}/season/#{season_number}")
   end

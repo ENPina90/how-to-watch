@@ -17,16 +17,19 @@ module CableSchedule
   # schedule laid out "for tomorrow" means the viewer's tomorrow.
   DEFAULT_ZONE = "America/Toronto"
 
-  # How long a programme runs when the catalogue has no runtime for it. A guess is better
-  # than dropping the entry: a channel whose entries mostly lack runtimes would otherwise
-  # go dark, and being a few minutes out only moves the boundary between two programmes.
-  # Regenerated daily, so an error never accumulates.
-  FALLBACK_MINUTES = { "movie" => 100, "fanedit" => 100 }.freeze
-  FALLBACK_MINUTES_DEFAULT = 30
-
   # A programme has to be long enough to be worth pinning to a time. A runtime of one or
   # two minutes is nearly always bad catalogue data rather than a very short film, and a
-  # day filled with them is thousands of rows.
+  # day filled with them is thousands of rows. Below this, a runtime is treated as missing.
+  #
+  # And a programme with no runtime is not scheduled at all. It used to be given a guess --
+  # a hundred minutes for a film, thirty for anything else -- and, for an episode, the show's
+  # own figure before that. For a series that figure is the whole show end to end, so an
+  # episode of Band of Brothers with no runtime of its own took up nine hours fifty-four of
+  # the guide, and nobody watched the other nine. A guess of any size is wrong in one
+  # direction or the other: short, and the programme is cut off; long, and the player is
+  # handed a start position past the end of the file and silently begins again. An entry
+  # off the dial is a smaller fault than either, and MissingRuntimeScanJob fills in what it
+  # can each week and tells an admin about the rest.
   MIN_MINUTES = 5
 
   # Programmes end on the clock, not when the film happens to stop. A slot runs to the next
@@ -552,8 +555,11 @@ module CableSchedule
   # `stream` is three-valued and only `false` means broken: it is nil for an entry nothing
   # has ever checked, and dropping those would take most of a young channel off the air on
   # no evidence. The same reading EmbedAvailabilityScanJob takes of the column.
+  #
+  # Nor is an entry with nothing to time it by -- see MIN_MINUTES.
   def unschedulable?(entry)
     return true if entry.imdb.blank? && entry.source_key.blank?
+    return true unless timed?(entry)
 
     source = entry.resolved_source
     return true if source&.direct? && !source.autoplays?
@@ -591,9 +597,9 @@ module CableSchedule
     reel = CommercialReel.for_year(entry.year) if entry.year.present?
 
     # A reel is chosen for every slot, not only for the ones with a gap after them. The
-    # catalogue's runtime is a claim, not a measurement -- it is missing for a good few
-    # entries and simply wrong for others, and either way the film can end well before the
-    # slot does. When that happens the page needs somewhere to go, and adverts from the
+    # catalogue's runtime is a claim, not a measurement -- it is simply wrong for some
+    # entries, a cut shorter than the one it was looked up for, and the film can end well
+    # before the slot does. When that happens the page needs somewhere to go, and adverts from the
     # right year are a better answer than the last minutes of a film played twice.
     { break_starts_at: (content_end if gap.positive?),
       break_reel_id: reel&.id,
@@ -621,27 +627,35 @@ module CableSchedule
   # The episodes worth trying, in the order to try them. Random, like everything else in the
   # running order -- the channel is not working through a series in order, it is playing
   # episodes of it. A film has one candidate and it is the film itself.
+  #
+  # Only the episodes with a runtime of their own: the rest of the show still airs, and
+  # those wait for one.
   def episode_choices(entry)
-    return [nil] unless entry.media == "series" || entry.media == "anime"
+    return [nil] unless episodic?(entry)
 
-    entry.subentries.to_a.shuffle
+    entry.subentries.select { |episode| runtime_minutes(entry, episode) }.shuffle
   end
 
-  def runtime(entry, subentry = nil) = fallback_minutes(entry, subentry).minutes
+  # Only ever asked of what `schedulable` and `episode_choices` let through, so there is
+  # always an answer.
+  def runtime(entry, subentry = nil) = runtime_minutes(entry, subentry).minutes
 
-  # How long this programme is taken to run, in minutes.
-  #
-  # The episode's own runtime first, where one is playing: a show does not have a runtime,
-  # its episodes do, and a season of forty-minute episodes laid out by the show's figure is
-  # wrong for every one of them. Then the entry's own, then a flat guess.
-  #
-  # Public because the guess is worth naming: a warning about a missing runtime is more use
-  # if it says what is being assumed in its place.
-  def fallback_minutes(entry, subentry = nil)
-    minutes = subentry&.length.to_i
-    minutes = entry.length.to_i if minutes < MIN_MINUTES
-    return minutes if minutes >= MIN_MINUTES
+  # How long this programme runs, in minutes, or nil when the catalogue does not say or says
+  # too little to pin to a clock (MIN_MINUTES). Entry#runtime_minutes has the reasoning for
+  # why a show's figure is never used.
+  def runtime_minutes(entry, subentry = nil)
+    minutes = entry.runtime_minutes(subentry)
 
-    FALLBACK_MINUTES.fetch(entry.media, FALLBACK_MINUTES_DEFAULT)
+    minutes if minutes.to_i >= MIN_MINUTES
   end
+
+  # Can anything of this entry be timed? For a show, any one of its episodes will do.
+  def timed?(entry)
+    return entry.subentries.any? { |episode| runtime_minutes(entry, episode) } if episodic?(entry)
+
+    runtime_minutes(entry).present?
+  end
+
+  # The kinds that are laid out an episode at a time, with the episode chosen per slot.
+  def episodic?(entry) = entry.episodic?
 end

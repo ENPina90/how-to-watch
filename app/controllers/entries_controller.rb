@@ -520,10 +520,9 @@ class EntriesController < ApplicationController
   # How long this entry really runs, as reported by the player showing it.
   #
   # `entries.length` is the catalogue's claim, and for a good few entries there is no claim
-  # at all -- OMDB had none, and the cable schedule falls back to a flat guess. A guess that
-  # is short cuts a programme off partway through; one that is long leaves the slot running
-  # after the film has ended. Neither is visible from the server: only the player knows what
-  # it is holding, and it says so in every report.
+  # at all -- OMDB had none, and the cable schedule keeps such an entry off the air rather
+  # than time it by a guess. Nothing on the server can say how long the file is: only the
+  # player knows what it is holding, and it says so in every report.
   #
   # Fills a gap and never overwrites. A runtime somebody has set by hand, or one OMDB gave,
   # is a considered value and not ours to correct from whichever cut a provider happens to
@@ -536,7 +535,8 @@ class EntriesController < ApplicationController
     # forty-minute episodes and a season of twenty-minute ones can sit under the same entry,
     # and writing either figure onto the show would be wrong for the other.
     subject = @entry.subentries.find_by(id: params[:subentry]) || @entry
-    return head :no_content unless subject.length.to_i.zero?
+    # Under MIN_MINUTES is what the schedule treats as missing, so it counts as a gap here.
+    return head :no_content unless subject.length.to_i < CableSchedule::MIN_MINUTES
 
     subject.update_column(:length, minutes)
     Rails.logger.info("Runtime learned for #{subject.class.name.downcase} #{subject.id} " \
@@ -673,11 +673,15 @@ class EntriesController < ApplicationController
     # channel it is watched from. Looked up rather than taken as a number from the request:
     # the setting belongs to the channel, and watching_channel already refuses a channel
     # that does not hold this entry.
+    #
+    # The episode rides along because a show's runtime is its episode's: judged by the show's
+    # own figure, which is the whole series, no episode would ever count as watched.
     report = {
       duration: params[:duration],
       finished: params[:finished].to_s == 'true',
       unattended: params[:unattended].to_s == 'true',
-      credits: watching_channel.skip_credits_seconds
+      credits: watching_channel.skip_credits_seconds,
+      episode: episode
     }
     user_entry.record_progress!(params[:progress], **report)
 
@@ -927,14 +931,15 @@ class EntriesController < ApplicationController
     # The channel being watched *from* decides the rest -- its intro skip where it has one,
     # the member's randomiser where it does not. See List#start_position_for.
     def start_position
-      resume_position || @channel.start_position_for(@entry, current_user)
+      resume_position || @channel.start_position_for(@entry, current_user, episode: @current_subentry)
     end
 
     # A read: rendering the page must not create a tracking row (see
     # reads_do_not_write_spec), so this goes through the non-writing lookup and answers nil
     # for somebody who has never played this entry.
     def resume_position
-      current_user&.user_entry_for(@entry)&.resume_position(credits: @channel.skip_credits_seconds)
+      current_user&.user_entry_for(@entry)&.resume_position(credits: @channel.skip_credits_seconds,
+                                                             episode: @current_subentry)
     end
 
     # Once the player has called this entry watched, the channel that owns it moves on, so

@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Says out loud what the commercial break hides.
 //
-// cable_filler does the same listening on /cable and answers it by putting the caption up:
+// cable_standby does the same listening on /cable and answers it with the stand-by card:
 // there, a reel that will not play is something to cover over as quickly as possible. Here
 // it is the answer the page was opened to get, so the refusal is reported instead, with
 // YouTube's own reason for it.
@@ -23,7 +23,7 @@ const REASONS = {
 export default class extends Controller {
   static targets = ["failure", "reason"]
   // Found by id rather than declared as a target: the frame is a sibling of the chrome,
-  // the same way cable_filler reaches the player it watches.
+  // the same way cable_standby reaches the player it watches.
   static values = { frame: String }
 
   connect() {

@@ -74,6 +74,8 @@ local Redis is required.
 - `docs/IMPROVEMENT_PLAN.md` — the live backlog.
 - `docs/guides/` — task guides (backups, Railway deploy, image repair, Letterboxd, VidSrc).
   Written Sept 2025; check them against the code before following.
+- `docs/guides/CHEATSHEET.md` — the production console, every scheduled job with its time,
+  how to run each by hand, and the rake tasks worth knowing.
 
 `ARCHITECTURE.md` carries its own **Last verified** date in the header — check that first,
 and trust the code over the doc wherever they disagree. It does cover cable, watch parties,

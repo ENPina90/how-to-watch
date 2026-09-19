@@ -194,4 +194,34 @@ RSpec.describe 'Where the player got to', type: :model do
       expect(user.user_entry_for(series).reload.player_progress).to eq(1_200)
     end
   end
+
+  # A show's `length` is the whole series. Judged by it, no episode was ever far enough
+  # through to count as watched, and an episode stopped in its credits resumed there.
+  describe 'an episode of a show' do
+    let(:series) { create(:entry, list: list, media: 'series', length: 594) }
+    let(:episode) { series.subentries.create!(season: 1, episode: 1, name: 'Currahee', length: 60) }
+    let(:user_entry) { user.user_entry_for!(series) }
+
+    it 'counts as watched by the episode\'s own runtime' do
+      user_entry.record_progress!(3_500, episode: episode)
+
+      expect(user_entry.reload).to be_completed
+    end
+
+    it 'starts again rather than resuming the episode\'s credits' do
+      user_entry.record_progress!(3_500, episode: episode)
+
+      expect(user_entry.resume_position(episode: episode)).to be_nil
+    end
+
+    # With no episode to go on there is no catalogue figure at all, and the player's own
+    # duration is what is left -- never the show's.
+    it 'goes by the player when no episode is named' do
+      user_entry.record_progress!(3_500)
+      expect(user_entry.reload).not_to be_completed
+
+      user_entry.record_progress!(3_500, duration: 3_600)
+      expect(user_entry.reload).to be_completed
+    end
+  end
 end

@@ -76,16 +76,22 @@
       is drawn and why. Nothing is bound to it: catching the drag is the whole of its job. %>
   <div class="cable-guard<%= ' cable-guard--whole' if @in_break %>" aria-hidden="true"></div>
 
-  <%# A break with nothing to show. Rendered for every break rather than only the ones that
-      start out empty, because a reel can refuse at any point -- taken down, made private,
-      embedding switched off -- and cable-filler uncovers this when it hears the player say
-      so. Better than a dead frame either way, and it is what a channel with nothing to fill
-      the gap would put up. %>
-  <% if @in_break %>
-    <div id="cableInterlude" class="cable-interlude" <%= 'hidden' if @embed_url.present? %>>
+  <%# A break with nothing to show: no reel for the film's period. That is not a fault, only
+      a gap with nothing to fill it, and this is what a channel would put up then. %>
+  <% if @in_break && @embed_url.blank? %>
+    <div id="cableInterlude" class="cable-interlude">
       <p class="cable-interlude__card">We&rsquo;ll be right back</p>
     </div>
   <% end %>
+
+  <%# What goes up when the thing on screen will not play -- see cable_standby_controller.js.
+      Rendered on every page, programme and break alike, because a player can refuse at any
+      point, and the controller uncovers it when it hears one. A programme with no embed at
+      all never gets here -- it is the off-air page. Lazy, so the image costs nothing on the
+      pages that never show it. %>
+  <div id="cableStandBy" class="cable-standby" hidden>
+    <%= image_tag 'please_stand_by.png', alt: 'Please stand by', class: 'cable-standby__card', loading: 'lazy' %>
+  </div>
 
   <button type="button" class="cinema__fullscreen" title="Fullscreen"
           data-action="click->cable-guide#close click->cinema-fullscreen#toggle">
@@ -109,21 +115,25 @@
            seeking within it does not move the channel, so both only put this viewer out of
            step with the listing and with everyone else watching. What is left of the
            keyboard is fullscreen and mute, neither of which touches the film. %>
-       <%# cable-filler only through a break, and only then: it is watching one particular
-           embed for one particular refusal. %>
+       <%# cable-standby on every page: it watches whatever is in the frame for a sign that it
+           will not play, and puts up the stand-by card when it sees one. %>
        <%# cable-hold puts the film back on when somebody stops it. There is no pausing a
            channel that plays to a clock -- the schedule does not wait, so a pause only puts
            this viewer out of step with the listing and with everyone else watching. Absent
            through a break: the adverts are not the programme, and holding them is not its job. %>
-       data-controller="player-keys cable-clock<%= @in_break ? ' cable-filler' : ' cable-hold' %>"
+       data-controller="player-keys cable-clock cable-standby<%= ' cable-hold' unless @in_break %>"
        <% unless @in_break %>
          data-cable-hold-frame-value="cinema"
          data-cable-hold-adapter-value="<%= @entry.resolved_source&.sync_adapter %>"
        <% end %>
-       <% if @in_break %>
-         data-cable-filler-frame-value="cinema"
-         data-cable-filler-card-value="cableInterlude"
-       <% end %>
+       <%# Through a break the frame is a YouTube reel whatever the programme plays from, so
+           it is asked about as one -- and a reel-less break has the interlude, not a fault.
+           Silence is only evidence against vidsrc, whose player speaks within a second. %>
+       <% programme_adapter = @in_break ? nil : @entry.resolved_source&.sync_adapter %>
+       data-cable-standby-frame-value="cinema"
+       data-cable-standby-card-value="cableStandBy"
+       data-cable-standby-youtube-value="<%= @embed_url.present? && (@in_break || programme_adapter == 'youtube') %>"
+       data-cable-standby-silence-value="<%= @embed_url.present? && programme_adapter == 'vidsrc' %>"
        data-player-keys-transport-value="false"
        <%# Which adapter drives this page's player, for anything that needs to reach it --
            cinema-navigation reads it off the fetched page to know how to quieten the
@@ -153,12 +163,12 @@
            player reports -- a file shorter than the catalogue claims cannot be spotted any
            other way, and the player answers such a request by starting over. %>
        data-cable-clock-programme-starts-at-value="<%= @slot.starts_at.utc.iso8601 %>"
-       <%# What the catalogue claims, and where to correct it. Zero means it claims nothing
-           and the schedule is guessing -- see EntriesController#runtime. Signed in only,
-           because correcting the catalogue is a write and guests do not get one. %>
-       <%# The episode's runtime where an episode is playing, since that is the figure the
-           schedule lays the slot out by. Zero means nothing is recorded and it is guessing. %>
-       data-cable-clock-runtime-value="<%= (@current_subentry&.length.presence || @entry.length).to_i * 60 %>"
+       <%# What the catalogue claims, and where to correct it -- see EntriesController#runtime.
+           Signed in only, because correcting the catalogue is a write and guests do not get
+           one. The figure the schedule timed the slot by, asked of the schedule: for a show
+           that is the episode's alone, never the show's, which is the whole series end to
+           end. Zero only for a slot dealt before untimed programmes were kept off the air. %>
+       data-cable-clock-runtime-value="<%= CableSchedule.runtime_minutes(@entry, @current_subentry).to_i * 60 %>"
        <% if user_signed_in? %>
          data-cable-clock-runtime-url-value="<%= runtime_entry_path(@entry, subentry: @current_subentry&.id) %>"
          data-cable-clock-token-value="<%= form_authenticity_token %>"

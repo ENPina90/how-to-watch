@@ -44,7 +44,7 @@ missing_runtime_scan:
   cron: "0 6 * * 3"   # Wednesdays at 06:00 UTC
   class: "MissingRuntimeScanJob"
   queue: default
-  description: "Find every entry with no runtime recorded, and tell admins about them."
+  description: "Fill in the runtimes TMDB knows for entries that have none, and tell admins about the rest."
 
 # Thursday because most shows go out Sunday to Wednesday, and an episode is not taken on
 # its own air date -- so this catches the week's broadcasts with a day in hand.

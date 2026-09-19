@@ -15,6 +15,13 @@ RSpec.describe 'Player progress', type: :request do
                    templates: { 'movie' => 'https://vidsrc2.ru/embed/movie?imdb=%{imdb}' })
   end
 
+  # The same, able to play a show an episode at a time.
+  def series_provider
+    Source.create!(name: 'Vidsrc2', slug: 'vidsrc2', kind: 'imdb', active: true, position: 1,
+                   autoplay_param: 'autoplay',
+                   templates: { 'series' => 'https://vidsrc2.ru/embed/tv?imdb=%{series_imdb}&season=%{season}&episode=%{episode}' })
+  end
+
   # Drive and the rest hand the page no player to listen to, so nothing about them changes.
   def direct_provider
     Source.create!(name: 'Drive', slug: 'google-drive', kind: 'direct', active: true, position: 2,
@@ -256,6 +263,30 @@ RSpec.describe 'Player progress', type: :request do
       entry.update!(provider: vidsrc_provider, length: nil)
 
       get watch_entry_path(entry)
+
+      expect(response.body).to include('data-player-progress-runtime-value="0"')
+    end
+
+    # A show's own figure is the whole series. Handed that, the client put the up-next card
+    # and the watched mark hours past the end of the episode actually playing.
+    it 'hands the client the episode\'s runtime for a show, never the show\'s' do
+      series = create(:entry, list: entry.list, media: 'series', imdb: 'tt0185906', length: 594,
+                              provider: series_provider, position: 2)
+      episode = series.subentries.create!(season: 1, episode: 3, name: 'Carentan', length: 66)
+      series.update_user_subentry!(user, episode)
+
+      get watch_entry_path(series, subentry: episode.id)
+
+      expect(response.body).to include(%(data-player-progress-runtime-value="#{66 * 60}"))
+    end
+
+    it 'sends a zero runtime for an episode with none of its own' do
+      series = create(:entry, list: entry.list, media: 'series', imdb: 'tt0185906', length: 594,
+                              provider: series_provider, position: 2)
+      episode = series.subentries.create!(season: 1, episode: 3, name: 'Carentan', length: nil)
+      series.update_user_subentry!(user, episode)
+
+      get watch_entry_path(series, subentry: episode.id)
 
       expect(response.body).to include('data-player-progress-runtime-value="0"')
     end

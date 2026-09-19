@@ -395,6 +395,13 @@ playing. Too long, and the card only ever came up on the player's own `completed
 film had finished; too short, and it moved the viewer on with minutes still to run. The
 resume cutoff has no report to go on and still uses the catalogue.
 
+**The catalogue's figure is `Entry#runtime_minutes`**: the entry's own `length` for a film,
+the *episode's* for a show, and never the show's. A series' own `length` is the whole show
+end to end (594 minutes for Band of Brothers), and timing by it put the watched mark hours
+past the end of an episode. Every caller passes the episode playing: the progress report,
+`resume_position`, `List#start_position_for`, `User#random_start_for`, the watch page and the
+cable label. `CableSchedule.runtime_minutes` is the same answer plus a five-minute floor.
+
 `AppSetting#up_next_mark_for` applies the floor — never earlier than the completion mark —
 and `player_progress_controller` applies the same rule client-side. It has to be a floor at
 the point of use rather than a validation: whether 15 seconds is too long a lead is a
@@ -441,8 +448,10 @@ usually moved on before the up-next card fires, the card and the ring's arrows p
 same `?subentry=` to `increment_current` / `decrement_current`, which step from that
 episode rather than the stored one — otherwise the card would skip an episode.
 
-`PATCH /entries/:id/runtime` is the player correcting the catalogue when a file turns out
-to run to something other than what TMDB said.
+`PATCH /entries/:id/runtime` is the player filling in a runtime the catalogue lacks. It
+fills a gap (anything under `CableSchedule::MIN_MINUTES`) and never overwrites. The watch
+page (`player_progress_controller#learnRuntime`) and the cable page both send it once, and
+only when what is playing has no runtime: for a show that means the episode, never the show.
 
 ### 5.9 Cable — `GET /cable`, `GET /cable/:id`, `GET /cable/guide`, `GET /cable/0`, `GET /cable/1980s`
 
@@ -463,9 +472,19 @@ that is something the viewer chose rather than a side effect of rendering a page
   `CommercialReel.for_year` picks the reel when the day is dealt: nearest to the film's
   year, then narrowest span (a 1987 reel beats a 1980s one), then at random, so a year
   with several reels rotates through them from break to break.
-- Runtime gaps are guessed (`FALLBACK_MINUTES`, 100 for a film, 30 otherwise) rather than
-  dropping the entry, and `MIN_MINUTES` (5) keeps bad catalogue data from filling a day with
-  thousands of rows. `MAX_SLOTS_PER_DAY` (200) is the backstop.
+- **A programme with no runtime is not scheduled.** A runtime under `MIN_MINUTES` (5) counts
+  as none. A series offers only the episodes with a runtime of their own
+  (`CableSchedule.runtime_minutes`); the show's own `length` is never read, because for a
+  series it is the whole show end to end. Timing episodes by it put 9h54m of Band of Brothers
+  on the guide. A flat guess used to fill gaps and was dropped too: short cuts the film off,
+  long starts it over. `MissingRuntimeScanJob` fills gaps from TMDB weekly and reports the
+  rest. `MAX_SLOTS_PER_DAY` (200) is the backstop.
+- **A player that will not play gets the "Please stand by" card** (`cable_standby_controller`,
+  `please_stand_by.png`). There are two triggers: YouTube's `onError`, for a reel or a
+  YouTube programme; and a fresh vidsrc frame that has posted no `PLAYER_EVENT` within 20s.
+  A frame adopted from a warmed spare (`data-adopted`) is never judged by silence, because
+  spares can play without reporting (§6a of VIDSRC.md). A break with no reel at all shows the
+  "We'll be right back" interlude instead: that is a gap, not a fault.
 - Entries on a **direct provider the page cannot start** get no slots (`unschedulable?`).
   A channel is the programme already running when you turn it on, and Drive, archive.org and
   custom all wait for their own play button — and take no start position either, so pressing
@@ -797,7 +816,8 @@ Reached from the dashboard's Entries figure. Built for its length rather than pa
 | `VidsrcAvailability` / `VidsrcCatalog` | Asks VidSrc whether it actually holds a file for an entry |
 | `EmbedAvailabilityAudit` / `UnplayableEmbedNotifier` | The sweep behind `embed_availability_scan`, and the notifications it raises |
 | `PosterAudit` / `BrokenPosterNotifier` | Same shape, for posters whose image has gone |
-| `MissingRuntimeAudit` / `MissingRuntimeNotifier` | Same shape, for every entry with no runtime recorded; `Row#channel` names the dial channel that reaches one, and is nil for the rest |
+| `RuntimeBackfill` | Fills missing runtimes from TMDB: episodes a season per request, films by imdb id, standalone episodes through their show. Skips fanedits and episodes with no `series_imdb`; never overwrites |
+| `MissingRuntimeAudit` / `MissingRuntimeNotifier` | Same shape as the poster pair, for every entry cable would leave out for want of a runtime; `Row#channel` names the dial channel that reaches one, and is nil for the rest |
 | `NewEpisodeImporter` / `NewEpisodeNotifier` | The sweep behind `new_episode_scan`: extends each series with episodes TMDB shows have really aired, and tells the channel's owner (§5.12) |
 | `SourceExpiryNotifier` | Warns admins before a provider domain lapses (§4) |
 | `AdminStateNotifier` | The base class the four reconciling notifiers above share. Each of them is about a *state*, not an event, so a run works out the warnings that should exist now, creates the missing ones and deletes the ones no longer earned — fixing the thing clears its warning without anyone dismissing it. A subclass supplies its `kind`, a `dedupe_key` for a row, and the subject/data a row becomes; the transaction, the per-admin loop and the sweep of rows belonging to ex-admins live in the base. `NewEpisodeNotifier` is deliberately **not** one of these: an episode appearing is an event, and there is nothing to reconcile |
@@ -824,7 +844,7 @@ Cloudinary). `LetterboxdSyncJob` refreshes one member's Letterboxd channel on de
 | `LetterboxdWeeklyRefreshJob` | Mondays | Re-read every linked member's diary |
 | `BrokenPosterScanJob` | Mondays | Poster URLs that no longer answer with an image |
 | `EmbedAvailabilityScanJob` | Tuesdays | Entries VidSrc has no file for |
-| `MissingRuntimeScanJob` | Wednesdays | Every entry with no runtime recorded; the ones already on the dial are named with their channel |
+| `MissingRuntimeScanJob` | Wednesdays | Fill missing runtimes from TMDB (`RuntimeBackfill`), then warn about the rest; the ones already on the dial are named with their channel |
 | `NewEpisodeScanJob` | Thursdays | Episodes aired since each series was filled in; tells the channel's owner (§5.12) |
 
 The schedule is loaded **on the Sidekiq server only** (`config/initializers/sidekiq.rb`) —
@@ -1016,7 +1036,9 @@ tell you how far behind it is likely to be. Trust the code; update the section y
 | Mobile layout differs from desktop | user-agent sniffing in both controllers → `*_mobile` views + `layouts/mobile`. |
 | A cable channel is off air / a gap in the guide | nobody laid that day out. `CableSchedule.ensure_day!` runs from `cable#show`, `cable#guide` and `CableScheduleJob`; check the worker ran and that the channel is `default`. |
 | Cable shows a different programme to two people | something read a per-user table. Nothing under §5.9 may touch `UserListPosition`, `UserEntryPosition` or `player_progress`. |
-| A programme runs far too long or too short | no runtime in the catalogue, so `CableSchedule::FALLBACK_MINUTES` guessed. `MissingRuntimeScanJob` reports these; `PATCH /entries/:id/runtime` corrects one. |
+| A programme runs far too long or too short | The catalogue runtime is wrong, since a missing one is no longer scheduled. For a series, check the *episode's* `length`. Slots dealt before 2026-09-19 may still carry a show's full length; re-deal from `/admin/cable`. |
+| A film or episode never appears on a channel | It has no runtime (`CableSchedule.timed?`). `MissingRuntimeScanJob` fills what TMDB knows and raises a `missing_runtime` notification for the rest. |
+| Commercial breaks or `/trailers` sit on a play button | The reel URL carries `autoplay=0` ahead of `autoplay=1` and YouTube obeys the first. Reels must ask `build_url(..., autoplay: true)` rather than append their own flag. |
 | `/cable/guide` serves channel one | the `cable/guide` route slipped below `cable/:id` (§5.9). |
 | `/cable/0` serves channel one | the `cable/0` route slipped below `cable/:id` (§5.9). |
 | A decade channel is off air, or plays films from the wrong years | `CableEra#entries`: only public entries with a `year` in range count. Check `entries.year` and the list's `private` flag, and that whatever deals the dial reads `CableSchedule.dial` rather than `channels` (§5.9). |

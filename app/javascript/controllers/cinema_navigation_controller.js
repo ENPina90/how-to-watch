@@ -214,6 +214,8 @@ export default class extends Controller {
         // or the player is announced as whatever was playing before.
         frame.title = incoming.title
         frame.src = incoming.src
+        // A fresh load, whatever this element was before.
+        delete frame.dataset.adopted
       }
     }
 
@@ -251,6 +253,10 @@ export default class extends Controller {
     live.remove()
     frame.id = "cinema"
     frame.classList.add("cinema__frame--live")
+    // cable-standby judges a player by whether it speaks, and a spare that warmed behind the
+    // live frame may play without ever saying so. Marked on the frame, which outlives the
+    // chrome swap that reconnects cable-standby.
+    frame.dataset.adopted = "true"
 
     // It was stopped and silenced while it warmed; this is what it was warmed for.
     //

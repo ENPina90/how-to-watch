@@ -268,13 +268,33 @@ RSpec.describe CableSchedule do
       expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Airs anyway'])
     end
 
-    it 'gives a programme with no runtime a default rather than dropping it' do
+    # A guess is wrong in one direction or the other: short cuts the film off, long hands the
+    # player a start position past the end of the file and it quietly begins again.
+    it 'leaves out a programme with no runtime rather than guessing at one' do
+      film('Timed', 90, 1)
       create(:entry, list: channel, name: 'Unknown length', media: 'movie', length: nil,
-                     position: 1, imdb: 'tt1111111')
+                     position: 2, imdb: 'tt1111111')
 
       described_class.build_day!(channel, date)
 
-      expect(CableSlot.where(list: channel).first.duration).to eq(100 * 60)
+      expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Timed'])
+    end
+
+    it 'treats a runtime of zero, or too short to be real, as none at all' do
+      film('Timed', 90, 1)
+      film('Zero', 0, 2)
+      film('Two minutes', 2, 3)
+
+      described_class.build_day!(channel, date)
+
+      expect(CableSlot.where(list: channel).map { |s| s.entry.name }.uniq).to eq(['Timed'])
+    end
+
+    it 'is off air when nothing on it has a runtime' do
+      film('Unknown', nil, 1)
+
+      expect(described_class.build_day!(channel, date)).to eq(0)
+      expect(described_class.on_air(channel, at: midnight + 3.hours)).to be_nil
     end
 
     it 'is off air when it can play nothing at all' do
@@ -377,26 +397,42 @@ RSpec.describe CableSchedule do
       expect(slot.programme_duration).to eq(53 * 60)
     end
 
-    # The flat guess is thirty minutes. An episode laid out by it runs on past the credits
-    # or is cut off partway through, and both are visible on the channel.
-    it 'falls back to the guess only where the episode has no length either' do
-      Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot', length: nil)
-
-      expect(described_class.fallback_minutes(series, series.subentries.first)).to eq(30)
-    end
-
     it 'prefers the episode over a length the show does carry' do
       series.update!(length: 30)
       episode = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot',
                                  length: 53)
 
-      expect(described_class.fallback_minutes(series, episode)).to eq(53)
+      expect(described_class.runtime_minutes(series, episode)).to eq(53)
     end
 
-    it 'falls back to the show when no episode is playing' do
-      series.update!(length: 44)
+    # The show's figure is whatever OMDB called the series, which for a miniseries is all of
+    # it: an episode of Band of Brothers timed by it took up 9h54m of the guide.
+    it 'never times an episode by the show' do
+      series.update!(length: 594)
+      episode = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot',
+                                 length: nil)
 
-      expect(described_class.fallback_minutes(series)).to eq(44)
+      expect(described_class.runtime_minutes(series, episode)).to be_nil
+      expect(described_class.runtime_minutes(series)).to be_nil
+    end
+
+    it 'airs only the episodes with a runtime of their own' do
+      series.update!(length: 594)
+      Subentry.create!(entry: series, season: '1', episode: '1', name: 'Timed', length: 53)
+      Subentry.create!(entry: series, season: '1', episode: '2', name: 'Bare', length: nil)
+
+      described_class.build_day!(channel, date)
+      slots = CableSlot.where(list: channel).includes(:subentry)
+
+      expect(slots.map { |slot| slot.subentry.name }.uniq).to eq(['Timed'])
+      expect(slots.map(&:duration).max).to be <= 55 * 60
+    end
+
+    it 'leaves the show off the air when none of its episodes has a runtime' do
+      series.update!(length: 594)
+      Subentry.create!(entry: series, season: '1', episode: '1', name: 'Bare', length: nil)
+
+      expect(described_class.build_day!(channel, date)).to eq(0)
     end
   end
 

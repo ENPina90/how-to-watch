@@ -22,12 +22,15 @@ class TrailerReel
   REMEMBERED = 30
 
   # YouTube's own player options, belonging to this use rather than to the provider row:
-  # play at once, and stay on this channel's videos at the end rather than suggesting others.
-  # The one that matters most -- enablejsapi, so the page can hear a trailer end or refuse to
-  # play -- is not here: the provider's URL carries it already (Source::PLAYER_PARAMS), and a
-  # second copy would only be noise in the address. See trailer_reel_controller.js.
+  # stay on this channel's videos at the end rather than suggesting others.
+  #
+  # Two that matter are not here, because the provider's URL carries them already. enablejsapi,
+  # so the page can hear a trailer end or refuse to play, comes from Source::PLAYER_PARAMS.
+  # Autoplay comes from the row's `autoplay_param`, asked for in embed_url_for -- and must be,
+  # since build_url writes `autoplay=0` when not asked, and YouTube obeys the first of two.
+  # See trailer_reel_controller.js.
   PLAYER_OPTIONS = {
-    autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3
+    rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3
   }.freeze
 
   Trailer = Struct.new(:entry, :youtube_id, :embed_url, keyword_init: true)
@@ -94,7 +97,7 @@ class TrailerReel
   # On the YouTube provider's own template, as CommercialReel#embed_url does, so the domain
   # lives in the one row every other playback domain lives in.
   def embed_url_for(source, youtube_id)
-    base = source.build_url('default', { source_key: youtube_id })
+    base = source.build_url('default', { source_key: youtube_id }, autoplay: true)
     return nil if base.blank?
 
     "#{base}#{base.include?('?') ? '&' : '?'}#{PLAYER_OPTIONS.to_query}"

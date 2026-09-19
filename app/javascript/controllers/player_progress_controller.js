@@ -78,6 +78,9 @@ export default class extends Controller {
     // been running with nobody in front of it and may already be past the point that
     // counts as watched. Set by cinema-navigation when it promotes a warmed frame.
     warmed: Boolean,
+    // Where to say how long the file really is. Present only when what is playing has no
+    // runtime in the catalogue -- the episode, for a show -- see learnRuntime.
+    learnUrl: String,
   };
 
   connect() {
@@ -123,6 +126,7 @@ export default class extends Controller {
 
   playerReported(state) {
     this.state = state;
+    this.learnRuntime(state);
 
     // The player's own word for what happened, not the collapsed status: a seek and an
     // ending both leave the film stopped, and only one of them means it was watched.
@@ -166,6 +170,29 @@ export default class extends Controller {
 
     if (crossedWatched) return this.save({ finished: finished, force: true });
     if (state.event === "paused" || state.event === "seeked") this.save();
+  }
+
+  // Tell the server how long the file is, where the catalogue does not say.
+  //
+  // A programme with no runtime is kept off the cable schedule, so this is how one earns its
+  // way back on: the player is the only thing that knows how long its file is, and VidSrc's
+  // data API does not say (RuntimeBackfill). Cable used to be where this was learned; it no
+  // longer plays anything untimed, so the watch page does it instead.
+  //
+  // Once per page, and the server fills a gap without ever overwriting.
+  learnRuntime({ duration }) {
+    if (this.told || !this.learnUrlValue || !(duration > 0)) return;
+
+    this.told = true;
+
+    const body = new FormData();
+    body.append("_method", "patch");
+    body.append("seconds", Math.round(duration));
+    body.append("authenticity_token", this.tokenValue);
+
+    // Nothing on the page waits on this, and a correction that does not arrive is simply a
+    // runtime that stays missing until somebody else watches it.
+    fetch(this.learnUrlValue, { method: "POST", body: body }).catch(() => {});
   }
 
   // The configured lead, or the built-in one for a page that did not pass a usable value.

@@ -78,21 +78,27 @@ class CommercialReel < ApplicationRecord
   # The embed, built on the YouTube provider's own template so that the domain lives where
   # every other playback domain in this app lives -- one row to edit if YouTube ever moves
   # embedding somewhere else. The player options after it are YouTube's own and belong to
-  # this use rather than to the provider: start part-way in, play at once, and no chrome,
-  # because nobody is meant to drive a commercial break.
+  # this use rather than to the provider: start part-way in, and no chrome, because nobody is
+  # meant to drive a commercial break.
+  #
+  # Playing at once is asked of the provider rather than added here. The YouTube row carries
+  # an `autoplay_param`, so build_url writes the flag either way -- `autoplay=0` unless told
+  # otherwise -- and a second `autoplay=1` after it loses: YouTube reads the first. That is
+  # how every break went silent on 2026-09-15, the day the row was given the parameter.
   def embed_url(start_at: 0)
     # The vars hash is positional, and braces are required: `source_key: youtube_id` on its
     # own is read as keyword arguments, which build_url also takes.
-    base = Source.find_by(slug: "youtube", active: true)&.build_url("default", { source_key: youtube_id })
+    base = Source.find_by(slug: "youtube", active: true)
+                 &.build_url("default", { source_key: youtube_id }, autoplay: true)
     return nil if base.blank?
 
     options = {
-      autoplay: 1, start: start_at.to_i, controls: 0, disablekb: 1,
+      start: start_at.to_i, controls: 0, disablekb: 1,
       modestbranding: 1, rel: 0, playsinline: 1, iv_load_policy: 3
       # No enablejsapi, though the page depends on it to hear the player refuse -- a YouTube
       # embed that will not play says so only to whoever asked it to listen, and everyone
       # else gets "This video is unavailable" for the length of the break. The provider's URL
-      # carries it already (Source::PLAYER_PARAMS). See cable_filler.
+      # carries it already (Source::PLAYER_PARAMS). See cable_standby.
     }
     "#{base}#{base.include?('?') ? '&' : '?'}#{options.to_query}"
   end
