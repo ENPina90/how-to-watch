@@ -144,6 +144,14 @@
              down for. Set on the admin dashboard rather than compiled in, so the timing can
              be tuned without a deploy. %>
          data-player-progress-up-next-lead-value="<%= AppSetting.up_next_lead_seconds %>"
+         <%# Where the player's reported length goes, when the catalogue has none for what is
+             playing -- the episode's own, for a show, never the show's, which is the whole
+             series. Asked of the schedule so the two agree on what counts as missing; a show
+             with no episode playing has nothing to learn. %>
+         <% if CableSchedule.runtime_minutes(@entry, @current_subentry).nil? &&
+               (@current_subentry || !CableSchedule.episodic?(@entry)) %>
+           data-player-progress-learn-url-value="<%= runtime_entry_path(@entry, subentry: @current_subentry&.id) %>"
+         <% end %>
        <% end %>>
   <%= render 'entries/source_switcher' %>
 

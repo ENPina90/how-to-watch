@@ -535,7 +535,8 @@ class EntriesController < ApplicationController
     # forty-minute episodes and a season of twenty-minute ones can sit under the same entry,
     # and writing either figure onto the show would be wrong for the other.
     subject = @entry.subentries.find_by(id: params[:subentry]) || @entry
-    return head :no_content unless subject.length.to_i.zero?
+    # Under MIN_MINUTES is what the schedule treats as missing, so it counts as a gap here.
+    return head :no_content unless subject.length.to_i < CableSchedule::MIN_MINUTES
 
     subject.update_column(:length, minutes)
     Rails.logger.info("Runtime learned for #{subject.class.name.downcase} #{subject.id} " \

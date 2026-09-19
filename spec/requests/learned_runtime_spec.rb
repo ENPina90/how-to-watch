@@ -86,6 +86,37 @@ RSpec.describe 'Learning an entry\'s runtime', :needs_provider, type: :request d
     end
   end
 
+  # Cable no longer plays anything without a runtime, so the watch page is where one is
+  # learned. It hands the player the address only when there is a gap to fill.
+  describe 'the watch page' do
+    before { sign_in user }
+
+    it 'asks the player to report a film the catalogue has no runtime for' do
+      get watch_entry_path(entry)
+
+      expect(response.body).to include(%(data-player-progress-learn-url-value="#{runtime_entry_path(entry)}"))
+    end
+
+    it 'does not ask when the catalogue already has one' do
+      entry.update!(length: 142)
+
+      get watch_entry_path(entry)
+
+      expect(response.body).not_to include('data-player-progress-learn-url-value')
+    end
+
+    # The show's own figure is the whole series, and is no answer for the episode.
+    it 'asks about the episode playing, however long the show claims to be' do
+      series = create(:entry, list: channel, media: 'series', imdb: 'tt0903747', length: 594, position: 2)
+      episode = Subentry.create!(entry: series, season: '1', episode: '1', name: 'Pilot')
+      series.update!(current: episode)
+
+      get watch_entry_path(series, subentry: episode.id)
+
+      expect(response.body).to include(runtime_entry_path(series, subentry: episode.id))
+    end
+  end
+
   # Correcting the catalogue is a write, and writes need an account however open the site is.
   it 'refuses a visitor with no account' do
     AppSetting.update_access_mode!('open')
