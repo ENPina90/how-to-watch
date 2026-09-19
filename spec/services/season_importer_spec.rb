@@ -61,8 +61,7 @@ RSpec.describe SeasonImporter do
     end
 
     # A show has no runtime of its own -- its episodes do, and TMDB hands them over in the
-    # same payload as everything else here. Dropping them leaves the cable schedule laying
-    # every episode out by a flat guess.
+    # same payload as everything else here. Dropping them keeps every episode off cable.
     it 'keeps each episode\'s own runtime' do
       entry = importer.call[:entry]
 

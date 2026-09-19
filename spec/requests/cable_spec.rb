@@ -369,10 +369,13 @@ RSpec.describe 'Cable', type: :request do
   # The schedule is only as good as the runtimes it is laid out from, and it cannot see them
   # for itself. The page carries what the catalogue claims and, where it claims nothing, the
   # address to say otherwise.
+  #
+  # Nothing without a runtime is dealt any more, so a silent catalogue here is a slot dealt
+  # before its runtime was cleared -- or before this deploy. The day is laid out first.
   describe 'correcting a runtime the catalogue does not have' do
     it 'offers the correction when the catalogue is silent' do
-      entry.update!(length: nil)
       CableSchedule.build_day!(channel, date)
+      entry.update!(length: nil)
       sign_in user
 
       travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
@@ -414,8 +417,8 @@ RSpec.describe 'Cable', type: :request do
     # Correcting the catalogue is a write, and a guest has no way to make one.
     it 'offers a visitor with no account nowhere to send it' do
       AppSetting.update_access_mode!('open')
-      entry.update!(length: nil)
       CableSchedule.build_day!(channel, date)
+      entry.update!(length: nil)
 
       travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
 

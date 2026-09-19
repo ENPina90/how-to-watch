@@ -5,8 +5,8 @@
 # Weekly, and weekly is right: nothing changes here on its own. An entry arrives without a
 # runtime because OMDB had none for it, and it stays that way until somebody types one in.
 # The reason to look regularly is that entries keep arriving -- a season imported on Tuesday
-# can put a dozen new guesses on the dial without anyone noticing until a programme starts
-# over on a channel somebody was watching.
+# can quietly hold a dozen episodes off the dial, and nothing on a channel says anything is
+# missing from it.
 class MissingRuntimeScanJob < ApplicationJob
   queue_as :default
 

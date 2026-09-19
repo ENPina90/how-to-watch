@@ -52,12 +52,11 @@ class MissingRuntimeNotifier < AdminStateNotifier
         # what would be assumed rather than as what is happening.
         'channel' => row.channel&.name,
         'media' => row.entry.media,
-        'guess' => CableSchedule.fallback_minutes(row.entry),
         # A show does not have a runtime, its episodes do -- so for a series the useful
         # thing to say is which of them are bare, not that the show itself is. Counted off
         # the records the audit has already loaded, not with two more queries per entry.
         'episodes' => episodes.size,
-        'episodes_missing' => episodes.count { |episode| episode.length.to_i.zero? }
+        'episodes_missing' => episodes.count { |episode| CableSchedule.runtime_minutes(row.entry, episode).nil? }
       }
     }
   end

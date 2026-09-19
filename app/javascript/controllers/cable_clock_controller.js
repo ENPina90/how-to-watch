@@ -49,8 +49,8 @@ export default class extends Controller {
     adapter: String,
     frame: String,
     // What the catalogue claims this programme runs to, in seconds, and where to say
-    // otherwise. Zero means it claims nothing, which is the case worth reporting: the
-    // schedule is guessing, and the player is the only thing that knows.
+    // otherwise. Zero means it claims nothing, which is the case worth reporting. The
+    // schedule no longer airs such a programme, so this is a slot dealt before it stopped.
     runtime: Number,
     runtimeUrl: String,
     token: String
@@ -135,9 +135,8 @@ export default class extends Controller {
 
   // Is the schedule asking for a point this file does not have?
   //
-  // The catalogue's runtime is a claim rather than a measurement: it is missing for a fair
-  // number of entries -- which get a guess -- and merely wrong for others, and the provider
-  // may hold a different cut in any case. Handed a start position past the end, the player
+  // The catalogue's runtime is a claim rather than a measurement: it is wrong for some
+  // entries, and the provider may hold a different cut in any case. Handed a start position past the end, the player
   // does not refuse and does not stop: it quietly starts from the beginning and plays the
   // film again, which is how this showed up. Measured 2026-09-09 against a 1354s episode
   // asked to start at 99999.

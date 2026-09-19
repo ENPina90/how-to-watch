@@ -16,17 +16,27 @@ RSpec.describe 'Missing runtime notices' do
                                  'channel' => channel.name, 'media' => 'episode', 'guess' => 30 })
   end
 
-  it 'names the entry, the channel and the length being assumed' do
+  it 'names the entry and the channel it is missing from' do
     sign_in admin
 
     get notifications_path
 
-    expect(response.body).to include('The Worm', 'Annals', '30 minutes')
+    expect(response.body).to include('The Worm', 'cable leaves it out of Annals')
   end
 
-  # Most of what the sweep finds is on no channel yet, so the card has to say what would be
-  # assumed rather than describe a schedule that does not exist.
-  it 'says what would be assumed for an entry nothing schedules' do
+  # Rows written while cable still guessed carry the figure. Nothing assumes it now, and a
+  # card that named it would describe a schedule that no longer exists.
+  it 'does not repeat a guess an old row still carries' do
+    sign_in admin
+
+    get notifications_path
+
+    expect(response.body).not_to include('30 minutes')
+  end
+
+  # Most of what the sweep finds is on no channel yet, so the card has to say what will
+  # happen rather than describe a schedule that does not exist.
+  it 'says what will happen to an entry nothing schedules' do
     shelved = create(:entry, list: create(:list, name: 'Shelf'), name: 'Unscheduled', length: nil)
     Notification.create!(user: admin, kind: Notification::MISSING_RUNTIME, subject: shelved,
                          dedupe_key: "missing_runtime:#{shelved.id}",
@@ -38,7 +48,7 @@ RSpec.describe 'Missing runtime notices' do
     get notifications_path
 
     expect(response.body).to include('Unscheduled')
-    expect(response.body).to include('would assume 100 minutes')
+    expect(response.body).to include('off any channel it joins')
   end
 
   it 'sends you to the entry, and gets out of the way when you go' do
@@ -49,8 +59,8 @@ RSpec.describe 'Missing runtime notices' do
     expect(response.body).to include(dismiss_notification_path(notice, view: true))
   end
 
-  # It is a job to do, not a fault to put right in a hurry -- nothing is broken until the
-  # guess turns out to be longer than the file.
+  # It is a job to do, not a fault to put right in a hurry -- the entry is held off the dial,
+  # not playing wrongly on it.
   it 'reads as information rather than a warning' do
     expect(helper_tone).to eq(:info)
   end

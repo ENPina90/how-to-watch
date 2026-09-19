@@ -23,8 +23,8 @@
       <%= render "entries/fanedit_fields", f: f, entry: entry %>
 
       <div class="entry-form__row entry-form__row--narrow">
-        <%# What the cable schedule lays a slot out by. Left blank it falls back to a flat
-            guess, and a guess that is short cuts the programme off partway through. %>
+        <%# What the cable schedule lays a slot out by. Left blank the entry is kept off
+            cable altogether, rather than timed by a guess that is always wrong. %>
         <%= f.input :length, label: "Runtime (min)", hint: runtime_hint_for(entry) %>
         <%= f.input :position %>
         <% if entry.media == "episode" %>

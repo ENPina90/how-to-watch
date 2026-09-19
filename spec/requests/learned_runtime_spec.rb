@@ -3,9 +3,8 @@
 require 'rails_helper'
 
 # `entries.length` is the catalogue's claim about how long something runs, and for a good
-# few entries there is no claim at all. The cable schedule falls back to a flat guess, and a
-# guess that is short cuts a programme off partway through -- which is what happens to a
-# 46-minute episode laid out in a 30-minute slot. Only the player knows what it is holding.
+# few entries there is no claim at all, and the cable schedule keeps those off the air rather
+# than time them by a guess. Only the player knows what it is holding.
 RSpec.describe 'Learning an entry\'s runtime', :needs_provider, type: :request do
   let(:user) { create(:user) }
   let(:channel) { create(:list, user: user) }

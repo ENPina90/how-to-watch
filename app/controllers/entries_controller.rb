@@ -520,10 +520,9 @@ class EntriesController < ApplicationController
   # How long this entry really runs, as reported by the player showing it.
   #
   # `entries.length` is the catalogue's claim, and for a good few entries there is no claim
-  # at all -- OMDB had none, and the cable schedule falls back to a flat guess. A guess that
-  # is short cuts a programme off partway through; one that is long leaves the slot running
-  # after the film has ended. Neither is visible from the server: only the player knows what
-  # it is holding, and it says so in every report.
+  # at all -- OMDB had none, and the cable schedule keeps such an entry off the air rather
+  # than time it by a guess. Nothing on the server can say how long the file is: only the
+  # player knows what it is holding, and it says so in every report.
   #
   # Fills a gap and never overwrites. A runtime somebody has set by hand, or one OMDB gave,
   # is a considered value and not ours to correct from whichever cut a provider happens to
