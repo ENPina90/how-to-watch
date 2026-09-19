@@ -395,6 +395,13 @@ playing. Too long, and the card only ever came up on the player's own `completed
 film had finished; too short, and it moved the viewer on with minutes still to run. The
 resume cutoff has no report to go on and still uses the catalogue.
 
+**The catalogue's figure is `Entry#runtime_minutes`**: the entry's own `length` for a film,
+the *episode's* for a show, and never the show's. A series' own `length` is the whole show
+end to end (594 minutes for Band of Brothers), and timing by it put the watched mark hours
+past the end of an episode. Every caller passes the episode playing: the progress report,
+`resume_position`, `List#start_position_for`, `User#random_start_for`, the watch page and the
+cable label. `CableSchedule.runtime_minutes` is the same answer plus a five-minute floor.
+
 `AppSetting#up_next_mark_for` applies the floor — never earlier than the completion mark —
 and `player_progress_controller` applies the same rule client-side. It has to be a floor at
 the point of use rather than a validation: whether 15 seconds is too long a lead is a
