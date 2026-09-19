@@ -197,6 +197,32 @@ class Entry < ApplicationRecord
     Entry.where(current_id: subentry_ids).update_all(current_id: nil)
   end
 
+  # The kinds that are watched an episode at a time.
+  def episodic? = SERIES_MEDIA.include?(media)
+
+  # How long this runs, in minutes -- or, for a show, the episode given -- or nil when the
+  # catalogue does not say.
+  #
+  # For a show, the episode's runtime and only the episode's. A show does not have a
+  # runtime, its episodes do, and the figure on the entry is whatever OMDB called the
+  # series -- which for a miniseries is all of it: 594 minutes for Band of Brothers. Timed
+  # by that, one episode filled a cable channel's evening, and on /watch the up-next card and
+  # the watched mark waited for the ninth hour of a sixty-minute episode. So a show with no
+  # episode given has no runtime here either, and callers fall back to what the player
+  # reports.
+  #
+  # The one answer for the schedule, the watch page and completion alike, so none of them
+  # can disagree about how long something is. Any positive figure counts: a two-minute clip
+  # is a real thing to watch. The cable schedule sets its own floor on top -- see
+  # CableSchedule::MIN_MINUTES.
+  def runtime_minutes(subentry = nil)
+    minutes = episodic? ? subentry&.length.to_i : length.to_i
+
+    minutes if minutes.positive?
+  end
+
+  def runtime_seconds(subentry = nil) = runtime_minutes(subentry).to_i * 60
+
   # Ratings and runtimes are near enough unique per entry -- 7.023, 143 -- so grouping by
   # the value itself made a section per entry. They are bucketed the way years are bucketed
   # into decades: half a point, and ten minutes. The bucket floor is the key, so it sorts

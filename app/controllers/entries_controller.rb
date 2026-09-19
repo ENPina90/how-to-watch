@@ -673,11 +673,15 @@ class EntriesController < ApplicationController
     # channel it is watched from. Looked up rather than taken as a number from the request:
     # the setting belongs to the channel, and watching_channel already refuses a channel
     # that does not hold this entry.
+    #
+    # The episode rides along because a show's runtime is its episode's: judged by the show's
+    # own figure, which is the whole series, no episode would ever count as watched.
     report = {
       duration: params[:duration],
       finished: params[:finished].to_s == 'true',
       unattended: params[:unattended].to_s == 'true',
-      credits: watching_channel.skip_credits_seconds
+      credits: watching_channel.skip_credits_seconds,
+      episode: episode
     }
     user_entry.record_progress!(params[:progress], **report)
 
@@ -927,14 +931,15 @@ class EntriesController < ApplicationController
     # The channel being watched *from* decides the rest -- its intro skip where it has one,
     # the member's randomiser where it does not. See List#start_position_for.
     def start_position
-      resume_position || @channel.start_position_for(@entry, current_user)
+      resume_position || @channel.start_position_for(@entry, current_user, episode: @current_subentry)
     end
 
     # A read: rendering the page must not create a tracking row (see
     # reads_do_not_write_spec), so this goes through the non-writing lookup and answers nil
     # for somebody who has never played this entry.
     def resume_position
-      current_user&.user_entry_for(@entry)&.resume_position(credits: @channel.skip_credits_seconds)
+      current_user&.user_entry_for(@entry)&.resume_position(credits: @channel.skip_credits_seconds,
+                                                             episode: @current_subentry)
     end
 
     # Once the player has called this entry watched, the channel that owns it moves on, so

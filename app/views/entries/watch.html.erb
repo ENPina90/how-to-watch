@@ -128,8 +128,9 @@
          <%# The runtime and the fraction the client needs to spot the credits starting.
              Both are what the server itself decides completion by, so neither side can
              drift from the other. 0 means the catalogue has no runtime and the player's
-             own reported duration stands in. %>
-         data-player-progress-runtime-value="<%= @entry.length.to_i * 60 %>"
+             own reported duration stands in. For a show it is the episode's, never the
+             show's, which is the whole series -- see Entry#runtime_minutes. %>
+         data-player-progress-runtime-value="<%= @entry.runtime_seconds(@current_subentry) %>"
          data-player-progress-fraction-value="<%= UserEntry::COMPLETION_FRACTION %>"
          <%# UserEntry::FILE_SHARE_FLOOR. The runtime above is only a claim: where the player
              reports the file's own length, both sides judge by that instead -- unless it is
@@ -148,8 +149,7 @@
              playing -- the episode's own, for a show, never the show's, which is the whole
              series. Asked of the schedule so the two agree on what counts as missing; a show
              with no episode playing has nothing to learn. %>
-         <% if CableSchedule.runtime_minutes(@entry, @current_subentry).nil? &&
-               (@current_subentry || !CableSchedule.episodic?(@entry)) %>
+         <% if @entry.runtime_minutes(@current_subentry).nil? && (@current_subentry || !@entry.episodic?) %>
            data-player-progress-learn-url-value="<%= runtime_entry_path(@entry, subentry: @current_subentry&.id) %>"
          <% end %>
        <% end %>>

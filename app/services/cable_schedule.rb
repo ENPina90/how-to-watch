@@ -640,19 +640,13 @@ module CableSchedule
   # always an answer.
   def runtime(entry, subentry = nil) = runtime_minutes(entry, subentry).minutes
 
-  # How long this programme runs, in minutes, or nil when the catalogue does not say.
-  #
-  # For a show, the episode's runtime and only the episode's. A show does not have a runtime
-  # -- its episodes do -- and the figure on the entry is whatever OMDB called the series,
-  # which for a miniseries is all of it: 594 minutes for Band of Brothers. Falling back to
-  # that is how one episode came to fill a channel's whole evening.
-  #
-  # Public because the missing-runtime sweep asks the same question and must not reach a
-  # different answer about what cable can play.
+  # How long this programme runs, in minutes, or nil when the catalogue does not say or says
+  # too little to pin to a clock (MIN_MINUTES). Entry#runtime_minutes has the reasoning for
+  # why a show's figure is never used.
   def runtime_minutes(entry, subentry = nil)
-    minutes = episodic?(entry) ? subentry&.length.to_i : entry.length.to_i
+    minutes = entry.runtime_minutes(subentry)
 
-    minutes if minutes >= MIN_MINUTES
+    minutes if minutes.to_i >= MIN_MINUTES
   end
 
   # Can anything of this entry be timed? For a show, any one of its episodes will do.
@@ -663,5 +657,5 @@ module CableSchedule
   end
 
   # The kinds that are laid out an episode at a time, with the episode chosen per slot.
-  def episodic?(entry) = %w[series anime].include?(entry.media)
+  def episodic?(entry) = entry.episodic?
 end

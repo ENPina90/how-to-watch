@@ -9,12 +9,13 @@ require 'rails_helper'
 RSpec.describe 'Moving a series on once an episode is watched', type: :request do
   let(:user) { create(:user) }
   let(:list) { create(:list, user: user, ordered: true) }
-  # 45 minutes, so the completion mark falls at 2,565 seconds.
-  let!(:show) { create(:entry, list: list, name: 'A Show', media: 'series', position: 1, length: 45) }
+  # 45-minute episodes, so the completion mark falls at 2,565 seconds. The show's own figure
+  # is the whole series, and is never what an episode is judged by.
+  let!(:show) { create(:entry, list: list, name: 'A Show', media: 'series', position: 1, length: 135) }
   let!(:after_show) { create(:entry, list: list, name: 'A Film', media: 'movie', position: 2, length: 100) }
-  let!(:first) { show.subentries.create!(season: 1, episode: 1, name: 'Pilot') }
-  let!(:second) { show.subentries.create!(season: 1, episode: 2, name: 'Second') }
-  let!(:third) { show.subentries.create!(season: 1, episode: 3, name: 'Third') }
+  let!(:first) { show.subentries.create!(season: 1, episode: 1, name: 'Pilot', length: 45) }
+  let!(:second) { show.subentries.create!(season: 1, episode: 2, name: 'Second', length: 45) }
+  let!(:third) { show.subentries.create!(season: 1, episode: 3, name: 'Third', length: 45) }
 
   before do
     sign_in user

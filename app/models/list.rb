@@ -396,10 +396,12 @@ class List < ApplicationRecord
   # a frame having been shown. Starting at the beginning is the honest fallback; the channel
   # still spoke, so the member's randomiser does not come back in. The mark is this
   # channel's, credits skip included, since that is the one the entry will be judged by.
-  def start_position_for(entry, user)
-    return user&.random_start_for(entry) if skip_intro_seconds.nil?
+  #
+  # `episode` is the one about to play, for a show -- its runtime is the one that counts.
+  def start_position_for(entry, user, episode: nil)
+    return user&.random_start_for(entry, episode: episode) if skip_intro_seconds.nil?
 
-    mark = UserEntry.completion_mark_for(entry.length.to_i * 60, credits: skip_credits_seconds)
+    mark = UserEntry.completion_mark_for(entry.runtime_seconds(episode), credits: skip_credits_seconds)
     return nil if mark && skip_intro_seconds >= mark
 
     skip_intro_seconds
