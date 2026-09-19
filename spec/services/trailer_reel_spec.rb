@@ -9,6 +9,7 @@ RSpec.describe TrailerReel do
   let(:list) { create(:list, user: owner, name: 'Films') }
   let!(:youtube) do
     Source.create!(name: 'YouTube', slug: 'youtube', kind: 'direct', active: true,
+                   autoplay_param: 'autoplay',
                    templates: { 'default' => 'https://www.youtube.com/embed/%{source_key}' })
   end
 
@@ -34,7 +35,9 @@ RSpec.describe TrailerReel do
   it 'asks the player to play at once and to report back' do
     with_trailer('Blade Runner', 'aaaaaaaaaaa')
 
-    expect(pick.embed_url).to include('autoplay=1').and include('enablejsapi=1')
+    expect(pick.embed_url).to include('enablejsapi=1')
+    # Once: YouTube obeys the first of two, and the provider writes `autoplay=0` unless asked.
+    expect(pick.embed_url.scan(/autoplay=\d/)).to eq(['autoplay=1'])
   end
 
   it 'has nothing to play when no film has a trailer' do
