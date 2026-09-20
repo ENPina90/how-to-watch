@@ -90,12 +90,17 @@ RSpec.describe 'Skipping a channel intro', type: :request do
       expect(response.body).not_to include('startAt')
     end
 
+    # `start_at` is nil when the URL carries no position at all, and that is one of the
+    # answers this example is testing for rather than a failure: User#random_start_for
+    # floors its roll to whole seconds, so anything under a second becomes 0, and
+    # Source#append_resume leaves a zero out of the URL entirely. Asserting on the figure
+    # alone failed about one run in two hundred, on master and here alike.
     it 'leaves the member to their own setting while the channel has no opinion' do
       user.update!(randomizer: 3.5)
 
       get watch_entry_path(entry)
 
-      expect(start_at).to be_between(0, 3.5 * 60).inclusive
+      expect(start_at || 0).to be_between(0, 3.5 * 60).inclusive
     end
 
     # Picking up where you left off is something the viewer asked for.
