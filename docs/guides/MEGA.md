@@ -91,6 +91,31 @@ the worker installs, activates, and only then claims the page, and a fetch made 
 claim goes straight past it. So the address is a data attribute, handed over after the claim,
 rather than a `src` that would start loading during the parse.
 
+## 4a. The two pages, and where they differ
+
+Both hold the same element. They disagree about one thing, and the disagreement is the
+design rather than an oversight.
+
+| | watch page | cable |
+|---|---|---|
+| element | `<video id="cinema">` | the same |
+| controls | **yes** — otherwise there is no transport at all; for an embed the scrubber and volume live inside the provider's player | **no** |
+| start | the viewer's resume position | the clock's offset into the programme |
+| screen modifier | `cinema__screen--native`, which lifts the source chip and the fullscreen button clear of the control bar | none — no bar to clear |
+
+Cable has no controls because a channel plays to a clock: pausing and seeking are the two
+things it does not do. The page already goes to some trouble to take those away from the
+embed — the guide button is placed over the player's own play button, and a transparent
+strip lies across its scrubber — so giving our player a bar with both on it would be putting
+back precisely what the rest of the page removes. Mute is still `m`.
+
+What cable gains instead is the reporting. `cable-clock` can now hear a MEGA programme's
+real duration, so it moves the channel on when a file turns out shorter than the schedule
+believed, and a MEGA entry with no catalogued runtime can report one and earn a place on the
+dial. `cable-standby` learns the case too: neither of its tests fits a player of our own, but
+a `<video>` that cannot play says so outright, so a dead MEGA programme gets the card rather
+than a black rectangle.
+
 ## 5. What this changed elsewhere
 
 - The resume arrives as a value on the element rather than a query parameter, and is applied

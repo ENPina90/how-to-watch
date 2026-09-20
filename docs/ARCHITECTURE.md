@@ -377,6 +377,12 @@ at connect without an adapter. `Source#native?` / `#native_url_for` decide and b
 `native_player_controller.js` registers the worker and hands over the address **after** the
 worker has claimed the page, which is the one piece of sequencing the whole thing depends on.
 
+The cable page holds the same element, started at the clock's offset rather than a resume,
+and deliberately without controls — a channel is not paused or scrubbed, which is why that
+page already masks the embed's play button and covers its scrubber. What cable gains is the
+reporting: `cable-clock` hears the file's real duration, so it can move a short programme on
+and a runtime-less entry can earn its place on the dial.
+
 Two consequences elsewhere: a move between entries replaces the element rather than
 re-pointing it, and `cinema-navigation` never warms a native player in a frame (it still
 fetches its page). **docs/guides/MEGA.md** has the measurements — CORS, `ssl: 2`, ranges, the
