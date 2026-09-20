@@ -129,6 +129,38 @@ nothing unless you add `APPLY=1`.
 
 ---
 
+## Diagnosing playback
+
+When a film restarts itself, stalls or stops and it is not clear whether the provider
+dropped it or the app did, play it in isolation:
+
+```
+/entries/<id>/watch_only
+```
+
+One iframe, no preloaded second player, no app JavaScript, nothing written. The watch page
+cannot answer the question because it warms a second player five seconds after landing and
+a third as the credits run; this one has none of that. See ARCHITECTURE.md §5.3a.
+
+| Query parameter | What it does |
+|---|---|
+| `?source=<id>` | Play on another provider the entry is eligible for, without editing it |
+| `?start=<seconds>` | Test whether the provider honours a resume; the page says when it cannot |
+| `?autoplay=0` | Load the frame without starting a film |
+| `?subentry=<id>` | A particular episode |
+| `?hud=0` | Hide the on-screen readout, leaving the console log |
+
+Reading a run: the browser console prints `frame-reload` whenever the frame's document is
+replaced, and the server prints one `[watch_only]` line per page load. Both together mean
+the page reloaded; the console line alone means the provider re-navigated its own frame;
+neither, with the picture jumping anyway, means the player recovered in place.
+
+The server side is in Railway's logs for the `how-to-watch` service — filter on
+`[watch_only]`. The MEGA decryption key is replaced with `#[key]` before the URL is logged;
+the whole URL is on the page itself.
+
+---
+
 ## Local
 
 ```sh

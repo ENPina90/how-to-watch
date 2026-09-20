@@ -292,6 +292,35 @@ Navigation around the player: `increment_current` / `decrement_current` move **e
 for series/anime (via `UserEntryPosition`) and **entry** otherwise; `shuffle_current`
 jumps to a random unwatched entry.
 
+### 5.3a Player in isolation — `GET /entries/:id/watch_only` → `entries#watch_only`
+
+The same embed with everything else taken away: one iframe, no preloaded second player,
+no app JavaScript at all (`layouts/watch_only` deliberately omits the importmap), and no
+writes of any kind. It exists to answer "was that the provider or was that us" when a film
+restarts, stalls or stutters on the watch page, which carries too much to tell.
+
+Nothing links to it — it is reached by typing the address, and it is signed-in only by
+falling through `AccessControl`'s table like anything else unlisted. It is not refused on
+a phone as `watch` is; a phone is one of the things worth diagnosing.
+
+How to read a run:
+
+| What you see | What it was |
+|---|---|
+| `frame-reload` in the console **and** a `[watch_only]` line in the Railway log | the page reloaded — check the `loaded` readout for `reload` or `back_forward` |
+| `frame-reload` in the console and **nothing** server-side | the provider re-navigated its own frame |
+| neither, and the picture jumped anyway | the player recovered in place; the fault is inside it |
+
+The readout in the corner carries the same log as the console, plus the navigation type,
+the joint session history length (it climbs when a frame navigates itself), Chrome's
+freeze/resume, visibility, the connection and the JS heap. `Mark` (or `m`) stamps the
+moment the picture actually jumped. `copy(watchOnly.log)` lifts the whole run out.
+
+Query parameters: `source=ID` plays the entry on another provider it is eligible for
+without editing it (how two providers get compared on the same file), `start=SECONDS`
+tests whether a provider honours a resume — and says on the page when it has nowhere to
+put one — `autoplay=0`, `subentry=ID`, `hud=0`.
+
 ### 5.4 Finishing something
 - `entries#complete` — toggles `UserEntry` completion; on completion advances the user's
   list position to the next entry. Renders the `entries/_completion_status` partial.
@@ -911,8 +940,10 @@ neither needs a local Redis.
   (`complete`, `review`, `complete_without_review`, `reportlink`, `repair_image`,
   `migrate_poster`, `shuffle_current`, `increment_current`,
   `decrement_current`, `update_position`, `set_source`, `update_poster`) and only reads
-  stay GET (`watch`, `fetch_posters`). CSRF tokens do not protect GET, so nothing that
-  writes may be reachable that way. There is **no `index`** action.
+  stay GET (`watch`, `watch_only`, `fetch_posters`). CSRF tokens do not protect GET, so
+  nothing that writes may be reachable that way. There is **no `index`** action.
+  `watch_only` is the one player route that writes nothing at all (§5.3a); `watch` itself
+  is one of the three deliberate GET-writes.
   - `lists#watch_current` and `entries#watch` are the deliberate exceptions: they render
     or redirect to the player and write the user's position as a side effect of "I am
     watching this now". They are navigation targets, not actions. The cable pages are the
@@ -1015,7 +1046,8 @@ tell you how far behind it is likely to be. Trust the code; update the section y
 | A page issues the same `sources` query over and over | `Source.active_imdb` memoises them on `Current` for the request; `Entry#resolved_source` and `#eligible_sources` both go through it. Rails' query cache covers some of this, but a page that writes while it renders drops that cache. A write to any `Source` clears the memo. |
 | An admin warning will not clear, or comes back | the notifier reconciles rather than appends (`AdminStateNotifier`), so the row survives only while `key_for` still matches something in the current set. A key that encodes changing state (a URL digest, an expiry date) is what makes dismissal safe. |
 | List page 500s while grouping | `ListsController#filter_entries` + `sort_sections`; nullable `genre`/`year`/`rating` are the usual cause. |
-| Player is blank / "No video source available" | `Entry#embed_url` → `#resolved_source` → the `Source` row's `templates`; then `Entry#legacy_embed_url`. Check the source is `active` and its template has a key for that `media`. |
+| Player is blank / "No video source available" | `Entry#embed_url` → `#resolved_source` → the `Source` row's `templates`. Check the source is `active` and its template has a key for that `media`. There is no legacy fallback left, so a blank URL is always the template or what it substitutes — `/entries/:id/watch_only` (§5.3a) renders either way and names which of the two it was. |
+| A film restarts itself, stutters or stops for no reason | play it at `/entries/:id/watch_only` (§5.3a) and compare. The watch page warms a second player five seconds in and a third as the credits run, so a decode failure there may be ours; the isolated page has none of that, writes nothing, and prints one line per load on both sides of the connection. |
 | Wrong episode plays | `UserEntryPosition` for that user+entry; `Entry#current_subentry_for_user`; for anime, `Subentry#calculate_absolute_episode_number`. |
 | Episode numbers off for anime | anime may use absolute numbering (`%{absolute_episode}`); note `calculate_absolute_episode_number` counts within one entry, and each season is its own entry here. |
 | "Watched" state wrong or resets | `UserEntry` (not `entries.completed`). Note `Entry#user_entry_for` **creates** a row on read. |
