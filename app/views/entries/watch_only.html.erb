@@ -123,11 +123,19 @@
   // glance finds them among the heartbeats.
   const LOUD = ["frame-reload", "reloaded", "back-forward", "discarded", "freeze", "offline", "frame-error"];
 
+  // Flattened into the message rather than passed as a second argument, which is how this
+  // was first written. A console prints an object as the word "Object" and expands it only
+  // when clicked, so seventeen minutes of log copied out of the console read "tick Object"
+  // seventy times and said nothing at all. Everything recorded here is a scalar, and a line
+  // has to survive being pasted into a bug report to be worth writing.
+  const summarise = (detail) =>
+    detail ? Object.entries(detail).map(([key, value]) => `${key}=${value}`).join(" ") : "";
+
   function record(event, detail) {
     const at = seconds();
     const line = { at: Number(at.toFixed(1)), clock: new Date().toISOString(), event, ...detail };
     log.push(line);
-    console.log(`[watch_only ${clock(at)}] ${event}`, detail === undefined ? "" : detail);
+    console.log(`[watch_only ${clock(at)}] ${event} ${summarise(detail)}`.trimEnd());
     draw(line);
   }
 
@@ -169,6 +177,12 @@
     // reload to everything else on the page, and it is not one.
     discarded: document.wasDiscarded === true,
     history: history.length,
+    // Chrome caps the joint session history at 50 entries and drops the oldest to make
+    // room, so in a tab that has been surfing for a while the number stops moving and a
+    // frame navigating itself no longer shows up in it. Said out loud, because a flat 50
+    // read as "nothing navigated" is a wrong answer rather than a missing one -- open a
+    // fresh tab to get the signal back.
+    historyCapped: history.length >= 50,
     memoryGb: navigator.deviceMemory ?? null,
     cores: navigator.hardwareConcurrency ?? null,
     connection: navigator.connection?.effectiveType ?? null,
