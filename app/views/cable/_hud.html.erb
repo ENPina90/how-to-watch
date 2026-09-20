@@ -8,7 +8,13 @@
     The arrows do two different jobs, which is how they were on the box too. Up and down
     change the channel, and are ordinary cinema-move links. Left and right change nothing at
     all -- they walk the banner along this channel's running order so you can see what you
-    missed and what is coming, and it falls back to what is actually on after a moment. %>
+    missed and what is coming, and it falls back to what is actually on after a moment.
+
+    Every label here is an `aria-label`, never a `title`. This banner sits over a third
+    party's player and fades out on its own, and a native tooltip raised over an embed is
+    never dismissed -- the pointer goes into the frame and the parent stops hearing it
+    move, leaving the bubble on screen through the programme. Same rule as the frame
+    itself; the note on it in entries/watch.html.erb has the whole of it. %>
 <%# Where the channel's name and number lead: its own page, or for a decade the channel the
     film on now was filed in. %>
 <% home = cable_home_list(channel, entry) %>
@@ -17,7 +23,7 @@
      data-cable-hud-showing-class="cable-hud--peeking">
 
   <%# The channel, in the corner the number always sat in. %>
-  <a class="cable-hud__badge" href="<%= list_path(home) %>" title="Open <%= home.name %>">
+  <a class="cable-hud__badge" href="<%= list_path(home) %>" aria-label="Open <%= home.name %>">
     <span class="cable-hud__set">
       <span class="cable-hud__aerial"></span>
       <span class="cable-hud__number"><%= number %></span>
@@ -27,7 +33,7 @@
   <div class="cable-hud__body">
     <%# The channel's own page. The badge leads to the same place -- one is the number you
         look at, the other the name you read, and both are the channel. %>
-    <a class="cable-hud__channel" href="<%= list_path(home) %>" title="<%= home.name %>"><%= channel.name %></a>
+    <a class="cable-hud__channel" href="<%= list_path(home) %>" aria-label="<%= home.name %>"><%= channel.name %></a>
 
     <%# The programme, and it is a link out of cable -- the same pair the guide's panel
         offers: the channel to its own page, the title to the ordinary watch player, where
@@ -49,7 +55,7 @@
         either way -- the ordinary watch player, from the beginning, counting towards what
         you have seen. No data-cinema-move, so it is a navigation rather than a tune. %>
     <a class="cable-hud__start" data-cable-hud-target="start" href="#"
-       title="Play this from the beginning on its own page">
+       aria-label="Play this from the beginning on its own page">
       <i class="fa-solid fa-backward-fast"></i>
       <span>Start from the beginning</span>
     </a>
@@ -59,13 +65,13 @@
       shape, because on the remote they were. %>
   <div class="cable-hud__pad">
     <%= link_to cable_sibling_path(channel, :previous),
-                class: "cable-hud__key cable-hud__key--up", title: "Channel up",
+                class: "cable-hud__key cable-hud__key--up", aria: { label: "Channel up" },
                 data: { cinema_move: true, cinema_channel: 'up' } do %>
       <i class="fa-solid fa-caret-up"></i>
     <% end %>
 
     <button type="button" class="cable-hud__key cable-hud__key--left"
-            title="What was on before" data-action="click->cable-hud#earlier">
+            aria-label="What was on before" data-action="click->cable-hud#earlier">
       <i class="fa-solid fa-caret-left"></i>
     </button>
 
@@ -78,18 +84,18 @@
     </span>
 
     <button type="button" class="cable-hud__key cable-hud__key--right"
-            title="What is on next" data-action="click->cable-hud#later">
+            aria-label="What is on next" data-action="click->cable-hud#later">
       <i class="fa-solid fa-caret-right"></i>
     </button>
 
     <%= link_to cable_sibling_path(channel, :next),
-                class: "cable-hud__key cable-hud__key--down", title: "Channel down",
+                class: "cable-hud__key cable-hud__key--down", aria: { label: "Channel down" },
                 data: { cinema_move: true, cinema_preload: true, cinema_channel: 'down' } do %>
       <i class="fa-solid fa-caret-down"></i>
     <% end %>
   </div>
 
-  <%= link_to root_path, class: "cable-hud__home", title: "Home" do %>
+  <%= link_to root_path, class: "cable-hud__home", aria: { label: "Home" } do %>
     <i class="fa-solid fa-house"></i>
   <% end %>
 

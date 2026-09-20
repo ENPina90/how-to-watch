@@ -17,13 +17,13 @@
     <%# No `allowfullscreen`: fullscreen belongs to the container, as on every player page. %>
     <iframe id="cinema"
             class="cinema__frame cinema__frame--live"
-            title="<%= @trailer ? "#{@trailer.entry.name} trailer" : 'Trailers' %>"
+            aria-label="<%= @trailer ? "#{@trailer.entry.name} trailer" : 'Trailers' %>"
             referrerpolicy="origin"
             allow="autoplay"
             src="<%= @trailer&.embed_url || 'about:blank' %>"></iframe>
   </div>
 
-  <button type="button" class="cinema__fullscreen" title="Fullscreen"
+  <button type="button" class="cinema__fullscreen" aria-label="Fullscreen"
           data-action="click->cinema-fullscreen#toggle">
     <i class="fa-solid fa-expand"></i>
   </button>

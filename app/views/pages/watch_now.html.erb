@@ -17,7 +17,7 @@
     <!-- For TV episodes, use v3 with /tv/imdb/season/episode format -->
     <iframe id="cinema"
             class="h-75"
-            title="<%= @title %> - S<%= @season %>E<%= @episode %>"
+            aria-label="<%= @title %> - S<%= @season %>E<%= @episode %>"
             referrerpolicy="origin"
             width="90%"
             height="90%"
@@ -29,7 +29,7 @@
     <!-- For movies, use v2 with type prefix -->
     <iframe id="cinema"
             class="h-75"
-            title="<%= @title %>"
+            aria-label="<%= @title %>"
             referrerpolicy="origin"
             width="90%"
             height="90%"

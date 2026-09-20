@@ -9,12 +9,12 @@
   <% if entry.completed_by?(user) %>
     <%# Already watched: toggle straight back, no review prompt. %>
     <i class="fa-solid fa-2x fa-eye clickable text-decoration-none"
-       title="Mark as unwatched"
+       aria-label="Mark as unwatched"
        data-action="click->completed#toggle"></i>
   <% elsif entry.list.reviewable && (entry.media == 'movie' || entry.media == 'fanedit') %>
     <%# Opens the one shared review modal; it builds its own URLs from the entry id. %>
     <i class="fa-regular fa-2x fa-eye clickable text-decoration-none"
-       title="Mark as watched and review"
+       aria-label="Mark as watched and review"
        data-bs-toggle="modal"
        data-bs-target="#reviewModal"
        data-entry-id="<%= entry.id %>"
@@ -22,7 +22,7 @@
        data-entry-media="<%= entry.media %>"></i>
   <% else %>
     <i class="fa-regular fa-2x fa-eye clickable text-decoration-none"
-       title="Mark as watched"
+       aria-label="Mark as watched"
        data-action="click->completed#toggle"></i>
   <% end %>
 

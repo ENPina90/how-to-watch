@@ -210,9 +210,12 @@ export default class extends Controller {
         // has reached is not somewhere anybody watched it reach.
         page.getElementById("cinema-chrome")?.setAttribute("data-player-progress-warmed-value", "true")
       } else {
-        // The title is what a screen reader calls the frame, so it has to move with the src
-        // or the player is announced as whatever was playing before.
-        frame.title = incoming.title
+        // The label is what a screen reader calls the frame, so it has to move with the src
+        // or the player is announced as whatever was playing before. aria-label rather
+        // than title: a title on the frame strands a native tooltip over the picture --
+        // the pointer crosses into the embed, the parent stops hearing it move, and the
+        // name of the entry sits there through the film. See the frame in watch.html.erb.
+        frame.setAttribute("aria-label", incoming.getAttribute("aria-label") ?? "")
         frame.src = incoming.src
         // A fresh load, whatever this element was before.
         delete frame.dataset.adopted
@@ -402,7 +405,7 @@ export default class extends Controller {
     const frame = document.createElement("iframe")
     frame.id = FRAMES[role]
     frame.className = "cinema__frame"
-    frame.title = incoming.title
+    frame.setAttribute("aria-label", incoming.getAttribute("aria-label") ?? "")
     frame.setAttribute("referrerpolicy", "origin")
     // Autoplay, because a player that will not start is a player that buffers nothing --
     // and it is stopped a moment later, before it has anything to show.
