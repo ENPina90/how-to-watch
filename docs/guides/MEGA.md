@@ -123,10 +123,18 @@ than a black rectangle.
 - A move between entries **replaces** the element rather than re-pointing it. An iframe is
   its `src`; a `<video>` is handed its address by a controller that Stimulus only runs for an
   element it has not seen.
-- `cinema-navigation` never warms a native player in a frame, though it still fetches its
-  page. Warming means starting a second stream and stopping it again, and here that second
-  stream is ours to pay for twice — our worker decrypting it, and a second hardware decoder
-  on the machine. See `STOP_DEADLINE` and VIDSRC.md §6a for why that matters.
+- `cinema-navigation` warms a native player **buffered and never played**, which is the one
+  thing an embed spare can never be. Warming somebody else's player means starting it and
+  then asking it to stop, and the asking can fail — a VidSrc spare that never speaks cannot
+  be told anything (VIDSRC.md §6a), which is why `STOP_DEADLINE` exists and why a spare that
+  will not stop loses its frame. A `<video>` of ours is never started: `preload` fills the
+  buffer, nothing decodes to a screen, and there is no second hardware decoder. Measured: a
+  warmed spare sits at `readyState` 4, paused, muted, `currentTime` 0.
+
+  Promotion reuses that same element rather than building another, and starts it at the
+  position the incoming page asked for — so a resume survives a warmed move. Warming is
+  skipped when no service worker is in control, since the address is one only the worker
+  answers.
 
 ## 6. Known limits
 

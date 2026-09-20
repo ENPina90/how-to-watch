@@ -384,8 +384,9 @@ reporting: `cable-clock` hears the file's real duration, so it can move a short 
 and a runtime-less entry can earn its place on the dial.
 
 Two consequences elsewhere: a move between entries replaces the element rather than
-re-pointing it, and `cinema-navigation` never warms a native player in a frame (it still
-fetches its page). **docs/guides/MEGA.md** has the measurements — CORS, `ssl: 2`, ranges, the
+re-pointing it, and `cinema-navigation` warms a native player *buffered and never played* —
+`preload` fills the buffer, nothing starts, so there is no second decoder and nothing that
+can refuse to stop. That is the one kind of warming an embed spare can never be. **docs/guides/MEGA.md** has the measurements — CORS, `ssl: 2`, ranges, the
 key fold — and the reasoning for a service worker over MediaSource.
 
 ### 5.4 Finishing something
