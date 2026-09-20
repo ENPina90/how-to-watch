@@ -230,6 +230,11 @@ Rails.application.routes.draw do
       patch :note
       # Reads stay GET: `watch` renders the player page and `fetch_posters` is a lookup.
       get :watch
+      # The same player with nothing around it, for finding out whether a fault is the
+      # provider's or ours -- see EntriesController#watch_only. Unlike `watch`, which is one
+      # of the three deliberate GET-writes, this one writes nothing at all: that is the
+      # point of it, so a diagnosis cannot be the thing that moves your place in a channel.
+      get :watch_only
       get :fetch_posters
       # The Details and Notes tabs of one card, fetched when one of them is first opened
       # rather than rendered into all ~1,200 cards on a channel page. A read.

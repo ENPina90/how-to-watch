@@ -9,7 +9,7 @@ class EntriesController < ApplicationController
   include NoPlaybackOnMobile
   skip_before_action :refuse_playback_on_mobile
   before_action :set_list, only: %i[new create csv_template import_csv import_youtube]
-  before_action :set_entry, only: %i[show edit update destroy watch complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime favorite unfavorite panes note]
+  before_action :set_entry, only: %i[show edit update destroy watch watch_only complete review complete_without_review reportlink repair_image migrate_poster shuffle_current decrement_current increment_current set_source fetch_posters update_poster update_position progress runtime favorite unfavorite panes note]
   before_action :authenticate_user!, only: %i[favorite unfavorite]
   # Watching is off in the phone view; everything else this controller does is not.
   before_action :refuse_playback_on_mobile, only: :watch
@@ -517,6 +517,53 @@ class EntriesController < ApplicationController
     render layout: 'special_layout'
   end
 
+  # One entry, on its own, with nothing else on the page.
+  #
+  # `watch` is a channel page, and a channel page is a busy one: it warms a second player
+  # five seconds after landing and a third as the credits run, records a position, follows
+  # a watch party, keeps a sidebar of everything else on the channel, and loads the whole
+  # of the app's JavaScript to do it. All of that sits between the viewer and the provider,
+  # and none of it can be switched off from the browser -- so when a film stops, stutters
+  # or starts itself again, there is no way to tell from that page whether the provider
+  # dropped it or we did.
+  #
+  # This is the control for that experiment. One frame, no second stream, no app
+  # JavaScript at all (see layouts/watch_only), and nothing written anywhere. If a film
+  # misbehaves here too, it is the provider; if it only misbehaves on `watch`, the
+  # difference is ours and the list above is the list of suspects.
+  #
+  # It is reached by typing the address and by nothing else -- no link anywhere points at
+  # it, because it is an instrument rather than a way to watch. Signed in only, which costs
+  # no code: AccessControl's table lists what a stranger may reach, and anything unlisted
+  # falls through to Devise. Playback on a phone is not refused here as it is on `watch`,
+  # because a phone is one of the things worth diagnosing and an instrument that declines
+  # to run in half the conditions is not much of one.
+  #
+  # Query parameters, all optional, all of them there to make a run repeatable:
+  #
+  #   source=ID     play on another provider the entry is eligible for, without editing it
+  #   start=SECONDS where to begin, for testing that a provider honours a resume at all
+  #   autoplay=0    leave it stopped, for watching the frame load without a film starting
+  #   subentry=ID   a particular episode
+  #   hud=0         hide the on-screen readout, leaving only the console log
+  def watch_only
+    @subentry = chosen_subentry
+    @source   = requested_source || @entry.resolved_source
+    @start_at = params[:start].presence&.to_i
+    @autoplay = params[:autoplay] != '0'
+
+    # No redirect when there is nothing to play, unlike `watch`. A page that bounces you
+    # back to the channel tells you nothing, and "which provider did it resolve to, and
+    # what URL did that build" is most of what this page is for -- so it renders either
+    # way and says what it found.
+    @embed_url = @source&.url_for(@entry, subentry: @subentry,
+                                          autoplay: @autoplay, start_at: @start_at).presence
+
+    log_watch_only
+
+    render layout: 'watch_only'
+  end
+
   # How long this entry really runs, as reported by the player showing it.
   #
   # `entries.length` is the catalogue's claim, and for a good few entries there is no claim
@@ -940,6 +987,62 @@ class EntriesController < ApplicationController
     def resume_position
       current_user&.user_entry_for(@entry)&.resume_position(credits: @channel.skip_credits_seconds,
                                                              episode: @current_subentry)
+    end
+
+    # ---- #watch_only ------------------------------------------------------------------
+
+    # Which episode the isolated player should show: the one asked for, else the one this
+    # member is up to, else the first.
+    #
+    # Read, never created. `Entry#current_subentry_for_user` answers the same question but
+    # reaches for UserEntryPosition.find_or_create_for on the way, and a diagnostic page
+    # that writes a row is a diagnostic page that changes what it is measuring -- see
+    # reads_do_not_write_spec.
+    def chosen_subentry
+      return nil unless @entry.episodic?
+
+      asked = @entry.subentries.find_by(id: params[:subentry]) if params[:subentry].present?
+
+      asked ||
+        UserEntryPosition.find_by(user: current_user, entry: @entry)&.current_subentry ||
+        @entry.subentries.order(:season, :episode).first
+    end
+
+    # Another provider to try this entry on, named by id. Confined to the ones it could
+    # actually play on: a direct provider's source_key belongs to that provider, so any
+    # other would only build a URL that cannot resolve and waste the hour spent watching
+    # it fail. An id that is not eligible is ignored rather than refused -- the page says
+    # which provider it ended up on, so a typo is visible rather than fatal.
+    def requested_source
+      return nil if params[:source].blank?
+
+      @entry.eligible_sources.find { |source| source.id == params[:source].to_i }
+    end
+
+    # One line per load, in the production log.
+    #
+    # This is half of the test the page exists for. Every document load prints a line here
+    # and every frame reload prints one in the browser console -- so a film that starts
+    # itself again with a line on this side was the page reloading (ours), and one that
+    # starts again with nothing on this side never reached us at all (theirs). Written at
+    # info so it survives into Railway's log rather than only appearing in development.
+    def log_watch_only
+      Rails.logger.info(
+        "[watch_only] entry=#{@entry.id} user=#{current_user&.id} media=#{@entry.media} " \
+        "subentry=#{@subentry&.id.inspect} provider=#{@source&.slug.inspect} " \
+        "start=#{@start_at.inspect} autoplay=#{@autoplay} url=#{loggable_url.inspect}"
+      )
+    end
+
+    # The embed URL with MEGA's decryption key taken out.
+    #
+    # The key is the file: anyone holding it can fetch the video, and a log aggregator is
+    # not where that belongs. What is worth logging is the option run after it -- `!900s1a`
+    # is a resume and an autoplay, and getting that wrong is a thing this page is for
+    # diagnosing -- so the key is replaced and the rest is left readable. The whole URL is
+    # on the page itself for whoever is sitting in front of it.
+    def loggable_url
+      @embed_url&.sub(/#[^!]+/, '#[key]')
     end
 
     # Once the player has called this entry watched, the channel that owns it moves on, so

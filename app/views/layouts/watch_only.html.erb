@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= @entry.name %> — watch only</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <%# Nothing here is worth a second look, and a cached copy of a diagnostic is a
+        diagnostic of the wrong moment. %>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+
+    <%# No importmap, and no application stylesheet. That omission is the whole layout.
+        #watch_only exists to be the control against the watch page, and it can only be one
+        if the page really is empty: loading the app's JavaScript would bring Turbo, Stimulus
+        and every controller on the pins back onto a page whose point is that none of them
+        are here. So the diagnostic script is inline, the handful of rules it needs are
+        inline, and what is left between the browser and the provider is one iframe.
+
+        Which also means this page cannot drift as the app changes -- no controller can be
+        added to it by accident, because there is nowhere for one to be added. %>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: #000; color: #eee;
+                   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .frame { display: block; width: 100%; height: 100%; border: 0; }
+
+      /* Out of the way while a film runs, and legible the moment it is looked at. */
+      .hud { position: fixed; top: 0; left: 0; z-index: 10; max-width: min(34rem, 96vw);
+             font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+             background: rgba(0, 0, 0, .72); border-bottom-right-radius: .5rem;
+             opacity: .28; transition: opacity .15s; }
+      .hud:hover, .hud:focus-within { opacity: 1; }
+      .hud__bar { display: flex; gap: .75rem; align-items: baseline;
+                  padding: .35rem .6rem; cursor: pointer; }
+      .hud__title { font-weight: 700; letter-spacing: .04em; }
+      .hud__count { color: #ffd479; }
+      .hud__body { padding: 0 .6rem .5rem; }
+      .hud[data-open="false"] .hud__body { display: none; }
+      .hud dl { display: grid; grid-template-columns: 6.5rem 1fr; gap: .1rem .6rem; margin: .3rem 0; }
+      .hud dt { color: #8d949e; }
+      .hud dd { margin: 0; overflow-wrap: anywhere; }
+      .hud__log { margin: .4rem 0 .5rem; max-height: 14rem; overflow: auto;
+                  border-top: 1px solid #333; padding-top: .35rem; }
+      /* Wrapped rather than scrolled sideways: the detail on a line is the reason the
+         line is there, and a log you have to drag to read is a log nobody reads. */
+      .hud__line { margin-bottom: .15rem; overflow-wrap: anywhere; }
+      .hud__at { color: #8d949e; }
+      .hud__event--reload { color: #ff8a80; font-weight: 700; }
+      .hud button { font: inherit; color: inherit; background: #222; border: 1px solid #444;
+                    border-radius: .25rem; padding: .15rem .5rem; cursor: pointer; }
+
+      .missing { display: grid; place-content: center; gap: .5rem; height: 100%;
+                 padding: 2rem; text-align: center; }
+      .missing code { color: #ffd479; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body><%= yield %></body>
+</html>
