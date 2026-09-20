@@ -90,7 +90,17 @@
       all never gets here -- it is the off-air page. Lazy, so the image costs nothing on the
       pages that never show it. %>
   <div id="cableStandBy" class="cable-standby" hidden>
-    <%= image_tag 'please_stand_by.png', alt: 'Please stand by', class: 'cable-standby__card', loading: 'lazy' %>
+    <%# The public path, not the pipeline name, and every other reference to this file in
+        the app is written the same way for the same reason. The Cloudinary gem is
+        configured with `enhance_image_tag` (config/cloudinary.yml), which replaces
+        `image_tag` app-wide and rewrites its source before Rails ever sees it -- a bare
+        filename came back as "shared/please_stand_by.png", which is in no asset path, and
+        Sprockets raised AssetNotFound. That took the whole cable page down with it, since
+        the card is rendered on every programme whether or not it is ever uncovered.
+        A leading slash does not save it either -- the prefix is put in front of whatever
+        it is given. So this is a plain <img>, straight out of public/images, which is how
+        lists/index and shared/_sidebar already reference the same file. %>
+    <img src="/images/please_stand_by.png" alt="Please stand by" class="cable-standby__card" loading="lazy">
   </div>
 
   <button type="button" class="cinema__fullscreen" aria-label="Fullscreen"

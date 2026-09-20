@@ -14,7 +14,12 @@
           <% if current %>
             <%= entry_poster_image_tag(current) %>
           <% else %>
-            <%= image_tag '/images/please_stand_by.png', class: 'entry-picture', alt: list.name %>
+            <%# A plain <img>, not image_tag, for the reason set out in cable/show: the
+                Cloudinary gem replaces image_tag app-wide and rewrites the source, and a
+                path it cannot place comes back prefixed and unfindable. This branch draws
+                only for a child channel with nothing playing, which is why it has never
+                been seen to fail -- the same call took the whole cable page down. %>
+            <img src="/images/please_stand_by.png" class="entry-picture" alt="<%= list.name %>">
           <% end %>
           <span class="fa-stack fa-4x play-button">
             <i class="fa-solid fa-circle fa-stack-2x icon-background"></i>
