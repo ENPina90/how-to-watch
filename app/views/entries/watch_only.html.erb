@@ -1,5 +1,12 @@
-<%# One entry, one frame, nothing else. See EntriesController#watch_only for what this page
-    is for and what it deliberately leaves out. %>
+<%# One entry, one frame, and a rig for putting more of them there on purpose. See
+    EntriesController#watch_only for what this page is for and what it deliberately leaves
+    out.
+
+    Nothing is warmed on its own here, and that is still the page's whole value: what it
+    shows by default is the provider and nothing else, so a fault that appears anyway is
+    the provider's. The rig below runs only when somebody presses it — which is the
+    difference between a control and a reproduction, and pressing it is how the two get
+    compared. %>
 
 <% if @embed_url.blank? %>
   <div class="missing">
@@ -25,34 +32,48 @@
     </p>
   </div>
 <% else %>
-  <%# `allow` matches the watch page so the comparison is like for like. `allowfullscreen`
+  <%# The stack, as the watch page builds it: the live frame on top, any spare behind it.
+      Here a spare arrives by a button press rather than by a timer.
+
+      `allow` matches the watch page so the comparison is like for like. `allowfullscreen`
       does not, and that is the one deliberate difference: the watch page withholds it so
       that fullscreen belongs to the container around the frame (cinema_fullscreen_controller),
       and there is no container here. A page meant to be sat in front of for two hours needs
       to be able to fill the screen. %>
-  <iframe id="player"
-          class="frame"
-          aria-label="<%= @entry.name %>"
-          referrerpolicy="origin"
-          allow="autoplay"
-          allowfullscreen
-          src="<%= @embed_url %>"></iframe>
+  <div class="frames" id="frames">
+    <iframe id="player"
+            class="frame frame--live"
+            aria-label="<%= @entry.name %>"
+            referrerpolicy="origin"
+            allow="autoplay"
+            allowfullscreen
+            src="<%= @embed_url %>"></iframe>
+  </div>
 <% end %>
 
-<%# The readout. The browser console is where the detail goes, but a console fills with
-    extension noise and scrolls away, and the one question being asked here -- did the frame
-    load a second time, and when -- should be answerable by glancing at the screen. %>
-<% unless params[:hud] == '0' %>
-  <aside class="hud" id="hud" data-open="false">
+<%# The readout. The console gets a copy, but a console fills with extension noise, scrolls
+    away, and on a page holding a VidSrc frame cannot be opened at all without that frame
+    navigating itself to about:blank (VIDSRC.md §7). So the log lives here and in
+    localStorage, where it survives the reload it may be recording.
+
+    `?debug=1` is accepted and is simply what this page already does; `?hud=0` or `?debug=0`
+    turns the readout off, for the rare run where it is itself the thing being ruled out. %>
+<% unless params[:hud] == '0' || params[:debug] == '0' %>
+  <aside class="hud" id="hud" data-open="false" data-spares="0">
     <div class="hud__bar" id="hudBar">
       <span class="hud__title">watch_only</span>
-      <span>frame loads <span class="hud__count" id="hudLoads">0</span></span>
+      <span>frames <span class="hud__count" id="hudFrames">1</span></span>
+      <span>loads <span class="hud__count" id="hudLoads">0</span></span>
       <span id="hudElapsed">0:00</span>
     </div>
     <div class="hud__body">
       <dl>
         <dt>entry</dt><dd><%= @entry.id %> · <%= @entry.name %></dd>
-        <dt>provider</dt><dd><%= @source&.name %> (<%= @source&.slug %>)</dd>
+        <dt>provider</dt>
+        <dd>
+          <%= @source&.name %>
+          (<%= @source&.sync_adapter || 'no adapter — nothing can drive it' %>)
+        </dd>
         <% if @subentry %>
           <dt>episode</dt><dd><%= @subentry.id %> · S<%= @subentry.season %>E<%= @subentry.episode %></dd>
         <% end %>
@@ -72,9 +93,50 @@
         <dt>history</dt><dd id="hudHistory">—</dd>
         <dt>heap</dt><dd id="hudHeap">—</dd>
       </dl>
+
+      <%# The rig. Everything in here changes the experiment rather than reporting on it,
+          which is why it is boxed off and why it colours itself the moment it is in use. %>
+      <% if @spare_candidates.any? %>
+        <div class="hud__rig">
+          <h2>SECOND PLAYER — what the watch page does by itself</h2>
+          <div class="hud__tools">
+            <select id="hudSpareChoice" aria-label="What the spare should play">
+              <% @spare_candidates.each do |candidate| %>
+                <option value="<%= candidate[:url] %>"
+                        data-name="<%= candidate[:name] %>"
+                        data-adapter="<%= candidate[:adapter] %>">
+                  <%= candidate[:name].truncate(38) %> — <%= candidate[:provider] %>
+                </option>
+              <% end %>
+            </select>
+            <button type="button" id="hudAddSpare">Add</button>
+            <button type="button" id="hudDropSpare">Remove last</button>
+            <button type="button" id="hudDropAllSpares">Remove all</button>
+          </div>
+          <%# Both arms of the experiment from one page. Unticked is the watch page with its
+              pause never delivered, which is the case all of this is about. Ticked is the
+              watch page when the pause lands, so one run can also show whether a spare that
+              really does stop is harmless after all. %>
+          <p class="hud__tools" style="margin: .4rem 0 0;">
+            <label>
+              <input type="checkbox" id="hudQuieten">
+              ask spares to stop, as the watch page does
+            </label>
+          </p>
+          <p class="hud__note">
+            A spare is stacked behind the film and left playing. Twenty seconds after each
+            one starts, the readout says whether it stopped — the same verdict the watch
+            page reaches, by the same rule.
+          </p>
+        </div>
+      <% end %>
+
       <div class="hud__log" id="hudLog"></div>
-      <button type="button" id="hudMark">Mark (m)</button>
-      <button type="button" id="hudCopy">Copy log</button>
+      <div class="hud__tools">
+        <button type="button" id="hudMark">Mark (m)</button>
+        <button type="button" id="hudCopy">Copy log</button>
+        <button type="button" id="hudClear">Clear</button>
+      </div>
     </div>
   </aside>
 <% end %>
@@ -106,34 +168,98 @@
 //   online/offline   the connection dropping is the dullest explanation and the easiest to
 //                    miss after the fact
 //
-// The log is kept on `window.watchOnly.log` as well as printed, so a run can be lifted out
-// of the console whole: `copy(watchOnly.log)`.
+// And the rig: how many players are on this page, whether each spare ever spoke, and
+// whether it stopped. That last one is the open question VIDSRC.md §6a leaves -- a spare
+// that cannot be told to stop plays a second film behind the first for two hours -- and
+// this is the page where it can be asked on purpose rather than waited for.
+//
+// The log is kept in localStorage as well as printed, so it survives the reload it may be
+// recording and can be lifted out whole: the Copy button, or `copy(watchOnly.stored())`.
 (function () {
-  const frame = document.getElementById("player");
+  const frames = document.getElementById("frames");
   const hud = document.getElementById("hud");
   const log = [];
   const started = performance.now();
-  let frameLoads = 0;
+  const loads = {};
+  const spares = [];
+  const listeners = [];
+  // Only ever goes up. Naming spares after how many are on the page at the time meant that
+  // removing one and adding another reused `spare-1`, and the load counter -- which is kept
+  // per frame id -- read the second one's first load as the first one reloading. A false
+  // `frame-reload` is the one lie this page must not tell, since that line is the finding.
+  let spareSerial = 0;
+
+  const KEPT_LINES = 400;
+  const STORE = "watchOnlyLog";
+  // The same two numbers the watch page judges a spare by, so a verdict here means what a
+  // verdict there means. See STOP_DEADLINE in cinema_navigation_controller.js.
+  const STOP_DEADLINE = 20000;
+  const QUIET_ENOUGH = 8000;
 
   const seconds = () => (performance.now() - started) / 1000;
   const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
   const el = (id) => document.getElementById(id);
+  const frameCount = () => (frames ? frames.querySelectorAll("iframe").length : 0);
 
   // Loud ones are the ones that can end a film. They are coloured in the readout so a
   // glance finds them among the heartbeats.
-  const LOUD = ["frame-reload", "reloaded", "back-forward", "discarded", "freeze", "offline", "frame-error"];
+  const LOUD = ["frame-reload", "reloaded", "back-forward", "discarded", "freeze", "offline",
+                "frame-error", "spare-kept-playing"];
+
+  // Flattened into the message rather than passed as a second argument, which is how this
+  // was first written. A console prints an object as the word "Object" and expands it only
+  // when clicked, so seventeen minutes of log copied out of the console read "tick Object"
+  // seventy times and said nothing at all. Everything recorded here is a scalar, and a line
+  // has to survive being pasted into a bug report to be worth writing.
+  const summarise = (detail) =>
+    detail ? Object.entries(detail).map(([key, value]) => `${key}=${value}`).join(" ") : "";
 
   function record(event, detail) {
     const at = seconds();
     const line = { at: Number(at.toFixed(1)), clock: new Date().toISOString(), event, ...detail };
     log.push(line);
-    console.log(`[watch_only ${clock(at)}] ${event}`, detail === undefined ? "" : detail);
+    store(line);
     draw(line);
+    console.log(`[watch_only ${clock(at)}] ${event} ${summarise(detail)}`.trimEnd());
   }
+
+  // Raised for anything that can end a film, and never cleared: an alarm at minute three is
+  // still the reason the film died at minute forty.
+  function alarm() {
+    if (hud) hud.dataset.alarm = "true";
+  }
+
+  function on(target, event, handler, capture = false) {
+    listeners.push([target, event, handler, capture]);
+    target.addEventListener(event, handler, capture);
+  }
+
+  // ---- keeping the log ----------------------------------------------------------------
+
+  // Everything here is wrapped: storage can be full, or refused outright in a private
+  // window, and a readout that throws is worse than one that forgets.
+  function store(line) {
+    try {
+      localStorage.setItem(STORE, JSON.stringify(stored().concat(line).slice(-KEPT_LINES)));
+    } catch {
+      // Out of room or not allowed. The run in memory is still complete.
+    }
+  }
+
+  function stored() {
+    try {
+      const kept = JSON.parse(localStorage.getItem(STORE) || "[]");
+      return Array.isArray(kept) ? kept : [];
+    } catch {
+      return [];
+    }
+  }
+
+  // ---- the readout ---------------------------------------------------------------------
 
   // Built rather than written as markup: some of what is logged comes from the provider,
   // and a readout that renders it would be a readout the provider can write to.
-  function draw(line) {
+  function draw(line, old = false) {
     if (!hud) return;
 
     const at = document.createElement("span");
@@ -148,100 +274,210 @@
     delete rest.at; delete rest.clock; delete rest.event;
 
     const row = document.createElement("div");
-    row.className = "hud__line";
+    row.className = old ? "hud__line hud__line--old" : "hud__line";
     row.append(at, " ", name);
-    if (Object.keys(rest).length) row.append(` ${JSON.stringify(rest)}`);
+    if (Object.keys(rest).length) row.append(` ${summarise(rest)}`);
 
     const box = el("hudLog");
     box.append(row);
     box.scrollTop = box.scrollHeight;
   }
 
-  // ---- what we are standing on ------------------------------------------------------
+  function drawStored() {
+    const previous = stored();
+    if (!previous.length) return;
 
-  const navigation = performance.getEntriesByType("navigation")[0];
-  const how = navigation ? navigation.type : "unknown";
-  if (hud) el("hudNavigation").textContent = how;
-
-  record("boot", {
-    how: how,
-    // A tab Chrome threw away and rebuilt when it was looked at again. It reads as a
-    // reload to everything else on the page, and it is not one.
-    discarded: document.wasDiscarded === true,
-    history: history.length,
-    memoryGb: navigator.deviceMemory ?? null,
-    cores: navigator.hardwareConcurrency ?? null,
-    connection: navigator.connection?.effectiveType ?? null,
-    saveData: navigator.connection?.saveData ?? null,
-    screen: `${window.innerWidth}x${window.innerHeight}`,
-  });
-
-  // Said separately and loudly: if this line is here, the document was replaced, and every
-  // player on it started again from wherever the address told it to.
-  if (how === "reload") record("reloaded");
-  if (how === "back_forward") record("back-forward");
-  if (document.wasDiscarded === true) record("discarded");
-
-  // ---- the frame --------------------------------------------------------------------
-
-  if (frame) {
-    // Fires on every navigation of the frame, ours or theirs. The first is the page
-    // loading; a second one nobody asked for is the answer to the whole question.
-    frame.addEventListener("load", () => {
-      frameLoads += 1;
-      if (hud) el("hudLoads").textContent = String(frameLoads);
-      // Named apart, because the first one is the page opening and every one after it is
-      // the finding. Only the second name is coloured in the readout.
-      record(frameLoads === 1 ? "frame-load" : "frame-reload", { n: frameLoads, history: history.length });
-    });
-
-    // Cross-origin, so this only fires for a frame the browser refused to load at all --
-    // a blocked or dead host. Worth having: it is otherwise silent.
-    frame.addEventListener("error", () => record("frame-error"));
+    previous.forEach((line) => draw(line, true));
+    draw({ at: 0, event: `— above: ${previous.length} lines from earlier runs —` }, true);
   }
 
-  // Whatever the player says to its parent. MEGA says nothing (Source::SYNC_ADAPTERS has
-  // the measurements), so a line here would itself be news; vidsrc and YouTube chatter.
-  window.addEventListener("message", (event) => {
-    if (!frame || event.source !== frame.contentWindow) return;
-    const body = typeof event.data === "string" ? event.data.slice(0, 200) : event.data;
-    record("frame-message", { data: body });
-  });
+  // ---- the frames ------------------------------------------------------------------------
+
+  // Every frame in the stack, live or added by hand, and every time one of them loads a
+  // document. Bound on the container in the capture phase rather than on the frames
+  // themselves: a `load` event does not bubble, but it does pass through its ancestors on
+  // the way down, and spares come and go.
+  function watchTheFrames() {
+    if (!frames) return;
+
+    on(frames, "load", (event) => {
+      const id = event.target.id || "unnamed";
+      loads[id] = (loads[id] || 0) + 1;
+      const n = loads[id];
+
+      // The first load of a frame is that frame opening. Any load after it is a document
+      // being replaced under us, which on a provider with no resume is the film starting
+      // again -- the finding, not the furniture.
+      if (n > 1) alarm();
+      record(n === 1 ? "frame-load" : "frame-reload", { frame: id, n: n });
+      paint();
+    }, true);
+  }
+
+  // ---- the rig ---------------------------------------------------------------------------
+
+  // Put a second player behind the film, the way the watch page does five seconds after it
+  // loads -- except on purpose, and only when asked.
+  //
+  // The frame is built to match buildSpareFrame in cinema_navigation_controller.js:
+  // autoplay on, stacked behind rather than hidden, and left alone unless the quieten box
+  // is ticked. Autoplay matters most of all -- a spare sitting on a play button decodes
+  // nothing, and a rig that produced one would prove the opposite of what it is for.
+  function addSpare() {
+    const option = el("hudSpareChoice")?.selectedOptions[0];
+    if (!option || !frames) return;
+
+    const frame = document.createElement("iframe");
+    frame.id = `spare-${++spareSerial}`;
+    frame.className = "frame";
+    frame.setAttribute("referrerpolicy", "origin");
+    frame.setAttribute("allow", "autoplay");
+    frame.src = option.value;
+    frames.appendChild(frame);
+
+    const spare = { frame: frame, adapter: option.dataset.adapter };
+    spares.push(spare);
+    listenTo(spare);
+
+    // The same twenty seconds the watch page allows, so the verdict means the same thing.
+    setTimeout(() => judge(spare), STOP_DEADLINE);
+
+    record("spare-added", { frame: frame.id, adapter: option.dataset.adapter,
+                            plays: option.dataset.name, quieten: quietening() });
+    paint();
+  }
+
+  // Whether the spare ever speaks, and whether it stops. That is the question VIDSRC.md §6a
+  // leaves open, and the reason this page can now ask it on purpose.
+  //
+  // The watch page reaches the player through services/vidsrc_player.js, which checks the
+  // message origin against a list of VidSrc front doors. Here the test is only that the
+  // message came from this frame's own window, which is enough for a rig and is one fewer
+  // list to keep in step with the Source templates.
+  function listenTo(spare) {
+    on(window, "message", (event) => {
+      if (event.source !== spare.frame.contentWindow) return;
+
+      const body = event.data;
+      if (!body || body.type !== "PLAYER_EVENT" || !body.data) return;
+
+      const progress = Number(body.data.player_progress) || 0;
+      if (spare.seenAt === progress) return;
+
+      if (spare.movedAt === undefined) record("spare-spoke", { frame: spare.frame.id });
+      spare.movedAt = Date.now();
+      spare.seenAt = progress;
+
+      if (!quietening()) return;
+
+      try {
+        spare.frame.contentWindow.postMessage({ player: true, action: "mute" }, "*");
+        spare.frame.contentWindow.postMessage({ player: true, action: "pause" }, "*");
+      } catch {
+        // A frame mid-navigation. The next report will try again.
+      }
+    });
+  }
+
+  // The watch page's rule, applied here: it has to have spoken, and to have gone quiet for
+  // longer than the gap between two of its reports. Silence is not stopping.
+  function judge(spare) {
+    if (!spare.frame.isConnected) return;
+
+    const spoke = spare.movedAt !== undefined;
+    const settled = spoke && Date.now() - spare.movedAt >= QUIET_ENOUGH;
+    const verdict = spoke ? (settled ? "stopped" : "would not stop") : "never spoke";
+
+    if (!settled) alarm();
+    record(settled ? "spare-stopped" : "spare-kept-playing",
+           { frame: spare.frame.id, verdict: verdict, asked: quietening() });
+  }
+
+  function quietening() {
+    return Boolean(el("hudQuieten")?.checked);
+  }
+
+  function dropSpare() {
+    const spare = spares.pop();
+    if (!spare) return;
+
+    spare.frame.remove();
+    record("spare-removed", { frame: spare.frame.id });
+    paint();
+  }
+
+  function dropAllSpares() {
+    while (spares.length) dropSpare();
+  }
+
+  // ---- what we are standing on ------------------------------------------------------
+
+  function boot() {
+    const navigation = performance.getEntriesByType("navigation")[0];
+    const how = navigation ? navigation.type : "unknown";
+    if (hud) el("hudNavigation").textContent = how;
+
+    record("boot", {
+      how: how,
+      // A tab Chrome threw away and rebuilt when it was looked at again. It reads as a
+      // reload to everything else on the page, and it is not one.
+      discarded: document.wasDiscarded === true,
+      history: history.length,
+      // Chrome caps the joint session history at 50 entries and drops the oldest to make
+      // room, so in a tab that has been surfing for a while the number stops moving and a
+      // frame navigating itself no longer shows up in it. Said out loud, because a flat 50
+      // read as "nothing navigated" is a wrong answer rather than a missing one -- open a
+      // fresh tab to get the signal back.
+      historyCapped: history.length >= 50,
+      memoryGb: navigator.deviceMemory ?? null,
+      cores: navigator.hardwareConcurrency ?? null,
+      connection: navigator.connection?.effectiveType ?? null,
+      saveData: navigator.connection?.saveData ?? null,
+      screen: `${window.innerWidth}x${window.innerHeight}`,
+    });
+
+    // Said separately and loudly: if this line is here, the document was replaced, and every
+    // player on it started again from wherever the address told it to.
+    if (how === "reload") { record("reloaded"); alarm(); }
+    if (how === "back_forward") { record("back-forward"); alarm(); }
+    if (document.wasDiscarded === true) { record("discarded"); alarm(); }
+  }
 
   // ---- what the browser does to pages ------------------------------------------------
 
-  document.addEventListener("visibilitychange", () => record("visibility", { state: document.visibilityState }));
-  document.addEventListener("freeze", () => record("freeze"));
-  document.addEventListener("resume", () => record("resume"));
-  document.addEventListener("fullscreenchange", () => record("fullscreen", { on: Boolean(document.fullscreenElement) }));
-  window.addEventListener("pagehide", (event) => record("pagehide", { persisted: event.persisted }));
-  window.addEventListener("pageshow", (event) => record("pageshow", { persisted: event.persisted }));
-  window.addEventListener("popstate", () => record("popstate", { history: history.length }));
-  window.addEventListener("hashchange", () => record("hashchange"));
-  window.addEventListener("online", () => record("online"));
-  window.addEventListener("offline", () => record("offline"));
-  window.addEventListener("error", (event) => record("error", { message: String(event.message).slice(0, 200) }));
-  window.addEventListener("unhandledrejection", (event) => record("rejection", { reason: String(event.reason).slice(0, 200) }));
+  function watchTheBrowser() {
+    on(document, "visibilitychange", () => record("visibility", { state: document.visibilityState }));
+    on(document, "freeze", () => { record("freeze"); alarm(); });
+    on(document, "resume", () => record("resume"));
+    on(document, "fullscreenchange", () => record("fullscreen", { on: Boolean(document.fullscreenElement) }));
+    on(window, "pagehide", (event) => record("pagehide", { persisted: event.persisted }));
+    on(window, "pageshow", (event) => record("pageshow", { persisted: event.persisted }));
+    on(window, "popstate", () => record("popstate", { history: history.length }));
+    on(window, "hashchange", () => record("hashchange"));
+    on(window, "online", () => record("online"));
+    on(window, "offline", () => { record("offline"); alarm(); });
+    on(window, "error", (event) => record("error", { message: String(event.message).slice(0, 160) }));
+    on(window, "unhandledrejection", (event) => record("rejection", { reason: String(event.reason).slice(0, 160) }));
+  }
 
   // ---- the heartbeat -----------------------------------------------------------------
 
   const heapMb = () =>
     performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null;
 
-  // Every fifteen seconds, so an hour of watching is 240 lines rather than 3,600, and the
-  // gaps between them still place a fault to the right quarter minute.
-  setInterval(() => record("tick", { loads: frameLoads, history: history.length, heapMb: heapMb() }), 15000);
+  // The readout moves every second. Its whole job is to be glanced at when something
+  // happens, and a clock that only moves on the heartbeat is a clock that is wrong by up to
+  // fifteen seconds at exactly the moment it is read.
+  function paint() {
+    if (!hud) return;
 
-  // The readout moves every second, though. Its whole job is to be glanced at when
-  // something happens, and a clock that only moves on the heartbeat is a clock that is
-  // wrong by up to fifteen seconds at exactly the moment it is read.
-  if (hud) {
-    setInterval(() => {
-      const heap = heapMb();
-      el("hudElapsed").textContent = clock(seconds());
-      el("hudHistory").textContent = String(history.length);
-      el("hudHeap").textContent = heap === null ? "—" : `${heap} MB`;
-    }, 1000);
+    const heap = heapMb();
+    el("hudFrames").textContent = String(frameCount());
+    el("hudLoads").textContent = String(Object.values(loads).reduce((a, b) => a + b, 0));
+    el("hudElapsed").textContent = clock(seconds());
+    el("hudHistory").textContent = `${history.length}${history.length >= 50 ? " (capped)" : ""}`;
+    el("hudHeap").textContent = heap === null ? "—" : `${heap} MB`;
+    hud.dataset.spares = String(spares.length);
   }
 
   // ---- the person watching ------------------------------------------------------------
@@ -249,23 +485,51 @@
   // The one thing the page cannot observe is the picture. When a film starts itself again,
   // this is how the moment it happened gets into the log next to everything else.
   const mark = () => record("MARK — saw it happen");
-  if (hud) {
+
+  function wireTheControls() {
+    if (!hud) return;
+
     el("hudMark").addEventListener("click", mark);
     el("hudCopy").addEventListener("click", () => {
-      const text = JSON.stringify(log, null, 2);
-      navigator.clipboard?.writeText(text).then(
-        () => record("log copied"),
-        () => console.log(text)
-      );
+      const text = JSON.stringify(stored(), null, 2);
+      navigator.clipboard?.writeText(text).then(() => record("log copied"), () => console.log(text));
+    });
+    el("hudClear").addEventListener("click", () => {
+      try { localStorage.removeItem(STORE); } catch { /* nothing to clear, or not allowed */ }
+      el("hudLog").replaceChildren();
+      record("log cleared");
     });
     el("hudBar").addEventListener("click", () => {
       hud.dataset.open = hud.dataset.open === "true" ? "false" : "true";
     });
-  }
-  // Only reaches us while the page itself has focus, which it does not while the pointer
-  // is in the player. The button is the reliable one; this is for when it is not.
-  document.addEventListener("keydown", (event) => { if (event.key === "m") mark(); });
 
-  window.watchOnly = { log: log, mark: mark, loads: () => frameLoads };
+    // Absent when the entry has no neighbour worth warming, which is why each is asked for
+    // rather than assumed.
+    el("hudAddSpare")?.addEventListener("click", addSpare);
+    el("hudDropSpare")?.addEventListener("click", dropSpare);
+    el("hudDropAllSpares")?.addEventListener("click", dropAllSpares);
+  }
+
+  // Only reaches us while the page itself has focus, which it does not while the pointer is
+  // in the player. The button is the reliable one; this is for when it is not.
+  function watchTheKeyboard() {
+    on(document, "keydown", (event) => { if (event.key === "m") mark(); });
+  }
+
+  drawStored();
+  watchTheFrames();
+  watchTheBrowser();
+  watchTheKeyboard();
+  wireTheControls();
+  boot();
+  paint();
+  setInterval(paint, 1000);
+  // Every fifteen seconds, so an hour of watching is 240 lines rather than 3,600, and the
+  // gaps between them still place a fault to the right quarter minute.
+  setInterval(() => record("tick", { frames: frameCount(), spares: spares.length,
+                                     history: history.length, heapMb: heapMb() }), 15000);
+
+  window.watchOnly = { log: log, stored: stored, mark: mark, addSpare: addSpare,
+                       dropAllSpares: dropAllSpares, spares: () => spares.length };
 })();
 </script>

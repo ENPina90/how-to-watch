@@ -559,6 +559,12 @@ class EntriesController < ApplicationController
     @embed_url = @source&.url_for(@entry, subentry: @subentry,
                                           autoplay: @autoplay, start_at: @start_at).presence
 
+    # What the page can put a second player on, when somebody presses the button. Built
+    # here rather than in the page because working out what a real spare would have been
+    # is a question about channels, providers and templates -- all of which live on this
+    # side -- and because a rig you have to paste URLs into is a rig nobody uses twice.
+    @spare_candidates = spare_candidates
+
     log_watch_only
 
     render layout: 'watch_only'
@@ -1017,6 +1023,46 @@ class EntriesController < ApplicationController
       return nil if params[:source].blank?
 
       @entry.eligible_sources.find { |source| source.id == params[:source].to_i }
+    end
+
+    # Entries this page can warm a second player on, most faithful first.
+    #
+    # `watch` warms the channel below, and what lands in that frame is whatever is playing
+    # there -- in practice a VidSrc entry, since that is most of the library. So the
+    # candidates are ordered to put a real one first: an entry named outright, then the
+    # rest of this channel, then the top of the cable dial, and last the entry itself.
+    #
+    # The entry itself is on the list deliberately. It answers a question the others cannot:
+    # whether a second stream of *any* kind is enough to kill the film, or only a second
+    # stream on a provider that keeps playing because it cannot be told to stop.
+    #
+    # Only syncable providers among the neighbours. A spare on a provider with no adapter
+    # would be a frame `watch` never builds -- adapterFor declines it there -- so putting
+    # one here would be reproducing something that does not happen.
+    def spare_candidates
+      asked = Entry.find_by(id: params[:spare])
+      neighbours = @entry.list.entries.where('position > ?', @entry.position).order(:position).limit(12)
+      dial = CableSchedule.channels.where.not(id: @entry.list_id).limit(2)
+                          .flat_map { |channel| channel.entries.order(:position).limit(4).to_a }
+
+      candidates = ([asked] + neighbours.to_a + dial).compact.select { |entry| entry.resolved_source&.syncable? }
+
+      (candidates.uniq(&:id).first(4) + [@entry]).filter_map { |entry| spare_for(entry) }
+    end
+
+    # One candidate, as the page needs it: something to press, and the address that goes in
+    # the frame when it is pressed.
+    #
+    # Autoplay always, because a spare that will not start is the one thing this rig must
+    # not produce -- `watch` builds its spares with autoplay for exactly that reason, and a
+    # frame that sits on a play button proves nothing about two decoders.
+    def spare_for(entry)
+      source = entry.resolved_source
+      url = source&.url_for(entry, autoplay: true).presence
+      return nil if url.blank?
+
+      { id: entry.id, name: entry.name, provider: source.name,
+        adapter: source.sync_adapter || 'none', url: url }
     end
 
     # One line per load, in the production log.

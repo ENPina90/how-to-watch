@@ -1,0 +1,50 @@
+<%# The playback readout, on `?debug=1` and nothing else. See
+    playback_debug_controller.js for what each line of it is for, and why none of it can
+    live in the browser console.
+
+    Rendered here, a child of the cinema screen rather than of the chrome inside it, for
+    two reasons that pull in the same direction: the chrome is replaced on every move
+    between entries and this must not be, and the screen is what goes fullscreen so
+    anything outside it is invisible for exactly the two hours being recorded. %>
+<aside class="playback-debug"
+       data-open="false"
+       data-controller="playback-debug"
+       data-entry="<%= entry.id %>"
+       data-adapter="<%= entry.resolved_source&.sync_adapter %>"
+       <%# cinema-navigation's own preload value, read back so the readout can say whether
+           this page would warm a second player at all before anybody wonders why it never
+           did. %>
+       data-preload="<%= user_signed_in? %>">
+  <div class="playback-debug__bar" data-action="click->playback-debug#toggle">
+    <span class="playback-debug__title">playback</span>
+    <%# The headline: what became of the second player this page warmed. `stopped` is the
+        ordinary case; `DROPPED` means it would not stop and its frame was taken away
+        before it could run a second film behind this one. %>
+    <span>spare <strong data-playback-debug-target="verdict">—</strong></span>
+    <%# Context rather than alarm. Two frames is correct once the spare has stopped. %>
+    <span>frames <span data-playback-debug-target="frames">1</span></span>
+    <span data-playback-debug-target="elapsed">0:00</span>
+  </div>
+
+  <div class="playback-debug__body">
+    <dl>
+      <dt>entry</dt><dd><%= entry.id %> · <%= entry.name %></dd>
+      <dt>provider</dt>
+      <dd>
+        <%= entry.resolved_source&.name %>
+        (<%= entry.resolved_source&.sync_adapter || 'no adapter — nothing can drive it' %>)
+      </dd>
+      <dt>loaded</dt><dd data-playback-debug-target="navigation">—</dd>
+      <dt>history</dt><dd data-playback-debug-target="history">—</dd>
+      <dt>heap</dt><dd data-playback-debug-target="heap">—</dd>
+    </dl>
+
+    <div class="playback-debug__log" data-playback-debug-target="log"></div>
+
+    <div class="playback-debug__tools">
+      <button type="button" data-action="click->playback-debug#mark">Mark</button>
+      <button type="button" data-action="click->playback-debug#copy">Copy</button>
+      <button type="button" data-action="click->playback-debug#clear">Clear</button>
+    </div>
+  </div>
+</aside>

@@ -319,7 +319,45 @@ moment the picture actually jumped. `copy(watchOnly.log)` lifts the whole run ou
 Query parameters: `source=ID` plays the entry on another provider it is eligible for
 without editing it (how two providers get compared on the same file), `start=SECONDS`
 tests whether a provider honours a resume — and says on the page when it has nowhere to
-put one — `autoplay=0`, `subentry=ID`, `hud=0`.
+put one — `autoplay=0`, `subentry=ID`, `spare=ID` (below), `hud=0` / `debug=0`. `debug=1`
+is accepted and is simply what the page already does.
+
+**The second-player rig.** The readout carries a boxed-off set of controls that put another
+player behind the film, on a button rather than on a timer: the frame is built exactly as
+`buildSpareFrame` builds it — autoplay on, stacked behind rather than hidden — so the
+isolated page can be turned into the watch page one variable at a time. Nothing warms on
+its own, which is what keeps the page a control until somebody presses something.
+
+What it offers to play is `spare_candidates` on the server: an entry named by `?spare=ID`
+first, then this channel's later entries, then the top of the cable dial, and the entry
+itself always last. Only providers with an adapter, because `adapterFor` declines to build
+a spare frame for anything else on the watch page, so offering one here would reproduce
+something that never happens. The entry itself is on the list to answer what the others
+cannot — whether a second stream of *any* kind is enough, or only one that keeps playing
+because it cannot be told to stop.
+
+A tickbox runs the other arm, asking the spares to stop the way the watch page does. Twenty
+seconds after each spare starts, the same rule as `STOP_DEADLINE` gives the same verdict, so
+`spare-kept-playing` means the same thing on both pages.
+
+### 5.3b The playback readout — `GET /entries/:id/watch?debug=1`
+
+The same instrument on the real watch page, where the isolated one cannot go. It is written
+into the page rather than the console, because VidSrc navigates its own frame to
+`about:blank` the moment it detects an inspector (VIDSRC.md §7) — so debugging this page
+with DevTools open destroys what is being debugged. The log is mirrored into `localStorage`,
+which is what makes it survive the reload it may be recording; the previous run stays on
+screen, dimmed, above the current one.
+
+The headline is the **spare verdict**. Twenty seconds after the channel below is warmed,
+`cinema-navigation` decides whether that second player stopped when it was told to:
+`stopped` is the ordinary case, `DROPPED` means it would not and lost its frame. Beside it:
+frame loads per frame (a second load is a document replaced under us, which on a provider
+with no resume is the film starting again), navigation type, `freeze`/`resume`, visibility,
+the connection, the heap, and a `Mark` button for the moment the picture actually jumped.
+
+It renders outside `#cinema-chrome`, which every move replaces, and inside `.cinema__screen`,
+which is what goes fullscreen — `spec/requests/playback_debug_spec.rb` pins both.
 
 ### 5.4 Finishing something
 - `entries#complete` — toggles `UserEntry` completion; on completion advances the user's
@@ -1047,7 +1085,7 @@ tell you how far behind it is likely to be. Trust the code; update the section y
 | An admin warning will not clear, or comes back | the notifier reconciles rather than appends (`AdminStateNotifier`), so the row survives only while `key_for` still matches something in the current set. A key that encodes changing state (a URL digest, an expiry date) is what makes dismissal safe. |
 | List page 500s while grouping | `ListsController#filter_entries` + `sort_sections`; nullable `genre`/`year`/`rating` are the usual cause. |
 | Player is blank / "No video source available" | `Entry#embed_url` → `#resolved_source` → the `Source` row's `templates`. Check the source is `active` and its template has a key for that `media`. There is no legacy fallback left, so a blank URL is always the template or what it substitutes — `/entries/:id/watch_only` (§5.3a) renders either way and names which of the two it was. |
-| A film restarts itself, stutters or stops for no reason | play it at `/entries/:id/watch_only` (§5.3a) and compare. The watch page warms a second player five seconds in and a third as the credits run, so a decode failure there may be ours; the isolated page has none of that, writes nothing, and prints one line per load on both sides of the connection. |
+| A film restarts itself, stutters or stops for no reason | `?debug=1` on the watch page (§5.3b) and read the spare verdict; `/entries/:id/watch_only` plus its second-player rig (§5.3a) reproduces it one variable at a time; `/entries/:id/watch_only` (§5.3a) is the control with nothing warmed. The known cause is a warmed spare that cannot be told to stop and plays a second film behind the first for two hours — two hardware decoders, a `PIPELINE_ERROR_DECODE`, and on MEGA (no resume) a restart from the beginning. `STOP_DEADLINE` in `cinema_navigation_controller.js` now takes the frame off a spare that will not stop; VIDSRC.md §6a has the measurements. |
 | Wrong episode plays | `UserEntryPosition` for that user+entry; `Entry#current_subentry_for_user`; for anime, `Subentry#calculate_absolute_episode_number`. |
 | Episode numbers off for anime | anime may use absolute numbering (`%{absolute_episode}`); note `calculate_absolute_episode_number` counts within one entry, and each season is its own entry here. |
 | "Watched" state wrong or resets | `UserEntry` (not `entries.completed`). Note `Entry#user_entry_for` **creates** a row on read. |

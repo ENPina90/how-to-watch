@@ -131,12 +131,37 @@ nothing unless you add `APPLY=1`.
 
 ## Diagnosing playback
 
-When a film restarts itself, stalls or stops and it is not clear whether the provider
-dropped it or the app did, play it in isolation:
+**First look:** `?debug=1` on the watch page puts a readout in the top-left corner. The
+headline is the **spare verdict** — twenty seconds after the channel below is warmed, that
+second player either `stopped` when it was told to or was `DROPPED` because it would not.
+A dropped spare is the known cause of MEGA films restarting: it plays a second film behind
+the first for two hours, two hardware decoders provoke a decode failure, and MEGA has no
+resume to come back to.
+
+```
+/entries/<id>/watch?debug=1
+```
+
+Read it with **DevTools closed**. VidSrc navigates its own frame to `about:blank` when it
+detects an inspector, so opening DevTools destroys the thing being watched. The log is in
+the page and in `localStorage`, so it survives a reload; `Copy` puts the whole run on the
+clipboard.
+
+**The control:** to rule the app out entirely, play the same entry with nothing else on the
+page — no warmed spare, no app JavaScript, no writes:
 
 ```
 /entries/<id>/watch_only
 ```
+
+**The reproduction:** the same page has a second-player rig in its readout. Press **Add**
+to put another player behind the film — built exactly as the watch page builds its spare,
+autoplay on, stacked behind — and watch whether the film survives it. Tick *ask spares to
+stop* to run the other arm, which is the watch page when its pause lands. Twenty seconds
+after each spare starts, the readout gives the same verdict the watch page gives.
+
+That turns "is the preload what kills MEGA films" into an experiment you can run twice in
+ten minutes rather than a theory about two different pages.
 
 One iframe, no preloaded second player, no app JavaScript, nothing written. The watch page
 cannot answer the question because it warms a second player five seconds after landing and

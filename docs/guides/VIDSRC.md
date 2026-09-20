@@ -376,17 +376,31 @@ Worth knowing before optimising: roughly ten requests per embed, and several are
 ours nor the player's — `histats.com`, plus a rotating ad/tracking host. Anything that
 loads N embeds at once multiplies those too.
 
-**A covered frame never speaks.** The spare frame described below loads, plays and fetches
-segments happily, but posts no `PLAYER_EVENT` at all — so the `pause` the page holds for it
-is never delivered, because commands are dropped until a player has spoken (§6). Ruled out
-2026-09-05: it is not being covered (leaving a row of pixels showing changed nothing) and
-it is not the inspector (neutralising `disable-devtool` changed nothing). Cause unknown.
+**A spare frame speaks unpredictably, and sometimes not at all.** This said "never
+speaks" until 2026-09-20, which made it read as a settled quirk. It is worse than that: the
+same code on the same entry reported fourteen times in seventy seconds on one run and not
+at all in sixty on the next (4c5d182). When it does speak, a `pause` sent on its first
+report is ignored and the same message a few seconds later is obeyed; when it does not,
+nothing can be sent to it at all, because commands are dropped until a player has spoken
+(§6). Ruled out 2026-09-05: it is not being covered (leaving a row of pixels showing
+changed nothing) and it is not the inspector (neutralising `disable-devtool` changed
+nothing). Cause unknown.
 
-The practical upshot is that the spare channel is genuinely *playing* rather than merely
-buffered, which is why switching to it is instant — and why nobody has ever heard it, since
-a player that starts before anybody touches the page is muted by the browser (§4). It also
-means it drifts: sit on one channel for twenty minutes and the one below has played twenty
-minutes, and left long enough it will reach the end of its entry.
+The practical upshot is that a spare that cannot be told to stop is genuinely *playing*
+rather than merely buffered, which is why switching to it is instant — and why nobody has
+ever heard it, since a player that starts before anybody touches the page is muted by the
+browser (§4). It also means it drifts: sit on one channel for twenty minutes and the one
+below has played twenty minutes, and left long enough it will reach the end of its entry.
+
+**That silence had a cost nobody was looking for.** A second film playing behind the first
+for two hours is a second hardware decoder, and the machine reports that by failing to
+decode the film actually being watched — `PIPELINE_ERROR_DECODE` out of VideoToolbox, which
+kills the MediaSource for good. On a provider with no resume the film then starts again
+from the beginning, which is how this surfaced: MEGA entries restarting at random, and
+never restarting on `/entries/:id/watch_only`, which warms nothing. So a spare now has
+twenty seconds to prove it has stopped or it loses its frame — see `STOP_DEADLINE` in
+`cinema_navigation_controller.js`, and `?debug=1` on the watch page for the readout that
+says which way each one went.
 
 The player page keeps exactly one spare. The channel below is warmed in a second frame
 five seconds after the page settles, so pressing down costs 8ms instead of the 1.5s above

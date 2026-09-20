@@ -101,6 +101,12 @@
     <i class="fa-solid fa-expand"></i>
   </button>
 
+  <%# Only when asked for by hand. It is an instrument, not a feature: nothing links to it,
+      and a page carrying it is a page being measured. %>
+  <% if params[:debug] == '1' %>
+    <%= render 'shared/playback_debug', entry: @entry %>
+  <% end %>
+
   <div id="cinema-chrome"
        data-list-auto-next="<%= @channel.auto_next_for(current_user) %>"
        data-list-ordered="<%= @channel.ordered? %>"

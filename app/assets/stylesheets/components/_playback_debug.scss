@@ -1,0 +1,122 @@
+// The playback readout (`?debug=1` on the watch page). See playback_debug_controller.js.
+//
+// Faint until it is looked at, because it sits over a film for two hours at a time and the
+// number it exists to show — how many players are on the page — has to be legible from
+// across a room without the rest of it being in the way.
+
+.playback-debug {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2000;
+  max-width: min(36rem, 96vw);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #eee;
+  background: rgba(0, 0, 0, 0.72);
+  border-bottom-right-radius: 0.5rem;
+  opacity: 0.28;
+  transition: opacity 0.15s;
+
+  // Opened on purpose, so readable without being held under the pointer — at 28% over a
+  // film the log is there but cannot actually be read.
+  &[data-open="true"],
+  &:hover,
+  &:focus-within {
+    opacity: 1;
+  }
+
+  // Raised by the controller, and only for something that can end a film: a spare that
+  // would not stop, or a frame whose document was replaced under us. It does not clear —
+  // an alarm at minute three is still the reason the film died at minute forty.
+  //
+  // Not keyed on the frame count, which is what this first tried. Two frames is *correct*
+  // once the spare has stopped, so the readout opened its alarm on every ordinary load.
+  &[data-alarm="true"] {
+    opacity: 1;
+    background: rgba(90, 0, 0, 0.85);
+  }
+}
+
+.playback-debug__bar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+}
+
+.playback-debug__title {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.playback-debug__body {
+  padding: 0 0.6rem 0.5rem;
+
+  .playback-debug[data-open="false"] & {
+    display: none;
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: 0.1rem 0.6rem;
+    margin: 0.3rem 0;
+  }
+
+  dt {
+    color: #8d949e;
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.playback-debug__log {
+  max-height: 16rem;
+  margin: 0.4rem 0 0.5rem;
+  padding-top: 0.35rem;
+  overflow: auto;
+  border-top: 1px solid #333;
+}
+
+// Wrapped rather than scrolled sideways: the detail on a line is the reason the line is
+// there, and a log you have to drag to read is a log nobody reads.
+.playback-debug__line {
+  margin-bottom: 0.15rem;
+  overflow-wrap: anywhere;
+}
+
+// Carried over from a previous run, read back out of localStorage. Dimmed so the run in
+// front of you is obvious, kept so the reload that ended the last one is still on screen.
+.playback-debug__line--old {
+  opacity: 0.45;
+}
+
+.playback-debug__at {
+  color: #8d949e;
+}
+
+.playback-debug__loud {
+  color: #ff8a80;
+  font-weight: 700;
+}
+
+.playback-debug__tools {
+  display: flex;
+  gap: 0.4rem;
+
+  button {
+    padding: 0.15rem 0.5rem;
+    font: inherit;
+    color: inherit;
+    background: #222;
+    border: 1px solid #444;
+    border-radius: 0.25rem;
+    cursor: pointer;
+  }
+}
