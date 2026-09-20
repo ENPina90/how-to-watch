@@ -187,9 +187,14 @@ class Source < ApplicationRecord
     "vidsrc-embed.ru" => "vidsrc",
     "vidsrcme"        => "vidsrc",
     # YouTube's embed speaks its IFrame API over postMessage to any page that asks, once the
-    # URL carries enablejsapi (PLAYER_PARAMS). MEGA and Drive say nothing at all: checked
-    # 2026-09-15, MEGA's embed registers no message listener and posts nothing up.
+    # URL carries enablejsapi (PLAYER_PARAMS).
     "youtube"         => "youtube",
+    # MEGA is here for the opposite reason to the others: not because its player answers us
+    # -- checked 2026-09-15, its embed registers no message listener and posts nothing up --
+    # but because we no longer use its player. The file is decrypted and served to a <video>
+    # of our own (NATIVE_PLAYERS, public/mega-sw.js), and an element in our own document
+    # needs no protocol to be driven. This entry is what tells the rest of the app so.
+    "mega"            => "mega",
   }.freeze
 
   def sync_adapter = SYNC_ADAPTERS[slug]

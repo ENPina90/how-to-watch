@@ -528,6 +528,26 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   border: 0;
 }
 
+/* A player of our own is a <video>, not a frame, and a <video> does not letterbox itself
+   the way an embed's player does -- left alone it stretches to the box. `contain` keeps
+   the picture's own shape inside the screen, which is what the embeds do for us. */
+video.cinema__frame {
+  background: #000;
+  object-fit: contain;
+}
+
+/* Said where the picture would have been, because a <video> with nothing to play is a
+   black rectangle and no explanation -- which is precisely the failure this app spent a
+   fortnight chasing on somebody else's player. */
+.cinema__player-failed {
+  position: absolute;
+  inset: auto 0 15% 0;
+  z-index: 2;
+  margin: 0;
+  color: #eee;
+  text-align: center;
+}
+
 /* The warmed frame is covered completely, and it turns out that is not why it goes quiet.
 
    It plays and fetches happily behind this one but never posts a PLAYER_EVENT, so the

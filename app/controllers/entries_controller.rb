@@ -480,6 +480,16 @@ class EntriesController < ApplicationController
     @embed_url = @entry.embed_url(subentry: @current_subentry,
                                   autoplay: @channel.auto_play_for(current_user),
                                   start_at: start_position)
+
+    # A provider the app serves itself gets a <video> instead of a frame. The address is
+    # ours (public/mega-sw.js), so the resume cannot ride in it the way it rides in an
+    # embed's query string -- it is handed to the element separately and applied once the
+    # file's length is known. See Source#native?.
+    source = @entry.resolved_source
+    if source&.native?
+      @native_url = source.native_url_for(@entry)
+      @native_start = start_position.to_i
+    end
     if @embed_url.blank?
       flash[:alert] = "No video source available for this entry"
       redirect_to list_path(@entry.list) and return

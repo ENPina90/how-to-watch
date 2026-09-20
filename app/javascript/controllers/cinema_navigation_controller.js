@@ -221,7 +221,7 @@ export default class extends Controller {
     const frame = document.getElementById("cinema")
     const incoming = page.getElementById("cinema")
 
-    if (frame && incoming && frame.src !== incoming.src) {
+    if (frame && incoming && this.changesPlayer(frame, incoming)) {
       // Already warm and playing? Then the move costs nothing at all -- no request left to
       // make and no embed left to build. Matched on the address rather than on which
       // control was pressed, so it works however the move was started: the up-next card
@@ -232,6 +232,12 @@ export default class extends Controller {
         // knowing: this player has been running with nobody in front of it, and wherever it
         // has reached is not somewhere anybody watched it reach.
         page.getElementById("cinema-chrome")?.setAttribute("data-player-progress-warmed-value", "true")
+      } else if (frame.tagName !== incoming.tagName || incoming.tagName === "VIDEO") {
+        // A player of our own is replaced rather than re-pointed, and so is any move that
+        // changes the kind of player. Re-pointing works for an iframe because a src is all
+        // an iframe is; a <video> is handed its address by native-player once the service
+        // worker is in control, and Stimulus only runs that for an element it has not seen.
+        frame.replaceWith(incoming)
       } else {
         // The label is what a screen reader calls the frame, so it has to move with the src
         // or the player is announced as whatever was playing before. aria-label rather
@@ -305,6 +311,26 @@ export default class extends Controller {
     delete this.spares[role]
 
     return true
+  }
+
+  // Is the player about to change -- what it is playing, or what kind of player it is?
+  //
+  // Both halves matter. A move between two providers of the same kind changes only the
+  // address; a move between an embed and a player of our own changes the element itself,
+  // and the addresses are not comparable across that line anyway.
+  changesPlayer(frame, incoming) {
+    return frame.tagName !== incoming.tagName || this.addressOf(frame) !== this.addressOf(incoming)
+  }
+
+  // The address an element will play, however it carries it.
+  //
+  // An iframe carries it in `src`. A <video> served by our own worker does not have one
+  // yet -- native-player hands it over after the worker is in control -- so its address is
+  // the data attribute it was rendered with, which the live element keeps. Reading `src`
+  // for both would compare a running player's address against an empty string and call
+  // every move a change.
+  addressOf(element) {
+    return element.tagName === "VIDEO" ? (element.dataset.nativePlayerSrcValue ?? "") : element.src
   }
 
   // Everything except the frame: adopting a spare has already dealt with that.
@@ -410,7 +436,9 @@ export default class extends Controller {
       // things -- asking for what is on next a little too early answers with the programme
       // already playing, a few seconds further in, and warming that would be a second
       // stream of the film we are already watching.
-      if (!incoming?.src || this.samePlaying(incoming.src, document.getElementById("cinema")?.src)) return
+      const address = incoming ? this.addressOf(incoming) : ""
+      const live = document.getElementById("cinema")
+      if (!address || this.samePlaying(address, live ? this.addressOf(live) : "")) return
 
       // Both the address asked for and the one it landed on: the first is how a control is
       // recognised as pointing at what is already warm, the second is what the history gets.
@@ -422,6 +450,15 @@ export default class extends Controller {
       // break is, since the adverts come from YouTube rather than from the film's provider.
       // The fetched page is kept either way: moving there then costs no request, only the
       // ~1.5s of embed load the warming would have spent.
+      // A player of our own is never warmed in a frame, though its page is still fetched.
+      //
+      // Warming means starting a second stream and stopping it again, and for a provider
+      // the app serves itself that second stream is ours to pay for twice over: our
+      // service worker decrypting it, and a second hardware decoder on the same machine --
+      // which is the fault a fortnight went into chasing. The move there still costs no
+      // request, which was always the larger half of what warming saves.
+      if (incoming.tagName === "VIDEO") return
+
       const adapter = this.adapterFor(incoming)
       if (adapter) this.buildSpareFrame(role, incoming, adapter)
     } catch {
