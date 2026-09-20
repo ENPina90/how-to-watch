@@ -559,6 +559,11 @@ class EntriesController < ApplicationController
     @embed_url = @source&.url_for(@entry, subentry: @subentry,
                                           autoplay: @autoplay, start_at: @start_at).presence
 
+    # A provider the app can play itself gets a <video> rather than a frame -- unless the
+    # address says otherwise. `?player=embed` is how the two are compared on the same file:
+    # the provider's player and ours, one after the other, with the same readout running.
+    @native_url = @source.native_url_for(@entry) if @source&.native? && params[:player] != 'embed'
+
     # What the page can put a second player on, when somebody presses the button. Built
     # here rather than in the page because working out what a real spare would have been
     # is a question about channels, providers and templates -- all of which live on this
