@@ -72,7 +72,7 @@ local Redis is required.
   request flows, jobs, ops, and a **symptom → file debugging map** at the end. Read it
   before diagnosing anything.
 - `docs/IMPROVEMENT_PLAN.md` — the live backlog.
-- `docs/guides/` — task guides (backups, Railway deploy, image repair, Letterboxd, VidSrc).
+- `docs/guides/` — task guides (backups, Railway deploy, image repair, Letterboxd, VidSrc, MEGA).
   Written Sept 2025; check them against the code before following.
 - `docs/guides/CHEATSHEET.md` — the production console, every scheduled job with its time,
   how to run each by hand, and the rake tasks worth knowing.

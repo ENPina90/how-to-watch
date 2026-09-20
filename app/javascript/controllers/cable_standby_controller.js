@@ -51,9 +51,20 @@ export default class extends Controller {
     if (this.youtubeValue) this.timers = HANDSHAKES.map((delay) => setTimeout(() => this.ask(), delay))
 
     if (this.silenceValue && this.frame?.dataset.adopted !== "true") this.listenForSilence()
+
+    // A player of our own says so outright. Neither test above applies to it -- there is no
+    // handshake to answer and no silence to measure, because it is not an embed -- but a
+    // <video> that cannot play its file fires `error`, which is better evidence than either
+    // and arrives without being asked. Without this a dead MEGA programme showed a black
+    // rectangle where every other provider gets the card.
+    if (this.frame?.tagName === "VIDEO") {
+      this.failed = () => this.giveUp()
+      this.frame.addEventListener("error", this.failed)
+    }
   }
 
   disconnect() {
+    if (this.failed) this.frame?.removeEventListener("error", this.failed)
     if (this.heard) window.removeEventListener("message", this.heard)
     if (this.shown) document.removeEventListener("visibilitychange", this.shown)
     this.timers.forEach(clearTimeout)
@@ -115,6 +126,17 @@ export default class extends Controller {
     if (!card) return
 
     card.hidden = false
-    if (this.frame) this.frame.src = "about:blank"
+    if (!this.frame) return
+
+    // Blanked so the provider's own error page is not left showing behind the card -- that
+    // is the thing being hidden, and it may still be making noise. A <video> is emptied
+    // rather than pointed at about:blank: handed a document address it would only raise
+    // the same error again, and the card is already up.
+    if (this.frame.tagName === "VIDEO") {
+      this.frame.removeAttribute("src")
+      this.frame.load()
+    } else {
+      this.frame.src = "about:blank"
+    }
   }
 }

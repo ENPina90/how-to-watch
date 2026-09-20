@@ -420,6 +420,23 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   --fullscreen-button-size: 44px;
 }
 
+/* A player of our own draws the browser's control bar along the bottom of the picture,
+   where an embed draws its own inside the frame. So the two pieces of chrome that sit down
+   there move up to clear it rather than landing on it.
+
+   There is nothing to mask here, which is the difference from the case above: the native
+   fullscreen button is switched off (`controlslist` on the element), so ours is not
+   covering a dead control, it is simply the only one. It goes above the bar instead of on
+   it. The bar is about 48px tall in Chrome and is not ours to measure, so both numbers
+   leave room for it to differ. */
+.cinema__screen--native {
+  --fullscreen-button-bottom: 76px;
+}
+
+.cinema__screen--native .source-switcher {
+  bottom: 62px;
+}
+
 .cinema__fullscreen {
   position: absolute;
   right: calc(var(--fullscreen-button-right) - var(--fullscreen-button-size) / 2);
@@ -526,6 +543,26 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+/* A player of our own is a <video>, not a frame, and a <video> does not letterbox itself
+   the way an embed's player does -- left alone it stretches to the box. `contain` keeps
+   the picture's own shape inside the screen, which is what the embeds do for us. */
+video.cinema__frame {
+  background: #000;
+  object-fit: contain;
+}
+
+/* Said where the picture would have been, because a <video> with nothing to play is a
+   black rectangle and no explanation -- which is precisely the failure this app spent a
+   fortnight chasing on somebody else's player. */
+.cinema__player-failed {
+  position: absolute;
+  inset: auto 0 15% 0;
+  z-index: 2;
+  margin: 0;
+  color: #eee;
+  text-align: center;
 }
 
 /* The warmed frame is covered completely, and it turns out that is not why it goes quiet.

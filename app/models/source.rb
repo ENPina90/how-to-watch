@@ -187,9 +187,14 @@ class Source < ApplicationRecord
     "vidsrc-embed.ru" => "vidsrc",
     "vidsrcme"        => "vidsrc",
     # YouTube's embed speaks its IFrame API over postMessage to any page that asks, once the
-    # URL carries enablejsapi (PLAYER_PARAMS). MEGA and Drive say nothing at all: checked
-    # 2026-09-15, MEGA's embed registers no message listener and posts nothing up.
+    # URL carries enablejsapi (PLAYER_PARAMS).
     "youtube"         => "youtube",
+    # MEGA is here for the opposite reason to the others: not because its player answers us
+    # -- checked 2026-09-15, its embed registers no message listener and posts nothing up --
+    # but because we no longer use its player. The file is decrypted and served to a <video>
+    # of our own (NATIVE_PLAYERS, public/mega-sw.js), and an element in our own document
+    # needs no protocol to be driven. This entry is what tells the rest of the app so.
+    "mega"            => "mega",
   }.freeze
 
   def sync_adapter = SYNC_ADAPTERS[slug]
@@ -304,6 +309,49 @@ class Source < ApplicationRecord
   }.freeze
 
   def fragment_resume_flag = FRAGMENT_RESUME_FLAGS[slug]
+
+  # Providers the app can play itself, without framing anybody's player.
+  #
+  # MEGA is the only one, and only because its files are ours in a way a VidSrc stream is
+  # not: the link carries the decryption key, the API hands out a plain HTTPS URL that
+  # honours byte ranges, and every file in this library is an MP4 the browser can demux on
+  # its own. So the page can hold a <video> of its own instead of an iframe -- see
+  # docs/guides/MEGA.md for the measurements behind each of those claims.
+  #
+  # What that buys is everything an embed refuses. MEGA's own player answers no message
+  # from the page (SYNC_ADAPTERS says so, and there are the probes), which is why a MEGA
+  # entry has never had a resume, a position, an up-next card, a keyboard, or a place in a
+  # watch party. A <video> in our own document answers all of it, because it is ours.
+  NATIVE_PLAYERS = %w[mega].freeze
+
+  def native? = NATIVE_PLAYERS.include?(slug)
+
+  # Where the page points a <video> at, for a provider it can play itself.
+  #
+  # Not a template, deliberately, even though every other URL this class produces is one.
+  # A template substitutes into somebody else's address; this builds one of *ours*, served
+  # by the service worker in public/mega-sw.js, and the shape of it is that worker's
+  # business rather than a provider's. Templates are for URLs we do not control.
+  #
+  # The two halves of a MEGA link go in as separate path segments: the file handle, then
+  # the key. Any option run the link carries -- `!900s1a`, the autoplay and resume pairs an
+  # embed needs -- is dropped, because a player of our own takes its position from the page
+  # rather than from the address.
+  def native_url_for(entry)
+    handle, key = mega_link(entry)
+    return nil if handle.blank? || key.blank?
+
+    "/mega/#{handle}/#{key}/video.mp4"
+  end
+
+  # A MEGA link split into the file it names and the key that opens it. The same parse
+  # MegaAvailability does server-side, and for the same reason -- a key truncated when it
+  # was pasted points at a file nothing will ever decrypt.
+  def mega_link(entry)
+    handle, fragment = entry.source_key.to_s.split('#', 2)
+
+    [handle, fragment.to_s.split(/[!\/]/).first]
+  end
 
   # Origins a provider's player reaches for *after* the page has framed it, so they can be
   # warmed while the first frame is still loading.

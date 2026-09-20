@@ -359,6 +359,36 @@ the connection, the heap, and a `Mark` button for the moment the picture actuall
 It renders outside `#cinema-chrome`, which every move replaces, and inside `.cinema__screen`,
 which is what goes fullscreen — `spec/requests/playback_debug_spec.rb` pins both.
 
+### 5.3c Playing a provider ourselves — MEGA
+
+MEGA's embed answers no message from the page, so for as long as it was framed a MEGA entry
+could have no position, no resume, no watched mark, no up-next card, no keyboard and no place
+in a watch party — 424 entries, about an eighth of the library.
+
+It is no longer framed. `public/mega-sw.js` is a service worker claiming
+`/mega/<handle>/<key>/video.mp4`: it turns each request a `<video>` makes into a ranged fetch
+to MEGA, decrypts it on the way past with the key out of the link, and answers `206`. The
+element on the watch page is then playing an ordinary same-origin MP4, and everything that
+rides on a player's reports works because there is no longer anybody else's player in the way.
+
+`Source::SYNC_ADAPTERS['mega']` is the switch — `player_progress` and `player_keys` both bail
+at connect without an adapter. `Source#native?` / `#native_url_for` decide and build;
+`services/mega_player.js` drives the element through the same interface the embeds use;
+`native_player_controller.js` registers the worker and hands over the address **after** the
+worker has claimed the page, which is the one piece of sequencing the whole thing depends on.
+
+The cable page holds the same element, started at the clock's offset rather than a resume,
+and deliberately without controls — a channel is not paused or scrubbed, which is why that
+page already masks the embed's play button and covers its scrubber. What cable gains is the
+reporting: `cable-clock` hears the file's real duration, so it can move a short programme on
+and a runtime-less entry can earn its place on the dial.
+
+Two consequences elsewhere: a move between entries replaces the element rather than
+re-pointing it, and `cinema-navigation` warms a native player *buffered and never played* —
+`preload` fills the buffer, nothing starts, so there is no second decoder and nothing that
+can refuse to stop. That is the one kind of warming an embed spare can never be. **docs/guides/MEGA.md** has the measurements — CORS, `ssl: 2`, ranges, the
+key fold — and the reasoning for a service worker over MediaSource.
+
 ### 5.4 Finishing something
 - `entries#complete` — toggles `UserEntry` completion; on completion advances the user's
   list position to the next entry. Renders the `entries/_completion_status` partial.
@@ -1085,7 +1115,8 @@ tell you how far behind it is likely to be. Trust the code; update the section y
 | An admin warning will not clear, or comes back | the notifier reconciles rather than appends (`AdminStateNotifier`), so the row survives only while `key_for` still matches something in the current set. A key that encodes changing state (a URL digest, an expiry date) is what makes dismissal safe. |
 | List page 500s while grouping | `ListsController#filter_entries` + `sort_sections`; nullable `genre`/`year`/`rating` are the usual cause. |
 | Player is blank / "No video source available" | `Entry#embed_url` → `#resolved_source` → the `Source` row's `templates`. Check the source is `active` and its template has a key for that `media`. There is no legacy fallback left, so a blank URL is always the template or what it substitutes — `/entries/:id/watch_only` (§5.3a) renders either way and names which of the two it was. |
-| A film restarts itself, stutters or stops for no reason | `?debug=1` on the watch page (§5.3b) and read the spare verdict; `/entries/:id/watch_only` plus its second-player rig (§5.3a) reproduces it one variable at a time; `/entries/:id/watch_only` (§5.3a) is the control with nothing warmed. The known cause is a warmed spare that cannot be told to stop and plays a second film behind the first for two hours — two hardware decoders, a `PIPELINE_ERROR_DECODE`, and on MEGA (no resume) a restart from the beginning. `STOP_DEADLINE` in `cinema_navigation_controller.js` now takes the frame off a spare that will not stop; VIDSRC.md §6a has the measurements. |
+| A film restarts itself, stutters or stops for no reason | `?debug=1` on the watch page (§5.3b) and read the spare verdict; `/entries/:id/watch_only` plus its second-player rig (§5.3a) reproduces it one variable at a time; `/entries/:id/watch_only` (§5.3a) is the control with nothing warmed. The known cause is a warmed spare that cannot be told to stop and plays a second film behind the first for two hours — two hardware decoders, a `PIPELINE_ERROR_DECODE`, and on MEGA (no resume) a restart from the beginning. `STOP_DEADLINE` in `cinema_navigation_controller.js` now takes the frame off a spare that will not stop; VIDSRC.md §6a has the measurements. MEGA no longer loses the film to it either: it plays in an element of our own and records a position, so an interruption resumes rather than starting again (§5.3c). |
+| A MEGA entry will not play, or plays as a black rectangle | `public/mega-sw.js` and `native_player_controller.js` (§5.3c). The worker must be *in control* of the page before the element asks for a byte, and the address it answers exists nowhere else. Compare with MEGA's own player at `/entries/:id/watch_only?player=embed`. docs/guides/MEGA.md §6 has the known limits — transfer quota, MP4 only, no worker no playback. |
 | Wrong episode plays | `UserEntryPosition` for that user+entry; `Entry#current_subentry_for_user`; for anime, `Subentry#calculate_absolute_episode_number`. |
 | Episode numbers off for anime | anime may use absolute numbering (`%{absolute_episode}`); note `calculate_absolute_episode_number` counts within one entry, and each season is its own entry here. |
 | "Watched" state wrong or resets | `UserEntry` (not `entries.completed`). Note `Entry#user_entry_for` **creates** a row on read. |

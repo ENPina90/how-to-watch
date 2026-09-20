@@ -480,6 +480,16 @@ class EntriesController < ApplicationController
     @embed_url = @entry.embed_url(subentry: @current_subentry,
                                   autoplay: @channel.auto_play_for(current_user),
                                   start_at: start_position)
+
+    # A provider the app serves itself gets a <video> instead of a frame. The address is
+    # ours (public/mega-sw.js), so the resume cannot ride in it the way it rides in an
+    # embed's query string -- it is handed to the element separately and applied once the
+    # file's length is known. See Source#native?.
+    source = @entry.resolved_source
+    if source&.native?
+      @native_url = source.native_url_for(@entry)
+      @native_start = start_position.to_i
+    end
     if @embed_url.blank?
       flash[:alert] = "No video source available for this entry"
       redirect_to list_path(@entry.list) and return
@@ -558,6 +568,11 @@ class EntriesController < ApplicationController
     # way and says what it found.
     @embed_url = @source&.url_for(@entry, subentry: @subentry,
                                           autoplay: @autoplay, start_at: @start_at).presence
+
+    # A provider the app can play itself gets a <video> rather than a frame -- unless the
+    # address says otherwise. `?player=embed` is how the two are compared on the same file:
+    # the provider's player and ours, one after the other, with the same readout running.
+    @native_url = @source.native_url_for(@entry) if @source&.native? && params[:player] != 'embed'
 
     # What the page can put a second player on, when somebody presses the button. Built
     # here rather than in the page because working out what a real spare would have been

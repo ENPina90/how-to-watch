@@ -41,13 +41,32 @@
       and there is no container here. A page meant to be sat in front of for two hours needs
       to be able to fill the screen. %>
   <div class="frames" id="frames">
-    <iframe id="player"
-            class="frame frame--live"
-            aria-label="<%= @entry.name %>"
-            referrerpolicy="origin"
-            allow="autoplay"
-            allowfullscreen
-            src="<%= @embed_url %>"></iframe>
+    <% if @native_url %>
+      <%# Ours, not theirs. The bytes come from MEGA and are decrypted on the way past by
+          public/mega-sw.js, so what this element is playing is an ordinary same-origin
+          MP4 -- which is why it can have controls at all. `?player=embed` puts the
+          provider's own player back, for comparing the two on the same file.
+
+          The src is set by the script below rather than written here, because the service
+          worker has to be running before the element asks for a single byte. An element
+          that starts loading during the parse would race it and lose. %>
+      <video id="player"
+             class="frame frame--live"
+             aria-label="<%= @entry.name %>"
+             data-src="<%= @native_url %>"
+             <% if @start_at.to_i.positive? %>data-start="<%= @start_at %>"<% end %>
+             controls
+             playsinline
+             <%= 'autoplay' if @autoplay %>></video>
+    <% else %>
+      <iframe id="player"
+              class="frame frame--live"
+              aria-label="<%= @entry.name %>"
+              referrerpolicy="origin"
+              allow="autoplay"
+              allowfullscreen
+              src="<%= @embed_url %>"></iframe>
+    <% end %>
   </div>
 <% end %>
 
@@ -199,7 +218,10 @@
   const seconds = () => (performance.now() - started) / 1000;
   const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
   const el = (id) => document.getElementById(id);
-  const frameCount = () => (frames ? frames.querySelectorAll("iframe").length : 0);
+  // Players, not frames. On a provider the app plays itself the live element is a <video>
+  // rather than an iframe, and a readout that counted only frames said "0 players" over a
+  // playing film -- which is the one number on this page that has to be true.
+  const frameCount = () => (frames ? frames.querySelectorAll("iframe, video").length : 0);
 
   // Loud ones are the ones that can end a film. They are coloured in the readout so a
   // glance finds them among the heartbeats.
@@ -516,12 +538,67 @@
     on(document, "keydown", (event) => { if (event.key === "m") mark(); });
   }
 
+  // ---- the player we own ------------------------------------------------------------
+
+  // Nothing here until the service worker is running. The element's first request has to
+  // be one the worker can answer; made a moment too early it goes to the network, finds no
+  // such path, and the film is dead before it starts.
+  //
+  // `ready` is not enough on a first visit: the worker installs, activates and claims the
+  // page, and until it has claimed it `controller` is null and fetches go past it. So this
+  // waits for the claim as well.
+  async function startNativePlayer() {
+    const video = document.getElementById("player");
+    if (!video || video.tagName !== "VIDEO") return;
+
+    if (!("serviceWorker" in navigator)) {
+      record("no-service-worker", { note: "cannot play MEGA natively here" });
+      alarm();
+      return;
+    }
+
+    try {
+      await navigator.serviceWorker.register("/mega-sw.js");
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) {
+        await new Promise((claimed) =>
+          navigator.serviceWorker.addEventListener("controllerchange", claimed, { once: true }));
+      }
+      record("worker-ready");
+    } catch (error) {
+      record("worker-failed", { message: String(error).slice(0, 160) });
+      alarm();
+      return;
+    }
+
+    // Everything the element does from here is worth a line: this is a player the page can
+    // finally hear, which is the whole point of owning it.
+    on(video, "loadedmetadata", () => {
+      record("metadata", { seconds: Math.round(video.duration), seekable: video.seekable.length > 0 });
+      const start = Number(video.dataset.start || 0);
+      if (start > 0) video.currentTime = start;
+    });
+    on(video, "playing", () => record("playing", { at: Math.round(video.currentTime) }));
+    on(video, "pause", () => record("paused", { at: Math.round(video.currentTime) }));
+    on(video, "seeked", () => record("seeked", { at: Math.round(video.currentTime) }));
+    on(video, "ended", () => record("ended"));
+    on(video, "waiting", () => record("buffering", { at: Math.round(video.currentTime) }));
+    on(video, "error", () => {
+      record("video-error", { code: video.error?.code, message: video.error?.message?.slice(0, 120) });
+      alarm();
+    });
+
+    video.src = video.dataset.src;
+    record("native-src-set");
+  }
+
   drawStored();
   watchTheFrames();
   watchTheBrowser();
   watchTheKeyboard();
   wireTheControls();
   boot();
+  startNativePlayer();
   paint();
   setInterval(paint, 1000);
   // Every fifteen seconds, so an hour of watching is 240 lines rather than 3,600, and the

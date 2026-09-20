@@ -48,7 +48,11 @@
     switcher, the modals. All of it is replaced together on a move, which is why the
     per-entry controller lives on it -- being replaced is what makes Stimulus reconnect it
     with the new entry's values. %>
-<div class="cinema__screen"
+<%# `--native` when the app is playing the file itself. The chrome along the bottom of the
+    screen is placed against whatever draws a control bar there, and for an embed that is
+    the provider's player inside the frame; for a player of our own it is our own bar, at a
+    different height. See the offsets in _cinema.scss. %>
+<div class="cinema__screen<%= ' cinema__screen--native' if @native_url %>"
      data-controller="cinema-fullscreen cinema-navigation"
      <%# `f` is handled by player-keys, which has the keyboard, but fullscreen belongs to
          this element and its controller. Dispatched across rather than reached into. %>
@@ -84,14 +88,47 @@
       move, and nothing is left to dismiss the bubble -- so the entry's name sits on top
       of the film for the rest of it, idle chrome and fullscreen included. The label
       names the frame for a screen reader just as well and draws nothing. %>
-  <iframe id="cinema"
-      class="cinema__frame cinema__frame--live"
-      aria-label="<%= @entry.name %>"
-      referrerpolicy="origin"
-      allow="autoplay"
-      src="<%= @embed_url %>">
+  <% if @native_url %>
+    <%# A provider the app serves itself: the bytes come from MEGA and are decrypted on the
+        way past by public/mega-sw.js, so this is an ordinary same-origin MP4 and the
+        element is ours. That is what gives a MEGA entry a position, a resume, the
+        keyboard, the up-next card and a place in a watch party for the first time -- none
+        of which its embed would ever answer for.
 
-  </iframe>
+        `controls`, because otherwise there are none. The ring around the screen is how you
+        leave an entry, not how you play one -- for every other provider the scrubber, the
+        volume and the clock live inside the provider's own player, and a bare <video> has
+        no transport at all. player-keys still works and swallows its keys, so the two do
+        not fight over the space bar.
+
+        `nofullscreen` for the reason the frames are denied `allowfullscreen`: fullscreen
+        belongs to the screen around the player, which keeps the ring and the up-next card
+        on it. The native button would hand the display to the element alone. `nodownload`
+        because the menu would otherwise offer to save six hundred megabytes, pulled
+        through our own worker, to somebody who meant to press mute.
+
+        The src is set by native-player once the service worker is in control -- see the
+        controller for why it cannot be written here. %>
+    <video id="cinema"
+        class="cinema__frame cinema__frame--live"
+        aria-label="<%= @entry.name %>"
+        controls
+        controlslist="nofullscreen nodownload"
+        playsinline
+        <%= 'autoplay' if @channel.auto_play_for(current_user) %>
+        data-controller="native-player"
+        data-native-player-src-value="<%= @native_url %>"
+        data-native-player-start-value="<%= @native_start %>"></video>
+  <% else %>
+    <iframe id="cinema"
+        class="cinema__frame cinema__frame--live"
+        aria-label="<%= @entry.name %>"
+        referrerpolicy="origin"
+        allow="autoplay"
+        src="<%= @embed_url %>">
+
+    </iframe>
+  <% end %>
   </div>
 
   <%# Sits with the screen rather than the chrome: it is the same button whatever is

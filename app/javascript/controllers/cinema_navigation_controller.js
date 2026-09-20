@@ -221,7 +221,7 @@ export default class extends Controller {
     const frame = document.getElementById("cinema")
     const incoming = page.getElementById("cinema")
 
-    if (frame && incoming && frame.src !== incoming.src) {
+    if (frame && incoming && this.changesPlayer(frame, incoming)) {
       // Already warm and playing? Then the move costs nothing at all -- no request left to
       // make and no embed left to build. Matched on the address rather than on which
       // control was pressed, so it works however the move was started: the up-next card
@@ -232,6 +232,12 @@ export default class extends Controller {
         // knowing: this player has been running with nobody in front of it, and wherever it
         // has reached is not somewhere anybody watched it reach.
         page.getElementById("cinema-chrome")?.setAttribute("data-player-progress-warmed-value", "true")
+      } else if (frame.tagName !== incoming.tagName || incoming.tagName === "VIDEO") {
+        // A player of our own is replaced rather than re-pointed, and so is any move that
+        // changes the kind of player. Re-pointing works for an iframe because a src is all
+        // an iframe is; a <video> is handed its address by native-player once the service
+        // worker is in control, and Stimulus only runs that for an element it has not seen.
+        frame.replaceWith(incoming)
       } else {
         // The label is what a screen reader calls the frame, so it has to move with the src
         // or the player is announced as whatever was playing before. aria-label rather
@@ -267,10 +273,13 @@ export default class extends Controller {
   // way.
   adoptSpare(incoming) {
     const live = document.getElementById("cinema")
-    if (!live || !incoming?.src) return false
+    const address = incoming ? this.addressOf(incoming) : ""
+    if (!live || !address) return false
 
-    const role = Object.keys(this.spares)
-      .find((key) => document.getElementById(FRAMES[key])?.src === incoming.src)
+    const role = Object.keys(this.spares).find((key) => {
+      const held = document.getElementById(FRAMES[key])
+      return held ? this.addressOf(held) === address : false
+    })
     if (!role) return false
 
     const spare = this.spares[role]
@@ -296,15 +305,62 @@ export default class extends Controller {
     // browser started it muted -- which is what kept it quiet behind the film being watched,
     // and would otherwise leave the viewer landing on a silent channel. By now somebody has
     // touched the page, or a countdown they watched has run out.
-    spare.player?.unmute()
-    spare.player?.play()
-    spare.player?.destroy()
+    if (frame.tagName === "VIDEO") {
+      this.startWarmedVideo(frame, incoming)
+    } else {
+      spare.player?.unmute()
+      spare.player?.play()
+      spare.player?.destroy()
+    }
 
     // Taken out of the store before the rest are discarded, or the frame just adopted would
     // be torn down again a moment later.
     delete this.spares[role]
 
     return true
+  }
+
+  // Is the player about to change -- what it is playing, or what kind of player it is?
+  //
+  // Both halves matter. A move between two providers of the same kind changes only the
+  // address; a move between an embed and a player of our own changes the element itself,
+  // and the addresses are not comparable across that line anyway.
+  changesPlayer(frame, incoming) {
+    return frame.tagName !== incoming.tagName || this.addressOf(frame) !== this.addressOf(incoming)
+  }
+
+  // The address an element will play, however it carries it.
+  //
+  // An iframe carries it in `src`. A <video> served by our own worker does not have one
+  // yet -- native-player hands it over after the worker is in control -- so its address is
+  // the data attribute it was rendered with, which the live element keeps. Reading `src`
+  // for both would compare a running player's address against an empty string and call
+  // every move a change.
+  addressOf(element) {
+    return element.tagName === "VIDEO" ? (element.dataset.nativePlayerSrcValue ?? "") : element.src
+  }
+
+  // A warmed player of our own, started for the first time.
+  //
+  // It was never playing, so there is nothing to resume -- only a position to take up and a
+  // play to make. The position comes from the incoming page rather than from the element,
+  // because where a viewer should pick up is a question the server answered a moment ago
+  // and the buffer knows nothing about.
+  //
+  // Muted while it warmed, for the same reason an embed spare is: so that filling a buffer
+  // behind the film cannot make a sound. Nobody would have heard it either way -- it never
+  // played -- but the flag would follow it into being watched.
+  startWarmedVideo(video, incoming) {
+    video.muted = false
+
+    const start = Number(incoming.dataset.nativePlayerStartValue || 0)
+    const seek = () => {
+      if (start > 0 && start < video.duration) video.currentTime = start
+      video.play()?.catch(() => {})
+    }
+
+    if (video.readyState >= 1) seek()
+    else video.addEventListener("loadedmetadata", seek, { once: true })
   }
 
   // Everything except the frame: adopting a spare has already dealt with that.
@@ -410,7 +466,9 @@ export default class extends Controller {
       // things -- asking for what is on next a little too early answers with the programme
       // already playing, a few seconds further in, and warming that would be a second
       // stream of the film we are already watching.
-      if (!incoming?.src || this.samePlaying(incoming.src, document.getElementById("cinema")?.src)) return
+      const address = incoming ? this.addressOf(incoming) : ""
+      const live = document.getElementById("cinema")
+      if (!address || this.samePlaying(address, live ? this.addressOf(live) : "")) return
 
       // Both the address asked for and the one it landed on: the first is how a control is
       // recognised as pointing at what is already warm, the second is what the history gets.
@@ -422,12 +480,57 @@ export default class extends Controller {
       // break is, since the adverts come from YouTube rather than from the film's provider.
       // The fetched page is kept either way: moving there then costs no request, only the
       // ~1.5s of embed load the warming would have spent.
+      // A player of our own is warmed differently, and the difference is the whole reason
+      // it is safe. See buildSpareVideo.
+      if (incoming.tagName === "VIDEO") return this.buildSpareVideo(role, incoming)
+
       const adapter = this.adapterFor(incoming)
       if (adapter) this.buildSpareFrame(role, incoming, adapter)
     } catch {
       // A warm-up that fails costs the viewer nothing; the move it would have helped
       // simply pays full price.
     }
+  }
+
+  // Warm a player of our own: buffered, and never played.
+  //
+  // This is the thing an embed could never do. Warming somebody else's player means
+  // starting it and then asking it to stop, and the asking can fail -- a VidSrc spare that
+  // never speaks cannot be told anything (VIDSRC.md §6a), which is why STOP_DEADLINE exists
+  // and why a spare that will not stop loses its frame. An element of our own is not asked
+  // to stop, because it is never started. `preload` fills its buffer; nothing decodes to a
+  // screen, nothing plays, and there is no second hardware decoder -- which was the whole
+  // cost of the embed case.
+  //
+  // So there is no deadline here and nothing to tear down but the element itself. What it
+  // saves is smaller than for an embed and still real: the API call that resolves the
+  // file's address, and enough of the file's front for it to start on the instant.
+  //
+  // Skipped when no service worker is in control. The address it would be pointed at is
+  // one only the worker answers, and on a page whose own player is an embed nothing has
+  // registered it -- a spare pointed at a path the app does not serve is a spare that 404s.
+  buildSpareVideo(role, incoming) {
+    if (!navigator.serviceWorker?.controller) return
+
+    const address = this.addressOf(incoming)
+    if (!address) return
+
+    const video = document.createElement("video")
+    video.id = FRAMES[role]
+    video.className = "cinema__frame"
+    video.setAttribute("aria-label", incoming.getAttribute("aria-label") ?? "")
+    video.playsInline = true
+    video.muted = true
+    video.preload = "auto"
+    // Carried across so the promoted element still answers `addressOf` on the move after
+    // this one -- it will not be carrying native-player, which is where these usually
+    // come from.
+    video.dataset.nativePlayerSrcValue = address
+    video.dataset.nativePlayerStartValue = incoming.dataset.nativePlayerStartValue ?? "0"
+    video.src = address
+
+    document.getElementById("cinema-frames").appendChild(video)
+    this.dispatch("spare-built", { target: document, detail: { role: role, adapter: "native", url: address } })
   }
 
   buildSpareFrame(role, incoming, adapter) {

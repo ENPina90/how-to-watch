@@ -57,14 +57,40 @@
      style="--watch-controls-right: 120px;">
 
   <div id="cinema-frames" class="cinema__frames">
-    <%# No `allowfullscreen`: fullscreen belongs to the container, exactly as on the watch
-        page. See cinema_fullscreen_controller.js. %>
-    <iframe id="cinema"
-            class="cinema__frame cinema__frame--live"
-            aria-label="<%= @entry.name %>"
-            referrerpolicy="origin"
-            allow="autoplay"
-            src="<%= @embed_url.presence || 'about:blank' %>"></iframe>
+    <% if @native_url %>
+      <%# A provider the app serves itself. The offset is set on the element rather than
+          asked for through the link, which is worth more here than anywhere: a cable
+          channel is wherever the clock says it is.
+
+          No `controls`, and that is not an oversight. This page already goes to the
+          trouble of covering the embed's play button with the guide button -- "their
+          control is not a dead button but a wrong one, and the safest place for a wrong
+          button is underneath a right one" -- and of laying a strip over their scrubber so
+          it cannot be dragged. A channel plays to a clock; pausing and seeking are the two
+          things it does not do. Giving our own player a bar with both on it would be
+          putting back precisely what the rest of this page works to take away. Mute is
+          still `m`, as it is for every provider here.
+
+          This is also why the screen carries no --native modifier: that one moves the
+          chrome up to clear our control bar, and here there is no bar to clear. %>
+      <video id="cinema"
+             class="cinema__frame cinema__frame--live"
+             aria-label="<%= @entry.name %>"
+             playsinline
+             autoplay
+             data-controller="native-player"
+             data-native-player-src-value="<%= @native_url %>"
+             data-native-player-start-value="<%= @native_start %>"></video>
+    <% else %>
+      <%# No `allowfullscreen`: fullscreen belongs to the container, exactly as on the watch
+          page. See cinema_fullscreen_controller.js. %>
+      <iframe id="cinema"
+              class="cinema__frame cinema__frame--live"
+              aria-label="<%= @entry.name %>"
+              referrerpolicy="origin"
+              allow="autoplay"
+              src="<%= @embed_url.presence || 'about:blank' %>"></iframe>
+    <% end %>
   </div>
 
   <%# Closes the guide on the way, so this always leaves you looking at the picture full

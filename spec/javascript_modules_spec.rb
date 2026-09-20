@@ -344,4 +344,58 @@ RSpec.describe 'JavaScript modules' do
       expect(deadline).to be > quiet
     end
   end
+
+  # Warming a player of our own is a different thing from warming an embed, and the
+  # difference is the whole reason it is allowed at all.
+  #
+  # An embed has to be started and then asked to stop, and the asking can fail -- which is
+  # what STOP_DEADLINE above exists for. A <video> we own is never started: `preload` fills
+  # its buffer and nothing plays, so there is no second decoder and nothing that can refuse
+  # to stop. Every assertion here pins one half of "buffered, never played", because a
+  # single `play()` slipped into this path would quietly reintroduce the fault the deadline
+  # was written to catch.
+  describe 'warming a player the app owns' do
+    let(:controller) { Rails.root.join('app/javascript/controllers/cinema_navigation_controller.js').read }
+    let(:warmed) { controller[/  buildSpareVideo\(role, incoming\) \{.*?\n  \}/m] }
+
+    it 'fills a buffer rather than starting a player' do
+      expect(warmed).to include('video.preload = "auto"')
+      expect(warmed).not_to include('.play()')
+      expect(warmed).not_to include('autoplay')
+    end
+
+    it 'keeps it silent while it warms' do
+      expect(warmed).to include('video.muted = true')
+    end
+
+    # The address it would be pointed at is one only the service worker answers. On a page
+    # whose own player is an embed nothing has registered it, and the spare would 404.
+    it 'declines when no service worker is in control' do
+      expect(warmed).to include('if (!navigator.serviceWorker?.controller) return')
+    end
+
+    # No deadline, because there is nothing to stop. Arming one here would mean a timer
+    # tearing down a frame for failing a test it was never subject to.
+    it 'arms no stop deadline, having nothing to stop' do
+      expect(warmed).not_to include('STOP_DEADLINE')
+      expect(warmed).not_to include('stopTimer')
+    end
+
+    # A <video> carries its address in a data attribute until it is handed one, so matching
+    # a spare to a move on `src` alone would never find it.
+    it 'matches a spare by the address it carries, whichever way it carries it' do
+      adopt = controller[/  adoptSpare\(incoming\) \{.*?\n  \}/m]
+
+      expect(adopt).to include('this.addressOf(held) === address')
+    end
+
+    # Promotion is the first time it plays at all, so it is a start rather than a resume.
+    it 'starts it, unmuted, when it is promoted' do
+      start = controller[/  startWarmedVideo\(video, incoming\) \{.*?\n  \}/m]
+
+      expect(start).to include('video.muted = false')
+      expect(start).to include('video.play()')
+      expect(start).to include('incoming.dataset.nativePlayerStartValue')
+    end
+  end
 end
