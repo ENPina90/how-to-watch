@@ -175,6 +175,18 @@ class CableController < ApplicationController
       @embed_url = @entry.embed_url(subentry: @current_subentry, autoplay: true,
                                     start_at: @slot.offset_at(@now), subtitles: false)
       return render :off_air, layout: "special_layout" if @embed_url.blank?
+
+      # A provider the app serves itself gets a <video> here too. The offset matters more
+      # on this page than anywhere else: a cable channel is where the clock says it is,
+      # and an element whose position we set outright lands on it exactly, where MEGA's
+      # own player had to be asked through a flag in the link's fragment and answered to
+      # the nearest ten seconds (VIDSRC.md has the measurement for the embeds; MEGA.md §2
+      # for this one). See Source#native?.
+      source = @entry.resolved_source
+      if source&.native?
+        @native_url = source.native_url_for(@entry)
+        @native_start = @slot.offset_at(@now).to_i
+      end
     end
 
     # When this channel next shows something else: the start of the break, or the start of

@@ -110,6 +110,51 @@ RSpec.describe 'Playing a provider ourselves', type: :request do
     end
   end
 
+  # Cable is the same element with the opposite decision about controls.
+  describe 'the cable page' do
+    let(:channel) { create(:list, user: user, name: 'Late Night', default: true) }
+    let!(:programme) do
+      create(:entry, list: channel, name: 'Solaris', media: 'movie', imdb: nil, position: 1,
+                     length: 90, provider: mega,
+                     source_key: 'AbCd1234#KeYkEyKeYkEyKeYkEyKeYkEyKeYkEyKeYkE')
+    end
+
+    before { CableSchedule.build_day!(channel, CableSchedule.today) }
+
+    it 'plays it in an element of our own here too' do
+      get cable_channel_path(channel)
+
+      expect(response.body).to include('<video id="cinema"')
+    end
+
+    # The one place the two pages disagree, and on purpose. This page covers the embed's
+    # play button with the guide button and lays a strip over its scrubber, because a
+    # channel plays to a clock and those are the two things it does not do. Our own bar
+    # would put both back.
+    it 'gives it no controls, because a channel is not paused or scrubbed' do
+      get cable_channel_path(channel)
+
+      video = response.body[/<video id="cinema".*?>/m]
+
+      expect(video).not_to include('controls')
+    end
+
+    # And so it needs none of the chrome-shifting the watch page does.
+    it 'leaves the screen without the modifier that clears a control bar' do
+      get cable_channel_path(channel)
+
+      expect(response.body).not_to include('cinema__screen--native')
+    end
+
+    # The offset is the whole point here: a channel is wherever the clock says it is, and
+    # an element we set outright lands on it rather than asking through a link fragment.
+    it 'starts it where the clock says' do
+      get cable_channel_path(channel)
+
+      expect(response.body).to match(/data-native-player-start-value="\d+"/)
+    end
+  end
+
   # The isolated page can show either, which is how the two get compared on one file.
   describe 'the isolated page' do
     it 'plays it ourselves by default' do
