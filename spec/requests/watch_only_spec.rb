@@ -20,12 +20,6 @@ RSpec.describe 'Watching an entry in isolation', :needs_provider, type: :request
   end
 
   describe 'isolation' do
-    it 'frames the player once and nothing else' do
-      get watch_only_entry_path(entry)
-
-      expect(response.body.scan('<iframe').length).to eq(1)
-    end
-
     it 'leaves out the channel furniture the watch page carries' do
       get watch_only_entry_path(entry)
 
@@ -34,14 +28,88 @@ RSpec.describe 'Watching an entry in isolation', :needs_provider, type: :request
       expect(response.body).not_to include('cinema-navigation')
     end
 
-    # The preload is the prime suspect whenever a player misbehaves, so the page whose job
-    # is to rule it out must not be able to start one.
-    it 'cannot warm a second player, because it has no controller to do it with' do
+    # The preload is the prime suspect whenever a player misbehaves, so the page that exists
+    # to rule it out must never start one by itself. The rig below can put a second player
+    # here by hand, which is a different thing: a control that can be turned into a
+    # reproduction on purpose, and only on purpose.
+    it 'warms nothing on its own, having no controller that could' do
       get watch_only_entry_path(entry)
 
       expect(response.body).not_to include('data-cinema-navigation-preload-value')
       expect(response.body).not_to include('importmap')
       expect(response.body).not_to include('application.js')
+    end
+
+    it 'renders exactly one frame before anybody presses anything' do
+      get watch_only_entry_path(entry)
+
+      expect(response.body.scan('<iframe').length).to eq(1)
+    end
+  end
+
+  # Putting a second player on the page by hand, to find out whether that -- and not the
+  # provider -- is what kills a film. What the watch page does five seconds after it loads,
+  # here on a button.
+  describe 'the second-player rig' do
+    # Named so its slug maps to a real adapter in Source::SYNC_ADAPTERS. The shared spec
+    # provider's does not, and a neighbour the watch page could never warm is one this rig
+    # must not offer -- which is the rule being exercised here.
+    let!(:warmable) do
+      Source.create!(name: 'Vidsrc2', kind: 'imdb', active: true, position: 0,
+                     templates: { 'movie' => 'https://vidsrc.test/movie/%{imdb}' },
+                     autoplay_param: 'autoplay')
+    end
+    let!(:neighbour) do
+      create(:entry, list: list, name: 'Mirror', imdb: 'tt9', media: 'movie',
+                     provider: warmable, position: 2)
+    end
+
+    it 'offers something to put in the second frame' do
+      get watch_only_entry_path(entry)
+
+      expect(response.body).to include('id="hudAddSpare"')
+      expect(response.body).to include('Mirror')
+    end
+
+    # A spare that sits on a play button decodes nothing, so it would prove the opposite of
+    # what the rig is for.
+    it 'gives every candidate an address that starts playing' do
+      get watch_only_entry_path(entry)
+
+      options = response.body.scan(/<option value="([^"]+)"/).flatten
+
+      expect(options).not_to be_empty
+      expect(options).to all(include('autoplay'))
+    end
+
+    # The entry itself is always on the list, and answers a question the neighbours cannot:
+    # whether a second stream of any kind is enough, or only one on a provider that keeps
+    # playing because it cannot be told to stop.
+    it 'always offers the entry itself as well' do
+      get watch_only_entry_path(entry)
+
+      expect(response.body.scan(/data-name="([^"]+)"/).flatten).to include(entry.name)
+    end
+
+    it 'puts an entry named outright at the top of the list' do
+      get watch_only_entry_path(entry, spare: neighbour.id)
+
+      first = response.body[/data-name="([^"]+)"/, 1]
+
+      expect(first).to eq(neighbour.name)
+    end
+
+    # A provider with no adapter never gets a spare frame on the watch page -- adapterFor
+    # declines it -- so offering one here would reproduce something that does not happen.
+    it 'leaves out a neighbour on a provider the watch page would never warm' do
+      direct = Source.create!(name: 'Direct only', kind: 'direct', active: true, position: 3,
+                              templates: { 'movie' => 'https://direct.test/%{source_key}' })
+      create(:entry, list: list, name: 'Unwarmable', imdb: nil, source_key: 'abc',
+                     provider: direct, media: 'movie', position: 3)
+
+      get watch_only_entry_path(entry)
+
+      expect(response.body).not_to include('Unwarmable')
     end
   end
 
