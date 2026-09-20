@@ -14,6 +14,29 @@ const BELOW = "below"
 const NEXT = "next"
 const FRAMES = { [BELOW]: "cinema-next", [NEXT]: "cinema-after" }
 
+// How long a spare has to prove it has stopped before it loses its frame, and how long
+// without moving counts as stopped.
+//
+// A spare is quietened by being asked, and the asking can fail: commit 4c5d182 measured a
+// vidsrc player reporting "fourteen times in seventy seconds and none at all in sixty",
+// the same code on the same entry, and a player that never speaks can never be told
+// anything. docs/guides/VIDSRC.md §6a has the other half of it -- such a frame is not
+// merely buffered but genuinely playing, and drifts: twenty minutes on one channel is
+// twenty minutes played on the one below.
+//
+// So a second film runs behind the first for the whole of it, on a coin toss nobody sees.
+// Two hardware decoders on one machine is how a decode failure is provoked, and on a
+// provider with no resume -- MEGA keeps no position of its own -- the film it kills starts
+// again from the beginning. That is the fault this deadline exists for.
+//
+// The numbers come from the reporting interval. A player reports about every five seconds;
+// a pause sent on the first report is ignored and the next one is obeyed, so a spare that
+// is going to stop has stopped by about ten. Twenty seconds is twice that, and eight is
+// longer than the gap between two reports, so a spare that is merely between reports is
+// not mistaken for one that has stopped.
+const STOP_DEADLINE = 20000
+const QUIET_ENOUGH = 8000
+
 // Moving between entries without rebuilding the page.
 //
 // The five ways out of an entry -- the channel above and below, the entry either side, and
@@ -253,6 +276,12 @@ export default class extends Controller {
     const spare = this.spares[role]
     const frame = document.getElementById(FRAMES[role])
 
+    // The deadline is off the moment the frame is the one being watched. It would find
+    // nothing to remove -- the frame is renamed below and the record deleted -- but a timer
+    // whose job is to tear down a player has no business still being armed against the live
+    // one.
+    clearTimeout(spare.stopTimer)
+
     live.remove()
     frame.id = "cinema"
     frame.classList.add("cinema__frame--live")
@@ -429,10 +458,22 @@ export default class extends Controller {
     // the page asks for -- but that is a policy about the document, not a promise to us, and
     // it lapses the moment the viewer clicks anything. Adopting a spare unmutes it, which is
     // what that was always for.
+    // And it has until STOP_DEADLINE to actually do it. See the constant.
+    this.spares[role].stopTimer = setTimeout(() => this.dropIfStillPlaying(role), STOP_DEADLINE)
+    this.dispatch("spare-built", { target: document, detail: { role: role, adapter: adapter, url: frame.src } })
+
     this.spares[role].player = playerAdapterFor(adapter, frame, {
       onState: (state) => {
         const spare = this.spares[role]
         if (!spare || spare.seenAt === state.progress) return
+
+        // When it last moved, which is the only evidence available that it has stopped:
+        // a player that has been paused stops reporting, so there is no message saying so
+        // and the absence of one is the answer.
+        if (spare.movedAt === undefined) {
+          this.dispatch("spare-spoke", { target: document, detail: { role: role, progress: state.progress } })
+        }
+        spare.movedAt = Date.now()
 
         spare.seenAt = state.progress
         spare.player?.mute()
@@ -483,10 +524,41 @@ export default class extends Controller {
     this.apply(page, url)
   }
 
+  // A spare that will not stop loses its frame.
+  //
+  // Keeping it costs a second film playing behind the one being watched for the whole of
+  // it -- see STOP_DEADLINE. Nobody asked for that, nobody can hear it, and it is a
+  // second hardware decoder running for two hours to save one second later.
+  //
+  // What is given up is only the frame. The page fetched for this direction is kept, so
+  // moving there still costs no request and no render; it pays the ~1.5s of embed load
+  // that the warm frame would have saved, which is what every other direction pays anyway.
+  // `adoptSpare` looks the frame up by id and finds nothing, so the move falls through to
+  // an ordinary load on its own -- there is no second path to keep in step.
+  //
+  // Silence counts against it. A spare that has never spoken cannot have been paused,
+  // and VIDSRC.md §6a is clear that such a frame is playing rather than idling.
+  dropIfStillPlaying(role) {
+    const spare = this.spares[role]
+    if (!spare) return
+
+    const spoke = spare.movedAt !== undefined
+    const settled = spoke && Date.now() - spare.movedAt >= QUIET_ENOUGH
+    const verdict = spoke ? (settled ? "stopped" : "would not stop") : "never spoke"
+
+    this.dispatch("spare-verdict", { target: document, detail: { role: role, kept: settled, verdict: verdict } })
+    if (settled) return
+
+    spare.player?.destroy()
+    spare.player = null
+    document.getElementById(FRAMES[role])?.remove()
+  }
+
   discardSpares() {
     clearTimeout(this.warmingTimer)
 
     Object.keys(this.spares).forEach((role) => {
+      clearTimeout(this.spares[role].stopTimer)
       this.spares[role].player?.destroy()
       document.getElementById(FRAMES[role])?.remove()
     })

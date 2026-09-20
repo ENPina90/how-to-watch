@@ -283,4 +283,65 @@ RSpec.describe 'JavaScript modules' do
       end
     end
   end
+
+  # The warmed spare is quietened by being asked, and the asking can fail. Commit 4c5d182
+  # measured a vidsrc player reporting "fourteen times in seventy seconds and none at all
+  # in sixty" -- the same code, the same entry -- and a player that never speaks can never
+  # be told anything. VIDSRC.md §6a has the rest: such a frame is not idling but playing,
+  # and drifts along with the clock. So a second film could run behind the first for the
+  # whole of it, on a coin toss nobody sees, which is two hardware decoders where there
+  # should be one.
+  #
+  # The deadline is what stops that. None of it can fail visibly -- a spare nobody can hear
+  # is exactly the thing that went unnoticed for months -- so each property is pinned here.
+  describe 'the deadline on a spare that will not stop' do
+    let(:controller) { Rails.root.join('app/javascript/controllers/cinema_navigation_controller.js').read }
+
+    it 'arms a deadline whenever it builds a spare frame' do
+      built = controller[/  buildSpareFrame\(role, incoming, adapter\) \{.*?\n  \}/m]
+
+      expect(built).to include('setTimeout(() => this.dropIfStillPlaying(role), STOP_DEADLINE)')
+    end
+
+    # Silence is not stopping. This is the whole point: the frame that caused the trouble
+    # is the one that never said anything, and "no news is good news" is what would put it
+    # straight back.
+    it 'keeps the frame only when the spare both spoke and then settled' do
+      verdict = controller[/  dropIfStillPlaying\(role\) \{.*?\n  \}/m]
+
+      expect(verdict).to include('const spoke = spare.movedAt !== undefined')
+      expect(verdict).to include('const settled = spoke && Date.now() - spare.movedAt >= QUIET_ENOUGH')
+      expect(verdict).to include('if (settled) return')
+    end
+
+    # Only the frame is given up. The page fetched for that direction is what makes the
+    # move cost no request, and throwing it away as well would turn a quietening problem
+    # into a slower channel change.
+    it 'gives up the frame but keeps the page already fetched' do
+      verdict = controller[/  dropIfStillPlaying\(role\) \{.*?\n  \}/m]
+
+      expect(verdict).to include("document.getElementById(FRAMES[role])?.remove()")
+      expect(verdict).not_to include('delete this.spares[role]')
+    end
+
+    # A timer left armed against a frame that has since become the live one would tear down
+    # the film being watched.
+    it 'disarms the deadline when the spare is adopted or discarded' do
+      adopted = controller[/  adoptSpare\(incoming\) \{.*?\n  \}/m]
+      discarded = controller[/  discardSpares\(\) \{.*?\n  \}/m]
+
+      expect(adopted).to include('clearTimeout(spare.stopTimer)')
+      expect(discarded).to include('clearTimeout(this.spares[role].stopTimer)')
+    end
+
+    # The quiet period has to be longer than the gap between two reports, or a spare caught
+    # between them reads as stopped and keeps a frame it should have lost.
+    it 'waits longer than the gap between two of the player\'s reports' do
+      quiet = controller[/const QUIET_ENOUGH = (\d+)/, 1].to_i
+      deadline = controller[/const STOP_DEADLINE = (\d+)/, 1].to_i
+
+      expect(quiet).to be > 5000
+      expect(deadline).to be > quiet
+    end
+  end
 end
