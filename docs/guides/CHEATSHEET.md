@@ -154,6 +154,15 @@ page — no warmed spare, no app JavaScript, no writes:
 /entries/<id>/watch_only
 ```
 
+**The reproduction:** the same page has a second-player rig in its readout. Press **Add**
+to put another player behind the film — built exactly as the watch page builds its spare,
+autoplay on, stacked behind — and watch whether the film survives it. Tick *ask spares to
+stop* to run the other arm, which is the watch page when its pause lands. Twenty seconds
+after each spare starts, the readout gives the same verdict the watch page gives.
+
+That turns "is the preload what kills MEGA films" into an experiment you can run twice in
+ten minutes rather than a theory about two different pages.
+
 One iframe, no preloaded second player, no app JavaScript, nothing written. The watch page
 cannot answer the question because it warms a second player five seconds after landing and
 a third as the credits run; this one has none of that. See ARCHITECTURE.md §5.3a.
