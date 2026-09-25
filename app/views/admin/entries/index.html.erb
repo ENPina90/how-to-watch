@@ -1,11 +1,20 @@
 <div class="admin-dashboard entry-table" data-controller="entry-table"
      data-entry-table-stream-url-value="<%= stream_admin_entry_path('ROW_ID') %>">
   <header class="admin-header">
-    <h1 class="admin-title">All entries</h1>
-    <p class="admin-subtitle">
-      <%= number_with_delimiter(@entries.size) %> entries across every channel.
-      Point at a row to watch, edit or delete it; press a stream mark to flip it. · <%= link_to 'All episodes', admin_subentries_path %>
-    </p>
+    <%# Drawn for /admin/broken as well: the same table, only the entries marked broken. %>
+    <% if @broken %>
+      <h1 class="admin-title">Broken entries</h1>
+      <p class="admin-subtitle">
+        <%= pluralize(number_with_delimiter(@entries.size), 'entry') %> marked broken, by a report button or the stream scan.
+        Point at a row to watch, edit or delete it; press a cross to mark it working. · <%= link_to 'All entries', admin_entries_path %>
+      </p>
+    <% else %>
+      <h1 class="admin-title">All entries</h1>
+      <p class="admin-subtitle">
+        <%= number_with_delimiter(@entries.size) %> entries across every channel.
+        Point at a row to watch, edit or delete it; press a stream mark to flip it. · <%= link_to 'Broken', admin_broken_path %> · <%= link_to 'All episodes', admin_subentries_path %>
+      </p>
+    <% end %>
   </header>
 
   <%# `table-layout: fixed` with widths set here: the browser sizes every column from this
