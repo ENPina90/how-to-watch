@@ -135,10 +135,13 @@
   a {
     color: inherit;
   }
+  // The box is 20vw by 50vh, so its shape changes with the window and matches no poster.
+  // `fill` stretched every picture to fit it, and an episode's 16:9 still worst of all.
+  // `cover` keeps the picture's proportions and trims whatever overhangs the box.
   img {
     width: 100%;
     height: 100%;
-    object-fit: fill;
+    object-fit: cover;
   }
   // &:hover {
   //   .play-button {
