@@ -709,6 +709,11 @@ a sweep.
 an event: it carries the date being warned about, so renewing a provider retires the
 dismissed row and a later warning about the new date is a new notification.
 
+`unplayable_embed` is raised only for entries the scan is the first to find. One already
+marked `stream: false` when the scan began — reported from its card, or marked by an earlier
+scan — raises nothing new, since `/admin/broken` already lists it; a warning it already has
+is kept (`AdminStateNotifier#reconcile`'s `keep:`) rather than retired unread.
+
 **`new_episode`** is the first kind that reaches members, and the first that is an event.
 `NewEpisodeScanJob` (Thursdays) runs `NewEpisodeNotifier` over every `media: "series"` entry:
 `NewEpisodeImporter` adds the episodes after the last one the entry holds, and each one
@@ -786,6 +791,11 @@ Reached from the dashboard's Entries figure. Built for its length rather than pa
   /admin/entries/:id/stream` with the value wanted (never a bare "flip"), written straight
   to the column. Delegated from the table body; the marks are operable through `role` and
   `tabindex` rather than a wrapper element per row.
+- **`/admin/broken`** (`Admin::EntriesController#broken`) is the same table filtered to
+  `stream: false` — marked by a card's report button or by `EmbedAvailabilityScanJob`.
+  `nil` (never checked) is not on it. Linked from the dashboard's Entries figure and the
+  full table's subtitle; marking a row working redraws it with a tick, and it drops off on
+  the next load.
 - **`/admin/subentries`** (`Admin::SubentriesController`) is the same table for every
   episode, sharing the toolbar, modal and sort headings. The toolbar's link templates fill
   `ROW_ID` from the row's own id and `PARENT_ID` from its `data-parent`, since an episode is
