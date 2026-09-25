@@ -34,14 +34,22 @@ RSpec.describe MissingRuntimeNotifier do
       expect(data).not_to have_key('guess')
     end
 
-    # Below CableSchedule::MIN_MINUTES a runtime is treated as missing, so it is warned
-    # about as missing -- the schedule and the sweep must agree on what airs.
-    it 'counts a runtime too short to be real as missing' do
-      entry = scheduled('Two Minutes', 2)
+    # One minute is what a source with nothing to say writes down, so it counts as none.
+    it 'counts a one-minute runtime as missing' do
+      entry = scheduled('One Minute', 1)
 
       described_class.call
 
       expect(Notification.find_by(subject: entry)).to be_present
+    end
+
+    # A short YouTube video is genuinely short. Cable still will not schedule it under
+    # CableSchedule::MIN_MINUTES, but there is nothing for an admin to fill in.
+    it 'believes a short runtime that is not one minute' do
+      scheduled('Two Minutes', 2, position: 1)
+      scheduled('Four Minutes', 4, position: 2)
+
+      expect { described_class.call }.not_to change(Notification, :count)
     end
 
     # The sweep covers the catalogue, not only the dial: an entry goes onto a channel long
@@ -103,15 +111,23 @@ RSpec.describe MissingRuntimeNotifier do
       expect { described_class.call }.to change(Notification, :count).by(1)
     end
 
+    it 'says nothing about a show whose episodes are short but real' do
+      episode(1, 3)
+      episode(2, 4)
+
+      expect { described_class.call }.not_to change(Notification, :count)
+    end
+
     it 'counts the bare episodes rather than describing the show as blank' do
       episode(1, 24)
       episode(2, nil)
+      episode(3, 1)
 
       described_class.call
       data = Notification.find_by(subject: series).data
 
-      expect(data['episodes']).to eq(2)
-      expect(data['episodes_missing']).to eq(1)
+      expect(data['episodes']).to eq(3)
+      expect(data['episodes_missing']).to eq(2)
     end
 
     # Nothing to pick an episode from, so the show cannot air at all.

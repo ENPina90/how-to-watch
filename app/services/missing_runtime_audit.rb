@@ -9,6 +9,11 @@
 # every channel it is on, and nobody would notice it had gone. That is what this exists to
 # make visible.
 #
+# What it calls missing is narrower than what the schedule leaves out. Cable will not pin
+# anything under CableSchedule::MIN_MINUTES to the clock, but a three-minute YouTube video
+# really is three minutes long, and a warning about it is one nobody can act on. So the
+# sweep only complains about a runtime that is plainly not a runtime -- see BARE_MINUTES.
+#
 # It sweeps the whole catalogue rather than only the dial, because an entry goes onto a
 # channel long after it was added and the time worth hearing about it is before then. What
 # is already on a channel is still marked: `Row#channel` names the channel that reaches an
@@ -16,6 +21,15 @@
 class MissingRuntimeAudit
   Row = Struct.new(:entry, :channel, keyword_init: true)
   Result = Struct.new(:checked, :missing, keyword_init: true)
+
+  # At or below this, a runtime is taken to be absent rather than short: nil, zero, or the
+  # single minute OMDB and a rounded-up importer produce when they have nothing better. Two
+  # minutes and up is believed, however far under the schedule's own floor it falls.
+  BARE_MINUTES = 1
+
+  # Is this runtime missing, as far as a warning goes? Shared with the notifier's episode
+  # count so the card and the sweep cannot disagree about which episodes are bare.
+  def self.bare?(minutes) = minutes.to_i <= BARE_MINUTES
 
   def self.call(...) = new(...).call
 
@@ -62,8 +76,8 @@ class MissingRuntimeAudit
   # Not simply "has no runtime of its own". A show does not have a runtime -- its episodes
   # do, and the schedule times each slot by whichever episode it picked. So a series whose
   # episodes all carry one is complete, however blank the show itself is, and a series with
-  # even one bare episode is missing that episode from the air. The test is CableSchedule's
-  # own, so the two cannot disagree about what counts as a runtime.
+  # even one bare episode is missing that episode from the air. Each episode's figure comes
+  # from Entry#runtime_minutes, the one the schedule reads too.
   #
   # A show with no episodes at all falls through to the show's own figure. Cable cannot air
   # it either way, but a blank one there is the sign nothing was ever imported for it.
@@ -72,8 +86,8 @@ class MissingRuntimeAudit
   # and a `where` here would go back to the database once per entry in the catalogue.
   def untimed?(entry)
     episodes = entry.subentries
-    return episodes.any? { |episode| CableSchedule.runtime_minutes(entry, episode).nil? } if episodes.any?
+    return episodes.any? { |episode| self.class.bare?(entry.runtime_minutes(episode)) } if episodes.any?
 
-    entry.length.to_i < CableSchedule::MIN_MINUTES
+    self.class.bare?(entry.length)
   end
 end
