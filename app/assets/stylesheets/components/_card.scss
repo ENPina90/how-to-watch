@@ -135,10 +135,13 @@
   a {
     color: inherit;
   }
+  // The box is 20vw by 50vh, so its shape changes with the window and matches no poster.
+  // `fill` stretched every picture to fit it, and an episode's 16:9 still worst of all.
+  // `cover` keeps the picture's proportions and trims whatever overhangs the box.
   img {
     width: 100%;
     height: 100%;
-    object-fit: fill;
+    object-fit: cover;
   }
   // &:hover {
   //   .play-button {
@@ -150,6 +153,68 @@
   //   padding: 0;
   //   transition: all 0.3s ease;
   // }
+}
+
+// An episode's picture is a 16:9 still, not a 2:3 poster, and cropped into the poster box
+// above it lost most of its width. So the episode card is wider than the rest, the extra
+// going to the picture, and the picture is shown whole at its own shape rather than made
+// to fill the box -- the card stays as tall as its neighbours, the picture sits in the
+// middle of it.
+//
+// The list is one centred column sized to the ordinary card (`.entry-section`), so the
+// wider card is pulled out by half the difference on each side and stays centred on it,
+// rather than hanging off to the right.
+//
+// Its width is capped by the room between the sidebars, not only by the window. Those are
+// fixed at 280px and 350px while this grows with the viewport, so sized from `vw` alone the
+// card ran under the channel sidebar on anything narrower than about 1300px. `cqw` is the
+// page container's width -- the space actually left over -- and follows a collapsed
+// sidebar for free. Off the list page there is no such container and it reads the window.
+// The 64px is a gutter, and covers the list column itself sitting some 25px right of the
+// middle of that space.
+.page-lists-show .page-container {
+  container: list-page / inline-size;
+}
+
+.grid-card--episode {
+  --episode-card-width: min(52vw, 1040px, 100cqw - 64px);
+  width: var(--episode-card-width);
+  max-width: none;
+  margin-inline: calc((min(40vw, 800px) - var(--episode-card-width)) / 2);
+  // In proportion rather than in `vw`, so a card squeezed by the cap above narrows its
+  // picture and keeps its text column readable.
+  grid-template-columns: 3fr 2fr;
+
+  .card-picture {
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+
+    a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    // Sized by the picture itself, not the box: most episodes carry a still, but some
+    // carry the show's poster, and forcing either shape shrank or cropped the other. So
+    // whichever it is fits whole, as large as the box allows.
+    img {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+    }
+  }
+
+  .card-stuff {
+    min-width: 0;
+  }
 }
 
 .card-details {
@@ -520,16 +585,15 @@
 }
 
 // Two classes rather than one, so link_controller.js can flip between them without
-// having to read a colour back out of an inline style. Specificity (0,2,0) beats the
-// `.card-menu i { color: #fff }` rule above.
-.fa-link-slash {
-  &.link-ok {
-    color: grey;
-  }
-
-  &.link-broken {
-    color: red;
-  }
+// having to read a colour back out of an inline style.
+//
+// Working takes whatever colour the card menu's other icons are. Broken is a muted red, and
+// has to be stated with `!important` under `.page-container`: the layout paints every
+// `.page-container i` white with `!important` (black in light mode), which silently beat the
+// plain red this used to be -- the click saved, and the icon never changed. Three classes
+// outrank `body.light-mode .page-container i` as well.
+.page-container .fa-link-slash.link-broken {
+  color: #b85c5c !important;
 }
 
 .episode-name {

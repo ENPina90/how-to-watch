@@ -82,7 +82,7 @@
       <div class="admin-stat">
         <span class="admin-stat__value"><%= number_with_delimiter(stats.entries_total) %></span>
         <span class="admin-stat__label">Entries</span>
-        <span class="admin-stat__note"><%= number_with_delimiter(stats.entries_new) %> added this week · <%= link_to 'Browse', admin_entries_path %> · <%= link_to 'Episodes', admin_subentries_path %></span>
+        <span class="admin-stat__note"><%= number_with_delimiter(stats.entries_new) %> added this week · <%= link_to 'Browse', admin_entries_path %> · <%= link_to 'Episodes', admin_subentries_path %> · <%= link_to 'Broken', admin_broken_path %></span>
       </div>
       <div class="admin-stat">
         <span class="admin-stat__value"><%= number_with_delimiter(stats.completions) %></span>
@@ -361,7 +361,9 @@
       entry it has never held still answers 200 and frames up before saying the media is
       unavailable, so nothing else catches these. Anything it finds is marked with the same
       red link as the "report broken link" button — and that mark is left alone once set,
-      so a link you reported by hand stays reported.
+      so a link you reported by hand stays reported. Only what was not already marked
+      raises a notification; everything marked, however it got there, is listed under
+      <%= link_to 'broken entries', admin_broken_path %>.
       <br>
       <strong>Runtimes</strong> finds every entry with no runtime recorded — a blank length
       keeps a film, or an episode, off every cable channel it is on, and nothing else says

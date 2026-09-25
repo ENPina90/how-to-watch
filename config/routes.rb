@@ -38,6 +38,10 @@ Rails.application.routes.draw do
       # The tick or cross in the table's stream column, pressed. PATCH because it writes.
       patch :stream, on: :member
     end
+    # The same table, only the entries marked broken -- by a report button or by the embed
+    # scan. Its own path rather than a filter param, so it is one link from the dashboard
+    # and the column headings' sort links stay on it.
+    get 'broken', to: 'entries#broken', as: :broken
     # The same table for the episodes under every show. Episodes have no routes of their own
     # anywhere else -- they are edited through their show's form -- so these are the only
     # ones, and admin-only for the same reasons as the entries above.

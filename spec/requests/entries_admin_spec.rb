@@ -336,4 +336,53 @@ RSpec.describe 'The admin entries table', type: :request do
       expect(Entry.exists?(target.id)).to be(false)
     end
   end
+
+  # The same table, filtered to what is marked broken -- and reached from the dashboard.
+  describe 'the broken entries' do
+    before { sign_in admin }
+
+    it 'lists only the entries marked broken, not the working or never-checked ones' do
+      entry('Alien', stream: false)
+      entry('Brazil', stream: true)
+      entry('Cube', stream: nil)
+
+      get admin_broken_path
+
+      expect(response).to be_successful
+      expect(row_names).to eq(['Alien'])
+      expect(response.body).to include('Broken entries')
+    end
+
+    it 'keeps its sort links on the broken list' do
+      entry('Alien', stream: false)
+
+      get admin_broken_path
+
+      expect(response.body).to include(%(href="#{CGI.escapeHTML(admin_broken_path(sort: 'list', direction: 'asc'))}"))
+    end
+
+    it 'sorts the way the full table does' do
+      entry('Alien', stream: false)
+      entry('Zardoz', stream: false)
+
+      get admin_broken_path(sort: 'name', direction: 'desc')
+
+      expect(row_names).to eq(%w[Zardoz Alien])
+    end
+
+    it 'turns away a member who is not an admin' do
+      sign_out admin
+      sign_in owner
+
+      get admin_broken_path
+
+      expect(response).to redirect_to(root_path)
+    end
+
+    it 'is linked from the dashboard' do
+      get admin_dashboard_path
+
+      expect(response.body).to include(%(href="#{admin_broken_path}"))
+    end
+  end
 end

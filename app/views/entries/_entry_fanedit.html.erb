@@ -70,7 +70,7 @@
                 <i class="fa-solid fa-trash"></i>
               <% end %>
             <% end %>
-            <i class="fa-solid fa-link-slash <%= entry.stream ? 'link-ok' : 'link-broken' %>"
+            <i class="fa-solid fa-link-slash <%= entry.stream == false ? 'link-broken' : 'link-ok' %>"
         title="Report broken link"
         data-controller="link"
         data-link-id-value="<%= entry.id %>"

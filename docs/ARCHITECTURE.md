@@ -709,6 +709,11 @@ a sweep.
 an event: it carries the date being warned about, so renewing a provider retires the
 dismissed row and a later warning about the new date is a new notification.
 
+`unplayable_embed` is raised only for entries the scan is the first to find. One already
+marked `stream: false` when the scan began — reported from its card, or marked by an earlier
+scan — raises nothing new, since `/admin/broken` already lists it; a warning it already has
+is kept (`AdminStateNotifier#reconcile`'s `keep:`) rather than retired unread.
+
 **`new_episode`** is the first kind that reaches members, and the first that is an event.
 `NewEpisodeScanJob` (Thursdays) runs `NewEpisodeNotifier` over every `media: "series"` entry:
 `NewEpisodeImporter` adds the episodes after the last one the entry holds, and each one
@@ -786,6 +791,11 @@ Reached from the dashboard's Entries figure. Built for its length rather than pa
   /admin/entries/:id/stream` with the value wanted (never a bare "flip"), written straight
   to the column. Delegated from the table body; the marks are operable through `role` and
   `tabindex` rather than a wrapper element per row.
+- **`/admin/broken`** (`Admin::EntriesController#broken`) is the same table filtered to
+  `stream: false` — marked by a card's report button or by `EmbedAvailabilityScanJob`.
+  `nil` (never checked) is not on it. Linked from the dashboard's Entries figure and the
+  full table's subtitle; marking a row working redraws it with a tick, and it drops off on
+  the next load.
 - **`/admin/subentries`** (`Admin::SubentriesController`) is the same table for every
   episode, sharing the toolbar, modal and sort headings. The toolbar's link templates fill
   `ROW_ID` from the row's own id and `PARENT_ID` from its `data-parent`, since an episode is
@@ -914,7 +924,7 @@ Reached from the dashboard's Entries figure. Built for its length rather than pa
 | `EmbedAvailabilityAudit` / `UnplayableEmbedNotifier` | The sweep behind `embed_availability_scan`, and the notifications it raises |
 | `PosterAudit` / `BrokenPosterNotifier` | Same shape, for posters whose image has gone |
 | `RuntimeBackfill` | Fills missing runtimes from TMDB: episodes a season per request, films by imdb id, standalone episodes through their show. Skips fanedits and episodes with no `series_imdb`; never overwrites |
-| `MissingRuntimeAudit` / `MissingRuntimeNotifier` | Same shape as the poster pair, for every entry cable would leave out for want of a runtime; `Row#channel` names the dial channel that reaches one, and is nil for the rest |
+| `MissingRuntimeAudit` / `MissingRuntimeNotifier` | Same shape as the poster pair, for every entry whose runtime is nil, 0 or 1 minute (`BARE_MINUTES`) — a genuine 2–4 minute clip stays off cable under `MIN_MINUTES` but is not warned about; `Row#channel` names the dial channel that reaches one, and is nil for the rest |
 | `NewEpisodeImporter` / `NewEpisodeNotifier` | The sweep behind `new_episode_scan`: extends each series with episodes TMDB shows have really aired, and tells the channel's owner (§5.12) |
 | `SourceExpiryNotifier` | Warns admins before a provider domain lapses (§4) |
 | `AdminStateNotifier` | The base class the four reconciling notifiers above share. Each of them is about a *state*, not an event, so a run works out the warnings that should exist now, creates the missing ones and deletes the ones no longer earned — fixing the thing clears its warning without anyone dismissing it. A subclass supplies its `kind`, a `dedupe_key` for a row, and the subject/data a row becomes; the transaction, the per-admin loop and the sweep of rows belonging to ex-admins live in the base. `NewEpisodeNotifier` is deliberately **not** one of these: an episode appearing is an event, and there is nothing to reconcile |
@@ -1138,7 +1148,7 @@ tell you how far behind it is likely to be. Trust the code; update the section y
 | A cable channel is off air / a gap in the guide | nobody laid that day out. `CableSchedule.ensure_day!` runs from `cable#show`, `cable#guide` and `CableScheduleJob`; check the worker ran and that the channel is `default`. |
 | Cable shows a different programme to two people | something read a per-user table. Nothing under §5.9 may touch `UserListPosition`, `UserEntryPosition` or `player_progress`. |
 | A programme runs far too long or too short | The catalogue runtime is wrong, since a missing one is no longer scheduled. For a series, check the *episode's* `length`. Slots dealt before 2026-09-19 may still carry a show's full length; re-deal from `/admin/cable`. |
-| A film or episode never appears on a channel | It has no runtime (`CableSchedule.timed?`). `MissingRuntimeScanJob` fills what TMDB knows and raises a `missing_runtime` notification for the rest. |
+| A film or episode never appears on a channel | It has no runtime, or one under 5 minutes (`CableSchedule.timed?`). `MissingRuntimeScanJob` fills what TMDB knows and raises a `missing_runtime` notification for what is still nil, 0 or 1 minute. |
 | Commercial breaks or `/trailers` sit on a play button | The reel URL carries `autoplay=0` ahead of `autoplay=1` and YouTube obeys the first. Reels must ask `build_url(..., autoplay: true)` rather than append their own flag. |
 | `/cable/guide` serves channel one | the `cable/guide` route slipped below `cable/:id` (§5.9). |
 | `/cable/0` serves channel one | the `cable/0` route slipped below `cable/:id` (§5.9). |

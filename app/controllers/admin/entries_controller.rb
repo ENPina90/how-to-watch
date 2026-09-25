@@ -19,6 +19,7 @@ module Admin
   #     table again after every edit would cost more than the edit.
   class EntriesController < BaseController
     before_action :set_entry, only: %i[edit update destroy stream]
+    before_action :set_table, only: %i[index broken]
 
     # What each heading sorts by. Names are compared case-insensitively, so "the Thing"
     # does not sort after every capitalised title.
@@ -44,10 +45,18 @@ module Admin
               .map { |column| "entries.#{column}" }.freeze
 
     def index
-      @sort = SORTS.key?(params[:sort]) || params[:sort] == SOURCE_SORT ? params[:sort] : 'name'
-      @direction = params[:direction] == 'desc' ? 'desc' : 'asc'
       @entries = sorted_entries
-      @hide_sidebar = true
+    end
+
+    # Every entry marked broken, in the same table. `false` only: `nil` is never checked,
+    # which is not the same as known not to play, and the cards draw it as working.
+    #
+    # Flipping one back to working here redraws its row with a tick rather than removing it,
+    # the same answer the full table gets; it drops off the list on the next load.
+    def broken
+      @broken = true
+      @entries = sorted_entries(base_scope.where(stream: false))
+      render :index
     end
 
     # Answers the modal's turbo frame. Rendered with the frame layout turbo-rails picks for a
@@ -115,12 +124,19 @@ module Admin
 
     private
 
+    def set_table
+      @sort = SORTS.key?(params[:sort]) || params[:sort] == SOURCE_SORT ? params[:sort] : 'name'
+      @direction = params[:direction] == 'desc' ? 'desc' : 'asc'
+      @hide_sidebar = true
+    end
+
     def set_entry
       @entry = Entry.find(params[:id])
     end
 
-    def sorted_entries
-      scope = Entry.joins(:list).select(COLUMNS).preload(:provider, list: :provider)
+    def base_scope = Entry.joins(:list).select(COLUMNS).preload(:provider, list: :provider)
+
+    def sorted_entries(scope = base_scope)
       return sort_by_source(scope) if @sort == SOURCE_SORT
 
       # Blanks last in both directions: a column of empty runtimes is not what somebody

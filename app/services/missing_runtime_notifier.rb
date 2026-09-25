@@ -56,7 +56,7 @@ class MissingRuntimeNotifier < AdminStateNotifier
         # thing to say is which of them are bare, not that the show itself is. Counted off
         # the records the audit has already loaded, not with two more queries per entry.
         'episodes' => episodes.size,
-        'episodes_missing' => episodes.count { |episode| CableSchedule.runtime_minutes(row.entry, episode).nil? }
+        'episodes_missing' => episodes.count { |episode| MissingRuntimeAudit.bare?(row.entry.runtime_minutes(episode)) }
       }
     }
   end

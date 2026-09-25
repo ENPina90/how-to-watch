@@ -848,8 +848,21 @@ class EntriesController < ApplicationController
     end
   end
 
+  # The broken-link icon on a card. The page sends the state it now shows (`broken=true`
+  # to report, `false` to take the report back), so a double click or a second tab sets
+  # the same thing twice rather than undoing itself. Without the param it flips, reading a
+  # never-checked `nil` as working: it was `!stream`, which turned nil into true, so the
+  # first press on an unchecked entry cleared a report that was never there while the icon
+  # went red.
+  #
+  # Written straight to the column, as the admin table's stream mark is: a name clash with
+  # another entry in the channel would otherwise fail validation and refuse the report
+  # without a word.
   def reportlink
-    @entry.update(stream: !@entry.stream)
+    broken = params.key?(:broken) ? ActiveModel::Type::Boolean.new.cast(params[:broken]) : @entry.stream != false
+    @entry.update_columns(stream: !broken, updated_at: Time.current)
+
+    head :no_content
   end
 
   def repair_image
