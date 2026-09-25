@@ -585,16 +585,15 @@
 }
 
 // Two classes rather than one, so link_controller.js can flip between them without
-// having to read a colour back out of an inline style. Specificity (0,2,0) beats the
-// `.card-menu i { color: #fff }` rule above.
-.fa-link-slash {
-  &.link-ok {
-    color: grey;
-  }
-
-  &.link-broken {
-    color: red;
-  }
+// having to read a colour back out of an inline style.
+//
+// Working takes whatever colour the card menu's other icons are. Broken is a muted red, and
+// has to be stated with `!important` under `.page-container`: the layout paints every
+// `.page-container i` white with `!important` (black in light mode), which silently beat the
+// plain red this used to be -- the click saved, and the icon never changed. Three classes
+// outrank `body.light-mode .page-container i` as well.
+.page-container .fa-link-slash.link-broken {
+  color: #b85c5c !important;
 }
 
 .episode-name {

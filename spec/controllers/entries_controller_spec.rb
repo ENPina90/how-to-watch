@@ -133,13 +133,28 @@ RSpec.describe EntriesController, :needs_provider, type: :controller do
   end
 
   describe 'PATCH #reportlink' do
-    it 'toggles the stream attribute' do
+    it 'sets the state the page asks for, however many times it is asked' do
+      2.times { patch :reportlink, params: { id: entry.id, broken: 'true' } }
+      expect(entry.reload.stream).to be(false)
+
+      2.times { patch :reportlink, params: { id: entry.id, broken: 'false' } }
+      expect(entry.reload.stream).to be(true)
+    end
+
+    # nil is never checked, and the card draws it as working -- so a press reports it.
+    it 'reads a never-checked entry as working when asked to flip' do
+      entry.update_column(:stream, nil)
+
       patch :reportlink, params: { id: entry.id }
-      entry.reload
-      expect(entry.stream).to be_truthy
+      expect(entry.reload.stream).to be(false)
+
       patch :reportlink, params: { id: entry.id }
-      entry.reload
-      expect(entry.stream).to be_falsey
+      expect(entry.reload.stream).to be(true)
+    end
+
+    it 'answers with no content for the fetch that sent it' do
+      patch :reportlink, params: { id: entry.id, broken: 'true' }
+      expect(response).to have_http_status(:no_content)
     end
   end
 end
