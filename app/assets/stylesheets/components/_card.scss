@@ -155,6 +155,68 @@
   // }
 }
 
+// An episode's picture is a 16:9 still, not a 2:3 poster, and cropped into the poster box
+// above it lost most of its width. So the episode card is wider than the rest, the extra
+// going to the picture, and the picture is shown whole at its own shape rather than made
+// to fill the box -- the card stays as tall as its neighbours, the picture sits in the
+// middle of it.
+//
+// The list is one centred column sized to the ordinary card (`.entry-section`), so the
+// wider card is pulled out by half the difference on each side and stays centred on it,
+// rather than hanging off to the right.
+//
+// Its width is capped by the room between the sidebars, not only by the window. Those are
+// fixed at 280px and 350px while this grows with the viewport, so sized from `vw` alone the
+// card ran under the channel sidebar on anything narrower than about 1300px. `cqw` is the
+// page container's width -- the space actually left over -- and follows a collapsed
+// sidebar for free. Off the list page there is no such container and it reads the window.
+// The 64px is a gutter, and covers the list column itself sitting some 25px right of the
+// middle of that space.
+.page-lists-show .page-container {
+  container: list-page / inline-size;
+}
+
+.grid-card--episode {
+  --episode-card-width: min(52vw, 1040px, 100cqw - 64px);
+  width: var(--episode-card-width);
+  max-width: none;
+  margin-inline: calc((min(40vw, 800px) - var(--episode-card-width)) / 2);
+  // In proportion rather than in `vw`, so a card squeezed by the cap above narrows its
+  // picture and keeps its text column readable.
+  grid-template-columns: 3fr 2fr;
+
+  .card-picture {
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+
+    a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    // Sized by the picture itself, not the box: most episodes carry a still, but some
+    // carry the show's poster, and forcing either shape shrank or cropped the other. So
+    // whichever it is fits whole, as large as the box allows.
+    img {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+    }
+  }
+
+  .card-stuff {
+    min-width: 0;
+  }
+}
+
 .card-details {
   position: relative;
   // A stacking context of its own, so the z-index the tab strip needs to sit over the

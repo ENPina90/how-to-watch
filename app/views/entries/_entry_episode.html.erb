@@ -2,7 +2,7 @@
   <div class="card-container">
     <%# if entry.note %>
     <%# end %>
-    <div class="grid-card" id="<%= entry.id %>">
+    <div class="grid-card grid-card--episode" id="<%= entry.id %>">
       <div class="card-picture">
         <%= link_to watch_path_for(entry, viewing: @viewing), data: { turbo: false } do %>
           <%= entry_poster_image_tag(entry) %>

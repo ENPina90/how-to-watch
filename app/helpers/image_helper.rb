@@ -40,8 +40,8 @@ module ImageHelper
                        # Movie posters: limit width, preserve aspect ratio
                        "w_300,c_scale,q_auto,f_auto"
                      when 'episode'
-                       # Episodes: limit width, preserve aspect ratio
-                       "w_400,c_scale,q_auto,f_auto"
+                       # Episodes: a wider card than the rest (see .grid-card--episode), so a wider image
+                       "w_640,c_scale,q_auto,f_auto"
                      when 'series', 'show'
                        # Series: limit width, preserve aspect ratio
                        "w_350,c_scale,q_auto,f_auto"
