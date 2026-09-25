@@ -15,8 +15,11 @@ class EmbedAvailabilityScanJob < ApplicationJob
 
   def perform
     audit = EmbedAvailabilityAudit.call
-    marked = mark_broken(audit.missing)
-    notified = UnplayableEmbedNotifier.call(missing: audit.missing)
+    # Split before marking, which is what makes an entry look already reported. Read off
+    # the records the audit loaded, so this is the mark as it stood when the scan began.
+    reported, found = audit.missing.partition { |row| row.entry.stream == false }
+    marked = mark_broken(found)
+    notified = UnplayableEmbedNotifier.call(missing: found, already_reported: reported)
 
     Rails.logger.info(
       "Embed availability scan: #{audit.missing.size} of #{audit.checked} entries unplayable, " \

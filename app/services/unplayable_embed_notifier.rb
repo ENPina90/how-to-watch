@@ -10,17 +10,24 @@
 # show, the episode -- so dismissing hides this entry as it stands. Pointing it at a
 # different id, or a series at a different episode, is a new question and a new
 # notification.
+#
+# An entry already marked broken before the scan found it -- by somebody pressing its report
+# button, or by an earlier scan -- raises nothing new: the mark says it is known, and
+# /admin/broken is where the known ones are listed. A warning it already has is kept rather
+# than retired, though, so a scan that marked something last week does not take its card
+# away before anybody has read it.
 class UnplayableEmbedNotifier < AdminStateNotifier
   Result = Struct.new(:created, :removed, keyword_init: true)
 
   # Takes the rows rather than running the audit: the scan asks VidSrc once and then both
   # marks the entries and raises the notifications off the same answer.
-  def initialize(missing:)
+  def initialize(missing:, already_reported: [])
     @missing = missing
+    @already_reported = already_reported
   end
 
   def call
-    created, removed = reconcile(@missing)
+    created, removed = reconcile(@missing, keep: @already_reported)
 
     Result.new(created: created, removed: removed)
   end

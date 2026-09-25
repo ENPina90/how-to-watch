@@ -40,6 +40,29 @@ RSpec.describe EmbedAvailabilityScanJob do
     expect(Notification.where(user: admin, kind: Notification::UNPLAYABLE_EMBED).count).to eq(1)
   end
 
+  # Already marked is already known: /admin/broken lists it, and a card per scan would say
+  # the same thing every week.
+  it 'raises nothing for an entry that was already marked broken' do
+    reported = create(:entry, list: list, name: 'Reported by hand', imdb: 'tt0172495', stream: false)
+    audit_finds([row(reported)])
+
+    described_class.perform_now
+
+    expect(Notification.where(kind: Notification::UNPLAYABLE_EMBED)).to be_empty
+  end
+
+  # The scan that found it marked it, so by the next scan it looks already reported. Its
+  # card should outlast that, not vanish a week later unread.
+  it 'keeps the warning an earlier scan raised once the entry is marked' do
+    audit_finds([row(entry)])
+    described_class.perform_now
+
+    audit_finds([row(entry.reload)])
+
+    expect { described_class.perform_now }.not_to change(Notification, :count)
+    expect(Notification.where(user: admin, kind: Notification::UNPLAYABLE_EMBED).count).to eq(1)
+  end
+
   # The notification retires on its own when VidSrc picks the title back up. The mark does
   # not: taking it off would also take it off every entry somebody reported by hand, for a
   # reason this job cannot see.

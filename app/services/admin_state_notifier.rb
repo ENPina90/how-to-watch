@@ -41,7 +41,10 @@ class AdminStateNotifier
   end
 
   # Reconcile every admin against `rows`. Returns [created, removed].
-  def reconcile(rows)
+  #
+  # `keep` are rows that still earn a warning somebody already has, but not a new one: they
+  # hold off the sweep and create nothing.
+  def reconcile(rows, keep: [])
     created = 0
     removed = 0
 
@@ -50,7 +53,7 @@ class AdminStateNotifier
     ActiveRecord::Base.transaction do
       admins.each do |admin|
         created += create_missing(admin, rows)
-        removed += remove_stale(admin, rows)
+        removed += remove_stale(admin, rows + keep)
       end
 
       # Rows belonging to accounts that are no longer admins, or that were deleted as
