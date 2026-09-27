@@ -312,12 +312,22 @@ export default class extends Controller {
     // Nothing to mark on a cell with no film behind it -- channel 0, pointed at from another
     // channel, is a block of trailers rather than anything that can be watched or favourited.
     // The two marks go one at a time rather than their row, which also holds the start button.
-    if (this.hasWatchedTarget) this.watchedTarget.hidden = !data.guideEntryId
-    if (this.hasFavoriteTarget) this.favoriteTarget.hidden = !data.guideEntryId
-    this.showMark(this.watchedTarget, this.watchedIconTarget, data.guideWatched === "true",
-                  ["Mark as watched", "Watched -- press to unmark"])
-    this.showMark(this.favoriteTarget, this.favoriteIconTarget, data.guideFavorited === "true",
-                  ["Add to my favourites", "In your favourites -- press to remove"])
+    //
+    // A guest has neither mark -- the panel leaves them out, having nowhere to record the
+    // answer -- so every touch of them is behind its `has` check. Reaching for a missing
+    // target throws, and this runs while the guide opens: one unguarded line here once
+    // stopped a signed-out guide before it scrolled to now, leaving it parked on an empty
+    // yesterday.
+    if (this.hasWatchedTarget) {
+      this.watchedTarget.hidden = !data.guideEntryId
+      this.showMark(this.watchedTarget, this.watchedIconTarget, data.guideWatched === "true",
+                    ["Mark as watched", "Watched -- press to unmark"])
+    }
+    if (this.hasFavoriteTarget) {
+      this.favoriteTarget.hidden = !data.guideEntryId
+      this.showMark(this.favoriteTarget, this.favoriteIconTarget, data.guideFavorited === "true",
+                    ["Add to my favourites", "In your favourites -- press to remove"])
+    }
   }
 
   // A part with nothing to say takes up no room, and the stylesheet draws the dots between
