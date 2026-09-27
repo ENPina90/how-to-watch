@@ -1170,9 +1170,8 @@ body.cable__mode .cinema__screen--guide {
   color: #fff;
 }
 
-/* The same address as the title, said as a button. Quiet enough that the banner is still a
-   caption rather than a toolbar -- it is one step from the picture, not a control the eye
-   has to get past to read what is on. */
+/* Channel 0's "Watch the film", which keeps its label: there it is the one way from a
+   trailer to the thing the trailer is for, and an icon alone would not say so. */
 .cable-hud__start,
 .cable-hud__start:hover,
 .cable-hud__start:focus-visible {
@@ -1204,21 +1203,90 @@ body.cable__mode .cinema__screen--guide {
   outline: none;
 }
 
+/* Start from the beginning and the heart, as a pair of icons under the listing. Quiet
+   enough that the banner is still a caption rather than a toolbar -- it is one step from
+   the picture, not a control the eye has to get past to read what is on. The label the
+   start button used to carry was the loudest thing on the banner, for the same reason the
+   guide's panel dropped its own. */
+.cable-hud__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.cable-hud__action,
+.cable-hud__action:hover,
+.cable-hud__action:focus-visible {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 24px;
+  padding: 0;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.8rem;
+  text-decoration: none;
+  text-shadow: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+/* `hidden` loses to the display above without this -- a slot with nothing behind it would
+   still show a button that goes nowhere. */
+.cable-hud__action[hidden] {
+  display: none;
+}
+
+.cable-hud__action:hover,
+.cable-hud__action:focus-visible {
+  background: #ffd42a;
+  border-color: #ffd42a;
+  color: #17306b;
+  outline: none;
+}
+
+/* A filled heart is a favourite, in the listings' yellow so it reads as lit. */
+.cable-hud__action--on {
+  color: #ffd42a;
+}
+
+.cable-hud__action--refused {
+  animation: tvguide-refused 0.4s ease-in-out 2;
+}
+
 /* The pad. Up and down tune, left and right only look -- the same shape for both, because
-   on the remote they were the same shape. */
+   on the remote they were the same shape.
+
+   Square tracks, so the four arrows sit the same distance from the button in the middle
+   whichever way they point. Rows sized by their content spread the vertical pair further
+   apart than the horizontal one, and a pad that is wider one way than the other does not
+   look like a pad.
+
+   Navy rather than the grey it used to be: the same ink as the badge and the home button at
+   the banner's other two ends, so the bar reads as dark caps either side of the lit-up
+   listing, the way the set-top boxes drew it. The highlight across the top is the gloss
+   every one of those interfaces put on anything you could press. */
 .cable-hud__pad {
+  --pad-cell: 30px;
+  --pad-sel: 38px;
+
   flex: 0 0 auto;
-  width: 104px;
   display: grid;
   grid-template-areas:
     ".    up    ."
     "left sel right"
     ".    down  .";
-  align-items: center;
-  justify-items: center;
-  padding: 8px 4px;
-  row-gap: 2px;
-  background: linear-gradient(180deg, #d8ded6 0%, #b9c1b7 100%);
+  grid-template-columns: var(--pad-cell) var(--pad-sel) var(--pad-cell);
+  grid-template-rows: var(--pad-cell) var(--pad-sel) var(--pad-cell);
+  place-items: center;
+  align-content: center;
+  padding: 6px 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 45%),
+    linear-gradient(180deg, #1a2f6b 0%, #0e1c4a 100%);
   border-left: 3px solid #e8e8e8;
 }
 
@@ -1226,28 +1294,35 @@ body.cable__mode .cinema__screen--guide {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 22px;
+  width: 100%;
+  height: 100%;
   padding: 0;
   border: 0;
   background: none;
-  color: #17306b;
-  font-size: 1rem;
+  color: #cfd9f5;
+  /* The watch page's ring draws its carets at three times its ten-pixel base; these match
+     it, so the two remotes are the same size in the hand. */
+  font-size: 30px;
   line-height: 1;
-  text-shadow: none;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
   cursor: pointer;
   transition: color 0.15s ease, opacity 0.15s ease;
 }
 
 .cable-hud__key:hover,
 .cable-hud__key:focus-visible {
-  color: #0a1637;
+  color: #ffd42a;
+  outline: none;
 }
 
 /* Nothing further rendered in that direction. */
 .cable-hud__key:disabled {
   opacity: 0.28;
   cursor: default;
+}
+
+.cable-hud__key:disabled:hover {
+  color: #cfd9f5;
 }
 
 .cable-hud__key--up    { grid-area: up; }

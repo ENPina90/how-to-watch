@@ -216,7 +216,8 @@
        <% end %>>
 
     <%= render 'cable/hud', channel: @channel, entry: @entry, user: current_user,
-                            number: @channel_number, nearby: @nearby, current_slot: @slot %>
+                            number: @channel_number, nearby: @nearby, current_slot: @slot,
+                            favorited: @favorited %>
 
     <%# Marking a reviewable channel's film watched opens this, exactly as on the watch
         page -- _completion_status points both at the same #reviewModal. %>

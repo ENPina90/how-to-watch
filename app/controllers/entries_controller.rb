@@ -1011,7 +1011,16 @@ class EntriesController < ApplicationController
     #
     # The channel being watched *from* decides the rest -- its intro skip where it has one,
     # the member's randomiser where it does not. See List#start_position_for.
+    #
+    # Unless the link said `from_start`, which is the cable banner's and the guide's
+    # start-from-the-beginning button. That button is pressed by somebody who has just seen
+    # the film part-way through on a channel and wants it from the top -- and whatever
+    # player_progress remembers from an earlier visit is the one answer they did not ask
+    # for. Nothing is written here: the saved position is overwritten by the ordinary
+    # progress beats once the film is playing, as it would be after any rewind.
     def start_position
+      return nil if params[:from_start].present?
+
       resume_position || @channel.start_position_for(@entry, current_user, episode: @current_subentry)
     end
 

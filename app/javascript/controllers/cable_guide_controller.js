@@ -277,10 +277,11 @@ export default class extends Controller {
     // The show, which is also all the cell in the grid says.
     this.detailTitleTarget.textContent = data.guideTitle ?? ""
     this.detailTitleTarget.href = data.guideWatchUrl ?? "#"
-    // The same address again, as a button. It describes whatever is being pointed at, not
-    // whatever is playing -- the panel's whole job -- so it offers to start that.
-    this.detailStartTarget.href = data.guideWatchUrl ?? "#"
-    this.detailStartTarget.hidden = !data.guideWatchUrl
+    // The same film again, as a button, but from the top: the title resumes where this
+    // member left off, and this ignores that. It describes whatever is being pointed at,
+    // not whatever is playing -- the panel's whole job -- so it offers to start that.
+    this.detailStartTarget.href = data.guideStartUrl ?? "#"
+    this.detailStartTarget.hidden = !data.guideStartUrl
 
     // And which episode of it, which the grid deliberately leaves out -- an afternoon of
     // one series is a column of identical cells if every one of them carries its number.

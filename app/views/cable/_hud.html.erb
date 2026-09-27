@@ -20,7 +20,8 @@
 <% home = cable_home_list(channel, entry) %>
 <div class="cable-hud"
      data-controller="cable-hud"
-     data-cable-hud-showing-class="cable-hud--peeking">
+     data-cable-hud-showing-class="cable-hud--peeking"
+     data-cable-hud-token-value="<%= form_authenticity_token %>">
 
   <%# The channel, in the corner the number always sat in. %>
   <a class="cable-hud__badge" href="<%= list_path(home) %>" aria-label="Open <%= home.name %>">
@@ -54,11 +55,27 @@
         that instead, which is the other half of what the arrows are for. Out of cable
         either way -- the ordinary watch player, from the beginning, counting towards what
         you have seen. No data-cinema-move, so it is a navigation rather than a tune. %>
-    <a class="cable-hud__start" data-cable-hud-target="start" href="#"
-       aria-label="Play this from the beginning on its own page">
-      <i class="fa-solid fa-backward-fast"></i>
-      <span>Start from the beginning</span>
-    </a>
+    <%# An icon rather than a labelled button, as in the guide's panel -- the label was the
+        loudest thing on the banner, which is meant to be a caption. It carries
+        `from_start`, so it means what it says even for a film you left half-watched: the
+        title above it resumes, this does not.
+
+        The heart beside it is the guide's heart, on the same terms: a copy of the film in
+        the member's own favourites channel, filled only once the server has said so. It
+        follows the arrows like the button does, and is absent for a guest, who has nowhere
+        to keep one. %>
+    <div class="cable-hud__actions">
+      <a class="cable-hud__action" data-cable-hud-target="start" href="#"
+         aria-label="Play this from the beginning on its own page">
+        <i class="fa-solid fa-backward-fast"></i>
+      </a>
+      <% if user %>
+        <button type="button" class="cable-hud__action" data-cable-hud-target="favorite"
+                data-action="click->cable-hud#favorite" aria-label="Add to my favourites">
+          <i class="fa-regular fa-heart" data-cable-hud-target="favoriteIcon"></i>
+        </button>
+      <% end %>
+    </div>
   </div>
 
   <%# Up and down tune; left and right only look. The two kinds are deliberately the same
@@ -109,6 +126,9 @@
             data-slot-title="<%= cable_programme_headline(slot) %>"
             data-slot-context="<%= cable_programme_context(slot) %>"
             data-slot-url="<%= cable_watch_path(slot, channel) %>"
+            data-slot-start-url="<%= cable_watch_path(slot, channel, from_start: true) %>"
+            data-slot-entry-id="<%= slot.entry_id %>"
+            data-slot-favorited="<%= favorited.include?(slot.entry.catalogue_key) %>"
             data-slot-current="<%= slot.id == current_slot.id %>"></span>
     <% end %>
   </div>

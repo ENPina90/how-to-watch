@@ -17,8 +17,9 @@ import { Controller } from "@hotwired/stimulus"
 const REVERT_AFTER = 6000
 
 export default class extends Controller {
-  static targets = ["title", "context", "when", "label", "schedule", "start"]
+  static targets = ["title", "context", "when", "label", "schedule", "start", "favorite", "favoriteIcon"]
   static classes = ["showing"]
+  static values = { token: String }
 
   connect() {
     this.slots = [...this.scheduleTarget.children].map((node) => ({ ...node.dataset }))
@@ -71,11 +72,15 @@ export default class extends Controller {
 
     this.titleTarget.textContent = slot.slotTitle ? `“${slot.slotTitle}”` : ""
     this.titleTarget.href = slot.slotUrl ?? "#"
-    // The same address, said as a button. It follows the arrows rather than staying on
-    // what is playing: the banner describes one programme at a time, and this offers to
-    // start whichever one that is.
-    this.startTarget.href = slot.slotUrl ?? "#"
-    this.startTarget.hidden = !slot.slotUrl
+    // The same film, said as a button -- but from the top, where the title resumes. It
+    // follows the arrows rather than staying on what is playing: the banner describes one
+    // programme at a time, and this offers to start whichever one that is.
+    this.startTarget.href = slot.slotStartUrl ?? "#"
+    this.startTarget.hidden = !slot.slotStartUrl
+    if (this.hasFavoriteTarget) {
+      this.favoriteTarget.hidden = !slot.slotEntryId
+      this.showFavorite(slot.slotFavorited === "true")
+    }
     this.contextTarget.textContent = slot.slotContext ?? ""
     this.whenTarget.textContent = this.span(slot)
     // Says which way you are looking, so a time on its own is never mistaken for now.
@@ -85,6 +90,51 @@ export default class extends Controller {
     // An arrow at the end of what was rendered is spent, and should look it.
     this.mark(".cable-hud__key--left", this.at === 0)
     this.mark(".cable-hud__key--right", this.at === this.slots.length - 1)
+  }
+
+  // In the member's own favourites channel, or not -- the guide's heart, on the same route
+  // and the same terms. Nothing is drawn until the server answers: a heart that filled
+  // before the write landed would be a lie whenever the write failed.
+  async favorite() {
+    const slot = this.slots[this.at]
+    const id = slot?.slotEntryId
+    if (!id || this.favoriting) return
+
+    const on = slot.slotFavorited !== "true"
+    this.favoriting = true
+    // Pressing it is reading the banner, so it should not snap back to what is on mid-press.
+    this.rest()
+
+    try {
+      const response = await fetch(`/entries/${encodeURIComponent(id)}/favorite`, {
+        method: on ? "POST" : "DELETE",
+        headers: { "X-CSRF-Token": this.tokenValue, Accept: "application/json" }
+      })
+      if (!response.ok) return this.favoriteRefused()
+
+      // Every slot showing this film, since a channel repeats itself within a running order
+      // and the heart should not revert on the next arrow press.
+      this.slots.filter((other) => other.slotEntryId === id)
+        .forEach((other) => { other.slotFavorited = String(on) })
+      if (this.slots[this.at]?.slotEntryId === id) this.showFavorite(on)
+    } catch {
+      this.favoriteRefused()
+    } finally {
+      this.favoriting = false
+    }
+  }
+
+  // Hollow for off, solid for on -- the same pair of glyphs the guide uses.
+  showFavorite(on) {
+    this.favoriteIconTarget.classList.toggle("fa-solid", on)
+    this.favoriteIconTarget.classList.toggle("fa-regular", !on)
+    this.favoriteTarget.classList.toggle("cable-hud__action--on", on)
+    this.favoriteTarget.setAttribute("aria-label", on ? "In your favourites -- press to remove" : "Add to my favourites")
+  }
+
+  favoriteRefused() {
+    this.favoriteTarget.classList.add("cable-hud__action--refused")
+    setTimeout(() => this.favoriteTarget.classList.remove("cable-hud__action--refused"), 1200)
   }
 
   mark(selector, spent) {

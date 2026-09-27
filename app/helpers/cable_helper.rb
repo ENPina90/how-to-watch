@@ -42,10 +42,15 @@ module CableHelper
   # The ordinary watch page for a programme, watched from its own channel. A decade passes the
   # entry's channel, never its own key: the watch page reads ?channel= as a list id, and a key
   # cast to one would be somebody else's list.
-  def cable_watch_path(slot, channel)
+  #
+  # `from_start` is for the buttons that say "from the beginning" and mean it: the watch
+  # page skips the member's saved position when it is set. See
+  # EntriesController#start_position.
+  def cable_watch_path(slot, channel, from_start: false)
     from = channel.is_a?(CableEra) ? slot.entry.list_id : channel.id
 
-    watch_entry_path(slot.entry, channel: from, subentry: slot.subentry&.id)
+    watch_entry_path(slot.entry, channel: from, subentry: slot.subentry&.id,
+                                 from_start: (1 if from_start))
   end
 
   # Times on a cable channel are read off a clock, so they are shown in the zone the
