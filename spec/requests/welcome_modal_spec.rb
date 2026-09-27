@@ -34,6 +34,30 @@ RSpec.describe 'The welcome modal', type: :request do
     expect(response.body).not_to include('welcome-modal')
   end
 
+  describe 'on demand' do
+    it 'has /first send you to the home page asking for it' do
+      get '/first'
+
+      expect(response).to redirect_to('/?welcome=1')
+    end
+
+    it 'is drawn with ?welcome=1 after it has been seen' do
+      cookies[:welcomed] = '1'
+
+      get new_user_session_path(welcome: 1)
+
+      expect(welcome).to be_present
+    end
+
+    it 'is drawn with ?welcome=1 for someone signed in' do
+      sign_in create(:user)
+
+      get lists_path(welcome: 1)
+
+      expect(response.body).to include('welcome-modal')
+    end
+  end
+
   it 'offers the cable, the sign-up page, search and the tour' do
     get new_user_session_path
 

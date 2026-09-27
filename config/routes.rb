@@ -106,6 +106,10 @@ Rails.application.routes.draw do
   delete '/impersonate', to: 'impersonations#destroy', as: :stop_impersonating
 
   root to: "lists#index"
+  # The first-visit welcome on demand, for seeing it again without clearing cookies or
+  # signing out. It is the home page with `?welcome=1`, which any page honours (see
+  # show_welcome?), so the redirect writes nothing and is safe as a GET.
+  get 'first', to: redirect('/?welcome=1')
   get 'watch_now', to: 'pages#watch_now'
   # Trailers for films across the catalogue, one after another. A GET, and it writes nothing
   # but the session's note of which trailers were just shown -- see TrailerPicking.

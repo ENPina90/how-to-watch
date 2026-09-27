@@ -15,7 +15,11 @@ module ApplicationHelper
 
   # The welcome modal is for someone who has never been here. Anyone signed in has, on
   # whichever device, and anyone who has seen it once carries the cookie it leaves.
+  # `?welcome=1` shows it regardless, which is what /first redirects to -- a way to look at
+  # it again that does not mean clearing cookies or signing out.
   def show_welcome?
+    return true if params[:welcome] == '1'
+
     !user_signed_in? && cookies[:welcomed].blank?
   end
 
