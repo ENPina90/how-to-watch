@@ -211,6 +211,19 @@ body.cinema__mode:not(.sidebar-collapsed) .cinema__title {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+/* A reported source keeps the icon's outline and hover and only changes colour, to the
+   muted red the entry card uses. Classed on the button, not the icon: link_controller.js
+   flips whatever element it is attached to, and here that is the button. The icon is named
+   as well because `.page-container i` paints every icon white with `!important`; the
+   selector needs to outrank `body.light-mode .page-container i` too. */
+.page-container .source-switcher__report.link-broken {
+  border-color: rgba(184, 92, 92, 0.7);
+}
+
+.page-container .source-switcher__report.link-broken i {
+  color: #b85c5c !important;
+}
+
 /* Source CRUD modals sit above the cinema chrome */
 #newSourceModal,
 [id^="editSourceModal-"] {
