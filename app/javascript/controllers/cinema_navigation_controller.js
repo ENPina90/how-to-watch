@@ -672,14 +672,10 @@ export default class extends Controller {
   // The address bar was moved without a page load, so there is nothing in the document for
   // it to match. Letting the browser load it properly is both simplest and right.
   historyMoved() {
-    window.leavingOnPurpose = true
     window.location.reload()
   }
 
   giveUp(url) {
-    // The page asks "did you mean to leave?" whenever the frame has focus; this is the
-    // page leaving deliberately.
-    window.leavingOnPurpose = true
     window.location.assign(url)
   }
 }

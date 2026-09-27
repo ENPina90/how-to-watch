@@ -101,8 +101,6 @@ export default class extends Controller {
     })
     if (asked.defaultPrevented) return
 
-    // The page asks "did you mean to leave?" whenever the frame has focus.
-    window.leavingOnPurpose = true
     window.location.assign(this.urlValue)
   }
 }

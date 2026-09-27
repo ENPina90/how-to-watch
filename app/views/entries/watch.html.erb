@@ -4,31 +4,10 @@
   // Add has-entries-sidebar class to body
   document.body.classList.add('has-entries-sidebar');
 
-  // Prevent iframe from navigating parent page or opening multiple windows
-  let autoplayAttempts = 0;
-  const originalOpen = window.open;
-  window.open = function(...args) {
-    console.log('window.open intercepted:', args);
-    // Block repeated autoplay attempts
-    return null;
-  };
-
-  // Prevent iframe from reloading parent.
-  //
-  // The test is "does the frame have focus", which is true for most of a film -- so a
-  // navigation the page itself starts is caught by it too, and the browser asks the
-  // viewer whether they meant to leave. That is fine for a hijack and wrong for the
-  // up-next card, whose whole job is to leave: the prompt appears behind the countdown
-  // and nothing happens. Anything in the app that navigates on purpose says so first.
-  window.addEventListener('beforeunload', function(e) {
-    if (window.leavingOnPurpose) return;
-
-    if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
-      e.preventDefault();
-      e.returnValue = '';
-      return '';
-    }
-  });
+  // There is deliberately no window.open override or beforeunload guard here. The override
+  // replaced our window's open, never the embed's, so it stopped nothing; the guard asked
+  // "leave page?" whenever the frame had focus, which caught closing the tab and never a
+  // hijack -- VidSrc's ads open a new tab and leave this one alone. See VIDSRC.md §7.
 </script>
 
 <%# Position tracking rides on the same player reports the room does, and only providers
