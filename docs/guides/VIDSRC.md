@@ -433,11 +433,12 @@ the wrapper page and measured on 2026-09-14:
 - **The trigger is a `mousedown` on the wrapper document**, listened for in the capture
   phase and rationed through `shown_at` in their localStorage (`36e5`, one hour).
 - **It opens through a throwaway child frame** — `f().contentWindow.open(...)` — whenever
-  its own `window.open` looks tampered with. So overriding `window.open` cannot stop it,
-  and the override at the top of `entries/watch.html.erb` and `cable/show.html.erb` does
-  nothing at all: it replaces *our* window's `open`, and the embed is a cross-origin frame
-  calling its own. The `beforeunload` guard beside it is real, and catches the other trick
-  (the frame navigating our page away).
+  its own `window.open` looks tampered with. So overriding `window.open` cannot stop it:
+  that would replace *our* window's `open`, and the embed is a cross-origin frame calling
+  its own. The app used to carry exactly that override, and a `beforeunload` guard for the
+  other trick (the frame navigating our page away). Both were removed on 2026-09-27. The
+  guard fired whenever the frame had focus, so it caught every tab close and never a
+  hijack: in practice the ad always opens a new tab and leaves ours where it was.
 
 **`sandbox` is refused.** An iframe `sandbox` without `allow-popups` would block this
 outright, which is why the wrapper loads `/assets/sbx.js` to detect one. It assigns

@@ -467,10 +467,11 @@ a future change wants an npm package, weigh that against reintroducing the one b
 that differs between the two services.
 
 ### 41. ⬜ The VidSrc embed opens ad tabs for anyone without a blocker (found 2026-09-14)
-The first mouse press inside the player, once an hour, opens a new tab of advertising. The
-`window.open = () => null` guard at the top of `entries/watch.html.erb` and
-`cable/show.html.erb` looks like protection and is not: it replaces our window's `open`,
-and the embed calls its own from a cross-origin frame.
+The first mouse press inside the player, once an hour, opens a new tab of advertising.
+Nothing in the app stops it. The `window.open = () => null` override that used to sit on the
+watch and cable pages only replaced our window's `open`, and the embed calls its own from a
+cross-origin frame. That override and its `beforeunload` guard were removed on 2026-09-27;
+the guard only ever fired when a tab was closed.
 
 `sandbox` was tried against `framerelay.dev` and is detected and refused. The fix that would
 hold is a click shield over the player on providers with no-click autoplay, which costs
