@@ -1,7 +1,5 @@
 <%= render 'shared/player_preconnect', url: @embed_url, source: @entry.resolved_source %>
 
-<%= render 'cable/frame_guards' %>
-
 <%# The same three parts as the watch page, and the same reasons for the split (see
     entries/watch.html.erb): the screen is what goes fullscreen and must survive a change of
     channel, the frame stack holds the player, and the chrome is everything that describes

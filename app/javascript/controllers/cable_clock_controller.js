@@ -168,9 +168,7 @@ export default class extends Controller {
     })
     if (asked.defaultPrevented) return
 
-    // Nothing answered. The page asks "did you mean to leave?" whenever the frame has
-    // focus, which it has for most of a programme, so say this is deliberate first.
-    window.leavingOnPurpose = true
+    // Nothing answered, so load the programme as a page of its own.
     window.location.assign(url)
   }
 }
