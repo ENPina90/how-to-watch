@@ -157,3 +157,25 @@ body.light-mode {
     }
   }
 }
+
+// The first-visit welcome (shared/_welcome_modal). Its close button sits at the top left,
+// before the title, where Bootstrap would push it right with an auto left margin.
+.welcome-modal {
+  .modal-header {
+    justify-content: flex-start;
+
+    .btn-close {
+      margin: 0 0.75rem 0 0;
+    }
+  }
+
+  // One row where the four buttons fit, and on a phone they wrap and stretch to fill
+  // each line rather than squeeze.
+  .modal-footer {
+    justify-content: center;
+
+    > .btn {
+      flex: 1 1 auto;
+    }
+  }
+}
