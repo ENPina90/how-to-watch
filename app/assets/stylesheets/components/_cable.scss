@@ -1258,20 +1258,35 @@ body.cable__mode .cinema__screen--guide {
 }
 
 /* The pad. Up and down tune, left and right only look -- the same shape for both, because
-   on the remote they were the same shape. */
+   on the remote they were the same shape.
+
+   Square tracks, so the four arrows sit the same distance from the button in the middle
+   whichever way they point. Rows sized by their content spread the vertical pair further
+   apart than the horizontal one, and a pad that is wider one way than the other does not
+   look like a pad.
+
+   Navy rather than the grey it used to be: the same ink as the badge and the home button at
+   the banner's other two ends, so the bar reads as dark caps either side of the lit-up
+   listing, the way the set-top boxes drew it. The highlight across the top is the gloss
+   every one of those interfaces put on anything you could press. */
 .cable-hud__pad {
+  --pad-cell: 30px;
+  --pad-sel: 38px;
+
   flex: 0 0 auto;
-  width: 104px;
   display: grid;
   grid-template-areas:
     ".    up    ."
     "left sel right"
     ".    down  .";
-  align-items: center;
-  justify-items: center;
-  padding: 8px 4px;
-  row-gap: 2px;
-  background: linear-gradient(180deg, #d8ded6 0%, #b9c1b7 100%);
+  grid-template-columns: var(--pad-cell) var(--pad-sel) var(--pad-cell);
+  grid-template-rows: var(--pad-cell) var(--pad-sel) var(--pad-cell);
+  place-items: center;
+  align-content: center;
+  padding: 6px 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 45%),
+    linear-gradient(180deg, #1a2f6b 0%, #0e1c4a 100%);
   border-left: 3px solid #e8e8e8;
 }
 
@@ -1279,28 +1294,35 @@ body.cable__mode .cinema__screen--guide {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 22px;
+  width: 100%;
+  height: 100%;
   padding: 0;
   border: 0;
   background: none;
-  color: #17306b;
-  font-size: 1rem;
+  color: #cfd9f5;
+  /* The watch page's ring draws its carets at three times its ten-pixel base; these match
+     it, so the two remotes are the same size in the hand. */
+  font-size: 30px;
   line-height: 1;
-  text-shadow: none;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
   cursor: pointer;
   transition: color 0.15s ease, opacity 0.15s ease;
 }
 
 .cable-hud__key:hover,
 .cable-hud__key:focus-visible {
-  color: #0a1637;
+  color: #ffd42a;
+  outline: none;
 }
 
 /* Nothing further rendered in that direction. */
 .cable-hud__key:disabled {
   opacity: 0.28;
   cursor: default;
+}
+
+.cable-hud__key:disabled:hover {
+  color: #cfd9f5;
 }
 
 .cable-hud__key--up    { grid-area: up; }
