@@ -144,6 +144,9 @@ class CableController < ApplicationController
     # What the HUD's arrows step through. They only change what the banner says, never what
     # is playing, so this is the running order either side of now and nothing more.
     @nearby = CableSchedule.nearby(@channel, at: @now)
+    # What the banner's heart starts as, for each programme the arrows can reach. One query
+    # for the member's favourites, whatever the running order holds.
+    @favorited = favorited_keys([])
     # Where this channel sits on the dial, which is what the badge shows. A channel is "3"
     # because of its place in the line-up, not because of its row id.
     @channel_number = CableSchedule.dial_number(@channel)

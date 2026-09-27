@@ -1170,9 +1170,8 @@ body.cable__mode .cinema__screen--guide {
   color: #fff;
 }
 
-/* The same address as the title, said as a button. Quiet enough that the banner is still a
-   caption rather than a toolbar -- it is one step from the picture, not a control the eye
-   has to get past to read what is on. */
+/* Channel 0's "Watch the film", which keeps its label: there it is the one way from a
+   trailer to the thing the trailer is for, and an icon alone would not say so. */
 .cable-hud__start,
 .cable-hud__start:hover,
 .cable-hud__start:focus-visible {
@@ -1202,6 +1201,60 @@ body.cable__mode .cinema__screen--guide {
   border-color: #ffd42a;
   color: #17306b;
   outline: none;
+}
+
+/* Start from the beginning and the heart, as a pair of icons under the listing. Quiet
+   enough that the banner is still a caption rather than a toolbar -- it is one step from
+   the picture, not a control the eye has to get past to read what is on. The label the
+   start button used to carry was the loudest thing on the banner, for the same reason the
+   guide's panel dropped its own. */
+.cable-hud__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.cable-hud__action,
+.cable-hud__action:hover,
+.cable-hud__action:focus-visible {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 24px;
+  padding: 0;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.8rem;
+  text-decoration: none;
+  text-shadow: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+/* `hidden` loses to the display above without this -- a slot with nothing behind it would
+   still show a button that goes nowhere. */
+.cable-hud__action[hidden] {
+  display: none;
+}
+
+.cable-hud__action:hover,
+.cable-hud__action:focus-visible {
+  background: #ffd42a;
+  border-color: #ffd42a;
+  color: #17306b;
+  outline: none;
+}
+
+/* A filled heart is a favourite, in the listings' yellow so it reads as lit. */
+.cable-hud__action--on {
+  color: #ffd42a;
+}
+
+.cable-hud__action--refused {
+  animation: tvguide-refused 0.4s ease-in-out 2;
 }
 
 /* The pad. Up and down tune, left and right only look -- the same shape for both, because

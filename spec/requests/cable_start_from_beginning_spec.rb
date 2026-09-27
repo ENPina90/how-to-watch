@@ -36,8 +36,33 @@ RSpec.describe 'Start from the beginning', type: :request do
     it 'offers a button wired to the programme the banner is describing' do
       travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
 
-      expect(response.body).to include('cable-hud__start')
       expect(response.body).to include('data-cable-hud-target="start"')
+      expect(response.body).to include('fa-backward-fast')
+    end
+
+    it 'offers the heart beside it' do
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('data-action="click->cable-hud#favorite"')
+      expect(response.body).to include(%(data-slot-entry-id="#{entry.id}"))
+      expect(response.body).to include('data-slot-favorited="false"')
+    end
+
+    it 'fills the heart for a film already in the favourites channel' do
+      favourites = create(:list, user: user, name: 'Favourites')
+      user.update!(favorite_list: favourites)
+      entry.file_into!(favourites)
+
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).to include('data-slot-favorited="true"')
+    end
+
+    it 'leaves the heart out for a guest, who has nowhere to keep one' do
+      sign_out user
+      travel_to(midnight + 11.minutes) { get cable_channel_path(channel) }
+
+      expect(response.body).not_to include('cable-hud#favorite')
     end
 
     # The banner's arrows walk the running order without tuning, so the button has to follow
@@ -49,7 +74,7 @@ RSpec.describe 'Start from the beginning', type: :request do
       slot = CableSchedule.on_air(channel, at: midnight + 11.minutes)
 
       expect(response.body).to include(
-        %(data-slot-url="#{watch_entry_path(slot.entry, channel: channel.id)}")
+        %(data-slot-start-url="#{ERB::Util.h(watch_entry_path(slot.entry, channel: channel.id, from_start: 1))}")
       )
     end
   end
