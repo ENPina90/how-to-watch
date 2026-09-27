@@ -188,6 +188,9 @@
                <%# Where this programme lives outside the schedule: its own page on the
                    watch side, played from the beginning the ordinary way. %>
                data-guide-watch-url="<%= cable_watch_path(slot, channel) %>"
+               <%# The panel's start button: the same page, but from the top whatever this
+                   member's saved position says. %>
+               data-guide-start-url="<%= cable_watch_path(slot, channel, from_start: true) %>"
                data-guide-year="<%= slot.entry.year %>"
                data-guide-plot="<%= slot.entry.plot %>"
                data-guide-watched="<%= @watched.include?(slot.entry_id) %>"

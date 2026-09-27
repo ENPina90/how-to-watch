@@ -190,6 +190,19 @@ RSpec.describe 'Player progress', type: :request do
       expect(response.body).to include('startAt=743')
     end
 
+    # The cable banner's and the guide's start button. Somebody who has just seen the film
+    # part-way through on a channel and pressed "from the beginning" meant it, whatever an
+    # earlier visit left behind.
+    it 'ignores the saved position when the link asks for the beginning' do
+      entry.update!(provider: vidsrc_provider)
+      user.user_entry_for!(entry).record_progress!(742.5)
+
+      get watch_entry_path(entry, from_start: 1)
+
+      expect(response.body).not_to include('startAt')
+      expect(user.user_entry_for(entry).reload.player_progress).to eq(742.5)
+    end
+
     it 'starts from the beginning for a member who has never played it' do
       entry.update!(provider: vidsrc_provider)
 

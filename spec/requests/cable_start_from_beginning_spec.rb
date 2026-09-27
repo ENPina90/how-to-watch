@@ -5,7 +5,9 @@ require 'rails_helper'
 # guess that the banner's headline happened to be a link.
 #
 # Both buttons lead out of cable to the ordinary watch player, where the film plays from the
-# beginning and counts towards what the viewer has seen.
+# beginning -- whatever position the viewer saved on an earlier visit -- and counts towards
+# what they have seen. The titles beside them lead to the same page without the flag, and
+# resume as any other link to it does.
 RSpec.describe 'Start from the beginning', type: :request do
   let(:user) { create(:user) }
 
@@ -68,7 +70,7 @@ RSpec.describe 'Start from the beginning', type: :request do
       slot = CableSchedule.on_air(channel, at: midnight + 11.minutes)
 
       expect(response.body).to include(
-        %(data-guide-watch-url="#{watch_entry_path(slot.entry, channel: channel.id)}")
+        %(data-guide-start-url="#{ERB::Util.h(watch_entry_path(slot.entry, channel: channel.id, from_start: 1))}")
       )
     end
   end
