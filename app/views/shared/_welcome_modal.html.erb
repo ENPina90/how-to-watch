@@ -1,0 +1,49 @@
+<%# Shown once, to a signed-out visitor without the `welcomed` cookie (see show_welcome? in
+    ApplicationHelper). The controller sets that cookie the moment the modal opens rather
+    than when it is closed: a visitor who takes one of the buttons, or just clicks away,
+    has still been welcomed, and should not be asked again on the next page.
+
+    The adblock line is drawn hidden and only shown for a browser that can take one of
+    the three links below. Which browser it is can only be told in the page -- Brave
+    says so through navigator.brave, not in its user agent -- so the choice is the
+    controller's, and the links stay here with the rest of the copy. %>
+<div class="modal fade welcome-modal"
+     id="welcomeModal"
+     tabindex="-1"
+     aria-labelledby="welcomeModalLabel"
+     aria-hidden="true"
+     data-turbo-temporary
+     data-controller="welcome"
+     data-welcome-chrome-url-value="https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh"
+     data-welcome-firefox-url-value="https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/"
+     data-welcome-safari-url-value="https://apps.apple.com/us/app/ublock-origin-lite/id6745342698">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="welcomeModalLabel">Welcome to <%= site_name %></h5>
+      </div>
+      <div class="modal-body">
+        <p>
+          Welcome to <strong><%= site_name %></strong>, a place to curate, share, and surf your
+          very own TV channels, full of the shows and films you love. The controller is in
+          your hands!
+        </p>
+        <p class="welcome-modal__adblock" data-welcome-target="adblock" hidden>
+          Some of the media sources we use are from 3rd parties who inject ads we have no
+          control over. Nothing dangerous, but for the most seamless ad-free experience it is
+          highly recommended you
+          <a href="#" target="_blank" rel="noopener" data-welcome-target="adblockLink">install an adblocker</a>,
+          or switch to <a href="https://brave.com/" target="_blank" rel="noopener">Brave browser</a>.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <%= link_to 'Watch Now', cable_path, class: 'btn btn-success' %>
+        <button type="button" class="btn btn-outline-primary" data-action="welcome#search">Search</button>
+        <%# The tour is not built yet. The button is here so the footer is laid out for it. %>
+        <button type="button" class="btn btn-outline-secondary">Take Tour</button>
+        <%= link_to 'Sign Up', new_user_registration_path, class: 'btn btn-primary' %>
+      </div>
+    </div>
+  </div>
+</div>

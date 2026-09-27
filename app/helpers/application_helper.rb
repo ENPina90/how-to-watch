@@ -1,4 +1,24 @@
 module ApplicationHelper
+  # What the site calls itself, read off the address it was reached at so a move to a new
+  # domain renames it without a deploy. The Railway address and a development machine are
+  # not names anyone chose, so those fall back to HowToWatch. A domain says nothing about
+  # its casing, which is what SITE_NAME is for: "couchcable.com" can be "Couch Cable".
+  def site_name
+    return ENV['SITE_NAME'] if ENV['SITE_NAME'].present?
+
+    host = request.host.to_s.downcase.delete_prefix('www.')
+    placeholder = host.blank? || host == 'localhost' || host.end_with?('.railway.app', '.localhost') ||
+                  host.match?(/\A[\d.]+\z/) || host.include?(':')
+
+    placeholder ? 'HowToWatch' : host
+  end
+
+  # The welcome modal is for someone who has never been here. Anyone signed in has, on
+  # whichever device, and anyone who has seen it once carries the cookie it leaves.
+  def show_welcome?
+    !user_signed_in? && cookies[:welcomed].blank?
+  end
+
   # How many notifications are waiting. The navbar asks twice per page -- once for the dot
   # on the menu, once for the badge inside it -- so the count is worked out once per
   # request rather than once per caller.
