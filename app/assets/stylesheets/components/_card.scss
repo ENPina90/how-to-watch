@@ -176,8 +176,14 @@
   container: list-page / inline-size;
 }
 
-.grid-card--episode {
+// The width lives on :root rather than on the card so the section heading below can read
+// it too. A custom property is substituted where it is used, so `cqw` still resolves
+// against the list page's container, not the root.
+:root {
   --episode-card-width: min(52vw, 1040px, 100cqw - 64px);
+}
+
+.grid-card--episode {
   width: var(--episode-card-width);
   max-width: none;
   margin-inline: calc((min(40vw, 800px) - var(--episode-card-width)) / 2);
@@ -215,6 +221,14 @@
   .card-stuff {
     min-width: 0;
   }
+}
+
+// A section's heading is as wide as the column, and the column as wide as an ordinary card,
+// so over a pulled-out episode card the sticky heading covered only its middle and the
+// card showed either side of it as it scrolled underneath. It is pulled out by the same
+// amount whenever the section holds an episode.
+.entry-section:has(.grid-card--episode) > h3 {
+  margin-inline: calc((min(40vw, 800px) - var(--episode-card-width)) / 2);
 }
 
 .card-details {
