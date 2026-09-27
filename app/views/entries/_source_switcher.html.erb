@@ -15,6 +15,22 @@
     <% end %>
   <% end %>
 
+  <%# The same report the entry card makes, and through the same controller: the state is
+      in the class, and a refusal puts it back. Offered to whoever the action will accept,
+      rather than drawn for everyone and quietly undone -- which means signed in as well:
+      a default channel's entries are editable by anyone, but AccessControl turns away a
+      guest's PATCH before the permission check is reached. %>
+  <% if user_signed_in? && can_edit_entry?(@entry) %>
+    <button type="button"
+            class="btn btn-sm source-switcher__icon source-switcher__report <%= @entry.stream == false ? 'link-broken' : 'link-ok' %>"
+            title="Report broken link"
+            data-controller="link"
+            data-link-id-value="<%= @entry.id %>"
+            data-action="link#toggle">
+      <i class="fa-solid fa-link-slash"></i>
+    </button>
+  <% end %>
+
   <% if current_user&.admin? %>
     <button type="button" class="btn btn-sm source-switcher__icon"
             data-bs-toggle="modal" data-bs-target="#manageSourcesModal" title="Edit sources">
