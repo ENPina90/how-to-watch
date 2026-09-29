@@ -13,9 +13,14 @@
 search_term: "simpsons"
 
 # The channel the middle of the tour walks through, found by exact name among public
-# channels. Pick one grouped by year, with a few decades in it, so the filter stop has
-# something to select.
+# channels. Pick one with a good spread of years, so the filter stop has a run to select.
 channel: "Movies to Watch Before You Die"
+
+# How that channel is shown during the tour, whatever its own settings say -- the same
+# `criteria` and `sort` its grouping menu puts in the address. Never saved to the channel,
+# even when its owner is the one taking the tour (see ListsController#remember_view).
+channel_criteria: "Year"
+channel_sort: "asc"
 
 # Searched for inside that channel. Should be something it holds.
 channel_search: "Airplane!"
@@ -44,10 +49,7 @@ text:
     body: "Channels built by other people. Let's open one."
   filters:
     title: "A channel dashboard"
-    body: "Every channel can be sorted, filtered and curated. Pick one section, or drag across a run of them."
-  sections:
-    title: "Fold away what you don't need"
-    body: "Each section collapses, so a long channel stays easy to get around."
+    body: "Every channel can be sorted, filtered and curated. Pick a year, or drag across a whole run of them."
   channel_search:
     title: "Search inside a channel"
     body: "Looking for one thing in particular? Search just this channel."

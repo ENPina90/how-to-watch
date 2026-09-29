@@ -29,6 +29,9 @@ module TourHelper
   def tour_config
     channel = tour_channel
     settings = tour_settings
+    # The grouping the channel is shown in for the tour; blank keys fall away, leaving the
+    # channel's own.
+    view = { criteria: settings['channel_criteria'], sort: settings['channel_sort'] }.compact_blank
 
     {
       pages: tour_pages(channel),
@@ -37,8 +40,8 @@ module TourHelper
       channelSearch: settings['channel_search'].to_s,
       paths: {
         home: root_path,
-        channel: channel && list_path(channel),
-        results: channel && list_path(channel, query: settings['channel_search']),
+        channel: channel && list_path(channel, view),
+        results: channel && list_path(channel, view.merge(query: settings['channel_search'])),
         cable: cable_path,
         signUp: new_user_registration_path
       },

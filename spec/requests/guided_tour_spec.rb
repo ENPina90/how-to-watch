@@ -102,8 +102,8 @@ RSpec.describe 'The guided tour', type: :request do
 
       get root_path(tour: 1)
 
-      expect(config['paths']['channel']).to eq(list_path(channel))
-      expect(config['paths']['results']).to eq(list_path(channel, query: 'Airplane!'))
+      expect(config['paths']['channel']).to eq(list_path(channel, criteria: 'Year', sort: 'asc'))
+      expect(config['paths']['results']).to eq(list_path(channel, criteria: 'Year', sort: 'asc', query: 'Airplane!'))
       expect(config['text']['search']['title']).to be_present
     end
   end
@@ -122,15 +122,39 @@ RSpec.describe 'The guided tour', type: :request do
                                        'id="sidebarChannelsPanel"', 'data-tour="community"')
     end
 
-    it 'finds the filters, the sections and the search on the channel page' do
+    it 'finds the filters and the search on the channel page' do
       create(:entry, list: channel, name: 'Airplane!', year: 1980, position: 1)
       create(:entry, list: channel, name: 'Seven Samurai', year: 1954, position: 2)
 
       get list_path(channel, criteria: 'Year')
 
-      expect(response.body).to include('data-tour="filters"', 'data-section-filter-target="option"',
-                                       'class="section-toggle"', 'data-tour="channel-search"',
+      expect(response.body).to include('data-tour="filters"', 'data-controller="section-filter"',
+                                       'data-section-filter-target="option"', 'data-tour="channel-search"',
                                        'id="nowPlayingContent"')
+    end
+  end
+
+  # The tour shows its channel grouped its own way. For the channel's owner, or an admin,
+  # a grouping in the address is normally remembered as the channel's view -- which the
+  # tour must not do on their behalf.
+  describe "the channel's own view" do
+    before do
+      channel.update!(settings: 'Title', sort: 'desc')
+      sign_in owner
+    end
+
+    it 'is left alone when its owner takes the tour' do
+      cookies[:tour] = 'channel'
+
+      get list_path(channel, criteria: 'Year', sort: 'asc')
+
+      expect(channel.reload.slice(:settings, :sort)).to eq('settings' => 'Title', 'sort' => 'desc')
+    end
+
+    it 'is still remembered when the owner picks a grouping themselves' do
+      get list_path(channel, criteria: 'Year', sort: 'asc')
+
+      expect(channel.reload.slice(:settings, :sort)).to eq('settings' => 'Year', 'sort' => 'asc')
     end
   end
 

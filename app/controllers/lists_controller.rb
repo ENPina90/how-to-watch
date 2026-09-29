@@ -846,6 +846,10 @@ class ListsController < ApplicationController
     # Only persist an explicit choice. A plain visit carries no params, and writing them
     # blindly used to wipe the list's remembered grouping on every page view.
     return if params[:criteria].blank? && params[:sort].blank?
+    # The guided tour links here with a grouping of its own choosing (config/tour.yml).
+    # That is the tour's choice, not the viewer's, and an owner or admin taking the tour
+    # must not come out of it having re-sorted the channel for everybody.
+    return if cookies[:tour].present?
 
     # Both values come from the resolved settings, not raw params: a link that carries
     # only one of them must not blank out the other.

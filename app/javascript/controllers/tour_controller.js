@@ -24,6 +24,9 @@ const WIDE_ENOUGH = "(min-width: 992px)";
 // guide fetches its grid, the channel page restores its filters from the address.
 const SETTLE = 800;
 const TYPING = 90;
+// The filter stop's run of years, and how long each one takes to light.
+const FILTER_RUN = 4;
+const FILTER_STEP = 220;
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -229,52 +232,40 @@ export default class extends Controller {
   channelStops() {
     return [
       {
-        // One, then a run of them, then back to everything so the next stop has the whole
-        // channel to work with. The clicks go through the controller's keyboard path,
-        // which is what a scripted click reports itself as.
+        // A run of years, the way a drag down the rail takes one: each year is painted as
+        // it is reached and the whole run committed once at the end. A scripted click per
+        // year commits every time -- Up Next re-picks, the address is rewritten, all
+        // twelve hundred cards are walked -- which is what made this stop drag. Put back
+        // to everything when the stop is left.
         id: "filters",
         element: '[data-tour="filters"]',
         side: "left",
-        when: () => this.filterOptions().length > 0,
+        when: () => this.filterOptions().length > 0 && this.filterController(),
         show: async (alive) => {
-          const [first, ...rest] = this.filterOptions();
-          this.picked = [];
-          const pick = (option) => { option.click(); this.picked.push(option); };
+          const filter = this.filterController();
+          const options = this.filterOptions();
+          // A third of the way in rather than from the top: the earliest years of a long
+          // channel are the thinnest, and a run of empty-looking decades says little.
+          const start = Math.min(Math.floor(options.length / 3), Math.max(options.length - FILTER_RUN, 0));
+          const run = options.slice(start, start + FILTER_RUN);
 
-          await pause(600);
-          if (!alive()) return;
-          pick(first);
+          run[0].scrollIntoView({ block: "center", behavior: "smooth" });
+          await pause(500);
 
-          for (const option of rest.slice(0, 2)) {
-            await pause(900);
+          for (const option of run) {
             if (!alive()) return;
-            pick(option);
+            filter.set(option.dataset.section, true);
+            filter.paint();
+            await pause(FILTER_STEP);
           }
+          if (alive()) filter.commit();
         },
         leave: () => {
-          (this.picked || []).forEach((option) => option.click());
-          this.picked = [];
-        }
-      },
-      {
-        id: "sections",
-        element: () => this.sectionToggles()[0]?.closest("h3"),
-        side: "bottom",
-        when: () => this.sectionToggles().length > 0,
-        show: async (alive) => {
-          this.folded = [];
-          for (const toggle of this.sectionToggles().slice(0, 2)) {
-            await pause(700);
-            if (!alive()) return;
-            toggle.click();
-            this.folded.push(toggle);
-          }
-        },
-        leave: () => {
-          (this.folded || []).forEach((toggle) => {
-            if (toggle.getAttribute("aria-expanded") === "false") toggle.click();
-          });
-          this.folded = [];
+          const filter = this.filterController();
+          if (!filter || filter.selected.size === 0) return;
+
+          filter.selected.clear();
+          filter.commit();
         }
       },
       {
@@ -380,8 +371,9 @@ export default class extends Controller {
     return [...document.querySelectorAll('[data-tour="filters"] [data-section-filter-target="option"]')];
   }
 
-  sectionToggles() {
-    return [...document.querySelectorAll(".entry-section:not([hidden]) .section-toggle")].filter(visible);
+  filterController() {
+    const element = document.querySelector('[data-controller~="section-filter"]');
+    return element && this.application.getControllerForElementAndIdentifier(element, "section-filter");
   }
 
   firstCard() {
