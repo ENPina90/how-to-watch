@@ -193,8 +193,10 @@ export default class extends Controller {
         show: (alive) => this.type(document.getElementById("navbar-search"), this.configValue.searchTerm, alive)
       },
       {
-        // The overlay closes itself on any click outside the search box -- which includes
-        // the Next that brought us here -- so it is opened again, on the series tab.
+        // Opened here rather than trusted to still be open from the typing, and shut
+        // here when the stop is left. The overlay's own dismissal listens for a click
+        // outside the search box, and never hears one: Driver.js keeps clicks on its
+        // buttons to itself, so without this the results sat over the rest of the tour.
         id: "results",
         element: () => document.querySelector('[data-list-search-target="results"]'),
         side: "bottom",
@@ -203,6 +205,10 @@ export default class extends Controller {
           this.searchController()?.openOverlay();
           await pause(700);
           if (alive()) document.getElementById("navShowType")?.click();
+        },
+        leave: () => {
+          this.searchController()?.hideResults();
+          document.getElementById("navbar-search")?.blur();
         }
       },
       {
@@ -404,9 +410,11 @@ export default class extends Controller {
     popover.footerButtons.prepend(link);
   }
 
-  // Whatever a stop left changed on the page, put back.
+  // Whatever a stop left changed on the page, put back -- for a tour closed by its X or
+  // Escape partway through a stop, which Driver.js does not always report as leaving it.
   release() {
     document.body.classList.remove("tour-holding-hud");
+    this.searchController()?.hideResults();
   }
 
   // ---- the cookie --------------------------------------------------------------------
