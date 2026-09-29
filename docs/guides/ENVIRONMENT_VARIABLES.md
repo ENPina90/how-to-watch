@@ -88,6 +88,15 @@ both -- enable **YouTube Data API v3** for it under APIs & Services → Library.
 `YOUTUBE_API_KEY` separately only if the two keys are restricted to different APIs. The free
 quota is 10,000 units a day; importing a playlist costs about one unit per 50 videos, twice.
 
+### **Optional: Site name**
+What the welcome modal calls the site. Without it the name is the domain the site was
+reached at, or HowToWatch on the Railway address and in development -- so set it only when
+the domain's casing is wrong for a name (`couchcable.com` → `Couch Cable`).
+
+```bash
+SITE_NAME="Couch Cable"
+```
+
 ## 🚀 **How to Set Environment Variables in Railway**
 
 1. **Go to your Railway project dashboard**
