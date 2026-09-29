@@ -472,6 +472,7 @@
       </div>
     </div>
 
-    <%= render 'shared/welcome_modal' if show_welcome? %>
+    <%= render 'shared/welcome_modal' if show_welcome? && !tour_active? %>
+    <%= render 'shared/tour' if tour_active? %>
   </body>
 </html>

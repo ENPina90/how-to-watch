@@ -44,7 +44,7 @@
     <%# Filters take the room that is left and scroll inside it; Up Next below them is
         always in view, however many sections there are. %>
     <% if filters.any? %>
-      <section class="channel-sidebar__section channel-sidebar__section--filters">
+      <section class="channel-sidebar__section channel-sidebar__section--filters" data-tour="filters">
         <div class="channel-sidebar__section-head">
           <h6 class="channel-sidebar__title">Filter by <%= criteria_label(@criteria) %></h6>
         </div>

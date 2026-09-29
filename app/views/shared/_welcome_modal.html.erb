@@ -40,8 +40,11 @@
       <div class="modal-footer">
         <%= link_to 'Watch Now', cable_path, class: 'btn btn-success' %>
         <button type="button" class="btn btn-outline-primary" data-action="welcome#search">Search</button>
-        <%# The tour is not built yet. The button is here so the footer is laid out for it. %>
-        <button type="button" class="btn btn-outline-secondary">Take Tour</button>
+        <%# Left out where there would be no tour to take -- the secure access mode shows a
+            stranger nothing but the sign-in page. %>
+        <% if tour_available? %>
+          <%= link_to 'Take Tour', root_path(tour: 1), class: 'btn btn-outline-secondary' %>
+        <% end %>
         <%= link_to 'Sign Up', new_user_registration_path, class: 'btn btn-primary' %>
       </div>
     </div>

@@ -34,5 +34,7 @@
     <div class="page-container" id="pageContainer" style="margin: 0; width: 100%;">
       <%= yield %>
     </div>
+
+    <%= render 'shared/tour' if tour_active? %>
   </body>
 </html>

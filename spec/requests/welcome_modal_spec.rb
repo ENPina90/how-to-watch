@@ -75,12 +75,22 @@ RSpec.describe 'The welcome modal', type: :request do
   end
 
   it 'offers the cable, the sign-up page, search and the tour' do
+    AppSetting.update_access_mode!('open')
+
     get new_user_session_path
 
     expect(welcome).to include(%(href="#{cable_path}"))
     expect(welcome).to include(%(href="#{new_user_registration_path}"))
     expect(welcome).to include('data-action="welcome#search"')
-    expect(welcome).to include('Take Tour')
+    expect(welcome).to include(%(href="/?tour=1">Take Tour))
+  end
+
+  it 'leaves the tour out where a stranger could reach none of it' do
+    AppSetting.update_access_mode!('secure')
+
+    get new_user_session_path
+
+    expect(welcome).not_to include('Take Tour')
   end
 
   it 'draws the adblock advice hidden, for the controller to show where it applies' do

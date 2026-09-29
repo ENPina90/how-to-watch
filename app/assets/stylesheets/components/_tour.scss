@@ -1,0 +1,90 @@
+// The guided tour (tour_controller.js), drawn by Driver.js. Its own stylesheet is a white
+// card with grey buttons; this is the site's dark card and green button instead, whichever
+// theme the page is in -- the tour ends on /cable, which is dark regardless.
+$tour-bg: #1a1a1a;
+$tour-text: #f2f2f2;
+$tour-muted: rgba(255, 255, 255, 0.72);
+$tour-accent: #1a936f;
+
+.driver-popover.tour-popover {
+  background-color: $tour-bg;
+  color: $tour-text;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  max-width: 340px;
+  padding: 18px 18px 14px;
+
+  .driver-popover-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: $tour-text;
+  }
+
+  .driver-popover-description {
+    color: $tour-muted;
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+
+  .driver-popover-close-btn {
+    color: $tour-muted;
+
+    &:hover,
+    &:focus {
+      color: $tour-text;
+    }
+  }
+
+  .driver-popover-navigation-btns {
+    gap: 6px;
+  }
+
+  // Driver.js greys out Back on the first stop; on a tour that carries on across pages
+  // it would read as a button that has broken.
+  .driver-popover-btn-disabled {
+    display: none;
+  }
+
+  .driver-popover-footer-btn,
+  .tour-popover__sign-up {
+    border-radius: 6px;
+    font-size: 0.85rem;
+    padding: 5px 12px;
+    text-shadow: none;
+  }
+
+  .driver-popover-prev-btn {
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: $tour-text;
+  }
+
+  .driver-popover-next-btn {
+    background-color: $tour-accent;
+    border: 1px solid $tour-accent;
+    color: #fff;
+  }
+
+  .tour-popover__sign-up {
+    background-color: #0d6efd;
+    border: 1px solid #0d6efd;
+    color: #fff;
+    text-decoration: none;
+    line-height: 1.3;
+  }
+
+  // Driver.js draws the arrow as a border on one side of an empty box; only that side
+  // takes the card's colour.
+  .driver-popover-arrow-side-left { border-left-color: $tour-bg; }
+  .driver-popover-arrow-side-right { border-right-color: $tour-bg; }
+  .driver-popover-arrow-side-top { border-top-color: $tour-bg; }
+  .driver-popover-arrow-side-bottom { border-bottom-color: $tour-bg; }
+}
+
+// The cable banner fades whenever the pointer is still, and the tour's HUD stop is nothing
+// but the pointer being still. Held up for as long as that stop lasts.
+body.tour-holding-hud .cable-hud {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}

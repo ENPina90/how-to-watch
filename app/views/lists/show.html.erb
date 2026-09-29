@@ -50,7 +50,7 @@
 
         <%= form_with url: list_path(@list), method: :get,
                       class: "expanding-search",
-                      data: { controller: "expanding-search" } do %>
+                      data: { controller: "expanding-search", tour: "channel-search" } do %>
           <button type="button" class="list-action" title="Search this channel"
                   data-action="click->expanding-search#open">
             <i class="fa-solid fa-magnifying-glass"></i>

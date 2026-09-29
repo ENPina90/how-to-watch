@@ -1,0 +1,77 @@
+# The guided tour: what it demonstrates with, and what it says.
+#
+# Everything here is looked up at the moment the tour runs, never stored, so editing this
+# file and deploying is the whole of changing the tour. Anything that no longer resolves
+# is skipped rather than broken: a channel that has been renamed or made private drops the
+# channel-page stops, a search that finds nothing drops the stop that shows its result.
+#
+# The stops themselves -- which element each one points at, and what it does there -- are
+# in app/javascript/controllers/tour_controller.js. This file is the half that a copy edit
+# or a change of example should not need to open that one for.
+
+# Typed into the navbar search on the first stop. Anything TMDB will answer for.
+search_term: "simpsons"
+
+# The channel the middle of the tour walks through, found by exact name among public
+# channels. Pick one grouped by year, with a few decades in it, so the filter stop has
+# something to select.
+channel: "Movies to Watch Before You Die"
+
+# Searched for inside that channel. Should be something it holds.
+channel_search: "Airplane!"
+
+# The words, one per stop. Keys match the stop ids in tour_controller.js. Where a stop
+# says something different to a visitor who is signed out, the `_guest` key is used for
+# them instead.
+text:
+  search:
+    title: "Search for anything"
+    body: "Films, series, anime, and channels other people have built. Let's try one."
+  results:
+    title: "Watch it, or keep it"
+    body: "Every result can be played right away, or added to one of your channels for later."
+  results_guest:
+    title: "Watch it right away"
+    body: "Every result can be played straight from here. Sign up and you can add it to channels of your own."
+  sidebar:
+    title: "Your channels"
+    body: "The channels you are subscribed to. We picked a few to start you off, and you can add as many as you like."
+  sidebar_guest:
+    title: "The dial"
+    body: "The channels on the air right now. Sign up to subscribe to your own."
+  community:
+    title: "Everybody else's channels"
+    body: "Channels built by other people. Let's open one."
+  filters:
+    title: "A channel dashboard"
+    body: "Every channel can be sorted, filtered and curated. Pick one section, or drag across a run of them."
+  sections:
+    title: "Fold away what you don't need"
+    body: "Each section collapses, so a long channel stays easy to get around."
+  channel_search:
+    title: "Search inside a channel"
+    body: "Looking for one thing in particular? Search just this channel."
+  channel_result:
+    title: "Found it"
+    body: "Click any poster to start watching. Your place is kept, so you can pick up where you left off."
+  channel_result_guest:
+    title: "Found it"
+    body: "Click any poster to start watching. Sign up and your place in every channel is kept for you."
+  now_playing:
+    title: "Too much choice?"
+    body: "This is what's on cable right now. Let the sweet chaos of cable wash over you..."
+  cable:
+    title: "Cable mode"
+    body: "Right out of your childhood: channels that are already playing when you turn them on."
+  guide:
+    title: "The guide"
+    body: "Everything on every channel, a few hours at a time. Click a programme to tune in."
+  hud:
+    title: "Channel surf"
+    body: "Flip up and down with these arrows, or with the arrow keys on your keyboard. No fast-forwarding, though. This is proper 90s cable."
+  finale:
+    title: "Happy channel surfing!"
+    body: "That's the tour. Enjoy!"
+  finale_guest:
+    title: "Happy channel surfing!"
+    body: "Sign up to unlock your own channels, progress tracking and more."

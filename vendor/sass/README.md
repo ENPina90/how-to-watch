@@ -58,3 +58,13 @@ Font Awesome is the same, with two directories rather than one -- its webfonts l
 
 Then `bin/rails dartsass:build` and read the diff in `app/assets/builds/application.css` --
 on a patch bump it should be small and explicable. Update the versions above.
+
+## Driver.js
+
+The guided tour's stylesheet, `driver.js/_driver.scss`, is `dist/driver.css` from
+**driver.js 1.8.0** (MIT), copied verbatim and renamed so Sass inlines it rather than
+leaving a CSS `@import` behind. Its JavaScript is pinned from jsdelivr in
+`config/importmap.rb`; keep the two versions in step. To update:
+
+    curl -s https://cdn.jsdelivr.net/npm/driver.js@<version>/dist/driver.css \
+      -o vendor/sass/driver.js/_driver.scss
