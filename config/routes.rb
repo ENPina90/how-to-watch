@@ -110,6 +110,10 @@ Rails.application.routes.draw do
   # signing out. It is the home page with `?welcome=1`, which any page honours (see
   # show_welcome?), so the redirect writes nothing and is safe as a GET.
   get 'first', to: redirect('/?welcome=1')
+  # The guided tour from its first stop, the same way the welcome modal's Take Tour starts
+  # it. `?tour=1` only says "begin"; the tour's place from then on is a session cookie the
+  # page keeps (see TourHelper), so this writes nothing either.
+  get 'tour', to: redirect('/?tour=1')
   get 'watch_now', to: 'pages#watch_now'
   # Trailers for films across the catalogue, one after another. A GET, and it writes nothing
   # but the session's note of which trailers were just shown -- see TrailerPicking.

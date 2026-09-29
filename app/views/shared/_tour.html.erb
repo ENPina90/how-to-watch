@@ -1,0 +1,7 @@
+<%# The guided tour's mount, drawn only while one is running (see TourHelper). Nothing is
+    visible here: the controller builds the popovers itself, and works out from the address
+    which page of the tour this is. Both full layouts render it, since the tour ends on
+    /cable, which uses the special one. %>
+<div data-controller="tour"
+     data-tour-config-value="<%= tour_config.to_json %>"
+     hidden></div>

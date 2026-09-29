@@ -34,6 +34,22 @@ RSpec.describe 'The welcome modal', type: :request do
     expect(response.body).not_to include('welcome-modal')
   end
 
+  describe 'on a phone' do
+    let(:iphone) { 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148' }
+
+    it 'is not drawn' do
+      get new_user_session_path, headers: { 'User-Agent' => iphone }
+
+      expect(welcome).to be_nil
+    end
+
+    it 'is not drawn even when asked for' do
+      get new_user_session_path(welcome: 1), headers: { 'User-Agent' => iphone }
+
+      expect(welcome).to be_nil
+    end
+  end
+
   describe 'on demand' do
     it 'has /first send you to the home page asking for it' do
       get '/first'
@@ -59,12 +75,22 @@ RSpec.describe 'The welcome modal', type: :request do
   end
 
   it 'offers the cable, the sign-up page, search and the tour' do
+    AppSetting.update_access_mode!('open')
+
     get new_user_session_path
 
     expect(welcome).to include(%(href="#{cable_path}"))
     expect(welcome).to include(%(href="#{new_user_registration_path}"))
     expect(welcome).to include('data-action="welcome#search"')
-    expect(welcome).to include('Take Tour')
+    expect(welcome).to include(%(href="/?tour=1">Take Tour))
+  end
+
+  it 'leaves the tour out where a stranger could reach none of it' do
+    AppSetting.update_access_mode!('secure')
+
+    get new_user_session_path
+
+    expect(welcome).not_to include('Take Tour')
   end
 
   it 'draws the adblock advice hidden, for the controller to show where it applies' do

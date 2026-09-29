@@ -17,7 +17,12 @@ module ApplicationHelper
   # whichever device, and anyone who has seen it once carries the cookie it leaves.
   # `?welcome=1` shows it regardless, which is what /first redirects to -- a way to look at
   # it again that does not mean clearing cookies or signing out.
+  #
+  # Never on a phone, even when asked for: it introduces the full site, and the phone view
+  # is a different one that plays nothing. The controller makes the same call off the
+  # window's width, for a tablet or a narrow window this cannot see.
   def show_welcome?
+    return false if mobile_request?
     return true if params[:welcome] == '1'
 
     !user_signed_in? && cookies[:welcomed].blank?

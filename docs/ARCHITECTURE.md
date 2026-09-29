@@ -861,6 +861,24 @@ Reached from the dashboard's Entries figure. Built for its length rather than pa
 - **The synopsis does not scroll.** `.card-plot` is clipped and faded; the caret above
   unlocks one card at a time and leaving the card re-locks it. It was `overflow-y: scroll`,
   which made every card with a long plot a scroll trap on a page of 1,200 of them.
+- **The welcome modal** (`shared/_welcome_modal`, `welcome_controller.js`) greets a
+  signed-out visitor once, on the main layout only: `ApplicationHelper#show_welcome?`
+  draws it when there is no `welcomed` cookie, and the controller leaves that cookie the
+  moment the modal opens. `?welcome=1` (or `/first`) shows it regardless. The site name in
+  it is `ApplicationHelper#site_name` -- the host it was reached at, `SITE_NAME` if set,
+  HowToWatch on the Railway address. It also points Chrome, Firefox and Safari at a uBlock
+  build, because the embeds open ad tabs nothing in the app can stop (VIDSRC.md §7).
+- **The guided tour** (`tour_controller.js`, `TourHelper`, `config/tour.yml`) is Driver.js
+  over four pages: home, the example channel, a search inside it, and `/cable`. Its place
+  is the `tour` session cookie, which the controller writes before each move and deletes
+  when the tour ends -- a cookie because `/cable` rewrites its own address as it plays. The
+  server only reads it, to decide whether to draw the tour at all, and leaves out any page
+  `may_visit?` says this visitor would be bounced from. The example channel, the search
+  terms and every word the tour says are in `config/tour.yml`; the elements the stops
+  point at are mostly `data-tour="…"` attributes, and `spec/requests/guided_tour_spec.rb`
+  fails if one goes missing -- the stops themselves run only in the browser, where a
+  missing element just skips a stop without anyone noticing. `/tour` starts it. Neither the
+  modal nor the tour appears on a phone.
 - **`services/tmdb_search_behavior.js`** holds the six methods `list_search` and
   `mobile_search` share (`tmdbSearch`, `tmdbShow`, `showOverlay`, `handleClickOutside`,
   `hideResults`, `showToast`), applied to both prototypes with `Object.assign`. If you are
@@ -1028,6 +1046,9 @@ neither needs a local Redis.
     third (see §10): they write no viewer state, but they do deal a day that is missing.
   - The watch page sets `data-turbo="false"`, so its controls are `button_to` forms —
     `data-turbo-method` links would silently fall back to GET there.
+- `/first` and `/tour` are redirects for seeing the welcome modal and the guided tour again
+  (§6): to `/?welcome=1` and `/?tour=1`. Neither writes anything; the tour's own cookie is
+  set by the page, not the route.
 - `sources` (admin only) — plus member `renew` / `deactivate` (both PATCH: they change how
   the app plays things) and `test` (GET: it only plays something), and collection `reorder`.
 - `/cable`, `/cable/:id` (a list on the dial, or a decade's key), `/cable/guide`, `/cable/0` —

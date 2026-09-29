@@ -16,6 +16,10 @@ $fa-font-path: "/webfonts";
 // Brands carries fa-square-letterboxd, the only brand mark the app uses.
 @import "@fortawesome/fontawesome-free/scss/brands";
 
+// The guided tour's popovers and overlay (Driver.js 1.8.0, vendored; see vendor/sass/README.md).
+// Themed to the site in components/_tour.scss.
+@import "driver.js/driver";
+
 // Your CSS partials
 @import "components/index";
 @import "pages/index";

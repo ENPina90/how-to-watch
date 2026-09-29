@@ -6,11 +6,20 @@ import * as bootstrap from "bootstrap";
 // once, so the next page does not open it again whichever way this one is left.
 const YEAR = 60 * 60 * 24 * 365;
 
+// Bootstrap's `lg` breakpoint, below which the navbar collapses and the sidebar is gone --
+// most of what the welcome points at. The server already leaves the modal out for a phone
+// it can recognise; this catches a tablet or a narrow window it cannot.
+const WIDE_ENOUGH = "(min-width: 992px)";
+
 export default class extends Controller {
   static targets = ["adblock", "adblockLink"];
   static values = { chromeUrl: String, firefoxUrl: String, safariUrl: String };
 
   connect() {
+    // Too narrow: leave without the cookie, so the same visitor on a bigger screen is still
+    // welcomed there.
+    if (!window.matchMedia(WIDE_ENOUGH).matches) return this.element.remove();
+
     document.cookie = `welcomed=1; max-age=${YEAR}; path=/; samesite=lax`;
 
     const url = this.adblockUrl();
