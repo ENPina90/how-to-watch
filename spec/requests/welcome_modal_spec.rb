@@ -34,6 +34,22 @@ RSpec.describe 'The welcome modal', type: :request do
     expect(response.body).not_to include('welcome-modal')
   end
 
+  describe 'on a phone' do
+    let(:iphone) { 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148' }
+
+    it 'is not drawn' do
+      get new_user_session_path, headers: { 'User-Agent' => iphone }
+
+      expect(welcome).to be_nil
+    end
+
+    it 'is not drawn even when asked for' do
+      get new_user_session_path(welcome: 1), headers: { 'User-Agent' => iphone }
+
+      expect(welcome).to be_nil
+    end
+  end
+
   describe 'on demand' do
     it 'has /first send you to the home page asking for it' do
       get '/first'
