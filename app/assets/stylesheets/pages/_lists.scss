@@ -603,11 +603,11 @@ body.light-mode .list-row::after {
 }
 
 /* The owner's name links to their profile. It keeps the dimmed colour of the line it sits
-   in -- it is a credit, not a call to action -- and says it is a link by underlining. */
+   in -- it is a credit, not a call to action. An underline made every card shout it, so
+   the only sign it is a link is brightening to white on hover. */
 .list-card-info .list-card-owner {
   color: inherit !important;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
 }
 
 .list-card-info .list-card-owner:hover {
