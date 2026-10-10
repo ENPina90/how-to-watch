@@ -22,7 +22,7 @@
               defaults: { required: false },
               html: { data: { action: "submit->bulk-select#confirmEdit" } } do |f| %>
           <%= f.input :list_id, label: "Channel",
-                collection: current_user.lists.order(:name),
+                collection: current_user.editable_lists.order(:name),
                 include_blank: "— Leave unchanged —",
                 hint: "Moves them to the end of that channel." %>
           <%# A select rather than the edit form's free text: a typo here is written into

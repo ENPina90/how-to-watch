@@ -248,7 +248,7 @@ class EntriesController < ApplicationController
     # when the editor does not own it -- a default channel, or an admin's edit. Left out, the
     # browser selects the first channel offered, and a save moves the entry without anyone
     # having chosen to.
-    @user_lists = ([@entry.list] + List.where(user: current_user).to_a).uniq
+    @user_lists = ([@entry.list] + current_user.editable_lists.order(:name).to_a).uniq
     @entry.subentries.build if @entry.media == 'series' || @entry.media == 'anime'
     respond_to do |format|
       format.html
@@ -1370,7 +1370,7 @@ class EntriesController < ApplicationController
     # choices. The one being filled comes first whether or not it belongs to this member,
     # since they are standing on it.
     def template_lists
-      ([@list] + (current_user ? current_user.lists.order(:name).to_a : [])).uniq
+      ([@list] + (current_user ? current_user.editable_lists.order(:name).to_a : [])).uniq
     end
 
     def check_list_edit_permissions

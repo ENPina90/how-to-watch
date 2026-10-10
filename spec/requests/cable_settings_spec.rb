@@ -79,7 +79,10 @@ RSpec.describe 'The cable settings page', type: :request do
 
       get admin_cable_path
 
-      expect(response.body.index('Channel One')).to be < response.body.index('Channel Two')
+      # Read off the dial's own rows: an admin's navbar picker names every channel too, and
+      # comes first on the page in whatever order it likes.
+      names = Nokogiri::HTML(response.body).css('.cable-dial__name').map { |name| name.text.strip }
+      expect(names.index { |n| n.include?('Channel One') }).to be < names.index { |n| n.include?('Channel Two') }
     end
 
     # Nothing on this page edits a channel's contents, so the name is the way to the page

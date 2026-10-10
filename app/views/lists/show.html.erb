@@ -92,17 +92,20 @@
               <%= form_with url: list_move_to_list_path(@list), method: :patch, class: "px-3 mb-2" do |f| %>
                 <%= f.select :target_list_id,
                     options_from_collection_for_select(
-                      current_user.lists.where.not(id: @list.id).select { |list| @list.can_be_added_to?(list) },
+                      current_user.editable_lists.where.not(id: @list.id).order(:name).select { |list| @list.can_be_added_to?(list) },
                       :id, :name
                     ),
                     { prompt: 'Select a channel...' },
                     { class: 'form-select form-select-sm mb-2', onchange: 'this.form.submit()' } %>
               <% end %>
 
-              <% unless @list.parent_lists.empty? %>
+              <%# Only the parents this member may unlink it from (User#can_unlink_list?):
+                  the dropdown shows for anyone who can edit a default channel. %>
+              <% removable_parents = @list.parent_lists.select { |parent| current_user.can_unlink_list?(@list, parent) } %>
+              <% unless removable_parents.empty? %>
                 <div class="dropdown-divider"></div>
                 <h6 class="dropdown-header">Remove from:</h6>
-                <% @list.parent_lists.each do |parent| %>
+                <% removable_parents.each do |parent| %>
                   <%= link_to list_move_to_list_path(@list, remove_from: parent.id),
                       method: :patch,
                       class: "dropdown-item text-danger",
@@ -111,12 +114,14 @@
                   <% end %>
                 <% end %>
 
-                <div class="dropdown-divider"></div>
-                <%= link_to list_move_to_list_path(@list),
-                    method: :patch,
-                    class: "dropdown-item text-danger",
-                    data: { turbo_confirm: "Remove '#{@list.name}' from all parent channels?" } do %>
-                  <i class="fa-solid fa-trash"></i> Remove from all parents
+                <% if current_user.can_unlink_list?(@list) %>
+                  <div class="dropdown-divider"></div>
+                  <%= link_to list_move_to_list_path(@list),
+                      method: :patch,
+                      class: "dropdown-item text-danger",
+                      data: { turbo_confirm: "Remove '#{@list.name}' from all parent channels?" } do %>
+                    <i class="fa-solid fa-trash"></i> Remove from all parents
+                  <% end %>
                 <% end %>
               <% end %>
             </div>
