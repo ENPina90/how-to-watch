@@ -5,7 +5,7 @@
   <%= f.input :name %>
 
   <div class="entry-form__row">
-    <%= f.input :list, label: "Channel", collection: List.where(user: current_user), selected: @entry.list.id %>
+    <%= f.input :list_id, label: "Channel", collection: List.where(user: current_user), selected: @entry.list.id %>
     <%# The same select the modal and the new-entry form offer, for the same reason: a media
         value outside Entry::MEDIA_TYPES is half a partial name that does not exist. %>
     <%= f.input :media, collection: Entry.media_options, include_blank: false,
