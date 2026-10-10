@@ -100,11 +100,13 @@
               <i class="fa-solid fa-pen"></i>
             <% end %>
             <%# Takes it out of this channel rather than deleting it. %>
-            <%= link_to list_move_to_list_path(list, remove_from: local_assigns[:parent]&.id),
-                        data: { turbo_method: :patch,
-                                turbo_confirm: "Remove #{list.name} from this channel?" },
-                        title: 'Remove from this channel' do %>
-              <i class="fa-solid fa-link-slash"></i>
+            <% if current_user.can_unlink_list?(list, local_assigns[:parent]) %>
+              <%= link_to list_move_to_list_path(list, remove_from: local_assigns[:parent]&.id),
+                          data: { turbo_method: :patch,
+                                  turbo_confirm: "Remove #{list.name} from this channel?" },
+                          title: 'Remove from this channel' do %>
+                <i class="fa-solid fa-link-slash"></i>
+              <% end %>
             <% end %>
           <% end %>
         </div>

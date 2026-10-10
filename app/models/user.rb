@@ -148,6 +148,17 @@ class User < ApplicationRecord
     admin? ? List.all : lists
   end
 
+  # Whether this member may take `child` out of `parent`, or out of every channel it sits in
+  # when `parent` is nil. Either owner may: the parent's owner decides what their channel
+  # holds, and the child's owner may withdraw theirs from somebody else's. Pulling it out of
+  # every parent at once reaches channels the member may not own, so that is the child's
+  # owner's call alone. Not `can_edit_list?`, which is true for any member on a default channel.
+  def can_unlink_list?(child, parent = nil)
+    return true if admin? || child.user_id == id
+
+    parent.present? && parent.user_id == id
+  end
+
   # Check if user can edit an entry
   def can_edit_entry?(entry)
     admin? || entry.list.user == self || entry.list.default?
