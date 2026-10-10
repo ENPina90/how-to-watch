@@ -105,7 +105,7 @@ class EntryCsvImporter
     end
 
     def editable_lists
-      @editable_lists ||= @user.admin? ? List.all.to_a : @user.lists.to_a
+      @editable_lists ||= @user.editable_lists.to_a
     end
 
     # The sheet over the API, field by field, so a row can correct one thing without

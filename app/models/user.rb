@@ -138,6 +138,16 @@ class User < ApplicationRecord
     admin? || list.user == self || list.default?
   end
 
+  # The channels this member may file entries into from a picker: every channel for an
+  # admin, their own for anyone else. `can_edit_list?` already let an admin write to any
+  # channel, but each picker was built from `lists` on its own, so an admin standing on
+  # somebody else's channel could edit it and still not add to it from search, or move an
+  # entry into it. Default channels stay out for members -- they may edit one they are
+  # standing on, but offering every one of them in every dropdown is not that.
+  def editable_lists
+    admin? ? List.all : lists
+  end
+
   # Check if user can edit an entry
   def can_edit_entry?(entry)
     admin? || entry.list.user == self || entry.list.default?

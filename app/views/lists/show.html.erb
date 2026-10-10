@@ -92,7 +92,7 @@
               <%= form_with url: list_move_to_list_path(@list), method: :patch, class: "px-3 mb-2" do |f| %>
                 <%= f.select :target_list_id,
                     options_from_collection_for_select(
-                      current_user.lists.where.not(id: @list.id).select { |list| @list.can_be_added_to?(list) },
+                      current_user.editable_lists.where.not(id: @list.id).order(:name).select { |list| @list.can_be_added_to?(list) },
                       :id, :name
                     ),
                     { prompt: 'Select a channel...' },

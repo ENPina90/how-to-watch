@@ -32,7 +32,7 @@ class ListsController < ApplicationController
       @favorites_list = current_user.favorite_list
       @mobile_channels = mobile_channels_for(current_user)
       # What a result's + offers. Not @mobile_channels: those include channels followed but
-      # not owned, which add_to_list refuses.
+      # not owned, which add_to_list refuses (unless the member is an admin).
       @mobile_add_channels = mobile_add_channels_for(current_user)
       # The field searches everything, as it does on a channel. With no @list behind it, a
       # result offers the favourites and the picker instead of one channel.
@@ -470,8 +470,10 @@ class ListsController < ApplicationController
         return refuse_move(message)
       end
 
-      # Ensure user owns the target list
-      unless target_list.user == current_user
+      # The channel being filled has to be one this member may file into: their own, or
+      # any channel for an admin. Not `can_edit_list?`, which is true for every member on a
+      # default channel and would let anyone file their channels into the dial's.
+      unless current_user.editable_lists.exists?(target_list.id)
         return refuse_move("You don't have permission to add channels to #{target_list.name}", :forbidden)
       end
 
@@ -571,7 +573,7 @@ class ListsController < ApplicationController
   end
 
   def add_to_list
-    list = current_user.lists.find_by(id: params[:list_id])
+    list = current_user.editable_lists.find_by(id: params[:list_id])
     return render json: { error: 'Channel not found' }, status: :not_found unless list
 
     unless current_user.can_edit_list?(list)
@@ -691,10 +693,11 @@ class ListsController < ApplicationController
       followed.reject { |list| list.id == favourite.id }
   end
 
-  # The channels a search result can be put on from the phone's home page: the member's own,
-  # because that is all add_to_list accepts. The favourite leads, as it does on the page.
+  # The channels a search result can be put on from the phone's home page: the ones
+  # add_to_list accepts, which is the member's own, or every channel for an admin. The
+  # favourite leads, as it does on the page.
   def mobile_add_channels_for(user)
-    owned = user.lists.with_entries_count.order('lists.name ASC').to_a
+    owned = user.editable_lists.with_entries_count.order('lists.name ASC').to_a
     favourite = owned.find { |list| list.id == user.favorite_list_id }
 
     favourite ? [favourite] + (owned - [favourite]) : owned
