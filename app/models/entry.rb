@@ -16,6 +16,11 @@ class Entry < ApplicationRecord
   has_many :user_entries, dependent: :destroy
   has_many :user_entry_positions, dependent: :destroy
   has_many :watch_parties, dependent: :destroy
+  # A closed vote is never cleaned up, so any entry that was ever on a ballot is still
+  # referenced by its option -- and the foreign key refused the delete outright, which the
+  # page showed as "Content missing" on the card while the entry stayed put. Taking the
+  # option takes its votes, so the tally of an old vote simply no longer counts it.
+  has_many :vote_options, dependent: :destroy
   has_many :users_who_watched, -> { where(user_entries: { completed: true }) }, through: :user_entries, source: :user
   has_many :users_who_reviewed, -> { where.not(user_entries: { review: nil }) }, through: :user_entries, source: :user
   # No dependent: :destroy here -- `current` is always one of this entry's own

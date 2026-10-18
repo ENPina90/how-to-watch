@@ -157,4 +157,25 @@ RSpec.describe 'Voting on a channel', :needs_provider, type: :request do
       expect(session.winner).to be_nil
     end
   end
+
+  # A closed session stays in the database for good, so a channel that has ever voted has
+  # entries still named on an old ballot. Deleting one used to fail on the foreign key.
+  describe 'deleting an entry that was on a ballot' do
+    let(:session) { VoteSession.open_for(list, 3) }
+
+    before { sign_in host }
+
+    it 'deletes it, and takes it and its votes off the ballot' do
+      option = session.vote_options.first
+      session.vote_for(option, 'a')
+      session.close!
+
+      delete entry_path(option.entry), as: :turbo_stream
+
+      expect(response).to have_http_status(:ok)
+      expect(Entry.exists?(option.entry_id)).to be(false)
+      expect(session.vote_options.reload.size).to eq(2)
+      expect(session.votes.reload).to be_empty
+    end
+  end
 end
