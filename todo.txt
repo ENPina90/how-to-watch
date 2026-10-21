@@ -1,0 +1,22 @@
+- It seems to overcomplicate things to have Entries and Subentries. Especially now that I can make a List a part of another List, we could maybe reproduce that functionality, ie instead of having a series or season be an Entry with episodes as Subentries, a show could be made as a private List that is a member of a another List, and all the episodes are Entries within in the sub-list. What do you think? Would this meaningfully improve or reduce complexity? Or would this be more trouble than its worth. Before you make any changes to the code I just want you analyze the problem and give your best reccomendation.
+- In the /members/ view can you add a list index section of all the lists that user has created.
+- Nightly job that when a movie or episode is marked as seen in one list it also marks it as seen in other lists (matched by IMDB  or TMDB, not just title)
+- Sometimes a mega entry is loaded without our video control UI, it seems to only be when the fram is preloaded / warmed then switched to, but not 100% sure if thats the reason.
+- Rethink user starting lists.
+  - Auto create a "Watched" list for every user, any content they've watched is automatically added with completed = true, and folding the Letterboxed list into it, though update instead of create if Letterbox sync entry is already on list. Put a little icon next to the ones pulled from Letterboxd. Even entries watched until watch_now are added here.
+  - Create a Favorites List for tracking users fav films. Add heart button near watched icon (maybe when hovering over eye icon it pops up as an option, along with ability to hide from watched list), Could also sync with letterboxd heart feature if that is possible from API.
+  - Make Watchlists an official state (seperate of favorited list), when an entry in watchlist has been watched by the owner of the list, it shoud should be automatically removed from the list.
+  - In cable view and elsewher, add seperate buttons for adding to favorite or watchlist.
+- Channel 1 sould be generated from everyones favorited channels,
+- "Don't Ask Again button" isn't working, it still pops up everytime when I click watched on a list with reviews triggered. Consider removing reviews entirely for now and just using Letterboxd
+- in the list edit view, an admin should be able to reassign the owner of a list from a drop down list of all users
+- Shuffle icon and left / right carets should appear even when user isn't signed in and just pick next or previus entry in the list by order, or one at random for shuffel, skipping UserEntry and currently_playing logic.
+- Make sure /cable view guide scrolls down to the currently loaded channel on page load (currently it just stays at the top)
+- Navigating up and down between channels in /watch view should follow the order of the channels displayed the in the left side bar. And if the current entry's channel is a sub channel it should display and highlight the main channel.
+- Right sidebar minimize button not working in /watch view, consider switch icon for more obvious left right expand or something
+- "Search this channel" search should be instantaneous on keystroke
+- Make sure sort order is saved
+- Only auto play after episodes not movies.
+- Modarate should allow cable and watch_now, but
+- When an entry added to a list the watch now button should change color, and instead link to the /watch view instead of the /watch_now view. Also the popup notification should link to the /watch view for that entry
+- Move all items in New Releases to my watchlist, make new releases an auto generated channel of all entries from all lists that have a release date from this year or last year.
